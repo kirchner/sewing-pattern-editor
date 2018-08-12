@@ -6,12 +6,11 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
-import Pattern exposing (Detail, Line, Pattern, Point, Version)
+import Pattern exposing (At(..), Detail, Entry, Line, Pattern, Point, That, Those)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
-import Those exposing (That, These)
 
 
 main : Program {} Model Msg
@@ -46,7 +45,7 @@ type Tool
       -- LINES
     | ThroughTwoPoints (Maybe (That Point)) (Maybe (That Point))
       -- TRANSFORMATIONS
-    | MirrorAt (Maybe (That Line)) (These Point)
+    | MirrorAt (Maybe (That Line)) (Those Point)
       -- DETAILS
     | CounterClockwise (List (That Point))
 
@@ -143,14 +142,19 @@ viewEditor model =
         ]
 
 
-viewTool : Pattern -> List (Version Point) -> List ( That Line, Maybe String ) -> Tool -> Element Msg
+viewTool :
+    Pattern
+    -> List ( That Point, Entry Point )
+    -> List ( That Line, Entry Line )
+    -> Tool
+    -> Element Msg
 viewTool pattern points lines tool =
     let
-        pointOption { name, initial } =
-            Input.option initial (Element.text (Maybe.withDefault "<unnamed>" name))
+        pointOption ( thatPoint, { name } ) =
+            Input.option thatPoint (Element.text (Maybe.withDefault "<unnamed>" name))
 
-        lineOption ( line, name ) =
-            Input.option line (Element.text (Maybe.withDefault "<unnamed>" name))
+        lineOption ( thatLine, { name } ) =
+            Input.option thatLine (Element.text (Maybe.withDefault "<unnamed>" name))
 
         simpleDistanceTool anchor distance =
             Element.column
@@ -203,11 +207,11 @@ viewTool pattern points lines tool =
 
         MirrorAt line targets ->
             let
-                pointCheckbox { name, initial } =
+                pointCheckbox ( thatPoint, { name } ) =
                     Input.checkbox []
-                        { onChange = Just (PointChecked initial)
+                        { onChange = Just (PointChecked thatPoint)
                         , icon = Nothing
-                        , checked = Those.memberOfThese initial targets
+                        , checked = Pattern.memberOfThose thatPoint targets
                         , label =
                             Input.labelRight [] <|
                                 Element.text (Maybe.withDefault "<unnamed>" name)
@@ -231,8 +235,8 @@ viewTool pattern points lines tool =
 
         CounterClockwise targets ->
             let
-                pointButton { name, initial } =
-                    button (Maybe.withDefault "<unnamed>" name) (PointAdded initial)
+                pointButton ( thatPoint, { name } ) =
+                    button (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint)
             in
             Element.column
                 [ Element.padding 10
@@ -240,7 +244,7 @@ viewTool pattern points lines tool =
                 ]
                 [ Element.text
                     (targets
-                        |> List.filterMap (Pattern.getPointVersion pattern)
+                        |> List.filterMap (Pattern.getPoint pattern)
                         |> List.map (.name >> Maybe.withDefault "<unnamed>")
                         |> String.join ", "
                     )
@@ -417,7 +421,7 @@ update msg model =
 
         -- TRANSFORMATIONS
         MirrorAtClicked ->
-            ( { model | tool = Just (MirrorAt Nothing Those.none) }
+            ( { model | tool = Just (MirrorAt Nothing Pattern.none) }
             , Cmd.none
             )
 
@@ -516,9 +520,9 @@ update msg model =
                             Just <|
                                 MirrorAt line <|
                                     if checked then
-                                        Those.insertIntoThese thatPoint targets
+                                        Pattern.insertIntoThose thatPoint targets
                                     else
-                                        Those.removeFromThese thatPoint targets
+                                        Pattern.removeFromThose thatPoint targets
                       }
                     , Cmd.none
                     )
@@ -542,13 +546,13 @@ update msg model =
                 insertSimpleDistance constructor anchor distance =
                     case ( anchor, String.toFloat distance ) of
                         ( Just thatPoint, Just by ) ->
+                            let
+                                newPoint =
+                                    constructor (now thatPoint)
+                                        (Pattern.Length (Pattern.exprFromFloat by))
+                            in
                             ( { model
-                                | pattern =
-                                    Pattern.insertPoint
-                                        (constructor thatPoint
-                                            (Pattern.Length (Pattern.exprFromFloat by))
-                                        )
-                                        model.pattern
+                                | pattern = Pattern.insertPoint newPoint model.pattern
                                 , tool = Nothing
                               }
                             , Cmd.none
@@ -556,6 +560,12 @@ update msg model =
 
                         _ ->
                             ( model, Cmd.none )
+
+                now that =
+                    At lastState that
+
+                lastState =
+                    Pattern.lastState model.pattern
             in
             case model.tool of
                 Just (LeftOf anchor distance) ->
@@ -573,11 +583,14 @@ update msg model =
                 Just (ThroughTwoPoints anchorA anchorB) ->
                     case ( anchorA, anchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
+                            let
+                                newPoint =
+                                    Pattern.ThroughTwoPoints
+                                        (now thatPointA)
+                                        (now thatPointB)
+                            in
                             ( { model
-                                | pattern =
-                                    Pattern.insertLine
-                                        (Pattern.ThroughTwoPoints thatPointA thatPointB)
-                                        model.pattern
+                                | pattern = Pattern.insertLine newPoint model.pattern
                                 , tool = Nothing
                               }
                             , Cmd.none
@@ -589,11 +602,13 @@ update msg model =
                 Just (MirrorAt line targets) ->
                     case line of
                         Just thatLine ->
+                            let
+                                newTransformation =
+                                    Pattern.MirrorAt (now thatLine) (now targets)
+                            in
                             ( { model
                                 | pattern =
-                                    Pattern.insertTransformation
-                                        (Pattern.MirrorAt thatLine targets)
-                                        model.pattern
+                                    Pattern.insertTransformation newTransformation model.pattern
                               }
                             , Cmd.none
                             )
@@ -602,11 +617,14 @@ update msg model =
                             ( model, Cmd.none )
 
                 Just (CounterClockwise targets) ->
+                    let
+                        newDetail =
+                            targets
+                                |> List.map now
+                                |> Pattern.CounterClockwise
+                    in
                     ( { model
-                        | pattern =
-                            Pattern.insertDetail
-                                (Pattern.CounterClockwise targets)
-                                model.pattern
+                        | pattern = Pattern.insertDetail newDetail model.pattern
                         , tool = Nothing
                       }
                     , Cmd.none

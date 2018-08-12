@@ -1,14 +1,17 @@
 module Pattern
     exposing
-        ( Detail(..)
+        ( At(..)
+        , Detail(..)
+        , Entry
         , Geometry
         , Length(..)
         , Line(..)
         , Pattern
         , Point(..)
         , Problems
+        , That
+        , Those
         , Transformation(..)
-        , Version
         , circles
         , empty
         , exprFromFloat
@@ -16,15 +19,19 @@ module Pattern
         , getCircle
         , getLine
         , getPoint
-        , getPointVersion
         , insertCircle
         , insertDetail
+        , insertIntoThose
         , insertLine
         , insertPoint
         , insertTransformation
+        , lastState
         , lines
+        , memberOfThose
+        , none
         , points
         , removeCircle
+        , removeFromThose
         , removeLine
         , removePoint
         , replaceCircle
@@ -68,31 +75,222 @@ import Direction2d
 import Parser
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
-import Those exposing (That, These, Those)
+import Set exposing (Set)
 import Vector2d
 
 
 type Pattern
     = Pattern
-        { points : Those Point
-        , circles : Those Circle
-        , lines : Those Line
+        { points : Store Point
+        , circles : Store Circle
+        , lines : Store Line
         , variables : Dict String Expr
-        , details : Those Detail
-        , transformations : Those Transformation
+        , details : Store Detail
+        , transformations : Transformations
         }
 
 
 empty : Pattern
 empty =
     Pattern
-        { points = Those.empty
-        , circles = Those.empty
-        , lines = Those.empty
+        { points = emptyStore
+        , circles = emptyStore
+        , lines = emptyStore
         , variables = Dict.empty
-        , details = Those.empty
-        , transformations = Those.empty
+        , details = emptyStore
+        , transformations = noTransformations
         }
+
+
+
+---- TRANSFORMATIONS
+
+
+type alias Transformations =
+    { entries : List ( Int, Transformation )
+    , nextId : Int
+    }
+
+
+noTransformations : Transformations
+noTransformations =
+    { entries = []
+    , nextId = 0
+    }
+
+
+type State
+    = State Int
+
+
+start : State
+start =
+    State -1
+
+
+append : Transformation -> Transformations -> Transformations
+append newTransformation ts =
+    { ts
+        | entries = ( ts.nextId, newTransformation ) :: ts.entries
+        , nextId = ts.nextId + 1
+    }
+
+
+lastState : Pattern -> State
+lastState (Pattern { transformations }) =
+    transformations.entries
+        |> List.head
+        |> Maybe.map (Tuple.first >> State)
+        |> Maybe.withDefault start
+
+
+last : Transformations -> Maybe ( State, Transformation )
+last { entries } =
+    entries
+        |> List.head
+        |> Maybe.map (Tuple.mapFirst State)
+
+
+allUntil : State -> Transformations -> List ( State, Transformation )
+allUntil (State id) { entries } =
+    if id == -1 then
+        []
+    else
+        allUntilHelp [] False id entries
+
+
+allUntilHelp :
+    List ( State, Transformation )
+    -> Bool
+    -> Int
+    -> List ( Int, Transformation )
+    -> List ( State, Transformation )
+allUntilHelp sum found id entries =
+    case entries of
+        [] ->
+            if found then
+                sum
+            else
+                []
+
+        ( nextId, entry ) :: rest ->
+            if nextId == id then
+                ( State nextId, entry ) :: sum
+            else
+                allUntilHelp (( State nextId, entry ) :: sum) found id rest
+
+
+firstToLast : Transformations -> List ( State, Transformation )
+firstToLast { entries } =
+    List.foldl
+        (\( id, entry ) sum -> ( State id, entry ) :: sum)
+        []
+        entries
+
+
+lastToFirst : Transformations -> List ( State, Transformation )
+lastToFirst { entries } =
+    List.map (Tuple.mapFirst State) entries
+
+
+
+---- STORE
+
+
+type alias Store a =
+    { entries : Dict Int (Entry a)
+    , nextId : Int
+    }
+
+
+type alias Entry a =
+    { name : Maybe String
+    , value : a
+    }
+
+
+emptyStore : Store a
+emptyStore =
+    { entries = Dict.empty
+    , nextId = 0
+    }
+
+
+insert : Maybe String -> a -> Store a -> Store a
+insert name value store =
+    { store
+        | entries = Dict.insert store.nextId (Entry name value) store.entries
+        , nextId = store.nextId + 1
+    }
+
+
+get : That a -> Store a -> Maybe (Entry a)
+get (That id) { entries } =
+    Dict.get id entries
+
+
+toList : Store a -> List ( That a, Entry a )
+toList { entries } =
+    entries
+        |> Dict.toList
+        |> List.map (Tuple.mapFirst That)
+
+
+toListAt : State -> Store a -> List ( At (That a), Entry a )
+toListAt state { entries } =
+    entries
+        |> Dict.toList
+        |> List.map (Tuple.mapFirst (That >> At state))
+
+
+values : Store a -> List (Entry a)
+values { entries } =
+    entries
+        |> Dict.values
+
+
+type That a
+    = That Int
+
+
+type Those a
+    = Those (Set Int)
+
+
+none : Those a
+none =
+    Those Set.empty
+
+
+thoseFromList : List (That a) -> Those a
+thoseFromList ids =
+    let
+        getId (That id) =
+            id
+    in
+    ids
+        |> List.map getId
+        |> Set.fromList
+        |> Those
+
+
+insertIntoThose : That a -> Those a -> Those a
+insertIntoThose (That id) (Those ids) =
+    Those (Set.insert id ids)
+
+
+removeFromThose : That a -> Those a -> Those a
+removeFromThose (That id) (Those ids) =
+    Those (Set.remove id ids)
+
+
+memberOfThose : That a -> Those a -> Bool
+memberOfThose (That id) (Those ids) =
+    Set.member id ids
+
+
+
+---- GEOMETRY
 
 
 type alias Geometry =
@@ -114,30 +312,33 @@ type alias Problems =
 geometry : Pattern -> ( Geometry, Problems )
 geometry ((Pattern pattern) as p) =
     let
-        geometryPoint ( thatPoint, { name } ) =
-            point2d p thatPoint
+        geometryPoint ( (At _ thatPoint) as thatAtPoint, { name } ) =
+            point2d p thatAtPoint
                 |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
 
-        geometryLine ( thatLine, { name } ) =
-            axis2d p thatLine
+        geometryLine ( (At _ thatLine) as thatAtLine, { name } ) =
+            axis2d p thatAtLine
                 |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
 
-        geometryDetail ( thatDetail, { name } ) =
-            polygon2d p thatDetail
+        geometryDetail ( (At _ thatDetail) as thatAtDetail, { name } ) =
+            polygon2d p thatAtDetail
                 |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
+
+        state =
+            lastState p
     in
     ( { points =
             pattern.points
-                |> Those.toList
+                |> toListAt state
                 |> List.filterMap geometryPoint
       , circles = []
       , lines =
             pattern.lines
-                |> Those.toList
+                |> toListAt state
                 |> List.filterMap geometryLine
       , details =
             pattern.details
-                |> Those.toList
+                |> toListAt state
                 |> List.filterMap geometryDetail
       }
     , { doNotCompute = []
@@ -148,8 +349,8 @@ geometry ((Pattern pattern) as p) =
     )
 
 
-point2d : Pattern -> That Point -> Maybe Point2d
-point2d ((Pattern pattern) as p) thatPoint =
+point2d : Pattern -> At (That Point) -> Maybe Point2d
+point2d ((Pattern pattern) as p) (At state thatPoint) =
     let
         simpleDistance anchor expr toDirection =
             case compute Dict.empty expr of
@@ -167,13 +368,13 @@ point2d ((Pattern pattern) as p) thatPoint =
 
         transformations =
             pattern.transformations
-                |> Those.values
+                |> allUntil state
                 |> List.filter targetPoint
 
-        targetPoint { a } =
-            case a of
-                MirrorAt _ targets ->
-                    Those.memberOfThese thatPoint targets
+        targetPoint ( _, transformation ) =
+            case transformation of
+                MirrorAt _ (At _ targets) ->
+                    memberOfThose thatPoint targets
 
                 _ ->
                     Debug.todo ""
@@ -181,8 +382,8 @@ point2d ((Pattern pattern) as p) thatPoint =
         applyTransformations point =
             List.foldl applyTransformation point transformations
 
-        applyTransformation { a } point =
-            case a of
+        applyTransformation ( _, transformation ) point =
+            case transformation of
                 MirrorAt line _ ->
                     case axis2d p line of
                         Just axis ->
@@ -196,7 +397,7 @@ point2d ((Pattern pattern) as p) thatPoint =
                     Debug.todo ""
     in
     Maybe.map applyTransformations <|
-        case getPoint p thatPoint of
+        case Maybe.map .value (getPoint p thatPoint) of
             Just Origin ->
                 Just Point2d.origin
 
@@ -220,8 +421,8 @@ point2d ((Pattern pattern) as p) thatPoint =
                 Nothing
 
 
-axis2d : Pattern -> That Line -> Maybe Axis2d
-axis2d ((Pattern _) as p) thatLine =
+axis2d : Pattern -> At (That Line) -> Maybe Axis2d
+axis2d ((Pattern _) as p) (At state thatLine) =
     case getLine p thatLine of
         Just (ThroughTwoPoints thatPointA thatPointB) ->
             case ( point2d p thatPointA, point2d p thatPointB ) of
@@ -236,8 +437,8 @@ axis2d ((Pattern _) as p) thatLine =
             Nothing
 
 
-polygon2d : Pattern -> That Detail -> Maybe Polygon2d
-polygon2d ((Pattern _) as p) thatDetail =
+polygon2d : Pattern -> At (That Detail) -> Maybe Polygon2d
+polygon2d ((Pattern _) as p) (At state thatDetail) =
     case getDetail p thatDetail of
         Just (CounterClockwise targets) ->
             targets
@@ -318,6 +519,10 @@ type Ratio
 ----
 
 
+type At that
+    = At State that
+
+
 type Construction
     = Point Point
     | Line Line
@@ -329,11 +534,11 @@ type Construction
 
 
 type Transformation
-    = MirrorAt (That Line) (These Point)
-    | RotateAround (That Point) Angle (These Point)
-    | CutAlong (That Line) Detail
-    | CutLineSegment (That LineSegment) Detail
-    | CutCurve (That Curve) Detail
+    = MirrorAt (At (That Line)) (At (Those Point))
+    | RotateAround (At (That Point)) Angle (At (Those Point))
+    | CutAlong (At (That Line)) Detail
+    | CutLineSegment (At (That LineSegment)) Detail
+    | CutCurve (At (That Curve)) Detail
 
 
 
@@ -342,36 +547,31 @@ type Transformation
 
 type Point
     = Origin
-    | LeftOf (That Point) Length
-    | RightOf (That Point) Length
-    | Above (That Point) Length
-    | Below (That Point) Length
-    | AtAngle (That Point) Angle Length
-    | BetweenRatio (That Point) (That Point) Ratio
-    | BetweenLength (That Point) (That Point) Length
+    | LeftOf (At (That Point)) Length
+    | RightOf (At (That Point)) Length
+    | Above (At (That Point)) Length
+    | Below (At (That Point)) Length
+    | AtAngle (At (That Point)) Angle Length
+    | BetweenRatio (At (That Point)) (At (That Point)) Ratio
+    | BetweenLength (At (That Point)) (At (That Point)) Length
       -- ON OBJECT
-    | OnLineAtX (That Line) Coordinate
-    | OnLineAtY (That Line) Coordinate
-    | OnCurve (That Curve) Constraint
-    | OnLineSegment (That LineSegment) Constraint
-    | OnCircle (That Circle) Constraint
-    | OnCircleFirstTangent (That Circle) (That Point)
-    | OnCircleSecondTangent (That Circle) (That Point)
-    | OnCircleFirstChord (That Circle) Angle
-    | OnCircleSecondChord (That Circle) Angle
+    | OnLineAtX (At (That Line)) Coordinate
+    | OnLineAtY (At (That Line)) Coordinate
+    | OnCurve (At (That Curve)) Constraint
+    | OnLineSegment (At (That LineSegment)) Constraint
+    | OnCircle (At (That Circle)) Constraint
+    | OnCircleFirstTangent (At (That Circle)) (At (That Point))
+    | OnCircleSecondTangent (At (That Circle)) (At (That Point))
+    | OnCircleFirstChord (At (That Circle)) Angle
+    | OnCircleSecondChord (At (That Circle)) Angle
       -- BY INTERSECTION
-    | FirstCircleCircle (That Circle) (That Circle)
-    | SecondCircleCircle (That Circle) (That Circle)
-    | LineLine (That Line) (That Line)
-    | FirstCircleLine (That Circle) (That Line)
-    | SecondCircleLine (That Circle) (That Line)
+    | FirstCircleCircle (At (That Circle)) (At (That Circle))
+    | SecondCircleCircle (At (That Circle)) (At (That Circle))
+    | LineLine (At (That Line)) (At (That Line))
+    | FirstCircleLine (At (That Circle)) (At (That Line))
+    | SecondCircleLine (At (That Circle)) (At (That Line))
       -- BY TRANSFORMATION
-    | Transformed (That Point) Transformation
-
-
-type State
-    = Initial
-    | After (That Transformation)
+    | Transformed (At (That Point)) Transformation
 
 
 type Constraint
@@ -384,16 +584,16 @@ type Constraint
 
 
 type Line
-    = ThroughOnePoint (That Point) Angle
-    | ThroughTwoPoints (That Point) (That Point)
+    = ThroughOnePoint (At (That Point)) Angle
+    | ThroughTwoPoints (At (That Point)) (At (That Point))
 
 
 type LineSegment
-    = FromTo (That Point) (That Point)
+    = FromTo (At (That Point)) (At (That Point))
 
 
 type Circle
-    = CenteredAt (That Point) Length
+    = CenteredAt (At (That Point)) Length
 
 
 type Curve
@@ -405,7 +605,7 @@ type Ellipsis
 
 
 type Detail
-    = CounterClockwise (List (That Point))
+    = CounterClockwise (List (At (That Point)))
 
 
 
@@ -436,47 +636,20 @@ renameVariable =
 ---- POINTS
 
 
-type alias Version a =
-    { name : Maybe String
-    , initial : That a
-    , transformations : List (That Transformation)
-    }
-
-
-points : Pattern -> List (Version Point)
+points : Pattern -> List ( That Point, Entry Point )
 points (Pattern pattern) =
-    Those.toList pattern.points
-        |> List.map
-            (\( thatPoint, { name } ) ->
-                { name = name
-                , initial = thatPoint
-                , transformations = []
-                }
-            )
+    toList pattern.points
 
 
-getPoint : Pattern -> That Point -> Maybe Point
+getPoint : Pattern -> That Point -> Maybe (Entry Point)
 getPoint (Pattern pattern) thatPoint =
-    Those.get thatPoint pattern.points
-        |> Maybe.map .a
-
-
-getPointVersion : Pattern -> That Point -> Maybe (Version Point)
-getPointVersion (Pattern pattern) thatPoint =
-    Those.get thatPoint pattern.points
-        |> Maybe.map
-            (\{ name, a } ->
-                { name = name
-                , initial = thatPoint
-                , transformations = []
-                }
-            )
+    get thatPoint pattern.points
 
 
 insertPoint : Point -> Pattern -> Pattern
 insertPoint point (Pattern pattern) =
     Pattern
-        { pattern | points = Those.insert Nothing point pattern.points }
+        { pattern | points = insert Nothing point pattern.points }
 
 
 replacePoint : That Point -> Point -> Pattern -> Pattern
@@ -522,22 +695,21 @@ removeCircle =
 ---- LINES
 
 
-lines : Pattern -> List ( That Line, Maybe String )
+lines : Pattern -> List ( That Line, Entry Line )
 lines (Pattern pattern) =
-    Those.toList pattern.lines
-        |> List.map (Tuple.mapSecond .name)
+    toList pattern.lines
 
 
 getLine : Pattern -> That Line -> Maybe Line
 getLine (Pattern pattern) thatLine =
-    Those.get thatLine pattern.lines
-        |> Maybe.map .a
+    get thatLine pattern.lines
+        |> Maybe.map .value
 
 
 insertLine : Line -> Pattern -> Pattern
 insertLine line (Pattern pattern) =
     Pattern
-        { pattern | lines = Those.insert Nothing line pattern.lines }
+        { pattern | lines = insert Nothing line pattern.lines }
 
 
 replaceLine : That Line -> Line -> Pattern -> Pattern
@@ -557,7 +729,7 @@ removeLine =
 insertTransformation : Transformation -> Pattern -> Pattern
 insertTransformation transformation (Pattern pattern) =
     Pattern
-        { pattern | transformations = Those.insert Nothing transformation pattern.transformations }
+        { pattern | transformations = append transformation pattern.transformations }
 
 
 
@@ -567,10 +739,10 @@ insertTransformation transformation (Pattern pattern) =
 insertDetail : Detail -> Pattern -> Pattern
 insertDetail detail (Pattern pattern) =
     Pattern
-        { pattern | details = Those.insert Nothing detail pattern.details }
+        { pattern | details = insert Nothing detail pattern.details }
 
 
 getDetail : Pattern -> That Detail -> Maybe Detail
 getDetail (Pattern pattern) thatDetail =
-    Those.get thatDetail pattern.details
-        |> Maybe.map .a
+    get thatDetail pattern.details
+        |> Maybe.map .value
