@@ -15,7 +15,6 @@ module Pattern
         , decoder
         , empty
         , encode
-        , example
         , exprFromFloat
         , geometry
         , getCircle
@@ -82,64 +81,6 @@ import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Set exposing (Set)
 import Vector2d
-
-
-example =
-    let
-        initial =
-            empty
-                |> insertPoint Origin
-    in
-    case
-        initial
-            |> points
-            |> List.head
-            |> Maybe.map Tuple.first
-    of
-        Just origin ->
-            let
-                withPoints =
-                    initial
-                        |> insertPoint (Above origin (Length (Number 100)))
-                        |> insertPoint (RightOf origin (Length (Number 100)))
-            in
-            case
-                withPoints
-                    |> points
-                    |> List.map Tuple.first
-            of
-                _ :: above :: rightOf :: [] ->
-                    let
-                        withLine =
-                            withPoints
-                                |> insertLine (ThroughTwoPoints above rightOf)
-                    in
-                    case
-                        withLine
-                            |> lines
-                            |> List.head
-                            |> Maybe.map Tuple.first
-                    of
-                        Just line ->
-                            let
-                                withTransformation =
-                                    withLine
-                                        |> insertTransformation (MirrorAt line (Those [ origin ]))
-                            in
-                            withTransformation
-
-                        _ ->
-                            Debug.todo ""
-
-                _ ->
-                    Debug.todo ""
-
-        Nothing ->
-            Debug.todo ""
-
-
-
-----
 
 
 type Pattern
@@ -1282,12 +1223,11 @@ exprDecoder =
 
 typeDecoder : String -> Decoder a -> Decoder a
 typeDecoder type_ dataDecoder =
-    Decode.field "type" <|
-        Decode.andThen
+    Decode.field "type" Decode.string
+        |> Decode.andThen
             (\rawType ->
                 if rawType == type_ then
                     dataDecoder
                 else
                     Decode.fail "not a valid type"
             )
-            Decode.string

@@ -6,18 +6,19 @@
     "elm-version": "0.19.0",
     "dependencies": {
         "direct": {
+            "NoRedInk/json-decode-pipeline": "1.0.0",
             "elm/browser": "1.0.0",
             "elm/core": "1.0.0",
             "elm/html": "1.0.0",
+            "elm/json": "1.0.0",
             "elm/parser": "1.0.0",
             "elm/svg": "1.0.0",
+            "elm/url": "1.0.0",
             "ianmackenzie/elm-geometry": "1.0.0",
             "mdgriffith/stylish-elephants": "8.0.1"
         },
         "indirect": {
-            "elm/json": "1.0.0",
             "elm/time": "1.0.0",
-            "elm/url": "1.0.0",
             "elm/virtual-dom": "1.0.0",
             "ianmackenzie/elm-float-extra": "1.0.1",
             "ianmackenzie/elm-interval": "1.0.1",
@@ -25,7 +26,11 @@
         }
     },
     "test-dependencies": {
-        "direct": {},
-        "indirect": {}
+        "direct": {
+            "elm-explorations/test": "1.0.0"
+        },
+        "indirect": {
+            "elm/random": "1.0.0"
+        }
     }
 }

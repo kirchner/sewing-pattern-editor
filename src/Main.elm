@@ -1,16 +1,20 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
+import Browser.Navigation exposing (Key)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
-import Pattern exposing (At(..), Detail, Entry, Line, Pattern, Point, That, Those)
+import Json.Decode as Decode
+import Json.Encode exposing (Value)
+import Pattern exposing (Detail, Entry, Line, Pattern, Point, That, Those)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
+import Url exposing (Url)
 
 
 main : Program {} Model Msg
@@ -23,6 +27,15 @@ main =
         , onUrlRequest = onUrlRequest
         , onUrlChange = onUrlChange
         }
+
+
+port safePattern : Value -> Cmd msg
+
+
+port requestPattern : () -> Cmd msg
+
+
+port patternReceived : (Value -> msg) -> Sub msg
 
 
 
@@ -54,13 +67,14 @@ type Tool
 -- TR
 
 
+init : {} -> Url -> Key -> ( Model, Cmd Msg )
 init flags url key =
     ( { pattern =
             Pattern.empty
                 |> Pattern.insertPoint Pattern.Origin
       , tool = Nothing
       }
-    , Cmd.none
+    , requestPattern ()
     )
 
 
@@ -379,6 +393,8 @@ type Msg
     | PointAdded (That Point)
       --
     | CreateClicked
+      -- STORAGE
+    | PatternReceived Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -548,21 +564,21 @@ update msg model =
                         ( Just thatPoint, Just by ) ->
                             let
                                 newPoint =
-                                    constructor (now thatPoint)
+                                    constructor thatPoint
                                         (Pattern.Length (Pattern.exprFromFloat by))
+
+                                newPattern =
+                                    Pattern.insertPoint newPoint model.pattern
                             in
                             ( { model
-                                | pattern = Pattern.insertPoint newPoint model.pattern
+                                | pattern = newPattern
                                 , tool = Nothing
                               }
-                            , Cmd.none
+                            , safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
                             ( model, Cmd.none )
-
-                now that =
-                    At lastState that
 
                 lastState =
                     Pattern.lastState model.pattern
@@ -586,14 +602,17 @@ update msg model =
                             let
                                 newPoint =
                                     Pattern.ThroughTwoPoints
-                                        (now thatPointA)
-                                        (now thatPointB)
+                                        thatPointA
+                                        thatPointB
+
+                                newPattern =
+                                    Pattern.insertLine newPoint model.pattern
                             in
                             ( { model
-                                | pattern = Pattern.insertLine newPoint model.pattern
+                                | pattern = newPattern
                                 , tool = Nothing
                               }
-                            , Cmd.none
+                            , safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -604,13 +623,16 @@ update msg model =
                         Just thatLine ->
                             let
                                 newTransformation =
-                                    Pattern.MirrorAt (now thatLine) (now targets)
+                                    Pattern.MirrorAt thatLine targets
+
+                                newPattern =
+                                    Pattern.insertTransformation newTransformation model.pattern
                             in
                             ( { model
-                                | pattern =
-                                    Pattern.insertTransformation newTransformation model.pattern
+                                | pattern = newPattern
+                                , tool = Nothing
                               }
-                            , Cmd.none
+                            , safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -620,22 +642,36 @@ update msg model =
                     let
                         newDetail =
                             targets
-                                |> List.map now
                                 |> Pattern.CounterClockwise
+
+                        newPattern =
+                            Pattern.insertDetail newDetail model.pattern
                     in
                     ( { model
-                        | pattern = Pattern.insertDetail newDetail model.pattern
+                        | pattern = newPattern
                         , tool = Nothing
                       }
-                    , Cmd.none
+                    , safePattern (Pattern.encode newPattern)
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
+        -- STORAGE
+        PatternReceived value ->
+            case Decode.decodeValue Pattern.decoder value of
+                Err error ->
+                    Debug.todo (Decode.errorToString error)
 
+                Ok newPattern ->
+                    ( { model | pattern = newPattern }
+                    , Cmd.none
+                    )
+
+
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    patternReceived PatternReceived
 
 
 onUrlRequest urlRequest =
