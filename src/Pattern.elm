@@ -1,7 +1,6 @@
 module Pattern
     exposing
-        ( At(..)
-        , Detail(..)
+        ( Detail(..)
         , Entry
         , Geometry
         , Length(..)
@@ -13,7 +12,10 @@ module Pattern
         , Those
         , Transformation(..)
         , circles
+        , decoder
         , empty
+        , encode
+        , example
         , exprFromFloat
         , geometry
         , getCircle
@@ -72,6 +74,9 @@ import Axis2d exposing (Axis2d)
 import Circle2d exposing (Circle2d)
 import Dict exposing (Dict)
 import Direction2d
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Decode
+import Json.Encode as Encode exposing (Value)
 import Parser
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
@@ -79,15 +84,76 @@ import Set exposing (Set)
 import Vector2d
 
 
+example =
+    let
+        initial =
+            empty
+                |> insertPoint Origin
+    in
+    case
+        initial
+            |> points
+            |> List.head
+            |> Maybe.map Tuple.first
+    of
+        Just origin ->
+            let
+                withPoints =
+                    initial
+                        |> insertPoint (Above origin (Length (Number 100)))
+                        |> insertPoint (RightOf origin (Length (Number 100)))
+            in
+            case
+                withPoints
+                    |> points
+                    |> List.map Tuple.first
+            of
+                _ :: above :: rightOf :: [] ->
+                    let
+                        withLine =
+                            withPoints
+                                |> insertLine (ThroughTwoPoints above rightOf)
+                    in
+                    case
+                        withLine
+                            |> lines
+                            |> List.head
+                            |> Maybe.map Tuple.first
+                    of
+                        Just line ->
+                            let
+                                withTransformation =
+                                    withLine
+                                        |> insertTransformation (MirrorAt line (Those [ origin ]))
+                            in
+                            withTransformation
+
+                        _ ->
+                            Debug.todo ""
+
+                _ ->
+                    Debug.todo ""
+
+        Nothing ->
+            Debug.todo ""
+
+
+
+----
+
+
 type Pattern
-    = Pattern
-        { points : Store Point
-        , circles : Store Circle
-        , lines : Store Line
-        , variables : Dict String Expr
-        , details : Store Detail
-        , transformations : Transformations
-        }
+    = Pattern PatternData
+
+
+type alias PatternData =
+    { points : Store Point
+    , circles : Store Circle
+    , lines : Store Line
+    , details : Store Detail
+    , variables : Dict String Expr
+    , transformations : Transformations
+    }
 
 
 empty : Pattern
@@ -96,8 +162,8 @@ empty =
         { points = emptyStore
         , circles = emptyStore
         , lines = emptyStore
-        , variables = Dict.empty
         , details = emptyStore
+        , variables = Dict.empty
         , transformations = noTransformations
         }
 
@@ -224,69 +290,21 @@ insert name value store =
     }
 
 
-get : That a -> Store a -> Maybe (Entry a)
-get (That id) { entries } =
+get : Store a -> Int -> Maybe (Entry a)
+get { entries } id =
     Dict.get id entries
 
 
-toList : Store a -> List ( That a, Entry a )
+toList : Store a -> List ( Int, Entry a )
 toList { entries } =
     entries
         |> Dict.toList
-        |> List.map (Tuple.mapFirst That)
-
-
-toListAt : State -> Store a -> List ( At (That a), Entry a )
-toListAt state { entries } =
-    entries
-        |> Dict.toList
-        |> List.map (Tuple.mapFirst (That >> At state))
 
 
 values : Store a -> List (Entry a)
 values { entries } =
     entries
         |> Dict.values
-
-
-type That a
-    = That Int
-
-
-type Those a
-    = Those (Set Int)
-
-
-none : Those a
-none =
-    Those Set.empty
-
-
-thoseFromList : List (That a) -> Those a
-thoseFromList ids =
-    let
-        getId (That id) =
-            id
-    in
-    ids
-        |> List.map getId
-        |> Set.fromList
-        |> Those
-
-
-insertIntoThose : That a -> Those a -> Those a
-insertIntoThose (That id) (Those ids) =
-    Those (Set.insert id ids)
-
-
-removeFromThose : That a -> Those a -> Those a
-removeFromThose (That id) (Those ids) =
-    Those (Set.remove id ids)
-
-
-memberOfThose : That a -> Those a -> Bool
-memberOfThose (That id) (Those ids) =
-    Set.member id ids
 
 
 
@@ -312,33 +330,60 @@ type alias Problems =
 geometry : Pattern -> ( Geometry, Problems )
 geometry ((Pattern pattern) as p) =
     let
-        geometryPoint ( (At _ thatPoint) as thatAtPoint, { name } ) =
-            point2d p thatAtPoint
-                |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
+        geometryPoint ( id, { name } ) =
+            let
+                thatPoint =
+                    thatPointFromId p id
+            in
+            Maybe.map
+                (\p2d ->
+                    ( thatPoint
+                    , name
+                    , p2d
+                    )
+                )
+                (point2d p thatPoint)
 
-        geometryLine ( (At _ thatLine) as thatAtLine, { name } ) =
-            axis2d p thatAtLine
-                |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
+        geometryLine ( id, { name } ) =
+            let
+                thatLine =
+                    thatLineFromId p id
+            in
+            Maybe.map
+                (\a2d ->
+                    ( thatLine
+                    , name
+                    , a2d
+                    )
+                )
+                (axis2d p thatLine)
 
-        geometryDetail ( (At _ thatDetail) as thatAtDetail, { name } ) =
-            polygon2d p thatAtDetail
-                |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
-
-        state =
-            lastState p
+        geometryDetail ( id, { name } ) =
+            let
+                thatDetail =
+                    thatDetailFromId p id
+            in
+            Maybe.map
+                (\p2d ->
+                    ( thatDetail
+                    , name
+                    , p2d
+                    )
+                )
+                (polygon2d p thatDetail)
     in
     ( { points =
             pattern.points
-                |> toListAt state
+                |> toList
                 |> List.filterMap geometryPoint
       , circles = []
       , lines =
             pattern.lines
-                |> toListAt state
+                |> toList
                 |> List.filterMap geometryLine
       , details =
             pattern.details
-                |> toListAt state
+                |> toList
                 |> List.filterMap geometryDetail
       }
     , { doNotCompute = []
@@ -349,8 +394,8 @@ geometry ((Pattern pattern) as p) =
     )
 
 
-point2d : Pattern -> At (That Point) -> Maybe Point2d
-point2d ((Pattern pattern) as p) (At state thatPoint) =
+point2d : Pattern -> That Point -> Maybe Point2d
+point2d ((Pattern pattern) as p) thatPoint =
     let
         simpleDistance anchor expr toDirection =
             case compute Dict.empty expr of
@@ -367,25 +412,44 @@ point2d ((Pattern pattern) as p) (At state thatPoint) =
                         |> Maybe.map (Point2d.translateBy v)
 
         transformations =
-            pattern.transformations
-                |> allUntil state
+            pattern.transformations.entries
                 |> List.filter targetPoint
 
-        targetPoint ( _, transformation ) =
+        targetPoint ( id, transformation ) =
             case transformation of
-                MirrorAt _ (At _ targets) ->
-                    memberOfThose thatPoint targets
+                MirrorAt _ thosePoints ->
+                    (thatPoint
+                        |> withoutTransformation id
+                        |> isMemberOf thosePoints
+                    )
+                        && (thatPoint
+                                |> needsTransformation id
+                           )
 
                 _ ->
                     Debug.todo ""
+
+        withoutTransformation id (That data) =
+            That
+                { data
+                    | changes =
+                        List.filter
+                            (\{ transformationId } ->
+                                transformationId /= id
+                            )
+                            data.changes
+                }
+
+        needsTransformation id (That { changes }) =
+            List.any (\{ transformationId } -> transformationId == id) changes
 
         applyTransformations point =
             List.foldl applyTransformation point transformations
 
         applyTransformation ( _, transformation ) point =
             case transformation of
-                MirrorAt line _ ->
-                    case axis2d p line of
+                MirrorAt thatLine targets ->
+                    case axis2d p thatLine of
                         Just axis ->
                             point
                                 |> Point2d.mirrorAcross axis
@@ -397,7 +461,12 @@ point2d ((Pattern pattern) as p) (At state thatPoint) =
                     Debug.todo ""
     in
     Maybe.map applyTransformations <|
-        case Maybe.map .value (getPoint p thatPoint) of
+        case
+            thatPoint
+                |> getObjectId
+                |> get pattern.points
+                |> Maybe.map .value
+        of
             Just Origin ->
                 Just Point2d.origin
 
@@ -421,9 +490,14 @@ point2d ((Pattern pattern) as p) (At state thatPoint) =
                 Nothing
 
 
-axis2d : Pattern -> At (That Line) -> Maybe Axis2d
-axis2d ((Pattern _) as p) (At state thatLine) =
-    case getLine p thatLine of
+axis2d : Pattern -> That Line -> Maybe Axis2d
+axis2d ((Pattern pattern) as p) thatLine =
+    case
+        thatLine
+            |> getObjectId
+            |> get pattern.lines
+            |> Maybe.map .value
+    of
         Just (ThroughTwoPoints thatPointA thatPointB) ->
             case ( point2d p thatPointA, point2d p thatPointB ) of
                 ( Just point2dA, Just point2dB ) ->
@@ -437,11 +511,18 @@ axis2d ((Pattern _) as p) (At state thatLine) =
             Nothing
 
 
-polygon2d : Pattern -> At (That Detail) -> Maybe Polygon2d
-polygon2d ((Pattern _) as p) (At state thatDetail) =
-    case getDetail p thatDetail of
+polygon2d : Pattern -> That Detail -> Maybe Polygon2d
+polygon2d ((Pattern pattern) as p) thatDetail =
+    case
+        thatDetail
+            |> getObjectId
+            |> get pattern.details
+            |> Maybe.map .value
+    of
         Just (CounterClockwise targets) ->
             targets
+                |> List.map getObjectId
+                |> List.map (thatPointFromId p)
                 |> List.filterMap (point2d p)
                 |> Polygon2d.singleLoop
                 |> Just
@@ -519,59 +600,124 @@ type Ratio
 ----
 
 
-type At that
-    = At State that
+type That object
+    = That ThatData
 
 
-type Construction
-    = Point Point
-    | Line Line
-    | LineSegment LineSegment
-    | Curve Curve
-    | Circle Circle
-    | Ellipsis Ellipsis
-    | Detail Detail
+type alias ThatData =
+    { changes : List Change
+    , objectId : Int
+    }
+
+
+getObjectId : That object -> Int
+getObjectId (That that) =
+    that.objectId
+
+
+type alias Change =
+    { transformationId : Int
+    , branch : Maybe Int
+    }
+
+
+type Those a
+    = Those (List (That a))
+
+
+none : Those a
+none =
+    Those []
+
+
+thoseFromList : List (That a) -> Those a
+thoseFromList =
+    -- FIXME make unique
+    Those
+
+
+insertIntoThose : That a -> Those a -> Those a
+insertIntoThose that (Those those) =
+    -- FIXME make unique
+    Those (that :: those)
+
+
+removeFromThose : That a -> Those a -> Those a
+removeFromThose that those =
+    -- FIXME actually implement
+    those
+
+
+memberOfThose : That a -> Those a -> Bool
+memberOfThose that those =
+    isMemberOf those that
+
+
+isMemberOf : Those a -> That a -> Bool
+isMemberOf (Those those) (That that) =
+    let
+        matches (That nextThat) =
+            (that.objectId == nextThat.objectId)
+                && sameChanges that.changes nextThat.changes
+
+        sameChanges changesA changesB =
+            case ( changesA, changesB ) of
+                ( [], [] ) ->
+                    True
+
+                ( changeA :: restA, changeB :: restB ) ->
+                    (changeA == changeB)
+                        && sameChanges restA restB
+
+                _ ->
+                    False
+    in
+    List.any matches those
+
+
+
+-- TRANSFORMATIONS
 
 
 type Transformation
-    = MirrorAt (At (That Line)) (At (Those Point))
-    | RotateAround (At (That Point)) Angle (At (Those Point))
-    | CutAlong (At (That Line)) Detail
-    | CutLineSegment (At (That LineSegment)) Detail
-    | CutCurve (At (That Curve)) Detail
+    = MirrorAt (That Line) (Those Point)
+    | RotateAround (That Point) Angle (Those Point)
+    | CutAlong (That Line) Detail
+    | CutLineSegment (That LineSegment) Detail
+    | CutCurve (That Curve) Detail
 
 
 
----- ELEMENTS
+-- OBJECTS
 
 
 type Point
     = Origin
-    | LeftOf (At (That Point)) Length
-    | RightOf (At (That Point)) Length
-    | Above (At (That Point)) Length
-    | Below (At (That Point)) Length
-    | AtAngle (At (That Point)) Angle Length
-    | BetweenRatio (At (That Point)) (At (That Point)) Ratio
-    | BetweenLength (At (That Point)) (At (That Point)) Length
+    | LeftOf (That Point) Length
+    | RightOf (That Point) Length
+    | Above (That Point) Length
+    | Below (That Point) Length
+    | AtAngle (That Point) Angle Length
+    | BetweenRatio (That Point) (That Point) Ratio
+    | BetweenLength (That Point) (That Point) Length
       -- ON OBJECT
-    | OnLineAtX (At (That Line)) Coordinate
-    | OnLineAtY (At (That Line)) Coordinate
-    | OnCurve (At (That Curve)) Constraint
-    | OnLineSegment (At (That LineSegment)) Constraint
-    | OnCircle (At (That Circle)) Constraint
-    | OnCircleFirstTangent (At (That Circle)) (At (That Point))
-    | OnCircleSecondTangent (At (That Circle)) (At (That Point))
-    | OnCircleFirstChord (At (That Circle)) Angle
-    | OnCircleSecondChord (At (That Circle)) Angle
+    | OnLineThatX (That Line) Coordinate
+    | OnLineThatY (That Line) Coordinate
+    | OnCurve (That Curve) Constraint
+    | OnLineSegment (That LineSegment) Constraint
+    | OnCircle (That Circle) Constraint
+    | OnCircleFirstTangent (That Circle) (That Point)
+    | OnCircleSecondTangent (That Circle) (That Point)
+    | OnCircleFirstChord (That Circle) Angle
+    | OnCircleSecondChord (That Circle) Angle
       -- BY INTERSECTION
-    | FirstCircleCircle (At (That Circle)) (At (That Circle))
-    | SecondCircleCircle (At (That Circle)) (At (That Circle))
-    | LineLine (At (That Line)) (At (That Line))
-    | FirstCircleLine (At (That Circle)) (At (That Line))
-    | SecondCircleLine (At (That Circle)) (At (That Line))
+    | FirstCircleCircle (That Circle) (That Circle)
+    | SecondCircleCircle (That Circle) (That Circle)
+    | LineLine (That Line) (That Line)
+    | FirstCircleLine (That Circle) (That Line)
+    | SecondCircleLine (That Circle) (That Line)
       -- BY TRANSFORMATION
-    | Transformed (At (That Point)) Transformation
+    | Transformed (That Point) Transformation
 
 
 type Constraint
@@ -584,16 +730,16 @@ type Constraint
 
 
 type Line
-    = ThroughOnePoint (At (That Point)) Angle
-    | ThroughTwoPoints (At (That Point)) (At (That Point))
+    = ThroughOnePoint (That Point) Angle
+    | ThroughTwoPoints (That Point) (That Point)
 
 
 type LineSegment
-    = FromTo (At (That Point)) (At (That Point))
+    = FromTo (That Point) (That Point)
 
 
 type Circle
-    = CenteredAt (At (That Point)) Length
+    = CenteredThat (That Point) Length
 
 
 type Curve
@@ -605,7 +751,7 @@ type Ellipsis
 
 
 type Detail
-    = CounterClockwise (List (At (That Point)))
+    = CounterClockwise (List (That Point))
 
 
 
@@ -637,13 +783,44 @@ renameVariable =
 
 
 points : Pattern -> List ( That Point, Entry Point )
-points (Pattern pattern) =
-    toList pattern.points
+points ((Pattern pattern) as p) =
+    pattern.points
+        |> toList
+        |> List.map (Tuple.mapFirst (thatPointFromId p))
+
+
+thatPointFromId : Pattern -> Int -> That Point
+thatPointFromId (Pattern pattern) id =
+    let
+        applyTransformation ( transformationId, transformation ) changes =
+            case transformation of
+                MirrorAt thatLine thosePoints ->
+                    if
+                        That { changes = changes, objectId = id }
+                            |> isMemberOf thosePoints
+                    then
+                        { transformationId = transformationId
+                        , branch = Nothing
+                        }
+                            :: changes
+                    else
+                        changes
+
+                _ ->
+                    changes
+    in
+    That
+        { changes =
+            pattern.transformations.entries
+                |> List.foldl applyTransformation []
+        , objectId = id
+        }
 
 
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
-getPoint (Pattern pattern) thatPoint =
-    get thatPoint pattern.points
+getPoint (Pattern pattern) (That { objectId }) =
+    pattern.points.entries
+        |> Dict.get objectId
 
 
 insertPoint : Point -> Pattern -> Pattern
@@ -696,14 +873,23 @@ removeCircle =
 
 
 lines : Pattern -> List ( That Line, Entry Line )
-lines (Pattern pattern) =
-    toList pattern.lines
+lines ((Pattern pattern) as p) =
+    pattern.lines
+        |> toList
+        |> List.map (Tuple.mapFirst (thatLineFromId p))
+
+
+thatLineFromId : Pattern -> Int -> That Line
+thatLineFromId (Pattern pattern) id =
+    That
+        { changes = []
+        , objectId = id
+        }
 
 
 getLine : Pattern -> That Line -> Maybe Line
 getLine (Pattern pattern) thatLine =
-    get thatLine pattern.lines
-        |> Maybe.map .value
+    Debug.todo ""
 
 
 insertLine : Line -> Pattern -> Pattern
@@ -736,6 +922,14 @@ insertTransformation transformation (Pattern pattern) =
 ---- DETAILS
 
 
+thatDetailFromId : Pattern -> Int -> That Detail
+thatDetailFromId (Pattern pattern) id =
+    That
+        { changes = []
+        , objectId = id
+        }
+
+
 insertDetail : Detail -> Pattern -> Pattern
 insertDetail detail (Pattern pattern) =
     Pattern
@@ -744,5 +938,356 @@ insertDetail detail (Pattern pattern) =
 
 getDetail : Pattern -> That Detail -> Maybe Detail
 getDetail (Pattern pattern) thatDetail =
-    get thatDetail pattern.details
-        |> Maybe.map .value
+    Debug.todo ""
+
+
+
+---- ENCODER
+
+
+encode : Pattern -> Value
+encode (Pattern pattern) =
+    Encode.object
+        [ ( "points", encodeStore encodePoint pattern.points )
+        , ( "lines", encodeStore encodeLine pattern.lines )
+        , ( "details", encodeStore encodeDetail pattern.details )
+        , ( "transformations", encodeTransformations pattern.transformations )
+        ]
+
+
+encodeStore : (a -> Value) -> Store a -> Value
+encodeStore encodeA { entries, nextId } =
+    let
+        encodeEntry ( id, { name, value } ) =
+            Encode.object
+                [ ( "id", Encode.int id )
+                , ( "name"
+                  , case name of
+                        Nothing ->
+                            Encode.null
+
+                        Just actualName ->
+                            Encode.string actualName
+                  )
+                , ( "value", encodeA value )
+                ]
+    in
+    Encode.object
+        [ ( "entries"
+          , entries
+                |> Dict.toList
+                |> Encode.list encodeEntry
+          )
+        , ( "nextId", Encode.int nextId )
+        ]
+
+
+encodeTransformations : Transformations -> Value
+encodeTransformations { entries, nextId } =
+    let
+        encodeEntry ( id, transformation ) =
+            Encode.object
+                [ ( "id", Encode.int id )
+                , ( "transformation", encodeTransformation transformation )
+                ]
+    in
+    Encode.object
+        [ ( "entries"
+          , Encode.list encodeEntry entries
+          )
+        , ( "nextId", Encode.int nextId )
+        ]
+
+
+encodePoint : Point -> Value
+encodePoint point =
+    case point of
+        Origin ->
+            withType "origin" []
+
+        LeftOf anchor length ->
+            withType "leftOf"
+                [ ( "anchor", encodeThat anchor )
+                , ( "distance", encodeLength length )
+                ]
+
+        RightOf anchor length ->
+            withType "rightOf"
+                [ ( "anchor", encodeThat anchor )
+                , ( "distance", encodeLength length )
+                ]
+
+        Above anchor length ->
+            withType "above"
+                [ ( "anchor", encodeThat anchor )
+                , ( "distance", encodeLength length )
+                ]
+
+        Below anchor length ->
+            withType "below"
+                [ ( "anchor", encodeThat anchor )
+                , ( "distance", encodeLength length )
+                ]
+
+        AtAngle anchor angle length ->
+            withType "atAngle"
+                [ ( "anchor", encodeThat anchor )
+                , ( "angle", encodeAngle angle )
+                , ( "distance", encodeLength length )
+                ]
+
+        _ ->
+            Encode.null
+
+
+encodeLine : Line -> Value
+encodeLine line =
+    case line of
+        ThroughTwoPoints anchorA anchorB ->
+            withType "throughTwoPoints"
+                [ ( "anchorA", encodeThat anchorA )
+                , ( "anchorB", encodeThat anchorB )
+                ]
+
+        _ ->
+            Encode.null
+
+
+encodeDetail : Detail -> Value
+encodeDetail detail =
+    case detail of
+        CounterClockwise thatPoints ->
+            withType "counterClockwise"
+                [ ( "points", Encode.list encodeThat thatPoints ) ]
+
+
+encodeTransformation : Transformation -> Value
+encodeTransformation transformation =
+    case transformation of
+        MirrorAt line targets ->
+            withType "mirrorAt"
+                [ ( "line", encodeThat line )
+                , ( "targets", encodeThose targets )
+                ]
+
+        _ ->
+            Encode.null
+
+
+encodeThat : That a -> Value
+encodeThat (That { changes, objectId }) =
+    Encode.object
+        [ ( "changes"
+          , Encode.list encodeChange changes
+          )
+        , ( "objectId", Encode.int objectId )
+        ]
+
+
+encodeThose : Those a -> Value
+encodeThose (Those thats) =
+    Encode.list encodeThat thats
+
+
+encodeChange : Change -> Value
+encodeChange { transformationId, branch } =
+    Encode.object
+        [ ( "transformationId", Encode.int transformationId )
+        , ( "branch"
+          , case branch of
+                Nothing ->
+                    Encode.null
+
+                Just actualBranch ->
+                    Encode.int actualBranch
+          )
+        ]
+
+
+encodeAngle : Angle -> Value
+encodeAngle (Angle expr) =
+    Encode.object
+        [ ( "angle"
+          , encodeExpr expr
+          )
+        ]
+
+
+encodeLength : Length -> Value
+encodeLength (Length expr) =
+    Encode.object
+        [ ( "length"
+          , encodeExpr expr
+          )
+        ]
+
+
+encodeExpr : Expr -> Value
+encodeExpr expr =
+    case expr of
+        Number float ->
+            withType "number"
+                [ ( "value", Encode.float float ) ]
+
+        _ ->
+            Encode.null
+
+
+withType : String -> List ( String, Value ) -> Value
+withType type_ fields =
+    Encode.object (( "type", Encode.string type_ ) :: fields)
+
+
+
+---- DECODER
+
+
+decoder : Decoder Pattern
+decoder =
+    Decode.succeed PatternData
+        |> Decode.required "points" (storeDecoder pointDecoder)
+        |> Decode.hardcoded emptyStore
+        |> Decode.required "lines" (storeDecoder lineDecoder)
+        |> Decode.required "details" (storeDecoder detailDecoder)
+        |> Decode.hardcoded Dict.empty
+        |> Decode.required "transformations" transformationsDecoder
+        |> Decode.map Pattern
+
+
+storeDecoder : Decoder a -> Decoder (Store a)
+storeDecoder aDecoder =
+    let
+        entryDecoder =
+            Decode.map2 Tuple.pair
+                (Decode.field "id" Decode.int)
+                (Decode.succeed Entry
+                    |> Decode.required "name" (Decode.nullable Decode.string)
+                    |> Decode.required "value" aDecoder
+                )
+    in
+    Decode.succeed Store
+        |> Decode.required "entries" (Decode.map Dict.fromList (Decode.list entryDecoder))
+        |> Decode.required "nextId" Decode.int
+
+
+transformationsDecoder : Decoder Transformations
+transformationsDecoder =
+    let
+        entryDecoder =
+            Decode.succeed Tuple.pair
+                |> Decode.required "id" Decode.int
+                |> Decode.required "transformation" transformationDecoder
+    in
+    Decode.succeed Transformations
+        |> Decode.required "entries" (Decode.list entryDecoder)
+        |> Decode.required "nextId" Decode.int
+
+
+pointDecoder : Decoder Point
+pointDecoder =
+    Decode.oneOf
+        [ typeDecoder "origin" (Decode.succeed Origin)
+        , typeDecoder "leftOf" <|
+            Decode.map2 LeftOf
+                (Decode.field "anchor" thatDecoder)
+                (Decode.field "distance" lengthDecoder)
+        , typeDecoder "rightOf" <|
+            Decode.map2 RightOf
+                (Decode.field "anchor" thatDecoder)
+                (Decode.field "distance" lengthDecoder)
+        , typeDecoder "above" <|
+            Decode.map2 Above
+                (Decode.field "anchor" thatDecoder)
+                (Decode.field "distance" lengthDecoder)
+        , typeDecoder "below" <|
+            Decode.map2 Below
+                (Decode.field "anchor" thatDecoder)
+                (Decode.field "distance" lengthDecoder)
+        , typeDecoder "atAngle" <|
+            Decode.map3 AtAngle
+                (Decode.field "anchor" thatDecoder)
+                (Decode.field "angle" angleDecoder)
+                (Decode.field "distance" lengthDecoder)
+        ]
+
+
+lineDecoder : Decoder Line
+lineDecoder =
+    Decode.oneOf
+        [ typeDecoder "throughTwoPoints" <|
+            Decode.map2 ThroughTwoPoints
+                (Decode.field "anchorA" thatDecoder)
+                (Decode.field "anchorB" thatDecoder)
+        ]
+
+
+detailDecoder : Decoder Detail
+detailDecoder =
+    Decode.oneOf
+        [ typeDecoder "counterClockwise" <|
+            Decode.map CounterClockwise
+                (Decode.field "points" (Decode.list thatDecoder))
+        ]
+
+
+transformationDecoder : Decoder Transformation
+transformationDecoder =
+    Decode.oneOf
+        [ typeDecoder "mirrorAt" <|
+            Decode.map2 MirrorAt
+                (Decode.field "line" thatDecoder)
+                (Decode.field "targets" thoseDecoder)
+        ]
+
+
+thatDecoder : Decoder (That a)
+thatDecoder =
+    Decode.succeed ThatData
+        |> Decode.required "changes" (Decode.list changeDecoder)
+        |> Decode.required "objectId" Decode.int
+        |> Decode.map That
+
+
+thoseDecoder : Decoder (Those a)
+thoseDecoder =
+    Decode.map Those (Decode.list thatDecoder)
+
+
+changeDecoder : Decoder Change
+changeDecoder =
+    Decode.succeed Change
+        |> Decode.required "transformationId" Decode.int
+        |> Decode.required "branch" (Decode.nullable Decode.int)
+
+
+lengthDecoder : Decoder Length
+lengthDecoder =
+    Decode.map Length <|
+        Decode.field "length" exprDecoder
+
+
+angleDecoder : Decoder Angle
+angleDecoder =
+    Decode.map Angle <|
+        Decode.field "angle" exprDecoder
+
+
+exprDecoder : Decoder Expr
+exprDecoder =
+    Decode.oneOf
+        [ typeDecoder "number" <|
+            Decode.map Number (Decode.field "value" Decode.float)
+        ]
+
+
+typeDecoder : String -> Decoder a -> Decoder a
+typeDecoder type_ dataDecoder =
+    Decode.field "type" <|
+        Decode.andThen
+            (\rawType ->
+                if rawType == type_ then
+                    dataDecoder
+                else
+                    Decode.fail "not a valid type"
+            )
+            Decode.string
