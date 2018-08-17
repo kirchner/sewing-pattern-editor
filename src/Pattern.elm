@@ -13,6 +13,7 @@ module Pattern
         , Transformation(..)
         , areEqual
         , circles
+        , computeLength
         , decoder
         , empty
         , encode
@@ -21,6 +22,7 @@ module Pattern
         , getCircle
         , getLine
         , getPoint
+        , getPointGeometry
         , insertCircle
         , insertDetail
         , insertIntoThose
@@ -537,6 +539,12 @@ type Length
     = Length Expr
 
 
+computeLength : Pattern -> Length -> Maybe Float
+computeLength (Pattern pattern) (Length expr) =
+    compute pattern.variables expr
+        |> Result.toMaybe
+
+
 type Ratio
     = Ratio Expr
 
@@ -774,6 +782,11 @@ getPoint : Pattern -> That Point -> Maybe (Entry Point)
 getPoint (Pattern pattern) (That { objectId }) =
     pattern.points.entries
         |> Dict.get objectId
+
+
+getPointGeometry : Pattern -> That Point -> Maybe Point2d
+getPointGeometry pattern thatPoint =
+    point2d pattern thatPoint
 
 
 insertPoint : Point -> Pattern -> Pattern

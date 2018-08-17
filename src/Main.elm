@@ -426,12 +426,12 @@ drawPattern hoveredPoint selectedPoints selectedLines pattern =
     List.concat
         [ List.map (drawLine selectedLines) geometry.lines
         , List.map drawDetail geometry.details
-        , List.map (drawPoint hoveredPoint selectedPoints) geometry.points
+        , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
         ]
 
 
-drawPoint : Maybe (That Point) -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg Msg
-drawPoint hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
+drawPoint : Pattern -> Maybe (That Point) -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg Msg
+drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
     let
         ( x, y ) =
             Point2d.coordinates point2d
@@ -450,9 +450,54 @@ drawPoint hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
         selected =
             thatPoint
                 |> Pattern.isMemberOf selectedPoints
+
+        helper =
+            if hovered then
+                case
+                    hoveredPoint
+                        |> Maybe.andThen (Pattern.getPoint pattern)
+                        |> Maybe.map .value
+                of
+                    Just (Pattern.LeftOf thatAnchorPoint _) ->
+                        drawAnchorLine thatAnchorPoint
+
+                    Just (Pattern.RightOf thatAnchorPoint _) ->
+                        drawAnchorLine thatAnchorPoint
+
+                    Just (Pattern.Above thatAnchorPoint _) ->
+                        drawAnchorLine thatAnchorPoint
+
+                    Just (Pattern.Below thatAnchorPoint _) ->
+                        drawAnchorLine thatAnchorPoint
+
+                    _ ->
+                        Svg.g [] []
+            else
+                Svg.g [] []
+
+        drawAnchorLine thatAnchorPoint =
+            Pattern.getPointGeometry pattern thatAnchorPoint
+                |> Maybe.map drawDashedLine
+                |> Maybe.withDefault (Svg.g [] [])
+
+        drawDashedLine p2d =
+            let
+                ( x1, y1 ) =
+                    Point2d.coordinates p2d
+            in
+            Svg.line
+                [ Attributes.x1 (String.fromFloat x1)
+                , Attributes.y1 (String.fromFloat y1)
+                , Attributes.x2 (String.fromFloat x)
+                , Attributes.y2 (String.fromFloat y)
+                , Attributes.stroke "blue"
+                , Attributes.strokeDasharray "4"
+                ]
+                []
     in
     Svg.g []
-        [ Svg.circle
+        [ helper
+        , Svg.circle
             [ cx
             , cy
             , Attributes.r "2"
@@ -847,7 +892,10 @@ update msg model =
                     Pattern.empty
                         |> Pattern.insertPoint Pattern.Origin
             in
-            ( { model | pattern = newPattern }
+            ( { model
+                | pattern = newPattern
+                , tool = Nothing
+              }
             , safePattern (Pattern.encode newPattern)
             )
 
