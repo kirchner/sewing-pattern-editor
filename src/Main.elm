@@ -14,6 +14,7 @@ import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
+import Svg.Events
 import Url exposing (Url)
 
 
@@ -45,6 +46,7 @@ port patternReceived : (Value -> msg) -> Sub msg
 type alias Model =
     { pattern : Pattern
     , tool : Maybe Tool
+    , hoveredPoint : Maybe (That Point)
     }
 
 
@@ -63,8 +65,86 @@ type Tool
     | CounterClockwise (List (That Point))
 
 
+selectedPointsFromTool : Tool -> Those Point
+selectedPointsFromTool tool =
+    case tool of
+        LeftOf point _ ->
+            point
+                |> maybeToList
+                |> Pattern.thoseFromList
 
--- TR
+        RightOf point _ ->
+            point
+                |> maybeToList
+                |> Pattern.thoseFromList
+
+        Above point _ ->
+            point
+                |> maybeToList
+                |> Pattern.thoseFromList
+
+        Below point _ ->
+            point
+                |> maybeToList
+                |> Pattern.thoseFromList
+
+        AtAngle ->
+            Pattern.thoseFromList []
+
+        ThroughTwoPoints pointA pointB ->
+            [ pointA, pointB ]
+                |> List.filterMap identity
+                |> Pattern.thoseFromList
+
+        MirrorAt _ targets ->
+            targets
+
+        CounterClockwise targets ->
+            Pattern.thoseFromList targets
+
+
+selectedLinesFromTool : Tool -> Those Line
+selectedLinesFromTool tool =
+    let
+        empty =
+            Pattern.thoseFromList []
+    in
+    case tool of
+        LeftOf _ _ ->
+            empty
+
+        RightOf _ _ ->
+            empty
+
+        Above _ _ ->
+            empty
+
+        Below _ _ ->
+            empty
+
+        AtAngle ->
+            empty
+
+        ThroughTwoPoints pointA pointB ->
+            empty
+
+        MirrorAt line _ ->
+            line
+                |> maybeToList
+                |> Pattern.thoseFromList
+
+        CounterClockwise _ ->
+            empty
+
+
+maybeToList : Maybe a -> List a
+maybeToList maybeA =
+    case maybeA of
+        Nothing ->
+            []
+
+        Just a ->
+            [ a ]
 
 
 init : {} -> Url -> Key -> ( Model, Cmd Msg )
@@ -73,6 +153,7 @@ init flags url key =
             Pattern.empty
                 |> Pattern.insertPoint Pattern.Origin
       , tool = Nothing
+      , hoveredPoint = Nothing
       }
     , requestPattern ()
     )
@@ -97,6 +178,17 @@ view model =
 
 viewEditor : Model -> Element Msg
 viewEditor model =
+    let
+        selectedPoints =
+            model.tool
+                |> Maybe.map selectedPointsFromTool
+                |> Maybe.withDefault (Pattern.thoseFromList [])
+
+        selectedLines =
+            model.tool
+                |> Maybe.map selectedLinesFromTool
+                |> Maybe.withDefault (Pattern.thoseFromList [])
+    in
     Element.row
         [ Element.height Element.fill
         , Element.width Element.fill
@@ -108,7 +200,12 @@ viewEditor model =
             (Element.html <|
                 Svg.svg
                     [ Attributes.viewBox "-320 -320 640 640" ]
-                    (viewPattern model.pattern)
+                    (drawPattern
+                        model.hoveredPoint
+                        selectedPoints
+                        selectedLines
+                        model.pattern
+                    )
             )
         , Element.column
             [ Element.height Element.fill
@@ -144,14 +241,41 @@ viewEditor model =
                 [ button "counter clockwise" CounterClockwiseClicked
                 ]
             , horizontalLine
-            , model.tool
-                |> Maybe.map
-                    (viewTool
-                        model.pattern
-                        (Pattern.points model.pattern)
-                        (Pattern.lines model.pattern)
-                    )
-                |> Maybe.withDefault Element.none
+            , Element.row
+                [ Element.padding 10
+                , Element.spacing 5
+                ]
+                [ button "clear pattern" ClearPatternClicked
+                ]
+            , horizontalLine
+            , Element.el
+                [ Element.height Element.fill ]
+                (model.tool
+                    |> Maybe.map
+                        (viewTool
+                            model.pattern
+                            (Pattern.points model.pattern)
+                            (Pattern.lines model.pattern)
+                        )
+                    |> Maybe.withDefault Element.none
+                )
+            , horizontalLine
+            , Element.row
+                [ Element.padding 10
+                , Element.spacing 5
+                ]
+                [ Element.paragraph []
+                    [ Element.text <|
+                        case model.hoveredPoint of
+                            Nothing ->
+                                "Hover over points to get more information."
+
+                            Just thatPoint ->
+                                thatPoint
+                                    |> Pattern.getPoint model.pattern
+                                    |> Debug.toString
+                    ]
+                ]
             ]
         ]
 
@@ -293,35 +417,77 @@ horizontalLine =
 ---- SVG
 
 
-viewPattern : Pattern -> List (Svg msg)
-viewPattern pattern =
+drawPattern : Maybe (That Point) -> Those Point -> Those Line -> Pattern -> List (Svg Msg)
+drawPattern hoveredPoint selectedPoints selectedLines pattern =
     let
         ( geometry, problems ) =
             Pattern.geometry pattern
     in
     List.concat
-        [ List.map viewLine geometry.lines
-        , List.map viewDetail geometry.details
-        , List.map viewPoint geometry.points
+        [ List.map (drawLine selectedLines) geometry.lines
+        , List.map drawDetail geometry.details
+        , List.map (drawPoint hoveredPoint selectedPoints) geometry.points
         ]
 
 
-viewPoint : ( That Point, Maybe String, Point2d ) -> Svg msg
-viewPoint ( thatPoint, maybeName, point2d ) =
+drawPoint : Maybe (That Point) -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg Msg
+drawPoint hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
     let
         ( x, y ) =
             Point2d.coordinates point2d
+
+        cx =
+            Attributes.cx (String.fromFloat x)
+
+        cy =
+            Attributes.cy (String.fromFloat y)
+
+        hovered =
+            hoveredPoint
+                |> Maybe.map (Pattern.areEqual thatPoint)
+                |> Maybe.withDefault False
+
+        selected =
+            thatPoint
+                |> Pattern.isMemberOf selectedPoints
     in
-    Svg.circle
-        [ Attributes.cx (String.fromFloat x)
-        , Attributes.cy (String.fromFloat y)
-        , Attributes.r "2"
+    Svg.g []
+        [ Svg.circle
+            [ cx
+            , cy
+            , Attributes.r "2"
+            , Attributes.fill <|
+                if hovered then
+                    "blue"
+                else
+                    "black"
+            ]
+            []
+        , if selected then
+            Svg.circle
+                [ cx
+                , cy
+                , Attributes.r "5"
+                , Attributes.stroke "blue"
+                , Attributes.fill "none"
+                ]
+                []
+          else
+            Svg.g [] []
+        , Svg.circle
+            [ cx
+            , cy
+            , Attributes.r "5"
+            , Attributes.fill "transparent"
+            , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
+            , Svg.Events.onMouseOut (PointHovered Nothing)
+            ]
+            []
         ]
-        []
 
 
-viewLine : ( That Line, Maybe String, Axis2d ) -> Svg msg
-viewLine ( thatLine, maybeName, axis2d ) =
+drawLine : Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
+drawLine selectedLines ( thatLine, maybeName, axis2d ) =
     let
         ( x1, y1 ) =
             -1000
@@ -332,19 +498,27 @@ viewLine ( thatLine, maybeName, axis2d ) =
             1000
                 |> Point2d.along axis2d
                 |> Point2d.coordinates
+
+        selected =
+            thatLine
+                |> Pattern.isMemberOf selectedLines
     in
     Svg.line
         [ Attributes.x1 (String.fromFloat x1)
         , Attributes.y1 (String.fromFloat y1)
         , Attributes.x2 (String.fromFloat x2)
         , Attributes.y2 (String.fromFloat y2)
-        , Attributes.stroke "black"
+        , Attributes.stroke <|
+            if selected then
+                "blue"
+            else
+                "black"
         ]
         []
 
 
-viewDetail : ( That Detail, Maybe String, Polygon2d ) -> Svg msg
-viewDetail ( thatDetail, maybeName, polygon2d ) =
+drawDetail : ( That Detail, Maybe String, Polygon2d ) -> Svg msg
+drawDetail ( thatDetail, maybeName, polygon2d ) =
     let
         printCoordinates ( x, y ) =
             String.concat
@@ -393,7 +567,10 @@ type Msg
     | PointAdded (That Point)
       --
     | CreateClicked
+      -- PATTERN
+    | PointHovered (Maybe (That Point))
       -- STORAGE
+    | ClearPatternClicked
     | PatternReceived Value
 
 
@@ -657,7 +834,23 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        -- PATTERN
+        PointHovered newHoveredPoint ->
+            ( { model | hoveredPoint = newHoveredPoint }
+            , Cmd.none
+            )
+
         -- STORAGE
+        ClearPatternClicked ->
+            let
+                newPattern =
+                    Pattern.empty
+                        |> Pattern.insertPoint Pattern.Origin
+            in
+            ( { model | pattern = newPattern }
+            , safePattern (Pattern.encode newPattern)
+            )
+
         PatternReceived value ->
             case Decode.decodeValue Pattern.decoder value of
                 Err error ->

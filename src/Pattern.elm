@@ -11,6 +11,7 @@ module Pattern
         , That
         , Those
         , Transformation(..)
+        , areEqual
         , circles
         , decoder
         , empty
@@ -26,6 +27,7 @@ module Pattern
         , insertLine
         , insertPoint
         , insertTransformation
+        , isMemberOf
         , lastState
         , lines
         , memberOfThose
@@ -38,6 +40,8 @@ module Pattern
         , replaceCircle
         , replaceLine
         , replacePoint
+        , thoseFromList
+        , thoseToList
         , variables
         )
 
@@ -577,6 +581,11 @@ thoseFromList =
     Those
 
 
+thoseToList : Those a -> List (That a)
+thoseToList (Those thats) =
+    thats
+
+
 insertIntoThose : That a -> Those a -> Those a
 insertIntoThose that (Those those) =
     -- FIXME make unique
@@ -584,9 +593,10 @@ insertIntoThose that (Those those) =
 
 
 removeFromThose : That a -> Those a -> Those a
-removeFromThose that those =
-    -- FIXME actually implement
+removeFromThose that (Those those) =
     those
+        |> List.filter (not << areEqual that)
+        |> Those
 
 
 memberOfThose : That a -> Those a -> Bool
@@ -595,12 +605,13 @@ memberOfThose that those =
 
 
 isMemberOf : Those a -> That a -> Bool
-isMemberOf (Those those) (That that) =
-    let
-        matches (That nextThat) =
-            (that.objectId == nextThat.objectId)
-                && sameChanges that.changes nextThat.changes
+isMemberOf (Those those) that =
+    List.any (areEqual that) those
 
+
+areEqual : That a -> That a -> Bool
+areEqual (That thatA) (That thatB) =
+    let
         sameChanges changesA changesB =
             case ( changesA, changesB ) of
                 ( [], [] ) ->
@@ -613,7 +624,8 @@ isMemberOf (Those those) (That that) =
                 _ ->
                     False
     in
-    List.any matches those
+    (thatA.objectId == thatB.objectId)
+        && sameChanges thatA.changes thatB.changes
 
 
 
