@@ -634,25 +634,24 @@ points ((Pattern pattern) as p) =
 thatPointFromId : Pattern -> Int -> That Point
 thatPointFromId (Pattern pattern) id =
     let
-        applyTransformation ( transformationId, transformation ) changes =
+        applyTransformation ( transformationId, transformation ) previousThat =
             case transformation of
                 MirrorAt thatLine thosePoints ->
-                    if Those.member (that changes id) thosePoints then
-                        { transformationId = transformationId
-                        , branch = Nothing
-                        }
-                            :: changes
+                    if Those.member previousThat thosePoints then
+                        that
+                            ({ transformationId = transformationId
+                             , branch = Nothing
+                             }
+                                :: That.changes previousThat
+                            )
+                            id
                     else
-                        changes
+                        previousThat
 
                 _ ->
-                    changes
+                    previousThat
     in
-    that
-        (pattern.transformations.entries
-            |> List.foldl applyTransformation []
-        )
-        id
+    List.foldr applyTransformation (that [] id) pattern.transformations.entries
 
 
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
