@@ -1,7 +1,6 @@
 module Pattern
     exposing
         ( Detail(..)
-        , Entry
         , Geometry
         , Length(..)
         , Line(..)
@@ -77,6 +76,7 @@ import Parser
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Set exposing (Set)
+import Store exposing (Entry, Store)
 import That exposing (That, that)
 import Those exposing (Those)
 import Vector2d
@@ -99,10 +99,10 @@ type alias PatternData =
 empty : Pattern
 empty =
     Pattern
-        { points = emptyStore
-        , circles = emptyStore
-        , lines = emptyStore
-        , details = emptyStore
+        { points = Store.empty
+        , circles = Store.empty
+        , lines = Store.empty
+        , details = Store.empty
         , variables = Dict.empty
         , transformations = noTransformations
         }
@@ -200,54 +200,6 @@ lastToFirst { entries } =
 
 
 
----- STORE
-
-
-type alias Store a =
-    { entries : Dict Int (Entry a)
-    , nextId : Int
-    }
-
-
-type alias Entry a =
-    { name : Maybe String
-    , value : a
-    }
-
-
-emptyStore : Store a
-emptyStore =
-    { entries = Dict.empty
-    , nextId = 0
-    }
-
-
-insert : Maybe String -> a -> Store a -> Store a
-insert name value store =
-    { store
-        | entries = Dict.insert store.nextId (Entry name value) store.entries
-        , nextId = store.nextId + 1
-    }
-
-
-get : Store a -> Int -> Maybe (Entry a)
-get { entries } id =
-    Dict.get id entries
-
-
-toList : Store a -> List ( Int, Entry a )
-toList { entries } =
-    entries
-        |> Dict.toList
-
-
-values : Store a -> List (Entry a)
-values { entries } =
-    entries
-        |> Dict.values
-
-
-
 ---- GEOMETRY
 
 
@@ -314,11 +266,11 @@ geometry ((Pattern pattern) as p) =
       , circles = []
       , lines =
             pattern.lines
-                |> toList
+                |> Store.toList
                 |> List.filterMap geometryLine
       , details =
             pattern.details
-                |> toList
+                |> Store.toList
                 |> List.filterMap geometryDetail
       }
     , { doNotCompute = []
@@ -379,7 +331,7 @@ point2d ((Pattern pattern) as p) thatPoint =
         case
             thatPoint
                 |> That.objectId
-                |> get pattern.points
+                |> Store.get pattern.points
                 |> Maybe.map .value
         of
             Just Origin ->
@@ -410,7 +362,7 @@ axis2d ((Pattern pattern) as p) thatLine =
     case
         thatLine
             |> That.objectId
-            |> get pattern.lines
+            |> Store.get pattern.lines
             |> Maybe.map .value
     of
         Just (ThroughTwoPoints thatPointA thatPointB) ->
@@ -431,7 +383,7 @@ polygon2d ((Pattern pattern) as p) thatDetail =
     case
         thatDetail
             |> That.objectId
-            |> get pattern.details
+            |> Store.get pattern.details
             |> Maybe.map .value
     of
         Just (CounterClockwise targets) ->
@@ -629,7 +581,7 @@ points ((Pattern pattern) as p) =
     let
         finalPoints =
             pattern.points
-                |> toList
+                |> Store.toList
                 |> List.map (Tuple.mapFirst (thatPointFromId p))
 
         neededPoints =
@@ -637,7 +589,7 @@ points ((Pattern pattern) as p) =
                 [ finalPoints
                     |> List.foldl collectNeededPoint []
                 , pattern.lines
-                    |> toList
+                    |> Store.toList
                     |> List.map (Tuple.mapFirst (thatLineFromId p))
                     |> List.foldl collectNeededPointByLine []
                 ]
@@ -704,9 +656,8 @@ thatPointFromId (Pattern pattern) id =
 
 
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
-getPoint (Pattern pattern) thatPoint =
-    pattern.points.entries
-        |> Dict.get (That.objectId thatPoint)
+getPoint (Pattern pattern) =
+    Store.get pattern.points << That.objectId
 
 
 getPointGeometry : Pattern -> That Point -> Maybe Point2d
@@ -717,7 +668,7 @@ getPointGeometry pattern thatPoint =
 insertPoint : Maybe String -> Point -> Pattern -> Pattern
 insertPoint name point (Pattern pattern) =
     Pattern
-        { pattern | points = insert name point pattern.points }
+        { pattern | points = Store.insert name point pattern.points }
 
 
 replacePoint : That Point -> Point -> Pattern -> Pattern
@@ -766,7 +717,7 @@ removeCircle =
 lines : Pattern -> List ( That Line, Entry Line )
 lines ((Pattern pattern) as p) =
     pattern.lines
-        |> toList
+        |> Store.toList
         |> List.map (Tuple.mapFirst (thatLineFromId p))
 
 
@@ -783,7 +734,7 @@ getLine (Pattern pattern) thatLine =
 insertLine : Line -> Pattern -> Pattern
 insertLine line (Pattern pattern) =
     Pattern
-        { pattern | lines = insert Nothing line pattern.lines }
+        { pattern | lines = Store.insert Nothing line pattern.lines }
 
 
 replaceLine : That Line -> Line -> Pattern -> Pattern
@@ -818,7 +769,7 @@ thatDetailFromId (Pattern pattern) id =
 insertDetail : Detail -> Pattern -> Pattern
 insertDetail detail (Pattern pattern) =
     Pattern
-        { pattern | details = insert Nothing detail pattern.details }
+        { pattern | details = Store.insert Nothing detail pattern.details }
 
 
 getDetail : Pattern -> That Detail -> Maybe Detail
@@ -833,37 +784,10 @@ getDetail (Pattern pattern) thatDetail =
 encode : Pattern -> Value
 encode (Pattern pattern) =
     Encode.object
-        [ ( "points", encodeStore encodePoint pattern.points )
-        , ( "lines", encodeStore encodeLine pattern.lines )
-        , ( "details", encodeStore encodeDetail pattern.details )
+        [ ( "points", Store.encode encodePoint pattern.points )
+        , ( "lines", Store.encode encodeLine pattern.lines )
+        , ( "details", Store.encode encodeDetail pattern.details )
         , ( "transformations", encodeTransformations pattern.transformations )
-        ]
-
-
-encodeStore : (a -> Value) -> Store a -> Value
-encodeStore encodeA { entries, nextId } =
-    let
-        encodeEntry ( id, { name, value } ) =
-            Encode.object
-                [ ( "id", Encode.int id )
-                , ( "name"
-                  , case name of
-                        Nothing ->
-                            Encode.null
-
-                        Just actualName ->
-                            Encode.string actualName
-                  )
-                , ( "value", encodeA value )
-                ]
-    in
-    Encode.object
-        [ ( "entries"
-          , entries
-                |> Dict.toList
-                |> Encode.list encodeEntry
-          )
-        , ( "nextId", Encode.int nextId )
         ]
 
 
@@ -1000,29 +924,13 @@ withType type_ fields =
 decoder : Decoder Pattern
 decoder =
     Decode.succeed PatternData
-        |> Decode.required "points" (storeDecoder pointDecoder)
-        |> Decode.hardcoded emptyStore
-        |> Decode.required "lines" (storeDecoder lineDecoder)
-        |> Decode.required "details" (storeDecoder detailDecoder)
+        |> Decode.required "points" (Store.decoder pointDecoder)
+        |> Decode.hardcoded Store.empty
+        |> Decode.required "lines" (Store.decoder lineDecoder)
+        |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.hardcoded Dict.empty
         |> Decode.required "transformations" transformationsDecoder
         |> Decode.map Pattern
-
-
-storeDecoder : Decoder a -> Decoder (Store a)
-storeDecoder aDecoder =
-    let
-        entryDecoder =
-            Decode.map2 Tuple.pair
-                (Decode.field "id" Decode.int)
-                (Decode.succeed Entry
-                    |> Decode.required "name" (Decode.nullable Decode.string)
-                    |> Decode.required "value" aDecoder
-                )
-    in
-    Decode.succeed Store
-        |> Decode.required "entries" (Decode.map Dict.fromList (Decode.list entryDecoder))
-        |> Decode.required "nextId" Decode.int
 
 
 transformationsDecoder : Decoder Transformations

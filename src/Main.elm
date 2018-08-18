@@ -12,9 +12,10 @@ import Geometry.Svg as Svg
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
 import LineSegment2d
-import Pattern exposing (Detail, Entry, Line, Pattern, Point)
+import Pattern exposing (Detail, Line, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
+import Store exposing (Entry)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Events
