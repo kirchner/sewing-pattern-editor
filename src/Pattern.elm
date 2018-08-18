@@ -110,6 +110,156 @@ empty =
 
 
 
+---- OBJECTS
+
+
+type Point
+    = Origin
+    | LeftOf (That Point) Length
+    | RightOf (That Point) Length
+    | Above (That Point) Length
+    | Below (That Point) Length
+    | AtAngle (That Point) Angle Length
+    | BetweenRatio (That Point) (That Point) Ratio
+    | BetweenLength (That Point) (That Point) Length
+      -- ON OBJECT
+    | OnLineThatX (That Line) Coordinate
+    | OnLineThatY (That Line) Coordinate
+    | OnCurve (That Curve) Constraint
+    | OnLineSegment (That LineSegment) Constraint
+    | OnCircle (That Circle) Constraint
+    | OnCircleFirstTangent (That Circle) (That Point)
+    | OnCircleSecondTangent (That Circle) (That Point)
+    | OnCircleFirstChord (That Circle) Angle
+    | OnCircleSecondChord (That Circle) Angle
+      -- BY INTERSECTION
+    | FirstCircleCircle (That Circle) (That Circle)
+    | SecondCircleCircle (That Circle) (That Circle)
+    | LineLine (That Line) (That Line)
+    | FirstCircleLine (That Circle) (That Line)
+    | SecondCircleLine (That Circle) (That Line)
+      -- BY TRANSFORMATION
+    | Transformed (That Point) Transformation
+
+
+type Constraint
+    = X Coordinate
+    | Y Coordinate
+    | MinX
+    | MaxX
+    | MinY
+    | MaxY
+
+
+type Line
+    = ThroughOnePoint (That Point) Angle
+    | ThroughTwoPoints (That Point) (That Point)
+
+
+type LineSegment
+    = FromTo (That Point) (That Point)
+
+
+type Circle
+    = CenteredThat (That Point) Length
+
+
+type Curve
+    = TODOCurve
+
+
+type Ellipsis
+    = TODOEllipsis
+
+
+type Detail
+    = CounterClockwise (List (That Point))
+
+
+
+---- TRANSFORMATIONS
+
+
+type Transformation
+    = MirrorAt (That Line) (Those Point)
+    | RotateAround (That Point) Angle (Those Point)
+    | CutAlong (That Line) Detail
+    | CutLineSegment (That LineSegment) Detail
+    | CutCurve (That Curve) Detail
+
+
+
+---- EXPRESSIONS
+
+
+type Expr
+    = Number Float
+    | Symbol String
+    | Measurement Measurement
+    | Sum Expr Expr
+    | Difference Expr Expr
+    | Product Expr Expr
+    | Quotient Expr Expr
+
+
+type Measurement
+    = Distance (That Point) (That Point)
+    | AngleOfLine (That Line)
+    | AngleBetween (That Point) (That Point) (That Point)
+
+
+parse : String -> Result Parser.DeadEnd Expr
+parse =
+    Debug.todo ""
+
+
+compute : Dict String Expr -> Expr -> Result DoesNotCompute Float
+compute vars expr =
+    case expr of
+        Number f ->
+            Ok f
+
+        _ ->
+            Debug.todo ""
+
+
+type DoesNotCompute
+    = MissingVariable String
+    | RecursiveExpression (List String)
+
+
+exprFromFloat : Float -> Expr
+exprFromFloat f =
+    Number f
+
+
+
+----
+
+
+type Angle
+    = Angle Expr
+
+
+type Coordinate
+    = Coordinate Expr
+
+
+type Length
+    = Length Expr
+
+
+computeLength : Pattern -> Length -> Maybe Float
+computeLength (Pattern pattern) (Length expr) =
+    compute pattern.variables expr
+        |> Result.toMaybe
+
+
+type Ratio
+    = Ratio Expr
+
+
+
 ---- TRANSFORMATIONS
 
 
@@ -221,57 +371,32 @@ type alias Problems =
 
 
 geometry : Pattern -> ( Geometry, Problems )
-geometry ((Pattern pattern) as p) =
+geometry pattern =
     let
         geometryPoint ( thatPoint, { name } ) =
-            Maybe.map
-                (\p2d ->
-                    ( thatPoint
-                    , name
-                    , p2d
-                    )
-                )
-                (point2d p thatPoint)
+            point2d pattern thatPoint
+                |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
 
-        geometryLine ( id, { name } ) =
-            let
-                thatLine =
-                    thatLineFromId p id
-            in
-            Maybe.map
-                (\a2d ->
-                    ( thatLine
-                    , name
-                    , a2d
-                    )
-                )
-                (axis2d p thatLine)
+        geometryLine ( thatLine, { name } ) =
+            axis2d pattern thatLine
+                |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
 
-        geometryDetail ( id, { name } ) =
-            let
-                thatDetail =
-                    thatDetailFromId p id
-            in
-            Maybe.map
-                (\p2d ->
-                    ( thatDetail
-                    , name
-                    , p2d
-                    )
-                )
-                (polygon2d p thatDetail)
+        geometryDetail ( thatDetail, { name } ) =
+            polygon2d pattern thatDetail
+                |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
     in
     ( { points =
-            points p
+            pattern
+                |> points
                 |> List.filterMap geometryPoint
       , circles = []
       , lines =
-            pattern.lines
-                |> Store.toList
+            pattern
+                |> lines
                 |> List.filterMap geometryLine
       , details =
-            pattern.details
-                |> Store.toList
+            pattern
+                |> details
                 |> List.filterMap geometryDetail
       }
     , { doNotCompute = []
@@ -329,12 +454,7 @@ point2d ((Pattern pattern) as p) thatPoint =
                     Debug.todo ""
     in
     Maybe.map applyTransformations <|
-        case
-            thatPoint
-                |> That.objectId
-                |> Store.get pattern.points
-                |> Maybe.map .value
-        of
+        case Maybe.map .value (getPoint p thatPoint) of
             Just Origin ->
                 Just Point2d.origin
 
@@ -360,12 +480,7 @@ point2d ((Pattern pattern) as p) thatPoint =
 
 axis2d : Pattern -> That Line -> Maybe Axis2d
 axis2d ((Pattern pattern) as p) thatLine =
-    case
-        thatLine
-            |> That.objectId
-            |> Store.get pattern.lines
-            |> Maybe.map .value
-    of
+    case Maybe.map .value (getLine p thatLine) of
         Just (ThroughTwoPoints thatPointA thatPointB) ->
             case ( point2d p thatPointA, point2d p thatPointB ) of
                 ( Just point2dA, Just point2dB ) ->
@@ -381,12 +496,7 @@ axis2d ((Pattern pattern) as p) thatLine =
 
 polygon2d : Pattern -> That Detail -> Maybe Polygon2d
 polygon2d ((Pattern pattern) as p) thatDetail =
-    case
-        thatDetail
-            |> That.objectId
-            |> Store.get pattern.details
-            |> Maybe.map .value
-    of
+    case Maybe.map .value (getDetail p thatDetail) of
         Just (CounterClockwise targets) ->
             targets
                 |> List.map That.objectId
@@ -397,156 +507,6 @@ polygon2d ((Pattern pattern) as p) thatDetail =
 
         _ ->
             Nothing
-
-
-
----- EXPRESSIONS
-
-
-type Expr
-    = Number Float
-    | Symbol String
-    | Measurement Measurement
-    | Sum Expr Expr
-    | Difference Expr Expr
-    | Product Expr Expr
-    | Quotient Expr Expr
-
-
-type Measurement
-    = Distance (That Point) (That Point)
-    | AngleOfLine (That Line)
-    | AngleBetween (That Point) (That Point) (That Point)
-
-
-parse : String -> Result Parser.DeadEnd Expr
-parse =
-    Debug.todo ""
-
-
-compute : Dict String Expr -> Expr -> Result DoesNotCompute Float
-compute vars expr =
-    case expr of
-        Number f ->
-            Ok f
-
-        _ ->
-            Debug.todo ""
-
-
-type DoesNotCompute
-    = MissingVariable String
-    | RecursiveExpression (List String)
-
-
-exprFromFloat : Float -> Expr
-exprFromFloat f =
-    Number f
-
-
-
-----
-
-
-type Angle
-    = Angle Expr
-
-
-type Coordinate
-    = Coordinate Expr
-
-
-type Length
-    = Length Expr
-
-
-computeLength : Pattern -> Length -> Maybe Float
-computeLength (Pattern pattern) (Length expr) =
-    compute pattern.variables expr
-        |> Result.toMaybe
-
-
-type Ratio
-    = Ratio Expr
-
-
-
--- TRANSFORMATIONS
-
-
-type Transformation
-    = MirrorAt (That Line) (Those Point)
-    | RotateAround (That Point) Angle (Those Point)
-    | CutAlong (That Line) Detail
-    | CutLineSegment (That LineSegment) Detail
-    | CutCurve (That Curve) Detail
-
-
-
--- OBJECTS
-
-
-type Point
-    = Origin
-    | LeftOf (That Point) Length
-    | RightOf (That Point) Length
-    | Above (That Point) Length
-    | Below (That Point) Length
-    | AtAngle (That Point) Angle Length
-    | BetweenRatio (That Point) (That Point) Ratio
-    | BetweenLength (That Point) (That Point) Length
-      -- ON OBJECT
-    | OnLineThatX (That Line) Coordinate
-    | OnLineThatY (That Line) Coordinate
-    | OnCurve (That Curve) Constraint
-    | OnLineSegment (That LineSegment) Constraint
-    | OnCircle (That Circle) Constraint
-    | OnCircleFirstTangent (That Circle) (That Point)
-    | OnCircleSecondTangent (That Circle) (That Point)
-    | OnCircleFirstChord (That Circle) Angle
-    | OnCircleSecondChord (That Circle) Angle
-      -- BY INTERSECTION
-    | FirstCircleCircle (That Circle) (That Circle)
-    | SecondCircleCircle (That Circle) (That Circle)
-    | LineLine (That Line) (That Line)
-    | FirstCircleLine (That Circle) (That Line)
-    | SecondCircleLine (That Circle) (That Line)
-      -- BY TRANSFORMATION
-    | Transformed (That Point) Transformation
-
-
-type Constraint
-    = X Coordinate
-    | Y Coordinate
-    | MinX
-    | MaxX
-    | MinY
-    | MaxY
-
-
-type Line
-    = ThroughOnePoint (That Point) Angle
-    | ThroughTwoPoints (That Point) (That Point)
-
-
-type LineSegment
-    = FromTo (That Point) (That Point)
-
-
-type Circle
-    = CenteredThat (That Point) Length
-
-
-type Curve
-    = TODOCurve
-
-
-type Ellipsis
-    = TODOEllipsis
-
-
-type Detail
-    = CounterClockwise (List (That Point))
 
 
 
@@ -744,9 +704,9 @@ thatLineFromId (Pattern pattern) id =
     that [] id
 
 
-getLine : Pattern -> That Line -> Maybe Line
-getLine (Pattern pattern) thatLine =
-    Debug.todo ""
+getLine : Pattern -> That Line -> Maybe (Entry Line)
+getLine (Pattern pattern) =
+    Store.get pattern.lines << That.objectId
 
 
 insertLine : Line -> Pattern -> Pattern
@@ -779,6 +739,13 @@ insertTransformation transformation (Pattern pattern) =
 ---- DETAILS
 
 
+details : Pattern -> List ( That Detail, Entry Detail )
+details ((Pattern pattern) as p) =
+    pattern.details
+        |> Store.toList
+        |> List.map (Tuple.mapFirst (thatDetailFromId p))
+
+
 thatDetailFromId : Pattern -> Int -> That Detail
 thatDetailFromId (Pattern pattern) id =
     that [] id
@@ -790,9 +757,9 @@ insertDetail detail (Pattern pattern) =
         { pattern | details = Store.insert Nothing detail pattern.details }
 
 
-getDetail : Pattern -> That Detail -> Maybe Detail
-getDetail (Pattern pattern) thatDetail =
-    Debug.todo ""
+getDetail : Pattern -> That Detail -> Maybe (Entry Detail)
+getDetail (Pattern pattern) =
+    Store.get pattern.details << That.objectId
 
 
 
