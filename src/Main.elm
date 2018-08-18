@@ -3,19 +3,25 @@ port module Main exposing (main)
 import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
 import Browser.Navigation exposing (Key)
+import Circle2d
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Geometry.Svg as Svg
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
-import Pattern exposing (Detail, Entry, Line, Pattern, Point, That, Those)
+import LineSegment2d
+import Pattern exposing (Detail, Entry, Line, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Events
+import That exposing (That)
+import Those exposing (Those)
 import Url exposing (Url)
+import Vector2d
 
 
 main : Program {} Model Msg
@@ -52,10 +58,10 @@ type alias Model =
 
 type Tool
     = -- POINTS
-      LeftOf (Maybe (That Point)) String
-    | RightOf (Maybe (That Point)) String
-    | Above (Maybe (That Point)) String
-    | Below (Maybe (That Point)) String
+      LeftOf String (Maybe (That Point)) String
+    | RightOf String (Maybe (That Point)) String
+    | Above String (Maybe (That Point)) String
+    | Below String (Maybe (That Point)) String
     | AtAngle
       -- LINES
     | ThroughTwoPoints (Maybe (That Point)) (Maybe (That Point))
@@ -68,58 +74,58 @@ type Tool
 selectedPointsFromTool : Tool -> Those Point
 selectedPointsFromTool tool =
     case tool of
-        LeftOf point _ ->
+        LeftOf _ point _ ->
             point
                 |> maybeToList
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
-        RightOf point _ ->
+        RightOf _ point _ ->
             point
                 |> maybeToList
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
-        Above point _ ->
+        Above _ point _ ->
             point
                 |> maybeToList
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
-        Below point _ ->
+        Below _ point _ ->
             point
                 |> maybeToList
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
         AtAngle ->
-            Pattern.thoseFromList []
+            Those.fromList []
 
         ThroughTwoPoints pointA pointB ->
             [ pointA, pointB ]
                 |> List.filterMap identity
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
         MirrorAt _ targets ->
             targets
 
         CounterClockwise targets ->
-            Pattern.thoseFromList targets
+            Those.fromList targets
 
 
 selectedLinesFromTool : Tool -> Those Line
 selectedLinesFromTool tool =
     let
         empty =
-            Pattern.thoseFromList []
+            Those.fromList []
     in
     case tool of
-        LeftOf _ _ ->
+        LeftOf _ _ _ ->
             empty
 
-        RightOf _ _ ->
+        RightOf _ _ _ ->
             empty
 
-        Above _ _ ->
+        Above _ _ _ ->
             empty
 
-        Below _ _ ->
+        Below _ _ _ ->
             empty
 
         AtAngle ->
@@ -131,7 +137,7 @@ selectedLinesFromTool tool =
         MirrorAt line _ ->
             line
                 |> maybeToList
-                |> Pattern.thoseFromList
+                |> Those.fromList
 
         CounterClockwise _ ->
             empty
@@ -151,7 +157,7 @@ init : {} -> Url -> Key -> ( Model, Cmd Msg )
 init flags url key =
     ( { pattern =
             Pattern.empty
-                |> Pattern.insertPoint Pattern.Origin
+                |> Pattern.insertPoint (Just "origin") Pattern.Origin
       , tool = Nothing
       , hoveredPoint = Nothing
       }
@@ -182,12 +188,12 @@ viewEditor model =
         selectedPoints =
             model.tool
                 |> Maybe.map selectedPointsFromTool
-                |> Maybe.withDefault (Pattern.thoseFromList [])
+                |> Maybe.withDefault (Those.fromList [])
 
         selectedLines =
             model.tool
                 |> Maybe.map selectedLinesFromTool
-                |> Maybe.withDefault (Pattern.thoseFromList [])
+                |> Maybe.withDefault (Those.fromList [])
     in
     Element.row
         [ Element.height Element.fill
@@ -294,12 +300,18 @@ viewTool pattern points lines tool =
         lineOption ( thatLine, { name } ) =
             Input.option thatLine (Element.text (Maybe.withDefault "<unnamed>" name))
 
-        simpleDistanceTool anchor distance =
+        simpleDistanceTool name anchor distance =
             Element.column
                 [ Element.padding 10
                 , Element.spacing 10
                 ]
-                [ anchorSelection anchor "anchor" AnchorChanged
+                [ Input.text []
+                    { onChange = Just NameChanged
+                    , text = name
+                    , placeholder = Nothing
+                    , label = Input.labelAbove [] (Element.text "name")
+                    }
+                , anchorSelection anchor "anchor" AnchorChanged
                 , Input.text []
                     { onChange = Just DistanceChanged
                     , text = distance
@@ -318,17 +330,17 @@ viewTool pattern points lines tool =
                 }
     in
     case tool of
-        LeftOf anchor distance ->
-            simpleDistanceTool anchor distance
+        LeftOf name anchor distance ->
+            simpleDistanceTool name anchor distance
 
-        RightOf anchor distance ->
-            simpleDistanceTool anchor distance
+        RightOf name anchor distance ->
+            simpleDistanceTool name anchor distance
 
-        Above anchor distance ->
-            simpleDistanceTool anchor distance
+        Above name anchor distance ->
+            simpleDistanceTool name anchor distance
 
-        Below anchor distance ->
-            simpleDistanceTool anchor distance
+        Below name anchor distance ->
+            simpleDistanceTool name anchor distance
 
         AtAngle ->
             Debug.todo ""
@@ -349,7 +361,7 @@ viewTool pattern points lines tool =
                     Input.checkbox []
                         { onChange = Just (PointChecked thatPoint)
                         , icon = Nothing
-                        , checked = Pattern.memberOfThose thatPoint targets
+                        , checked = Those.member thatPoint targets
                         , label =
                             Input.labelRight [] <|
                                 Element.text (Maybe.withDefault "<unnamed>" name)
@@ -424,8 +436,8 @@ drawPattern hoveredPoint selectedPoints selectedLines pattern =
             Pattern.geometry pattern
     in
     List.concat
-        [ List.map (drawLine selectedLines) geometry.lines
-        , List.map drawDetail geometry.details
+        [ List.map drawDetail geometry.details
+        , List.map (drawLine selectedLines) geometry.lines
         , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
         ]
 
@@ -436,20 +448,13 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
         ( x, y ) =
             Point2d.coordinates point2d
 
-        cx =
-            Attributes.cx (String.fromFloat x)
-
-        cy =
-            Attributes.cy (String.fromFloat y)
-
         hovered =
             hoveredPoint
-                |> Maybe.map (Pattern.areEqual thatPoint)
+                |> Maybe.map (That.areEqual thatPoint)
                 |> Maybe.withDefault False
 
         selected =
-            thatPoint
-                |> Pattern.isMemberOf selectedPoints
+            Those.member thatPoint selectedPoints
 
         helper =
             if hovered then
@@ -458,130 +463,115 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                         |> Maybe.andThen (Pattern.getPoint pattern)
                         |> Maybe.map .value
                 of
-                    Just (Pattern.LeftOf thatAnchorPoint _) ->
-                        drawAnchorLine thatAnchorPoint
+                    Just (Pattern.LeftOf thatAnchorPoint distance) ->
+                        drawAnchorLine thatAnchorPoint distance <|
+                            \float -> Vector2d.fromComponents ( -1 * float, 0 )
 
-                    Just (Pattern.RightOf thatAnchorPoint _) ->
-                        drawAnchorLine thatAnchorPoint
+                    Just (Pattern.RightOf thatAnchorPoint distance) ->
+                        drawAnchorLine thatAnchorPoint distance <|
+                            \float -> Vector2d.fromComponents ( float, 0 )
 
-                    Just (Pattern.Above thatAnchorPoint _) ->
-                        drawAnchorLine thatAnchorPoint
+                    Just (Pattern.Above thatAnchorPoint distance) ->
+                        drawAnchorLine thatAnchorPoint distance <|
+                            \float -> Vector2d.fromComponents ( 0, -1 * float )
 
-                    Just (Pattern.Below thatAnchorPoint _) ->
-                        drawAnchorLine thatAnchorPoint
+                    Just (Pattern.Below thatAnchorPoint distance) ->
+                        drawAnchorLine thatAnchorPoint distance <|
+                            \float -> Vector2d.fromComponents ( 0, float )
 
                     _ ->
-                        Svg.g [] []
+                        Svg.text ""
             else
-                Svg.g [] []
+                Svg.text ""
 
-        drawAnchorLine thatAnchorPoint =
-            Pattern.getPointGeometry pattern thatAnchorPoint
-                |> Maybe.map drawDashedLine
-                |> Maybe.withDefault (Svg.g [] [])
+        drawAnchorLine thatAnchorPoint distance toDirection =
+            Maybe.map2 (drawDashedLine toDirection)
+                (Pattern.getPointGeometry pattern thatAnchorPoint)
+                (Pattern.computeLength pattern distance)
+                |> Maybe.withDefault (Svg.text "")
 
-        drawDashedLine p2d =
+        drawDashedLine toDirection p2d float =
             let
-                ( x1, y1 ) =
-                    Point2d.coordinates p2d
+                otherPoint =
+                    Point2d.translateBy (toDirection float) p2d
             in
-            Svg.line
-                [ Attributes.x1 (String.fromFloat x1)
-                , Attributes.y1 (String.fromFloat y1)
-                , Attributes.x2 (String.fromFloat x)
-                , Attributes.y2 (String.fromFloat y)
-                , Attributes.stroke "blue"
-                , Attributes.strokeDasharray "4"
-                ]
+            Svg.g
                 []
+                [ Svg.lineSegment2d
+                    [ Attributes.stroke "blue"
+                    , Attributes.strokeDasharray "4"
+                    ]
+                    (LineSegment2d.fromEndpoints
+                        ( p2d, otherPoint )
+                    )
+                , Svg.circle2d
+                    [ Attributes.fill "blue" ]
+                    (Circle2d.withRadius 2 p2d)
+                , Svg.circle2d
+                    [ Attributes.fill "blue" ]
+                    (Circle2d.withRadius 2 otherPoint)
+                ]
     in
     Svg.g []
-        [ helper
-        , Svg.circle
-            [ cx
-            , cy
-            , Attributes.r "2"
-            , Attributes.fill <|
-                if hovered then
-                    "blue"
-                else
-                    "black"
-            ]
-            []
+        [ Svg.circle2d
+            [ Attributes.fill "black" ]
+            (Circle2d.withRadius 2 point2d)
         , if selected then
-            Svg.circle
-                [ cx
-                , cy
-                , Attributes.r "5"
-                , Attributes.stroke "blue"
+            Svg.circle2d
+                [ Attributes.stroke "blue"
                 , Attributes.fill "none"
                 ]
-                []
+                (Circle2d.withRadius 5 point2d)
           else
             Svg.g [] []
-        , Svg.circle
-            [ cx
-            , cy
-            , Attributes.r "5"
-            , Attributes.fill "transparent"
+        , helper
+        , maybeName
+            |> Maybe.map
+                (\name ->
+                    Svg.text_
+                        [ Attributes.x (String.fromFloat x)
+                        , Attributes.y (String.fromFloat y)
+                        , Attributes.dy "-5"
+                        , Attributes.style "font: 10px sans-serif;"
+                        , Attributes.textAnchor "middle"
+                        ]
+                        [ Svg.text name ]
+                )
+            |> Maybe.withDefault (Svg.text "")
+        , Svg.circle2d
+            [ Attributes.fill "transparent"
             , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
             , Svg.Events.onMouseOut (PointHovered Nothing)
             ]
-            []
+            (Circle2d.withRadius 5 point2d)
         ]
 
 
 drawLine : Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
 drawLine selectedLines ( thatLine, maybeName, axis2d ) =
     let
-        ( x1, y1 ) =
-            -1000
-                |> Point2d.along axis2d
-                |> Point2d.coordinates
-
-        ( x2, y2 ) =
-            1000
-                |> Point2d.along axis2d
-                |> Point2d.coordinates
-
         selected =
-            thatLine
-                |> Pattern.isMemberOf selectedLines
+            Those.member thatLine selectedLines
     in
-    Svg.line
-        [ Attributes.x1 (String.fromFloat x1)
-        , Attributes.y1 (String.fromFloat y1)
-        , Attributes.x2 (String.fromFloat x2)
-        , Attributes.y2 (String.fromFloat y2)
-        , Attributes.stroke <|
+    Svg.lineSegment2d
+        [ Attributes.stroke <|
             if selected then
                 "blue"
             else
                 "black"
         ]
-        []
+        (LineSegment2d.fromEndpoints
+            ( Point2d.along axis2d -1000
+            , Point2d.along axis2d 1000
+            )
+        )
 
 
 drawDetail : ( That Detail, Maybe String, Polygon2d ) -> Svg msg
 drawDetail ( thatDetail, maybeName, polygon2d ) =
-    let
-        printCoordinates ( x, y ) =
-            String.concat
-                [ String.fromFloat x
-                , ","
-                , String.fromFloat y
-                ]
-    in
-    Svg.polygon
-        [ Attributes.points
-            (polygon2d
-                |> Polygon2d.outerLoop
-                |> List.map (Point2d.coordinates >> printCoordinates)
-                |> String.join " "
-            )
-        , Attributes.fill "lightGrey"
-        ]
-        []
+    Svg.polygon2d
+        [ Attributes.fill "lightGrey" ]
+        polygon2d
 
 
 
@@ -603,6 +593,7 @@ type Msg
       -- DETAILS
     | CounterClockwiseClicked
       --
+    | NameChanged String
     | AnchorChanged (That Point)
     | AnchorAChanged (That Point)
     | AnchorBChanged (That Point)
@@ -627,22 +618,22 @@ update msg model =
 
         -- POINTS
         LeftOfClicked ->
-            ( { model | tool = Just (LeftOf Nothing "") }
+            ( { model | tool = Just (LeftOf "" Nothing "") }
             , Cmd.none
             )
 
         RightOfClicked ->
-            ( { model | tool = Just (RightOf Nothing "") }
+            ( { model | tool = Just (RightOf "" Nothing "") }
             , Cmd.none
             )
 
         AboveClicked ->
-            ( { model | tool = Just (Above Nothing "") }
+            ( { model | tool = Just (Above "" Nothing "") }
             , Cmd.none
             )
 
         BelowClicked ->
-            ( { model | tool = Just (Below Nothing "") }
+            ( { model | tool = Just (Below "" Nothing "") }
             , Cmd.none
             )
 
@@ -659,7 +650,7 @@ update msg model =
 
         -- TRANSFORMATIONS
         MirrorAtClicked ->
-            ( { model | tool = Just (MirrorAt Nothing Pattern.none) }
+            ( { model | tool = Just (MirrorAt Nothing Those.none) }
             , Cmd.none
             )
 
@@ -670,25 +661,50 @@ update msg model =
             )
 
         -- TOOL PARAMETERS
+        NameChanged newName ->
+            case model.tool of
+                Just (LeftOf _ anchor distance) ->
+                    ( { model | tool = Just (LeftOf newName anchor distance) }
+                    , Cmd.none
+                    )
+
+                Just (RightOf _ anchor distance) ->
+                    ( { model | tool = Just (RightOf newName anchor distance) }
+                    , Cmd.none
+                    )
+
+                Just (Above _ anchor distance) ->
+                    ( { model | tool = Just (Above newName anchor distance) }
+                    , Cmd.none
+                    )
+
+                Just (Below _ anchor distance) ->
+                    ( { model | tool = Just (Below newName anchor distance) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         AnchorChanged newAnchor ->
             case model.tool of
-                Just (LeftOf anchor distance) ->
-                    ( { model | tool = Just (LeftOf (Just newAnchor) distance) }
+                Just (LeftOf name anchor distance) ->
+                    ( { model | tool = Just (LeftOf name (Just newAnchor) distance) }
                     , Cmd.none
                     )
 
-                Just (RightOf anchor distance) ->
-                    ( { model | tool = Just (RightOf (Just newAnchor) distance) }
+                Just (RightOf name anchor distance) ->
+                    ( { model | tool = Just (RightOf name (Just newAnchor) distance) }
                     , Cmd.none
                     )
 
-                Just (Above anchor distance) ->
-                    ( { model | tool = Just (Above (Just newAnchor) distance) }
+                Just (Above name anchor distance) ->
+                    ( { model | tool = Just (Above name (Just newAnchor) distance) }
                     , Cmd.none
                     )
 
-                Just (Below anchor distance) ->
-                    ( { model | tool = Just (Below (Just newAnchor) distance) }
+                Just (Below name anchor distance) ->
+                    ( { model | tool = Just (Below name (Just newAnchor) distance) }
                     , Cmd.none
                     )
 
@@ -717,23 +733,23 @@ update msg model =
 
         DistanceChanged newDistance ->
             case model.tool of
-                Just (LeftOf anchor distance) ->
-                    ( { model | tool = Just (LeftOf anchor newDistance) }
+                Just (LeftOf name anchor distance) ->
+                    ( { model | tool = Just (LeftOf name anchor newDistance) }
                     , Cmd.none
                     )
 
-                Just (RightOf anchor distance) ->
-                    ( { model | tool = Just (RightOf anchor newDistance) }
+                Just (RightOf name anchor distance) ->
+                    ( { model | tool = Just (RightOf name anchor newDistance) }
                     , Cmd.none
                     )
 
-                Just (Above anchor distance) ->
-                    ( { model | tool = Just (Above anchor newDistance) }
+                Just (Above name anchor distance) ->
+                    ( { model | tool = Just (Above name anchor newDistance) }
                     , Cmd.none
                     )
 
-                Just (Below anchor distance) ->
-                    ( { model | tool = Just (Below anchor newDistance) }
+                Just (Below name anchor distance) ->
+                    ( { model | tool = Just (Below name anchor newDistance) }
                     , Cmd.none
                     )
 
@@ -758,9 +774,9 @@ update msg model =
                             Just <|
                                 MirrorAt line <|
                                     if checked then
-                                        Pattern.insertIntoThose thatPoint targets
+                                        Those.insert thatPoint targets
                                     else
-                                        Pattern.removeFromThose thatPoint targets
+                                        Those.remove thatPoint targets
                       }
                     , Cmd.none
                     )
@@ -781,7 +797,7 @@ update msg model =
         --
         CreateClicked ->
             let
-                insertSimpleDistance constructor anchor distance =
+                insertSimpleDistance constructor name anchor distance =
                     case ( anchor, String.toFloat distance ) of
                         ( Just thatPoint, Just by ) ->
                             let
@@ -790,7 +806,14 @@ update msg model =
                                         (Pattern.Length (Pattern.exprFromFloat by))
 
                                 newPattern =
-                                    Pattern.insertPoint newPoint model.pattern
+                                    Pattern.insertPoint
+                                        (if name == "" then
+                                            Nothing
+                                         else
+                                            Just name
+                                        )
+                                        newPoint
+                                        model.pattern
                             in
                             ( { model
                                 | pattern = newPattern
@@ -806,17 +829,17 @@ update msg model =
                     Pattern.lastState model.pattern
             in
             case model.tool of
-                Just (LeftOf anchor distance) ->
-                    insertSimpleDistance Pattern.LeftOf anchor distance
+                Just (LeftOf name anchor distance) ->
+                    insertSimpleDistance Pattern.LeftOf name anchor distance
 
-                Just (RightOf anchor distance) ->
-                    insertSimpleDistance Pattern.RightOf anchor distance
+                Just (RightOf name anchor distance) ->
+                    insertSimpleDistance Pattern.RightOf name anchor distance
 
-                Just (Above anchor distance) ->
-                    insertSimpleDistance Pattern.Above anchor distance
+                Just (Above name anchor distance) ->
+                    insertSimpleDistance Pattern.Above name anchor distance
 
-                Just (Below anchor distance) ->
-                    insertSimpleDistance Pattern.Below anchor distance
+                Just (Below name anchor distance) ->
+                    insertSimpleDistance Pattern.Below name anchor distance
 
                 Just (ThroughTwoPoints anchorA anchorB) ->
                     case ( anchorA, anchorB ) of
@@ -890,7 +913,7 @@ update msg model =
             let
                 newPattern =
                     Pattern.empty
-                        |> Pattern.insertPoint Pattern.Origin
+                        |> Pattern.insertPoint (Just "origin") Pattern.Origin
             in
             ( { model
                 | pattern = newPattern

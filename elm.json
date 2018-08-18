@@ -14,7 +14,9 @@
             "elm/parser": "1.0.0",
             "elm/svg": "1.0.0",
             "elm/url": "1.0.0",
+            "elm-community/list-extra": "9.0.0",
             "ianmackenzie/elm-geometry": "1.0.0",
+            "ianmackenzie/elm-geometry-svg": "1.0.0",
             "mdgriffith/stylish-elephants": "8.0.1"
         },
         "indirect": {
