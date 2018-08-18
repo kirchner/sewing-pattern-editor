@@ -5,6 +5,7 @@ module That
         , areEqual
         , changes
         , decoder
+        , dropChanges
         , encode
         , objectId
         , that
@@ -61,6 +62,12 @@ toComparable (That data) =
         data.changes
     , data.objectId
     )
+
+
+dropChanges : Int -> That a -> That a
+dropChanges count (That data) =
+    That
+        { data | changes = List.drop count data.changes }
 
 
 areEqual : That a -> That a -> Bool

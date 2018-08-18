@@ -18,6 +18,7 @@ module Pattern
         , getCircle
         , getLine
         , getPoint
+        , getPointGeometries
         , getPointGeometry
         , insertCircle
         , insertDetail
@@ -662,6 +663,24 @@ getPoint (Pattern pattern) =
 getPointGeometry : Pattern -> That Point -> Maybe Point2d
 getPointGeometry pattern thatPoint =
     point2d pattern thatPoint
+
+
+getPointGeometries : Pattern -> That Point -> List Point2d
+getPointGeometries pattern thatPoint =
+    getPointGeometriesHelp [] pattern thatPoint
+
+
+getPointGeometriesHelp : List (Maybe Point2d) -> Pattern -> That Point -> List Point2d
+getPointGeometriesHelp geometries pattern thatPoint =
+    if List.isEmpty (That.changes thatPoint) then
+        point2d pattern thatPoint
+            :: geometries
+            |> List.filterMap identity
+    else
+        getPointGeometriesHelp
+            (point2d pattern thatPoint :: geometries)
+            pattern
+            (That.dropChanges 1 thatPoint)
 
 
 insertPoint : Maybe String -> Point -> Pattern -> Pattern

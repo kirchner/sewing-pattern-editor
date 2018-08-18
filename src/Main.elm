@@ -459,29 +459,45 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
 
         helper =
             if hovered then
-                case
-                    hoveredPoint
-                        |> Maybe.andThen (Pattern.getPoint pattern)
-                        |> Maybe.map .value
-                of
-                    Just (Pattern.LeftOf thatAnchorPoint distance) ->
-                        drawAnchorLine thatAnchorPoint distance <|
-                            \float -> Vector2d.fromComponents ( -1 * float, 0 )
+                Svg.g []
+                    [ case
+                        hoveredPoint
+                            |> Maybe.andThen (Pattern.getPoint pattern)
+                            |> Maybe.map .value
+                      of
+                        Just (Pattern.LeftOf thatAnchorPoint distance) ->
+                            drawAnchorLine thatAnchorPoint distance <|
+                                \float -> Vector2d.fromComponents ( -1 * float, 0 )
 
-                    Just (Pattern.RightOf thatAnchorPoint distance) ->
-                        drawAnchorLine thatAnchorPoint distance <|
-                            \float -> Vector2d.fromComponents ( float, 0 )
+                        Just (Pattern.RightOf thatAnchorPoint distance) ->
+                            drawAnchorLine thatAnchorPoint distance <|
+                                \float -> Vector2d.fromComponents ( float, 0 )
 
-                    Just (Pattern.Above thatAnchorPoint distance) ->
-                        drawAnchorLine thatAnchorPoint distance <|
-                            \float -> Vector2d.fromComponents ( 0, -1 * float )
+                        Just (Pattern.Above thatAnchorPoint distance) ->
+                            drawAnchorLine thatAnchorPoint distance <|
+                                \float -> Vector2d.fromComponents ( 0, -1 * float )
 
-                    Just (Pattern.Below thatAnchorPoint distance) ->
-                        drawAnchorLine thatAnchorPoint distance <|
-                            \float -> Vector2d.fromComponents ( 0, float )
+                        Just (Pattern.Below thatAnchorPoint distance) ->
+                            drawAnchorLine thatAnchorPoint distance <|
+                                \float -> Vector2d.fromComponents ( 0, float )
 
-                    _ ->
-                        Svg.text ""
+                        _ ->
+                            Svg.text ""
+                    , case
+                        hoveredPoint
+                            |> Maybe.map (Pattern.getPointGeometries pattern)
+                      of
+                        Nothing ->
+                            Svg.text ""
+
+                        Just point2ds ->
+                            point2ds
+                                |> List.map
+                                    (Svg.circle2d [ Attributes.fill "blue" ]
+                                        << Circle2d.withRadius 2
+                                    )
+                                |> Svg.g []
+                    ]
             else
                 Svg.text ""
 
@@ -505,12 +521,6 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                     (LineSegment2d.fromEndpoints
                         ( p2d, otherPoint )
                     )
-                , Svg.circle2d
-                    [ Attributes.fill "blue" ]
-                    (Circle2d.withRadius 2 p2d)
-                , Svg.circle2d
-                    [ Attributes.fill "blue" ]
-                    (Circle2d.withRadius 2 otherPoint)
                 ]
     in
     Svg.g []
