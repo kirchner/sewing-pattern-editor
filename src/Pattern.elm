@@ -437,7 +437,7 @@ point2d ((Pattern pattern) as p) thatPoint =
                 |> List.head
 
         applyTransformations point =
-            List.foldl applyTransformation point transformations
+            List.foldr applyTransformation point transformations
 
         applyTransformation ( _, transformation ) point =
             case transformation of
