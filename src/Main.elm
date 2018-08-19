@@ -12,8 +12,8 @@ import Element.Input as Input
 import Geometry.Svg as Svg
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
-import LineSegment2d
-import Pattern exposing (Detail, Line, Pattern, Point)
+import LineSegment2d exposing (LineSegment2d)
+import Pattern exposing (Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
@@ -68,14 +68,21 @@ type Tool
     | AtAngle
       -- LINES
     | ThroughTwoPoints (Maybe (That Point)) (Maybe (That Point))
+      -- LINE SEGMENTS
+    | FromTo (Maybe (That Point)) (Maybe (That Point))
       -- TRANSFORMATIONS
     | MirrorAt (Maybe (That Line)) (Those Point)
+    | CutAlongLineSegment (Maybe (That LineSegment)) (Maybe (That Detail))
       -- DETAILS
     | CounterClockwise (List (That Point))
 
 
 selectedPointsFromTool : Tool -> Those Point
 selectedPointsFromTool tool =
+    let
+        empty =
+            Those.fromList []
+    in
     case tool of
         LeftOf _ point _ ->
             point
@@ -98,15 +105,23 @@ selectedPointsFromTool tool =
                 |> Those.fromList
 
         AtAngle ->
-            Those.fromList []
+            empty
 
         ThroughTwoPoints pointA pointB ->
             [ pointA, pointB ]
                 |> List.filterMap identity
                 |> Those.fromList
 
+        FromTo pointA pointB ->
+            [ pointA, pointB ]
+                |> List.filterMap identity
+                |> Those.fromList
+
         MirrorAt _ targets ->
             targets
+
+        CutAlongLineSegment _ _ ->
+            empty
 
         CounterClockwise targets ->
             Those.fromList targets
@@ -134,11 +149,97 @@ selectedLinesFromTool tool =
         AtAngle ->
             empty
 
-        ThroughTwoPoints pointA pointB ->
+        ThroughTwoPoints _ _ ->
+            empty
+
+        FromTo _ _ ->
             empty
 
         MirrorAt line _ ->
             line
+                |> maybeToList
+                |> Those.fromList
+
+        CutAlongLineSegment _ _ ->
+            empty
+
+        CounterClockwise _ ->
+            empty
+
+
+selectedLineSegmentsFromTool : Tool -> Those LineSegment
+selectedLineSegmentsFromTool tool =
+    let
+        empty =
+            Those.fromList []
+    in
+    case tool of
+        LeftOf _ _ _ ->
+            empty
+
+        RightOf _ _ _ ->
+            empty
+
+        Above _ _ _ ->
+            empty
+
+        Below _ _ _ ->
+            empty
+
+        AtAngle ->
+            empty
+
+        ThroughTwoPoints _ _ ->
+            empty
+
+        FromTo _ _ ->
+            empty
+
+        MirrorAt _ _ ->
+            empty
+
+        CutAlongLineSegment lineSegment _ ->
+            lineSegment
+                |> maybeToList
+                |> Those.fromList
+
+        CounterClockwise _ ->
+            empty
+
+
+selectedDetailsFromTool : Tool -> Those Detail
+selectedDetailsFromTool tool =
+    let
+        empty =
+            Those.fromList []
+    in
+    case tool of
+        LeftOf _ _ _ ->
+            empty
+
+        RightOf _ _ _ ->
+            empty
+
+        Above _ _ _ ->
+            empty
+
+        Below _ _ _ ->
+            empty
+
+        AtAngle ->
+            empty
+
+        ThroughTwoPoints _ _ ->
+            empty
+
+        FromTo _ _ ->
+            empty
+
+        MirrorAt _ _ ->
+            empty
+
+        CutAlongLineSegment _ detail ->
+            detail
                 |> maybeToList
                 |> Those.fromList
 
@@ -197,6 +298,16 @@ viewEditor model =
             model.tool
                 |> Maybe.map selectedLinesFromTool
                 |> Maybe.withDefault (Those.fromList [])
+
+        selectedLineSegments =
+            model.tool
+                |> Maybe.map selectedLineSegmentsFromTool
+                |> Maybe.withDefault (Those.fromList [])
+
+        selectedDetails =
+            model.tool
+                |> Maybe.map selectedDetailsFromTool
+                |> Maybe.withDefault (Those.fromList [])
     in
     Element.row
         [ Element.height Element.fill
@@ -213,6 +324,8 @@ viewEditor model =
                         model.hoveredPoint
                         selectedPoints
                         selectedLines
+                        selectedLineSegments
+                        selectedDetails
                         model.pattern
                     )
             )
@@ -241,7 +354,14 @@ viewEditor model =
                 [ Element.padding 10
                 , Element.spacing 5
                 ]
+                [ button "from to" FromToClicked
+                ]
+            , Element.row
+                [ Element.padding 10
+                , Element.spacing 5
+                ]
                 [ button "mirror at" MirrorAtClicked
+                , button "cut along line segment" CutAlongLineSegmentClicked
                 ]
             , Element.row
                 [ Element.padding 10
@@ -265,6 +385,8 @@ viewEditor model =
                             model.pattern
                             (Pattern.points model.pattern)
                             (Pattern.lines model.pattern)
+                            (Pattern.lineSegments model.pattern)
+                            (Pattern.details model.pattern)
                         )
                     |> Maybe.withDefault Element.none
                 )
@@ -293,15 +415,23 @@ viewTool :
     Pattern
     -> List ( That Point, Entry Point )
     -> List ( That Line, Entry Line )
+    -> List ( That LineSegment, Entry LineSegment )
+    -> List ( That Detail, Entry Detail )
     -> Tool
     -> Element Msg
-viewTool pattern points lines tool =
+viewTool pattern points lines lineSegments details tool =
     let
         pointOption ( thatPoint, { name } ) =
             Input.option thatPoint (Element.text (Maybe.withDefault "<unnamed>" name))
 
         lineOption ( thatLine, { name } ) =
             Input.option thatLine (Element.text (Maybe.withDefault "<unnamed>" name))
+
+        lineSegmentOption ( thatLineSegment, { name } ) =
+            Input.option thatLineSegment (Element.text (Maybe.withDefault "<unnamed>" name))
+
+        detailOption ( thatDetail, { name } ) =
+            Input.option thatDetail (Element.text (Maybe.withDefault "<unnamed>" name))
 
         simpleDistanceTool name anchor distance =
             Element.column
@@ -358,6 +488,16 @@ viewTool pattern points lines tool =
                 , button "create" CreateClicked
                 ]
 
+        FromTo anchorA anchorB ->
+            Element.column
+                [ Element.padding 10
+                , Element.spacing 10
+                ]
+                [ anchorSelection anchorA "anchor a" AnchorAChanged
+                , anchorSelection anchorB "anchor b" AnchorBChanged
+                , button "create" CreateClicked
+                ]
+
         MirrorAt line targets ->
             let
                 pointCheckbox ( thatPoint, { name } ) =
@@ -383,6 +523,26 @@ viewTool pattern points lines tool =
                 , Element.text "targets"
                 , Element.column [] <|
                     List.map pointCheckbox points
+                , button "create" CreateClicked
+                ]
+
+        CutAlongLineSegment lineSegment detail ->
+            Element.column
+                [ Element.padding 10
+                , Element.spacing 10
+                ]
+                [ Input.radio []
+                    { onChange = Just LineSegmentChanged
+                    , selected = lineSegment
+                    , label = Input.labelAbove [] (Element.text "line segment")
+                    , options = List.map lineSegmentOption lineSegments
+                    }
+                , Input.radio []
+                    { onChange = Just DetailChanged
+                    , selected = detail
+                    , label = Input.labelAbove [] (Element.text "detail")
+                    , options = List.map detailOption details
+                    }
                 , button "create" CreateClicked
                 ]
 
@@ -432,8 +592,15 @@ horizontalLine =
 ---- SVG
 
 
-drawPattern : Maybe (That Point) -> Those Point -> Those Line -> Pattern -> List (Svg Msg)
-drawPattern hoveredPoint selectedPoints selectedLines pattern =
+drawPattern :
+    Maybe (That Point)
+    -> Those Point
+    -> Those Line
+    -> Those LineSegment
+    -> Those Detail
+    -> Pattern
+    -> List (Svg Msg)
+drawPattern hoveredPoint selectedPoints selectedLines selectedLineSegments selectedDetails pattern =
     let
         ( geometry, problems ) =
             Pattern.geometry pattern
@@ -456,8 +623,9 @@ drawPattern hoveredPoint selectedPoints selectedLines pattern =
                     ]
                 ]
           ]
-        , List.map drawDetail geometry.details
+        , List.map (drawDetail selectedDetails) geometry.details
         , List.map (drawLine selectedLines) geometry.lines
+        , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
         , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
         ]
 
@@ -677,11 +845,35 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
         )
 
 
-drawDetail : ( That Detail, Maybe String, Polygon2d ) -> Svg msg
-drawDetail ( thatDetail, maybeName, polygon2d ) =
+drawLineSegment : Those LineSegment -> ( That LineSegment, Maybe String, LineSegment2d ) -> Svg msg
+drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
+    let
+        selected =
+            Those.member thatLineSegment selectedLineSegments
+    in
+    Svg.lineSegment2d
+        [ Attributes.stroke <|
+            if selected then
+                "blue"
+            else
+                "grey"
+        ]
+        lineSegment2d
+
+
+drawDetail : Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
+drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
+    let
+        selected =
+            Those.member thatDetail selectedDetails
+    in
     Svg.polygon2d
         [ Attributes.fill "lightGrey"
-        , Attributes.stroke "black"
+        , Attributes.stroke <|
+            if selected then
+                "blue"
+            else
+                "black"
         , Attributes.strokeWidth "1"
         ]
         polygon2d
@@ -701,8 +893,11 @@ type Msg
     | AtAngleClicked
       -- LINES
     | ThroughTwoPointsClicked
+      -- LINE SEGMENTS
+    | FromToClicked
       -- TRANSFORMATIONS
     | MirrorAtClicked
+    | CutAlongLineSegmentClicked
       -- DETAILS
     | CounterClockwiseClicked
       --
@@ -712,6 +907,8 @@ type Msg
     | AnchorBChanged (That Point)
     | DistanceChanged String
     | LineChanged (That Line)
+    | LineSegmentChanged (That LineSegment)
+    | DetailChanged (That Detail)
     | PointChecked (That Point) Bool
     | PointAdded (That Point)
       --
@@ -761,9 +958,20 @@ update msg model =
             , Cmd.none
             )
 
+        -- LINE SEGMENTS
+        FromToClicked ->
+            ( { model | tool = Just (FromTo Nothing Nothing) }
+            , Cmd.none
+            )
+
         -- TRANSFORMATIONS
         MirrorAtClicked ->
             ( { model | tool = Just (MirrorAt Nothing Those.none) }
+            , Cmd.none
+            )
+
+        CutAlongLineSegmentClicked ->
+            ( { model | tool = Just (CutAlongLineSegment Nothing Nothing) }
             , Cmd.none
             )
 
@@ -831,6 +1039,11 @@ update msg model =
                     , Cmd.none
                     )
 
+                Just (FromTo anchorA anchorB) ->
+                    ( { model | tool = Just (FromTo (Just newAnchorA) anchorB) }
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -838,6 +1051,11 @@ update msg model =
             case model.tool of
                 Just (ThroughTwoPoints anchorA anchorB) ->
                     ( { model | tool = Just (ThroughTwoPoints anchorA (Just newAnchorB)) }
+                    , Cmd.none
+                    )
+
+                Just (FromTo anchorA anchorB) ->
+                    ( { model | tool = Just (FromTo anchorA (Just newAnchorB)) }
                     , Cmd.none
                     )
 
@@ -873,6 +1091,26 @@ update msg model =
             case model.tool of
                 Just (MirrorAt line targets) ->
                     ( { model | tool = Just (MirrorAt (Just newLine) targets) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        LineSegmentChanged newLineSegment ->
+            case model.tool of
+                Just (CutAlongLineSegment _ detail) ->
+                    ( { model | tool = Just (CutAlongLineSegment (Just newLineSegment) detail) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DetailChanged newDetail ->
+            case model.tool of
+                Just (CutAlongLineSegment lineSegment _) ->
+                    ( { model | tool = Just (CutAlongLineSegment lineSegment (Just newDetail)) }
                     , Cmd.none
                     )
 
@@ -954,17 +1192,42 @@ update msg model =
                 Just (Below name anchor distance) ->
                     insertSimpleDistance Pattern.Below name anchor distance
 
+                Just AtAngle ->
+                    Debug.todo ""
+
                 Just (ThroughTwoPoints anchorA anchorB) ->
                     case ( anchorA, anchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
-                                newPoint =
+                                newLine =
                                     Pattern.ThroughTwoPoints
                                         thatPointA
                                         thatPointB
 
                                 newPattern =
-                                    Pattern.insertLine newPoint model.pattern
+                                    Pattern.insertLine newLine model.pattern
+                            in
+                            ( { model
+                                | pattern = newPattern
+                                , tool = Nothing
+                              }
+                            , safePattern (Pattern.encode newPattern)
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                Just (FromTo anchorA anchorB) ->
+                    case ( anchorA, anchorB ) of
+                        ( Just thatPointA, Just thatPointB ) ->
+                            let
+                                newLineSegment =
+                                    Pattern.FromTo
+                                        thatPointA
+                                        thatPointB
+
+                                newPattern =
+                                    Pattern.insertLineSegment newLineSegment model.pattern
                             in
                             ( { model
                                 | pattern = newPattern
@@ -996,6 +1259,26 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
+                Just (CutAlongLineSegment lineSegment detail) ->
+                    case ( lineSegment, detail ) of
+                        ( Just thatLineSegment, Just thatDetail ) ->
+                            let
+                                newTransformation =
+                                    Pattern.CutAlongLineSegment thatLineSegment thatDetail
+
+                                newPattern =
+                                    Pattern.insertTransformation newTransformation model.pattern
+                            in
+                            ( { model
+                                | pattern = newPattern
+                                , tool = Nothing
+                              }
+                            , safePattern (Pattern.encode newPattern)
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
                 Just (CounterClockwise targets) ->
                     let
                         newDetail =
@@ -1012,7 +1295,7 @@ update msg model =
                     , safePattern (Pattern.encode newPattern)
                     )
 
-                _ ->
+                Nothing ->
                     ( model, Cmd.none )
 
         -- PATTERN
@@ -1038,7 +1321,17 @@ update msg model =
         PatternReceived value ->
             case Decode.decodeValue Pattern.decoder value of
                 Err error ->
-                    Debug.todo (Decode.errorToString error)
+                    let
+                        _ =
+                            Debug.log (Debug.toString error) ()
+
+                        newPattern =
+                            Pattern.empty
+                                |> Pattern.insertPoint (Just "origin") Pattern.Origin
+                    in
+                    ( { model | pattern = newPattern }
+                    , safePattern (Pattern.encode newPattern)
+                    )
 
                 Ok newPattern ->
                     ( { model | pattern = newPattern }
