@@ -4,6 +4,7 @@ import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
 import Browser.Navigation exposing (Key)
 import Circle2d
+import Direction2d
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -15,6 +16,7 @@ import LineSegment2d
 import Pattern exposing (Detail, Line, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
+import QuadraticSpline2d
 import Store exposing (Entry)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
@@ -437,7 +439,24 @@ drawPattern hoveredPoint selectedPoints selectedLines pattern =
             Pattern.geometry pattern
     in
     List.concat
-        [ List.map drawDetail geometry.details
+        [ [ Svg.defs []
+                [ Svg.marker
+                    [ Attributes.id "arrow"
+                    , Attributes.viewBox "0 0 10 10"
+                    , Attributes.refX "5"
+                    , Attributes.refY "5"
+                    , Attributes.markerWidth "6"
+                    , Attributes.markerHeight "6"
+                    , Attributes.orient "auto-start-reverse"
+                    , Attributes.fill "blue"
+                    ]
+                    [ Svg.path
+                        [ Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
+                        []
+                    ]
+                ]
+          ]
+        , List.map drawDetail geometry.details
         , List.map (drawLine selectedLines) geometry.lines
         , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
         ]
@@ -491,12 +510,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                             Svg.text ""
 
                         Just point2ds ->
-                            point2ds
-                                |> List.map
-                                    (Svg.circle2d [ Attributes.fill "blue" ]
-                                        << Circle2d.withRadius 2
-                                    )
-                                |> Svg.g []
+                            drawPointChain point2ds
                     ]
             else
                 Svg.text ""
@@ -522,6 +536,87 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                         ( p2d, otherPoint )
                     )
                 ]
+
+        drawPointChain points =
+            List.foldl drawLink ( Nothing, [] ) points
+                |> Tuple.second
+                |> Svg.g []
+
+        drawLink point ( maybePreviousPoint, links ) =
+            ( Just point
+            , (case maybePreviousPoint of
+                Nothing ->
+                    Svg.g []
+                        [ Svg.circle2d [ Attributes.fill "blue" ]
+                            (Circle2d.withRadius 2 point)
+                        ]
+
+                Just previousPoint ->
+                    let
+                        startPoint =
+                            previousPoint
+
+                        midpoint =
+                            LineSegment2d.from previousPoint point
+                                |> LineSegment2d.midpoint
+
+                        controlPoint =
+                            case Direction2d.from previousPoint point of
+                                Nothing ->
+                                    midpoint
+
+                                Just direction ->
+                                    Point2d.along
+                                        (Axis2d.through midpoint (Direction2d.perpendicularTo direction))
+                                        20
+
+                        endPoint =
+                            point
+
+                        spline =
+                            QuadraticSpline2d.with
+                                { startPoint = startPoint
+                                , controlPoint = controlPoint
+                                , endPoint = endPoint
+                                }
+
+                        id =
+                            midpoint
+                                |> Point2d.coordinates
+                                |> (\( s, t ) ->
+                                        String.join "-"
+                                            [ String.fromFloat s
+                                            , String.fromFloat t
+                                            ]
+                                   )
+                    in
+                    Svg.g []
+                        [ Svg.mask
+                            [ Attributes.id ("circleMask-" ++ id) ]
+                            [ Svg.boundingBox2d
+                                [ Attributes.fill "white" ]
+                                (QuadraticSpline2d.boundingBox spline)
+                            , Svg.circle2d
+                                [ Attributes.fill "black" ]
+                                (Circle2d.withRadius 20 startPoint)
+                            , Svg.circle2d
+                                [ Attributes.fill "black" ]
+                                (Circle2d.withRadius 20 endPoint)
+                            ]
+                        , Svg.quadraticSpline2d
+                            [ Attributes.stroke "blue"
+                            , Attributes.strokeDasharray "4"
+                            , Attributes.fill "none"
+                            , Attributes.markerEnd "url(#arrow)"
+                            , Attributes.mask ("url(#circleMask-" ++ id ++ ")")
+                            ]
+                            spline
+                        , Svg.circle2d [ Attributes.fill "blue" ]
+                            (Circle2d.withRadius 2 point)
+                        ]
+              )
+                :: links
+            )
     in
     Svg.g []
         [ Svg.circle2d
