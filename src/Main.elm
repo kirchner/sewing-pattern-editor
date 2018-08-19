@@ -531,10 +531,14 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                 [ Svg.lineSegment2d
                     [ Attributes.stroke "blue"
                     , Attributes.strokeDasharray "4"
+                    , Attributes.strokeWidth "1"
                     ]
                     (LineSegment2d.fromEndpoints
                         ( p2d, otherPoint )
                     )
+                , Svg.circle2d
+                    [ Attributes.fill "blue" ]
+                    (Circle2d.withRadius 2 p2d)
                 ]
 
         drawPointChain points =
@@ -568,7 +572,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                                 Just direction ->
                                     Point2d.along
                                         (Axis2d.through midpoint (Direction2d.perpendicularTo direction))
-                                        20
+                                        (Point2d.squaredDistanceFrom startPoint endPoint / 1500)
 
                         endPoint =
                             point
@@ -598,10 +602,10 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                                 (QuadraticSpline2d.boundingBox spline)
                             , Svg.circle2d
                                 [ Attributes.fill "black" ]
-                                (Circle2d.withRadius 20 startPoint)
+                                (Circle2d.withRadius 15 startPoint)
                             , Svg.circle2d
                                 [ Attributes.fill "black" ]
-                                (Circle2d.withRadius 20 endPoint)
+                                (Circle2d.withRadius 15 endPoint)
                             ]
                         , Svg.quadraticSpline2d
                             [ Attributes.stroke "blue"
@@ -664,7 +668,7 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
             if selected then
                 "blue"
             else
-                "black"
+                "grey"
         ]
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -1000
@@ -676,7 +680,10 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
 drawDetail : ( That Detail, Maybe String, Polygon2d ) -> Svg msg
 drawDetail ( thatDetail, maybeName, polygon2d ) =
     Svg.polygon2d
-        [ Attributes.fill "lightGrey" ]
+        [ Attributes.fill "lightGrey"
+        , Attributes.stroke "black"
+        , Attributes.strokeWidth "1"
+        ]
         polygon2d
 
 
