@@ -9,7 +9,6 @@ module Pattern
         , Point(..)
         , Problems
         , Transformation(..)
-        , circles
         , computeLength
         , decoder
         , details
@@ -17,12 +16,10 @@ module Pattern
         , encode
         , exprFromFloat
         , geometry
-        , getCircle
         , getLine
         , getPoint
         , getPointGeometries
         , getPointGeometry
-        , insertCircle
         , insertDetail
         , insertLine
         , insertLineSegment
@@ -32,13 +29,6 @@ module Pattern
         , lineSegments
         , lines
         , points
-        , removeCircle
-        , removeLine
-        , removePoint
-        , replaceCircle
-        , replaceLine
-        , replacePoint
-        , variables
         )
 
 {-|
@@ -317,11 +307,6 @@ type Measurement
     | AngleBetween (That Point) (That Point) (That Point)
 
 
-parse : String -> Result Parser.DeadEnd Expr
-parse =
-    Debug.todo ""
-
-
 compute : Dict String Expr -> Expr -> Result DoesNotCompute Float
 compute vars expr =
     case expr of
@@ -329,7 +314,7 @@ compute vars expr =
             Ok f
 
         _ ->
-            Debug.todo ""
+            Err (MissingVariable "TODO")
 
 
 type DoesNotCompute
@@ -653,68 +638,75 @@ polygon2d ((Pattern pattern) as p) thatDetail =
 
                         Just lineSegment ->
                             let
-                                ( startPoint, endPoint ) =
+                                maybePoints =
                                     if branch == 0 then
-                                        ( case lineSegment.value of
-                                            FromTo from _ ->
-                                                from
-                                        , case lineSegment.value of
-                                            FromTo _ to ->
-                                                to
-                                        )
+                                        Just
+                                            ( case lineSegment.value of
+                                                FromTo from _ ->
+                                                    from
+                                            , case lineSegment.value of
+                                                FromTo _ to ->
+                                                    to
+                                            )
                                     else if branch == 1 then
-                                        ( case lineSegment.value of
-                                            FromTo _ to ->
-                                                to
-                                        , case lineSegment.value of
-                                            FromTo from _ ->
-                                                from
-                                        )
+                                        Just
+                                            ( case lineSegment.value of
+                                                FromTo _ to ->
+                                                    to
+                                            , case lineSegment.value of
+                                                FromTo from _ ->
+                                                    from
+                                            )
                                     else
-                                        Debug.todo "make this impossible"
+                                        Nothing
                             in
-                            targetsList
-                                |> List.map
-                                    (List.foldl
-                                        (\target ( targetsDetail, location ) ->
-                                            case location of
-                                                Unknown targetsUnknown ->
-                                                    if That.areEqual target startPoint then
-                                                        ( target :: targetsUnknown
-                                                        , InDetail
-                                                        )
-                                                    else if That.areEqual target endPoint then
-                                                        ( targetsUnknown ++ [ target ]
-                                                        , OutsideDetail
-                                                        )
-                                                    else
-                                                        ( []
-                                                        , Unknown (target :: targetsUnknown)
-                                                        )
+                            case maybePoints of
+                                Nothing ->
+                                    targetsList
 
-                                                InDetail ->
-                                                    if That.areEqual target endPoint then
-                                                        ( target :: targetsDetail
-                                                        , OutsideDetail
-                                                        )
-                                                    else
-                                                        ( target :: targetsDetail
-                                                        , InDetail
-                                                        )
+                                Just ( startPoint, endPoint ) ->
+                                    targetsList
+                                        |> List.map
+                                            (List.foldl
+                                                (\target ( targetsDetail, location ) ->
+                                                    case location of
+                                                        Unknown targetsUnknown ->
+                                                            if That.areEqual target startPoint then
+                                                                ( target :: targetsUnknown
+                                                                , InDetail
+                                                                )
+                                                            else if That.areEqual target endPoint then
+                                                                ( targetsUnknown ++ [ target ]
+                                                                , OutsideDetail
+                                                                )
+                                                            else
+                                                                ( []
+                                                                , Unknown (target :: targetsUnknown)
+                                                                )
 
-                                                OutsideDetail ->
-                                                    if That.areEqual target startPoint then
-                                                        ( target :: targetsDetail
-                                                        , InDetail
-                                                        )
-                                                    else
-                                                        ( targetsDetail
-                                                        , OutsideDetail
-                                                        )
-                                        )
-                                        ( [], Unknown [] )
-                                        >> Tuple.first
-                                    )
+                                                        InDetail ->
+                                                            if That.areEqual target endPoint then
+                                                                ( target :: targetsDetail
+                                                                , OutsideDetail
+                                                                )
+                                                            else
+                                                                ( target :: targetsDetail
+                                                                , InDetail
+                                                                )
+
+                                                        OutsideDetail ->
+                                                            if That.areEqual target startPoint then
+                                                                ( target :: targetsDetail
+                                                                , InDetail
+                                                                )
+                                                            else
+                                                                ( targetsDetail
+                                                                , OutsideDetail
+                                                                )
+                                                )
+                                                ( [], Unknown [] )
+                                                >> Tuple.first
+                                            )
 
                 _ ->
                     targetsList
@@ -729,30 +721,6 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                     |> List.filterMap (point2d p)
                     |> Polygon2d.singleLoop
             )
-
-
-
----- VARIABLES
-
-
-variables : Pattern -> List ( String, Expr, Float )
-variables =
-    Debug.todo ""
-
-
-insertVariable : String -> Expr -> Pattern -> Pattern
-insertVariable =
-    Debug.todo ""
-
-
-removeVariable : String -> Pattern -> Pattern
-removeVariable =
-    Debug.todo ""
-
-
-renameVariable : String -> String -> Pattern -> Pattern
-renameVariable =
-    Debug.todo ""
 
 
 
@@ -798,45 +766,6 @@ insertPoint name point (Pattern pattern) =
         { pattern | points = Store.insert name point pattern.points }
 
 
-replacePoint : That Point -> Point -> Pattern -> Pattern
-replacePoint =
-    Debug.todo ""
-
-
-removePoint : That Point -> Pattern -> Pattern
-removePoint =
-    Debug.todo ""
-
-
-
----- CIRCLES
-
-
-circles : Pattern -> List ( That Circle, Maybe String )
-circles =
-    Debug.todo ""
-
-
-getCircle : Pattern -> That Circle -> Maybe Circle
-getCircle =
-    Debug.todo ""
-
-
-insertCircle : Circle -> Pattern -> Pattern
-insertCircle =
-    Debug.todo ""
-
-
-replaceCircle : That Circle -> Circle -> Pattern -> Pattern
-replaceCircle =
-    Debug.todo ""
-
-
-removeCircle : That Circle -> Pattern -> Pattern
-removeCircle =
-    Debug.todo ""
-
-
 
 ---- LINES
 
@@ -862,16 +791,6 @@ insertLine : Line -> Pattern -> Pattern
 insertLine line (Pattern pattern) =
     Pattern
         { pattern | lines = Store.insert Nothing line pattern.lines }
-
-
-replaceLine : That Line -> Line -> Pattern -> Pattern
-replaceLine =
-    Debug.todo ""
-
-
-removeLine : That Line -> Pattern -> Pattern
-removeLine =
-    Debug.todo ""
 
 
 

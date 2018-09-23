@@ -459,9 +459,7 @@ viewEditor model =
                                     "Hover over points to get more information."
 
                                 Just thatPoint ->
-                                    thatPoint
-                                        |> Pattern.getPoint model.pattern
-                                        |> Debug.toString
+                                    "TODO"
                         ]
                     ]
                 , horizontalLine
@@ -530,7 +528,7 @@ viewTool pattern points lines lineSegments details tool =
                 simpleDistanceTool name anchor distance
 
             AtAngle ->
-                Debug.todo ""
+                Element.none
 
             ThroughTwoPoints anchorA anchorB ->
                 Element.column
@@ -1439,7 +1437,7 @@ update msg model =
                     insertSimpleDistance Pattern.Below name anchor distance
 
                 Just AtAngle ->
-                    Debug.todo ""
+                    ( model, Cmd.none )
 
                 Just (ThroughTwoPoints anchorA anchorB) ->
                     case ( anchorA, anchorB ) of
@@ -1568,9 +1566,6 @@ update msg model =
             case Decode.decodeValue Pattern.decoder value of
                 Err error ->
                     let
-                        _ =
-                            Debug.log (Debug.toString error) ()
-
                         newPattern =
                             Pattern.empty
                                 |> Pattern.insertPoint (Just "origin") Pattern.Origin
