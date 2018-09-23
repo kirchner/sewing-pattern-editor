@@ -4,10 +4,12 @@ import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
 import Browser.Navigation exposing (Key)
 import Circle2d
+import Color
 import Direction2d
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
 import Json.Decode as Decode
@@ -75,6 +77,96 @@ type Tool
     | CutAlongLineSegment (Maybe (That LineSegment)) (Maybe (That Detail))
       -- DETAILS
     | CounterClockwise (List (That Point))
+
+
+isLeftOf maybeTool =
+    case maybeTool of
+        Just (LeftOf _ _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isRightOf maybeTool =
+    case maybeTool of
+        Just (RightOf _ _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isAbove maybeTool =
+    case maybeTool of
+        Just (Above _ _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isBelow maybeTool =
+    case maybeTool of
+        Just (Below _ _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isAtAngle maybeTool =
+    case maybeTool of
+        Just AtAngle ->
+            True
+
+        _ ->
+            False
+
+
+isThroughTwoPoints maybeTool =
+    case maybeTool of
+        Just (ThroughTwoPoints _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isFromTo maybeTool =
+    case maybeTool of
+        Just (FromTo _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isMirrorAt maybeTool =
+    case maybeTool of
+        Just (MirrorAt _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isCutAlongLineSegment maybeTool =
+    case maybeTool of
+        Just (CutAlongLineSegment _ _) ->
+            True
+
+        _ ->
+            False
+
+
+isCounterClockwise maybeTool =
+    case maybeTool of
+        Just (CounterClockwise _) ->
+            True
+
+        _ ->
+            False
 
 
 selectedPointsFromTool : Tool -> Those Point
@@ -280,6 +372,13 @@ view model =
         [ Element.layout
             [ Element.width Element.fill
             , Element.height Element.fill
+            , Font.family
+                [ Font.external
+                    { name = "Dosis"
+                    , url = "https://fonts.googleapis.com/css?family=Dosis"
+                    }
+                , Font.sansSerif
+                ]
             ]
             (viewEditor model)
         ]
@@ -312,6 +411,68 @@ viewEditor model =
     Element.row
         [ Element.height Element.fill
         , Element.width Element.fill
+        , Element.inFront <|
+            Element.column
+                [ Element.alignRight
+                , Element.width (Element.px 250)
+                , Element.moveLeft 10
+                , Element.moveDown 10
+                , Background.color (color Color.lightGray)
+                , Border.rounded 4
+                , Border.width 2
+                , Border.color (color Color.lightGray)
+                , Element.onLeft <|
+                    case model.tool of
+                        Nothing ->
+                            Element.none
+
+                        Just tool ->
+                            Element.el
+                                [ Element.alignTop
+                                , Element.width (Element.px 400)
+                                , Element.moveLeft 10
+                                , Element.moveUp 2
+                                , Background.color (color Color.lightGray)
+                                , Border.rounded 4
+                                , Border.width 2
+                                , Border.color (color Color.lightGray)
+                                ]
+                                (viewTool
+                                    model.pattern
+                                    (Pattern.points model.pattern)
+                                    (Pattern.lines model.pattern)
+                                    (Pattern.lineSegments model.pattern)
+                                    (Pattern.details model.pattern)
+                                    tool
+                                )
+                ]
+                [ viewToolSelector model.tool
+                , horizontalLine
+                , Element.row
+                    [ Element.padding 10
+                    , Element.spacing 5
+                    ]
+                    [ Element.paragraph []
+                        [ Element.text <|
+                            case model.hoveredPoint of
+                                Nothing ->
+                                    "Hover over points to get more information."
+
+                                Just thatPoint ->
+                                    thatPoint
+                                        |> Pattern.getPoint model.pattern
+                                        |> Debug.toString
+                        ]
+                    ]
+                , horizontalLine
+                , Element.row
+                    [ Element.padding 5
+                    , Element.spacing 5
+                    , Element.width Element.fill
+                    ]
+                    [ buttonDanger "Clear pattern" ClearPatternClicked
+                    ]
+                ]
         ]
         [ Element.el
             [ Element.width Element.fill
@@ -329,85 +490,6 @@ viewEditor model =
                         model.pattern
                     )
             )
-        , Element.column
-            [ Element.height Element.fill
-            , Border.color (Element.rgb 0.3 0.3 0.3)
-            , Border.width 1
-            ]
-            [ Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "left of" LeftOfClicked
-                , button "right of" RightOfClicked
-                , button "above" AboveClicked
-                , button "below" BelowClicked
-                , button "at angle" AtAngleClicked
-                ]
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "through two points" ThroughTwoPointsClicked
-                ]
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "from to" FromToClicked
-                ]
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "mirror at" MirrorAtClicked
-                , button "cut along line segment" CutAlongLineSegmentClicked
-                ]
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "counter clockwise" CounterClockwiseClicked
-                ]
-            , horizontalLine
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ button "clear pattern" ClearPatternClicked
-                ]
-            , horizontalLine
-            , Element.el
-                [ Element.height Element.fill ]
-                (model.tool
-                    |> Maybe.map
-                        (viewTool
-                            model.pattern
-                            (Pattern.points model.pattern)
-                            (Pattern.lines model.pattern)
-                            (Pattern.lineSegments model.pattern)
-                            (Pattern.details model.pattern)
-                        )
-                    |> Maybe.withDefault Element.none
-                )
-            , horizontalLine
-            , Element.row
-                [ Element.padding 10
-                , Element.spacing 5
-                ]
-                [ Element.paragraph []
-                    [ Element.text <|
-                        case model.hoveredPoint of
-                            Nothing ->
-                                "Hover over points to get more information."
-
-                            Just thatPoint ->
-                                thatPoint
-                                    |> Pattern.getPoint model.pattern
-                                    |> Debug.toString
-                    ]
-                ]
-            ]
         ]
 
 
@@ -421,160 +503,314 @@ viewTool :
     -> Element Msg
 viewTool pattern points lines lineSegments details tool =
     let
-        pointOption ( thatPoint, { name } ) =
-            Input.option thatPoint (Element.text (Maybe.withDefault "<unnamed>" name))
-
-        lineOption ( thatLine, { name } ) =
-            Input.option thatLine (Element.text (Maybe.withDefault "<unnamed>" name))
-
-        lineSegmentOption ( thatLineSegment, { name } ) =
-            Input.option thatLineSegment (Element.text (Maybe.withDefault "<unnamed>" name))
-
-        detailOption ( thatDetail, { name } ) =
-            Input.option thatDetail (Element.text (Maybe.withDefault "<unnamed>" name))
-
         simpleDistanceTool name anchor distance =
             Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+                [ Element.width Element.fill ]
+                [ labeledInputText NameChanged "Name:" name
+                , labeledInputRadio AnchorChanged "Anchor:" anchor points
+                , labeledInputText DistanceChanged "Distance:" distance
                 ]
-                [ Input.text []
-                    { onChange = Just NameChanged
-                    , text = name
-                    , placeholder = Nothing
-                    , label = Input.labelAbove [] (Element.text "name")
-                    }
-                , anchorSelection anchor "anchor" AnchorChanged
-                , Input.text []
-                    { onChange = Just DistanceChanged
-                    , text = distance
-                    , placeholder = Nothing
-                    , label = Input.labelAbove [] (Element.text "distance")
-                    }
-                , button "create" CreateClicked
-                ]
-
-        anchorSelection anchor label msg =
-            Input.radio []
-                { onChange = Just msg
-                , selected = anchor
-                , label = Input.labelAbove [] (Element.text label)
-                , options = List.map pointOption points
-                }
     in
-    case tool of
-        LeftOf name anchor distance ->
-            simpleDistanceTool name anchor distance
+    Element.column
+        [ Element.width Element.fill
+        , Element.padding 5
+        , Element.spacing 10
+        ]
+        [ case tool of
+            LeftOf name anchor distance ->
+                simpleDistanceTool name anchor distance
 
-        RightOf name anchor distance ->
-            simpleDistanceTool name anchor distance
+            RightOf name anchor distance ->
+                simpleDistanceTool name anchor distance
 
-        Above name anchor distance ->
-            simpleDistanceTool name anchor distance
+            Above name anchor distance ->
+                simpleDistanceTool name anchor distance
 
-        Below name anchor distance ->
-            simpleDistanceTool name anchor distance
+            Below name anchor distance ->
+                simpleDistanceTool name anchor distance
 
-        AtAngle ->
-            Debug.todo ""
+            AtAngle ->
+                Debug.todo ""
 
-        ThroughTwoPoints anchorA anchorB ->
-            Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+            ThroughTwoPoints anchorA anchorB ->
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ labeledInputRadio AnchorAChanged "1st anchor:" anchorA points
+                    , labeledInputRadio AnchorBChanged "2nd anchor:" anchorB points
+                    ]
+
+            FromTo anchorA anchorB ->
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ labeledInputRadio AnchorAChanged "1st anchor:" anchorA points
+                    , labeledInputRadio AnchorBChanged "2nd anchor:" anchorB points
+                    ]
+
+            MirrorAt line targets ->
+                let
+                    pointCheckbox ( thatPoint, { name } ) =
+                        Input.checkbox
+                            [ Element.width Element.fill ]
+                            { onChange = PointChecked thatPoint
+                            , icon = Input.defaultCheckbox
+                            , checked = Those.member thatPoint targets
+                            , label =
+                                Input.labelRight []
+                                    (Element.text (Maybe.withDefault "<unnamed>" name))
+                            }
+                in
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ labeledInputRadio LineChanged "Line:" line lines
+                    , Element.column
+                        [ Element.paddingXY 5 0 ]
+                        [ Element.text "Targets:"
+                        , Element.column
+                            [ Element.padding 5
+                            , Element.spacing 4
+                            ]
+                            (List.map pointCheckbox points)
+                        ]
+                    ]
+
+            CutAlongLineSegment lineSegment detail ->
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ labeledInputRadio LineSegmentChanged "Line segment:" lineSegment lineSegments
+                    , labeledInputRadio DetailChanged "Detail:" detail details
+                    ]
+
+            CounterClockwise targets ->
+                let
+                    pointButton ( thatPoint, { name } ) =
+                        button (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
+                in
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ Element.text
+                        (targets
+                            |> List.filterMap (Pattern.getPoint pattern)
+                            |> List.map (.name >> Maybe.withDefault "<unnamed>")
+                            |> String.join ", "
+                        )
+                    , Element.column [] <|
+                        List.map pointButton points
+                    ]
+        , Element.row
+            [ Element.alignRight
+            , Element.spacing 5
+            ]
+            [ buttonCreate "Create" CreateClicked
+            , buttonDismiss "Cancel" CancelClicked
+            ]
+        ]
+
+
+viewToolSelector maybeTool =
+    Element.column
+        [ Element.padding 5
+        , Element.spacing 5
+        , Element.width Element.fill
+        ]
+        [ Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Font.size 16 ] (Element.text "Points:")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
                 ]
-                [ anchorSelection anchorA "anchor a" AnchorAChanged
-                , anchorSelection anchorB "anchor b" AnchorBChanged
-                , button "create" CreateClicked
+                [ button "Left of" LeftOfClicked (isLeftOf maybeTool)
+                , button "Right of" RightOfClicked (isRightOf maybeTool)
+                , button "Above" AboveClicked (isAbove maybeTool)
+                , button "Below" BelowClicked (isBelow maybeTool)
+                , button "At angle" AtAngleClicked (isAtAngle maybeTool)
                 ]
-
-        FromTo anchorA anchorB ->
-            Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Font.size 16 ] (Element.text "Lines:")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
                 ]
-                [ anchorSelection anchorA "anchor a" AnchorAChanged
-                , anchorSelection anchorB "anchor b" AnchorBChanged
-                , button "create" CreateClicked
+                [ button "Through two points" ThroughTwoPointsClicked (isThroughTwoPoints maybeTool)
                 ]
-
-        MirrorAt line targets ->
-            let
-                pointCheckbox ( thatPoint, { name } ) =
-                    Input.checkbox []
-                        { onChange = Just (PointChecked thatPoint)
-                        , icon = Nothing
-                        , checked = Those.member thatPoint targets
-                        , label =
-                            Input.labelRight [] <|
-                                Element.text (Maybe.withDefault "<unnamed>" name)
-                        }
-            in
-            Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Font.size 16 ] (Element.text "Line segments:")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
                 ]
-                [ Input.radio []
-                    { onChange = Just LineChanged
-                    , selected = line
-                    , label = Input.labelAbove [] (Element.text "line")
-                    , options = List.map lineOption lines
-                    }
-                , Element.text "targets"
-                , Element.column [] <|
-                    List.map pointCheckbox points
-                , button "create" CreateClicked
+                [ button "From to" FromToClicked (isFromTo maybeTool)
                 ]
-
-        CutAlongLineSegment lineSegment detail ->
-            Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Font.size 16 ] (Element.text "Transformations:")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
                 ]
-                [ Input.radio []
-                    { onChange = Just LineSegmentChanged
-                    , selected = lineSegment
-                    , label = Input.labelAbove [] (Element.text "line segment")
-                    , options = List.map lineSegmentOption lineSegments
-                    }
-                , Input.radio []
-                    { onChange = Just DetailChanged
-                    , selected = detail
-                    , label = Input.labelAbove [] (Element.text "detail")
-                    , options = List.map detailOption details
-                    }
-                , button "create" CreateClicked
+                [ button "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
+                , button "Cut along line segment" CutAlongLineSegmentClicked (isCutAlongLineSegment maybeTool)
                 ]
-
-        CounterClockwise targets ->
-            let
-                pointButton ( thatPoint, { name } ) =
-                    button (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint)
-            in
-            Element.column
-                [ Element.padding 10
-                , Element.spacing 10
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Font.size 16 ] (Element.text "Details:")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
                 ]
-                [ Element.text
-                    (targets
-                        |> List.filterMap (Pattern.getPoint pattern)
-                        |> List.map (.name >> Maybe.withDefault "<unnamed>")
-                        |> String.join ", "
-                    )
-                , Element.column [] <|
-                    List.map pointButton points
-                , button "create" CreateClicked
+                [ button "Counter clockwise" CounterClockwiseClicked (isCounterClockwise maybeTool)
                 ]
+            ]
+        ]
 
 
-button : String -> msg -> Element msg
-button label msg =
+
+---- REUSABLE ELEMENTS
+
+
+button : String -> msg -> Bool -> Element msg
+button label msg selected =
     Input.button
-        [ Background.color (Element.rgb 0.9 0.9 0.9)
-        , Element.padding 10
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        , Background.color <|
+            if selected then
+                color Color.lightCharcoal
+            else
+                color Color.gray
+        , Border.color (color Color.black)
+        , Border.width 1
+        , Border.rounded 3
+        , Element.mouseOver
+            [ Background.color <|
+                if selected then
+                    color Color.lightCharcoal
+                else
+                    color Color.darkGray
+            ]
         ]
         { onPress = Just msg
         , label = Element.text label
+        }
+
+
+buttonDismiss : String -> msg -> Element msg
+buttonDismiss label msg =
+    Input.button
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        , Background.color (color Color.gray)
+        , Border.color (color Color.black)
+        , Border.width 1
+        , Border.rounded 3
+        , Element.mouseOver
+            [ Background.color (color Color.darkGray) ]
+        ]
+        { onPress = Just msg
+        , label = Element.text label
+        }
+
+
+buttonDanger : String -> msg -> Element msg
+buttonDanger label msg =
+    Input.button
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        , Background.color (color Color.lightRed)
+        , Font.color (color Color.darkCharcoal)
+        , Border.color (color Color.black)
+        , Border.width 1
+        , Border.rounded 3
+        , Element.mouseOver
+            [ Background.color (color Color.red)
+            , Font.color (color Color.black)
+            ]
+        ]
+        { onPress = Just msg
+        , label = Element.text label
+        }
+
+
+buttonCreate : String -> msg -> Element msg
+buttonCreate label msg =
+    Input.button
+        [ Element.paddingXY 8 7
+        , Background.color (color Color.lightGreen)
+        , Font.color (color Color.darkCharcoal)
+        , Border.color (color Color.black)
+        , Border.width 1
+        , Border.rounded 3
+        , Element.mouseOver
+            [ Background.color (color Color.green)
+            , Font.color (color Color.black)
+            ]
+        ]
+        { onPress = Just msg
+        , label = Element.text label
+        }
+
+
+labeledInputText : (String -> msg) -> String -> String -> Element msg
+labeledInputText onChange label name =
+    Input.text
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        ]
+        { onChange = onChange
+        , text = name
+        , placeholder = Nothing
+        , label =
+            Input.labelLeft
+                [ Element.centerY
+                , Element.paddingXY 5 0
+                ]
+                (Element.text label)
+        }
+
+
+labeledInputRadio :
+    (That a -> msg)
+    -> String
+    -> Maybe (That a)
+    -> List ( That a, Entry a )
+    -> Element msg
+labeledInputRadio msg label selected options =
+    let
+        option ( that, { name } ) =
+            Input.option that <|
+                Element.el
+                    [ Element.padding 3 ]
+                    (Element.text (Maybe.withDefault "<unnamed>" name))
+    in
+    Input.radio
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        ]
+        { onChange = msg
+        , selected = selected
+        , label =
+            Input.labelLeft
+                [ Element.centerY
+                , Element.paddingXY 5 0
+                ]
+                (Element.text label)
+        , options = List.map option options
         }
 
 
@@ -583,9 +819,13 @@ horizontalLine =
     Element.el
         [ Element.height (Element.px 1)
         , Element.width Element.fill
-        , Background.color (Element.rgb 0.3 0.3 0.3)
+        , Background.color (color Color.white)
         ]
         Element.none
+
+
+color =
+    Element.fromRgb << Color.toRgba
 
 
 
@@ -913,6 +1153,7 @@ type Msg
     | PointAdded (That Point)
       --
     | CreateClicked
+    | CancelClicked
       -- PATTERN
     | PointHovered (Maybe (That Point))
       -- STORAGE
@@ -1146,6 +1387,11 @@ update msg model =
                     ( model, Cmd.none )
 
         --
+        CancelClicked ->
+            ( { model | tool = Nothing }
+            , Cmd.none
+            )
+
         CreateClicked ->
             let
                 insertSimpleDistance constructor name anchor distance =
