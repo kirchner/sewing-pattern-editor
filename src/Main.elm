@@ -581,7 +581,7 @@ viewTool pattern points lines lineSegments details tool =
             CounterClockwise targets ->
                 let
                     pointButton ( thatPoint, { name } ) =
-                        button (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
+                        button "" (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
                 in
                 Element.column
                     [ Element.width Element.fill ]
@@ -619,11 +619,11 @@ viewToolSelector maybeTool =
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
-                [ button "Left of" LeftOfClicked (isLeftOf maybeTool)
-                , button "Right of" RightOfClicked (isRightOf maybeTool)
-                , button "Above" AboveClicked (isAbove maybeTool)
-                , button "Below" BelowClicked (isBelow maybeTool)
-                , button "At angle" AtAngleClicked (isAtAngle maybeTool)
+                [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
+                , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
+                , button "above" "Above" AboveClicked (isAbove maybeTool)
+                , button "below" "Below" BelowClicked (isBelow maybeTool)
+                , button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
                 ]
             ]
         , Element.column
@@ -635,7 +635,7 @@ viewToolSelector maybeTool =
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
-                [ button "Through two points" ThroughTwoPointsClicked (isThroughTwoPoints maybeTool)
+                [ button "through_two_points" "Through two points" ThroughTwoPointsClicked (isThroughTwoPoints maybeTool)
                 ]
             ]
         , Element.column
@@ -647,7 +647,7 @@ viewToolSelector maybeTool =
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
-                [ button "From to" FromToClicked (isFromTo maybeTool)
+                [ button "from_to" "From to" FromToClicked (isFromTo maybeTool)
                 ]
             ]
         , Element.column
@@ -659,8 +659,8 @@ viewToolSelector maybeTool =
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
-                [ button "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
-                , button "Cut along line segment" CutAlongLineSegmentClicked (isCutAlongLineSegment maybeTool)
+                [ button "mirror_at" "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
+                , button "cut_along_line_segment" "Cut along line segment" CutAlongLineSegmentClicked (isCutAlongLineSegment maybeTool)
                 ]
             ]
         , Element.column
@@ -672,7 +672,7 @@ viewToolSelector maybeTool =
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
-                [ button "Counter clockwise" CounterClockwiseClicked (isCounterClockwise maybeTool)
+                [ button "counter_clockwise" "Counter clockwise" CounterClockwiseClicked (isCounterClockwise maybeTool)
                 ]
             ]
         ]
@@ -682,11 +682,10 @@ viewToolSelector maybeTool =
 ---- REUSABLE ELEMENTS
 
 
-button : String -> msg -> Bool -> Element msg
-button label msg selected =
+button : String -> String -> msg -> Bool -> Element msg
+button iconSrc label msg selected =
     Input.button
-        [ Element.paddingXY 8 7
-        , Element.width Element.fill
+        [ Element.padding 5
         , Background.color <|
             if selected then
                 color Color.lightCharcoal
@@ -704,7 +703,14 @@ button label msg selected =
             ]
         ]
         { onPress = Just msg
-        , label = Element.text label
+        , label =
+            Element.image
+                [ Element.width (Element.px 48)
+                , Element.height (Element.px 48)
+                ]
+                { src = "icons/" ++ iconSrc ++ ".svg"
+                , description = label
+                }
         }
 
 
