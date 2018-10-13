@@ -689,6 +689,7 @@ button iconSrc label msg selected =
         , Background.color <|
             if selected then
                 color Color.lightCharcoal
+
             else
                 color Color.gray
         , Border.color (color Color.black)
@@ -698,6 +699,7 @@ button iconSrc label msg selected =
             [ Background.color <|
                 if selected then
                     color Color.lightCharcoal
+
                 else
                     color Color.darkGray
             ]
@@ -924,6 +926,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                         Just point2ds ->
                             drawPointChain point2ds
                     ]
+
             else
                 Svg.text ""
 
@@ -1044,6 +1047,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                 , Attributes.fill "none"
                 ]
                 (Circle2d.withRadius 5 point2d)
+
           else
             Svg.g [] []
         , helper
@@ -1079,6 +1083,7 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
         [ Attributes.stroke <|
             if selected then
                 "blue"
+
             else
                 "grey"
         ]
@@ -1099,6 +1104,7 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
         [ Attributes.stroke <|
             if selected then
                 "blue"
+
             else
                 "grey"
         ]
@@ -1116,6 +1122,7 @@ drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
         , Attributes.stroke <|
             if selected then
                 "blue"
+
             else
                 "black"
         , Attributes.strokeWidth "1"
@@ -1371,6 +1378,7 @@ update msg model =
                                 MirrorAt line <|
                                     if checked then
                                         Those.insert thatPoint targets
+
                                     else
                                         Those.remove thatPoint targets
                       }
@@ -1410,6 +1418,7 @@ update msg model =
                                     Pattern.insertPoint
                                         (if name == "" then
                                             Nothing
+
                                          else
                                             Just name
                                         )
