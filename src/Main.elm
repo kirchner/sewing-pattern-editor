@@ -414,7 +414,6 @@ viewEditor model =
         , Element.inFront <|
             Element.column
                 [ Element.alignRight
-                , Element.width (Element.px 250)
                 , Element.moveLeft 10
                 , Element.moveDown 10
                 , Background.color (color Color.lightGray)
@@ -447,21 +446,6 @@ viewEditor model =
                                 )
                 ]
                 [ viewToolSelector model.tool
-                , horizontalLine
-                , Element.row
-                    [ Element.padding 10
-                    , Element.spacing 5
-                    ]
-                    [ Element.paragraph []
-                        [ Element.text <|
-                            case model.hoveredPoint of
-                                Nothing ->
-                                    "Hover over points to get more information."
-
-                                Just thatPoint ->
-                                    "TODO"
-                        ]
-                    ]
                 , horizontalLine
                 , Element.row
                     [ Element.padding 5
@@ -616,14 +600,22 @@ viewToolSelector maybeTool =
             ]
             [ Element.el [ Font.size 16 ] (Element.text "Points:")
             , Element.column
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
-                , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
-                , button "above" "Above" AboveClicked (isAbove maybeTool)
-                , button "below" "Below" BelowClicked (isBelow maybeTool)
-                , button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
+                [ Element.spacing 5 ]
+                [ Element.row
+                    [ Element.spacing 5
+                    , Element.width Element.fill
+                    ]
+                    [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
+                    , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
+                    , button "above" "Above" AboveClicked (isAbove maybeTool)
+                    , button "below" "Below" BelowClicked (isBelow maybeTool)
+                    ]
+                , Element.row
+                    [ Element.spacing 5
+                    , Element.width Element.fill
+                    ]
+                    [ button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
+                    ]
                 ]
             ]
         , Element.column
@@ -655,7 +647,7 @@ viewToolSelector maybeTool =
             , Element.width Element.fill
             ]
             [ Element.el [ Font.size 16 ] (Element.text "Transformations:")
-            , Element.column
+            , Element.row
                 [ Element.spacing 5
                 , Element.width Element.fill
                 ]
@@ -785,6 +777,7 @@ labeledInputText onChange label name =
             Input.labelLeft
                 [ Element.centerY
                 , Element.paddingXY 5 0
+                , Element.width (Element.px 100)
                 ]
                 (Element.text label)
         }
@@ -814,6 +807,7 @@ labeledInputRadio msg label selected options =
             Input.labelLeft
                 [ Element.centerY
                 , Element.paddingXY 5 0
+                , Element.width (Element.px 100)
                 ]
                 (Element.text label)
         , options = List.map option options
