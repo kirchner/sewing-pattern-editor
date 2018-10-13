@@ -1,16 +1,16 @@
-module That
-    exposing
-        ( Change
-        , That
-        , areEqual
-        , changes
-        , decoder
-        , dropChanges
-        , encode
-        , objectId
-        , that
-        , toComparable
-        )
+module That exposing
+    ( Change
+    , That
+    , areEqual
+    , changes
+    , decoder
+    , dropChanges
+    , encode
+    , hash
+    , objectId
+    , that
+    , toComparable
+    )
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
@@ -19,6 +19,35 @@ import Json.Encode as Encode exposing (Value)
 
 type That object
     = That ThatData
+
+
+hash : That object -> String
+hash (That data) =
+    String.concat
+        [ "object-id-"
+        , String.fromInt data.objectId
+        , if List.isEmpty data.changes then
+            ""
+
+          else
+            String.concat
+                [ "--"
+                , data.changes
+                    |> List.map
+                        (\{ transformationId, branch } ->
+                            String.concat
+                                [ String.fromInt transformationId
+                                , case branch of
+                                    Nothing ->
+                                        ""
+
+                                    Just branchId ->
+                                        "-" ++ String.fromInt branchId
+                                ]
+                        )
+                    |> String.join "-"
+                ]
+        ]
 
 
 type alias ThatData =
