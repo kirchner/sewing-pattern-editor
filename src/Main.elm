@@ -3,6 +3,7 @@ port module Main exposing (main)
 import Accessibility.Widget as Widget
 import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
+import Browser.Dom
 import Browser.Navigation exposing (Key)
 import Circle2d
 import Color
@@ -30,6 +31,7 @@ import Styled.Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events
+import Task
 import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
@@ -661,7 +663,7 @@ viewTool pattern points lines lineSegments details tool =
                 [ Element.width Element.fill
                 , Element.spacing 10
                 ]
-                [ labeledInputText True NameChanged "name" name
+                [ labeledInputText NameChanged "name" name
                 , labeledDropdown
                     (Pattern.getPoint pattern
                         >> Maybe.andThen .name
@@ -674,7 +676,7 @@ viewTool pattern points lines lineSegments details tool =
                     points
                     dropdown
                     anchor
-                , labeledInputText False DistanceChanged "distance" distance
+                , labeledInputText DistanceChanged "distance" distance
                 ]
     in
     Element.column
@@ -708,7 +710,7 @@ viewTool pattern points lines lineSegments details tool =
                     [ Element.width Element.fill
                     , Element.spacing 10
                     ]
-                    [ labeledInputText True NameChanged "name" name
+                    [ labeledInputText NameChanged "name" name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -740,7 +742,7 @@ viewTool pattern points lines lineSegments details tool =
                     [ Element.width Element.fill
                     , Element.spacing 10
                     ]
-                    [ labeledInputText True NameChanged "name" name
+                    [ labeledInputText NameChanged "name" name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -1058,26 +1060,19 @@ buttonCreate label msg =
         }
 
 
-labeledInputText : Bool -> (String -> msg) -> String -> String -> Element msg
-labeledInputText focusedOnLoad onChange label name =
-    let
-        defaultAttrs =
-            [ Element.width Element.fill
-            , Element.padding 5
-            , Font.size 16
-            , Font.color white
-            , Background.color gray700
-            , Border.width 1
-            , Border.color gray700
-            ]
-    in
+labeledInputText : (String -> msg) -> String -> String -> Element msg
+labeledInputText onChange label name =
     Input.text
-        (if focusedOnLoad then
-            Input.focusedOnLoad :: defaultAttrs
-
-         else
-            defaultAttrs
-        )
+        [ Element.width Element.fill
+        , Element.padding 5
+        , Font.size 16
+        , Font.color white
+        , Background.color gray700
+        , Border.width 1
+        , Border.color gray700
+        , Element.htmlAttribute <|
+            Html.Attributes.id (label ++ "-input")
+        ]
         { onChange = onChange
         , text = name
         , placeholder = Nothing
@@ -1796,7 +1791,8 @@ update msg model =
                             , distance = ""
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         RightOfClicked ->
@@ -1810,7 +1806,8 @@ update msg model =
                             , distance = ""
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         AboveClicked ->
@@ -1824,7 +1821,8 @@ update msg model =
                             , distance = ""
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         BelowClicked ->
@@ -1838,12 +1836,14 @@ update msg model =
                             , distance = ""
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         AtAngleClicked ->
             ( { model | tool = Just AtAngle }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         -- LINES
@@ -1859,7 +1859,8 @@ update msg model =
                             , thatAnchorB = Nothing
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         -- LINE SEGMENTS
@@ -1875,7 +1876,8 @@ update msg model =
                             , thatAnchorB = Nothing
                             }
               }
-            , Cmd.none
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         -- TRANSFORMATIONS
@@ -1890,7 +1892,8 @@ update msg model =
                             , thosePoints = Those.none
                             }
               }
-            , Cmd.none
+            , Dropdown.focus "mirror-at-line"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         CutAlongLineSegmentClicked ->
@@ -1904,7 +1907,8 @@ update msg model =
                             , thatDetail = Nothing
                             }
               }
-            , Cmd.none
+            , Dropdown.focus "cut-along-line-segment--line-segment"
+                |> Task.attempt (\_ -> NoOp)
             )
 
         -- DETAILS
