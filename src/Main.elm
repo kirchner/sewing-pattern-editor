@@ -88,6 +88,7 @@ type alias Model =
 
     -- RIGHT TOOLBAR
     , variablesVisible : Bool
+    , pointsVisible : Bool
     }
 
 
@@ -563,6 +564,7 @@ init flags url key =
       , hoveredPoint = Nothing
       , dialog = NoDialog
       , variablesVisible = True
+      , pointsVisible = False
       }
     , requestPattern ()
     )
@@ -691,6 +693,7 @@ viewRightToolbar model =
         , Background.color gray900
         ]
         [ viewVariables model
+        , viewPoints model
         ]
 
 
@@ -1088,50 +1091,22 @@ viewToolSelector maybeTool =
 
 
 viewVariables model =
+    let
+        viewFloatValue value =
+            Element.el
+                [ Font.size 14
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.el [ Element.alignRight ]
+                    (Element.text (String.fromFloat value))
+                )
+    in
     Element.column
         [ Element.width Element.fill
         , Element.padding 10
         , Element.spacing 10
         ]
-        [ Input.button
-            [ Element.width Element.fill
-            , Element.padding 5
-            , Border.color gray900
-            , Border.width 1
-            , Element.mouseOver
-                [ Background.color gray800 ]
-            ]
-            { onPress = Just VariablesRulerClicked
-            , label =
-                Element.row
-                    [ Element.width Element.fill
-                    ]
-                    [ Element.el
-                        [ Element.width Element.fill
-                        , Font.size 16
-                        , Font.variant Font.smallCaps
-                        , Font.color (color (Color.rgb255 229 223 197))
-                        ]
-                        (Element.text "variables")
-                    , Element.html <|
-                        Html.toUnstyled <|
-                            Html.i
-                                [ Attributes.class "fas"
-                                , Attributes.class <|
-                                    if model.variablesVisible then
-                                        "fa-chevron-up"
-
-                                    else
-                                        "fa-chevron-down"
-                                , Attributes.css
-                                    [ Css.fontSize (Css.px 12)
-                                    , Css.paddingRight (Css.px 5)
-                                    , Css.color (Css.rgb 229 223 197)
-                                    ]
-                                ]
-                                []
-                    ]
-            }
+        [ accordionToggle VariablesRulerClicked "variables" model.variablesVisible
         , if model.variablesVisible then
             Element.column
                 [ Element.width Element.fill
@@ -1165,14 +1140,10 @@ viewVariables model =
                                     , Font.color (color (Color.rgb255 229 223 197))
                                     ]
                                     (Element.text "computed")
-                          , width = Element.px 80
+                          , width = Element.shrink
                           , view =
                                 \{ computed } ->
-                                    Element.el
-                                        [ Font.size 14
-                                        , Font.color (color (Color.rgb255 229 223 197))
-                                        ]
-                                        (Element.text (String.fromFloat computed))
+                                    viewFloatValue computed
                           }
                         ]
                     }
@@ -1200,8 +1171,139 @@ viewVariables model =
         ]
 
 
+viewPoints model =
+    let
+        viewHeader name =
+            Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text name)
+
+        viewValue value =
+            Element.el
+                [ Font.size 14
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text value)
+
+        viewFloatHeader name =
+            Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.el [ Element.alignRight ]
+                    (Element.text name)
+                )
+
+        viewFloatValue value =
+            Element.el
+                [ Font.size 14
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.el [ Element.alignRight ]
+                    (Element.text (String.fromFloat value))
+                )
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.padding 10
+        , Element.spacing 10
+        ]
+        [ accordionToggle PointsRulerClicked "points" model.pointsVisible
+        , if model.pointsVisible then
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 15
+                , Element.padding 5
+                ]
+                [ Element.table
+                    [ Element.spacing 7 ]
+                    { data =
+                        List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                            (Pattern.points model.pattern)
+                    , columns =
+                        [ { header = viewHeader "name"
+                          , width = Element.fill
+                          , view =
+                                \( _, { name } ) ->
+                                    viewValue (Maybe.withDefault "<no name>" name)
+                          }
+                        , { header = viewFloatHeader "x"
+                          , width = Element.px 35
+                          , view =
+                                \( thatPoint, _ ) ->
+                                    thatPoint
+                                        |> Pattern.getPointGeometry model.pattern
+                                        |> Maybe.map
+                                            (Point2d.xCoordinate >> viewFloatValue)
+                                        |> Maybe.withDefault Element.none
+                          }
+                        , { header = viewFloatHeader "y"
+                          , width = Element.px 35
+                          , view =
+                                \( thatPoint, _ ) ->
+                                    thatPoint
+                                        |> Pattern.getPointGeometry model.pattern
+                                        |> Maybe.map
+                                            (Point2d.yCoordinate >> viewFloatValue)
+                                        |> Maybe.withDefault Element.none
+                          }
+                        ]
+                    }
+                ]
+
+          else
+            Element.none
+        ]
+
+
 
 ---- REUSABLE ELEMENTS
+
+
+accordionToggle msg name visible =
+    Input.button
+        [ Element.width Element.fill
+        , Element.padding 5
+        , Border.color gray900
+        , Border.width 1
+        , Element.mouseOver
+            [ Background.color gray800 ]
+        ]
+        { onPress = Just msg
+        , label =
+            Element.row
+                [ Element.width Element.fill
+                ]
+                [ Element.el
+                    [ Element.width Element.fill
+                    , Font.size 16
+                    , Font.variant Font.smallCaps
+                    , Font.color (color (Color.rgb255 229 223 197))
+                    ]
+                    (Element.text name)
+                , Element.html <|
+                    Html.toUnstyled <|
+                        Html.i
+                            [ Attributes.class "fas"
+                            , Attributes.class <|
+                                if visible then
+                                    "fa-chevron-up"
+
+                                else
+                                    "fa-chevron-down"
+                            , Attributes.css
+                                [ Css.fontSize (Css.px 12)
+                                , Css.paddingRight (Css.px 5)
+                                , Css.color (Css.rgb 229 223 197)
+                                ]
+                            ]
+                            []
+                ]
+        }
 
 
 button : String -> String -> msg -> Bool -> Element msg
@@ -2006,6 +2108,7 @@ type Msg
     | VariableCreateClicked
     | VariableNameChanged String
     | VariableValueChanged String
+    | PointsRulerClicked
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -2692,6 +2795,11 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        PointsRulerClicked ->
+            ( { model | pointsVisible = not model.pointsVisible }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
