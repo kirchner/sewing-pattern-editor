@@ -67,15 +67,45 @@ type alias Model =
 
 type Tool
     = -- POINTS
-      LeftOf String Dropdown (Maybe (That Point)) String
-    | RightOf String Dropdown (Maybe (That Point)) String
-    | Above String Dropdown (Maybe (That Point)) String
-    | Below String Dropdown (Maybe (That Point)) String
+      LeftOf
+        { name : String
+        , dropdown : Dropdown
+        , thatAnchor : Maybe (That Point)
+        , distance : String
+        }
+    | RightOf
+        { name : String
+        , dropdown : Dropdown
+        , thatAnchor : Maybe (That Point)
+        , distance : String
+        }
+    | Above
+        { name : String
+        , dropdown : Dropdown
+        , thatAnchor : Maybe (That Point)
+        , distance : String
+        }
+    | Below
+        { name : String
+        , dropdown : Dropdown
+        , thatAnchor : Maybe (That Point)
+        , distance : String
+        }
     | AtAngle
       -- LINES
-    | ThroughTwoPoints Dropdown (Maybe (That Point)) Dropdown (Maybe (That Point))
+    | ThroughTwoPoints
+        { dropdownA : Dropdown
+        , thatAnchorA : Maybe (That Point)
+        , dropdownB : Dropdown
+        , thatAnchorB : Maybe (That Point)
+        }
       -- LINE SEGMENTS
-    | FromTo Dropdown (Maybe (That Point)) Dropdown (Maybe (That Point))
+    | FromTo
+        { dropdownA : Dropdown
+        , thatAnchorA : Maybe (That Point)
+        , dropdownB : Dropdown
+        , thatAnchorB : Maybe (That Point)
+        }
       -- TRANSFORMATIONS
     | MirrorAt (Maybe (That Line)) (Those Point)
     | CutAlongLineSegment (Maybe (That LineSegment)) (Maybe (That Detail))
@@ -85,7 +115,7 @@ type Tool
 
 isLeftOf maybeTool =
     case maybeTool of
-        Just (LeftOf _ _ _ _) ->
+        Just (LeftOf _) ->
             True
 
         _ ->
@@ -94,7 +124,7 @@ isLeftOf maybeTool =
 
 isRightOf maybeTool =
     case maybeTool of
-        Just (RightOf _ _ _ _) ->
+        Just (RightOf _) ->
             True
 
         _ ->
@@ -103,7 +133,7 @@ isRightOf maybeTool =
 
 isAbove maybeTool =
     case maybeTool of
-        Just (Above _ _ _ _) ->
+        Just (Above _) ->
             True
 
         _ ->
@@ -112,7 +142,7 @@ isAbove maybeTool =
 
 isBelow maybeTool =
     case maybeTool of
-        Just (Below _ _ _ _) ->
+        Just (Below _) ->
             True
 
         _ ->
@@ -130,7 +160,7 @@ isAtAngle maybeTool =
 
 isThroughTwoPoints maybeTool =
     case maybeTool of
-        Just (ThroughTwoPoints _ _ _ _) ->
+        Just (ThroughTwoPoints _) ->
             True
 
         _ ->
@@ -139,7 +169,7 @@ isThroughTwoPoints maybeTool =
 
 isFromTo maybeTool =
     case maybeTool of
-        Just (FromTo _ _ _ _) ->
+        Just (FromTo _) ->
             True
 
         _ ->
@@ -180,36 +210,36 @@ selectedPointsFromTool tool =
             Those.fromList []
     in
     case tool of
-        LeftOf _ _ point _ ->
-            point
+        LeftOf { thatAnchor } ->
+            thatAnchor
                 |> maybeToList
                 |> Those.fromList
 
-        RightOf _ _ point _ ->
-            point
+        RightOf { thatAnchor } ->
+            thatAnchor
                 |> maybeToList
                 |> Those.fromList
 
-        Above _ _ point _ ->
-            point
+        Above { thatAnchor } ->
+            thatAnchor
                 |> maybeToList
                 |> Those.fromList
 
-        Below _ _ point _ ->
-            point
+        Below { thatAnchor } ->
+            thatAnchor
                 |> maybeToList
                 |> Those.fromList
 
         AtAngle ->
             empty
 
-        ThroughTwoPoints _ pointA _ pointB ->
-            [ pointA, pointB ]
+        ThroughTwoPoints { thatAnchorA, thatAnchorB } ->
+            [ thatAnchorA, thatAnchorB ]
                 |> List.filterMap identity
                 |> Those.fromList
 
-        FromTo _ pointA _ pointB ->
-            [ pointA, pointB ]
+        FromTo { thatAnchorA, thatAnchorB } ->
+            [ thatAnchorA, thatAnchorB ]
                 |> List.filterMap identity
                 |> Those.fromList
 
@@ -230,25 +260,25 @@ selectedLinesFromTool tool =
             Those.fromList []
     in
     case tool of
-        LeftOf _ _ _ _ ->
+        LeftOf _ ->
             empty
 
-        RightOf _ _ _ _ ->
+        RightOf _ ->
             empty
 
-        Above _ _ _ _ ->
+        Above _ ->
             empty
 
-        Below _ _ _ _ ->
+        Below _ ->
             empty
 
         AtAngle ->
             empty
 
-        ThroughTwoPoints _ _ _ _ ->
+        ThroughTwoPoints _ ->
             empty
 
-        FromTo _ _ _ _ ->
+        FromTo _ ->
             empty
 
         MirrorAt line _ ->
@@ -270,25 +300,25 @@ selectedLineSegmentsFromTool tool =
             Those.fromList []
     in
     case tool of
-        LeftOf _ _ _ _ ->
+        LeftOf _ ->
             empty
 
-        RightOf _ _ _ _ ->
+        RightOf _ ->
             empty
 
-        Above _ _ _ _ ->
+        Above _ ->
             empty
 
-        Below _ _ _ _ ->
+        Below _ ->
             empty
 
         AtAngle ->
             empty
 
-        ThroughTwoPoints _ _ _ _ ->
+        ThroughTwoPoints _ ->
             empty
 
-        FromTo _ _ _ _ ->
+        FromTo _ ->
             empty
 
         MirrorAt _ _ ->
@@ -310,25 +340,25 @@ selectedDetailsFromTool tool =
             Those.fromList []
     in
     case tool of
-        LeftOf _ _ _ _ ->
+        LeftOf _ ->
             empty
 
-        RightOf _ _ _ _ ->
+        RightOf _ ->
             empty
 
-        Above _ _ _ _ ->
+        Above _ ->
             empty
 
-        Below _ _ _ _ ->
+        Below _ ->
             empty
 
         AtAngle ->
             empty
 
-        ThroughTwoPoints _ _ _ _ ->
+        ThroughTwoPoints _ ->
             empty
 
-        FromTo _ _ _ _ ->
+        FromTo _ ->
             empty
 
         MirrorAt _ _ ->
@@ -513,22 +543,22 @@ viewTool pattern points lines lineSegments details tool =
         , Element.spacing 10
         ]
         [ case tool of
-            LeftOf name listbox anchor distance ->
-                simpleDistanceTool "leftof" name listbox anchor distance
+            LeftOf { name, dropdown, thatAnchor, distance } ->
+                simpleDistanceTool "leftof" name dropdown thatAnchor distance
 
-            RightOf name listbox anchor distance ->
-                simpleDistanceTool "rightof" name listbox anchor distance
+            RightOf { name, dropdown, thatAnchor, distance } ->
+                simpleDistanceTool "rightof" name dropdown thatAnchor distance
 
-            Above name listbox anchor distance ->
-                simpleDistanceTool "above" name listbox anchor distance
+            Above { name, dropdown, thatAnchor, distance } ->
+                simpleDistanceTool "above" name dropdown thatAnchor distance
 
-            Below name listbox anchor distance ->
-                simpleDistanceTool "below" name listbox anchor distance
+            Below { name, dropdown, thatAnchor, distance } ->
+                simpleDistanceTool "below" name dropdown thatAnchor distance
 
             AtAngle ->
                 Element.none
 
-            ThroughTwoPoints dropdownA anchorA dropdownB anchorB ->
+            ThroughTwoPoints { dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
                     [ Element.width Element.fill ]
                     [ labeledDropdown
@@ -541,7 +571,7 @@ viewTool pattern points lines lineSegments details tool =
                         "1st anchor:"
                         points
                         dropdownA
-                        anchorA
+                        thatAnchorA
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -552,10 +582,10 @@ viewTool pattern points lines lineSegments details tool =
                         "2st anchor:"
                         points
                         dropdownB
-                        anchorB
+                        thatAnchorB
                     ]
 
-            FromTo dropdownA anchorA dropdownB anchorB ->
+            FromTo { dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
                     [ Element.width Element.fill ]
                     [ labeledDropdown
@@ -568,7 +598,7 @@ viewTool pattern points lines lineSegments details tool =
                         "1st anchor:"
                         points
                         dropdownA
-                        anchorA
+                        thatAnchorA
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -579,7 +609,7 @@ viewTool pattern points lines lineSegments details tool =
                         "2st anchor:"
                         points
                         dropdownB
-                        anchorB
+                        thatAnchorB
                     ]
 
             MirrorAt line targets ->
@@ -1360,22 +1390,58 @@ update msg model =
 
         -- POINTS
         LeftOfClicked ->
-            ( { model | tool = Just (LeftOf "" Dropdown.init Nothing "") }
+            ( { model
+                | tool =
+                    Just <|
+                        LeftOf
+                            { name = ""
+                            , dropdown = Dropdown.init
+                            , thatAnchor = Nothing
+                            , distance = ""
+                            }
+              }
             , Cmd.none
             )
 
         RightOfClicked ->
-            ( { model | tool = Just (RightOf "" Dropdown.init Nothing "") }
+            ( { model
+                | tool =
+                    Just <|
+                        RightOf
+                            { name = ""
+                            , dropdown = Dropdown.init
+                            , thatAnchor = Nothing
+                            , distance = ""
+                            }
+              }
             , Cmd.none
             )
 
         AboveClicked ->
-            ( { model | tool = Just (Above "" Dropdown.init Nothing "") }
+            ( { model
+                | tool =
+                    Just <|
+                        Above
+                            { name = ""
+                            , dropdown = Dropdown.init
+                            , thatAnchor = Nothing
+                            , distance = ""
+                            }
+              }
             , Cmd.none
             )
 
         BelowClicked ->
-            ( { model | tool = Just (Below "" Dropdown.init Nothing "") }
+            ( { model
+                | tool =
+                    Just <|
+                        Below
+                            { name = ""
+                            , dropdown = Dropdown.init
+                            , thatAnchor = Nothing
+                            , distance = ""
+                            }
+              }
             , Cmd.none
             )
 
@@ -1386,13 +1452,31 @@ update msg model =
 
         -- LINES
         ThroughTwoPointsClicked ->
-            ( { model | tool = Just (ThroughTwoPoints Dropdown.init Nothing Dropdown.init Nothing) }
+            ( { model
+                | tool =
+                    Just <|
+                        ThroughTwoPoints
+                            { dropdownA = Dropdown.init
+                            , thatAnchorA = Nothing
+                            , dropdownB = Dropdown.init
+                            , thatAnchorB = Nothing
+                            }
+              }
             , Cmd.none
             )
 
         -- LINE SEGMENTS
         FromToClicked ->
-            ( { model | tool = Just (FromTo Dropdown.init Nothing Dropdown.init Nothing) }
+            ( { model
+                | tool =
+                    Just <|
+                        FromTo
+                            { dropdownA = Dropdown.init
+                            , thatAnchorA = Nothing
+                            , dropdownB = Dropdown.init
+                            , thatAnchorB = Nothing
+                            }
+              }
             , Cmd.none
             )
 
@@ -1416,23 +1500,23 @@ update msg model =
         -- TOOL PARAMETERS
         NameChanged newName ->
             case model.tool of
-                Just (LeftOf _ dropdown anchor distance) ->
-                    ( { model | tool = Just (LeftOf newName dropdown anchor distance) }
+                Just (LeftOf data) ->
+                    ( { model | tool = Just (LeftOf { data | name = newName }) }
                     , Cmd.none
                     )
 
-                Just (RightOf _ dropdown anchor distance) ->
-                    ( { model | tool = Just (RightOf newName dropdown anchor distance) }
+                Just (RightOf data) ->
+                    ( { model | tool = Just (RightOf { data | name = newName }) }
                     , Cmd.none
                     )
 
-                Just (Above _ dropdown anchor distance) ->
-                    ( { model | tool = Just (Above newName dropdown anchor distance) }
+                Just (Above data) ->
+                    ( { model | tool = Just (Above { data | name = newName }) }
                     , Cmd.none
                     )
 
-                Just (Below _ dropdown anchor distance) ->
-                    ( { model | tool = Just (Below newName dropdown anchor distance) }
+                Just (Below data) ->
+                    ( { model | tool = Just (Below { data | name = newName }) }
                     , Cmd.none
                     )
 
@@ -1441,23 +1525,23 @@ update msg model =
 
         DistanceChanged newDistance ->
             case model.tool of
-                Just (LeftOf name dropdown anchor distance) ->
-                    ( { model | tool = Just (LeftOf name dropdown anchor newDistance) }
+                Just (LeftOf data) ->
+                    ( { model | tool = Just (LeftOf { data | distance = newDistance }) }
                     , Cmd.none
                     )
 
-                Just (RightOf name dropdown anchor distance) ->
-                    ( { model | tool = Just (RightOf name dropdown anchor newDistance) }
+                Just (RightOf data) ->
+                    ( { model | tool = Just (RightOf { data | distance = newDistance }) }
                     , Cmd.none
                     )
 
-                Just (Above name dropdown anchor distance) ->
-                    ( { model | tool = Just (Above name dropdown anchor newDistance) }
+                Just (Above data) ->
+                    ( { model | tool = Just (Above { data | distance = newDistance }) }
                     , Cmd.none
                     )
 
-                Just (Below name dropdown anchor distance) ->
-                    ( { model | tool = Just (Below name dropdown anchor newDistance) }
+                Just (Below data) ->
+                    ( { model | tool = Just (Below { data | distance = newDistance }) }
                     , Cmd.none
                     )
 
@@ -1525,7 +1609,7 @@ update msg model =
 
         DropdownMsg dropdownMsg ->
             case model.tool of
-                Just (LeftOf name dropdown anchor distance) ->
+                Just (LeftOf data) ->
                     let
                         ( newDropdown, dropdownCmd, newAnchor ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1533,14 +1617,22 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdown
-                                anchor
+                                data.dropdown
+                                data.thatAnchor
                     in
-                    ( { model | tool = Just (LeftOf name newDropdown newAnchor distance) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                LeftOf
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatAnchor = newAnchor
+                                    }
+                      }
                     , Cmd.map DropdownMsg dropdownCmd
                     )
 
-                Just (RightOf name dropdown anchor distance) ->
+                Just (RightOf data) ->
                     let
                         ( newDropdown, dropdownCmd, newAnchor ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1548,14 +1640,22 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdown
-                                anchor
+                                data.dropdown
+                                data.thatAnchor
                     in
-                    ( { model | tool = Just (RightOf name newDropdown newAnchor distance) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                RightOf
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatAnchor = newAnchor
+                                    }
+                      }
                     , Cmd.map DropdownMsg dropdownCmd
                     )
 
-                Just (Above name dropdown anchor distance) ->
+                Just (Above data) ->
                     let
                         ( newDropdown, dropdownCmd, newAnchor ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1563,14 +1663,22 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdown
-                                anchor
+                                data.dropdown
+                                data.thatAnchor
                     in
-                    ( { model | tool = Just (Above name newDropdown newAnchor distance) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                Above
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatAnchor = newAnchor
+                                    }
+                      }
                     , Cmd.map DropdownMsg dropdownCmd
                     )
 
-                Just (Below name dropdown anchor distance) ->
+                Just (Below data) ->
                     let
                         ( newDropdown, dropdownCmd, newAnchor ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1578,10 +1686,18 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdown
-                                anchor
+                                data.dropdown
+                                data.thatAnchor
                     in
-                    ( { model | tool = Just (Below name newDropdown newAnchor distance) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                Below
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatAnchor = newAnchor
+                                    }
+                      }
                     , Cmd.map DropdownMsg dropdownCmd
                     )
 
@@ -1590,7 +1706,7 @@ update msg model =
 
         DropdownAMsg dropdownMsg ->
             case model.tool of
-                Just (ThroughTwoPoints dropdownA anchorA dropdownB anchorB) ->
+                Just (ThroughTwoPoints data) ->
                     let
                         ( newDropdownA, dropdownCmd, newAnchorA ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1598,14 +1714,22 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdownA
-                                anchorA
+                                data.dropdownA
+                                data.thatAnchorA
                     in
-                    ( { model | tool = Just (ThroughTwoPoints newDropdownA newAnchorA dropdownB anchorB) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                ThroughTwoPoints
+                                    { data
+                                        | dropdownA = newDropdownA
+                                        , thatAnchorA = newAnchorA
+                                    }
+                      }
                     , Cmd.map DropdownAMsg dropdownCmd
                     )
 
-                Just (FromTo dropdownA anchorA dropdownB anchorB) ->
+                Just (FromTo data) ->
                     let
                         ( newDropdownA, dropdownCmd, newAnchorA ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1613,10 +1737,18 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdownA
-                                anchorA
+                                data.dropdownA
+                                data.thatAnchorA
                     in
-                    ( { model | tool = Just (FromTo newDropdownA newAnchorA dropdownB anchorB) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                FromTo
+                                    { data
+                                        | dropdownA = newDropdownA
+                                        , thatAnchorA = newAnchorA
+                                    }
+                      }
                     , Cmd.map DropdownAMsg dropdownCmd
                     )
 
@@ -1625,7 +1757,7 @@ update msg model =
 
         DropdownBMsg dropdownMsg ->
             case model.tool of
-                Just (ThroughTwoPoints dropdownA anchorA dropdownB anchorB) ->
+                Just (ThroughTwoPoints data) ->
                     let
                         ( newDropdownB, dropdownCmd, newAnchorB ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1633,14 +1765,22 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdownB
-                                anchorB
+                                data.dropdownB
+                                data.thatAnchorB
                     in
-                    ( { model | tool = Just (ThroughTwoPoints dropdownA anchorA newDropdownB newAnchorB) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                ThroughTwoPoints
+                                    { data
+                                        | dropdownB = newDropdownB
+                                        , thatAnchorB = newAnchorB
+                                    }
+                      }
                     , Cmd.map DropdownAMsg dropdownCmd
                     )
 
-                Just (FromTo dropdownA anchorA dropdownB anchorB) ->
+                Just (FromTo data) ->
                     let
                         ( newDropdownB, dropdownCmd, newAnchorB ) =
                             Dropdown.update dropdownUpdateConfig
@@ -1648,10 +1788,18 @@ update msg model =
                                     |> List.map (Tuple.first >> Listbox.option)
                                 )
                                 dropdownMsg
-                                dropdownB
-                                anchorB
+                                data.dropdownB
+                                data.thatAnchorB
                     in
-                    ( { model | tool = Just (FromTo dropdownA anchorA newDropdownB newAnchorB) }
+                    ( { model
+                        | tool =
+                            Just <|
+                                FromTo
+                                    { data
+                                        | dropdownB = newDropdownB
+                                        , thatAnchorB = newAnchorB
+                                    }
+                      }
                     , Cmd.map DropdownBMsg dropdownCmd
                     )
 
@@ -1699,23 +1847,23 @@ update msg model =
                     Pattern.lastState model.pattern
             in
             case model.tool of
-                Just (LeftOf name _ anchor distance) ->
-                    insertSimpleDistance Pattern.LeftOf name anchor distance
+                Just (LeftOf { name, thatAnchor, distance }) ->
+                    insertSimpleDistance Pattern.LeftOf name thatAnchor distance
 
-                Just (RightOf name _ anchor distance) ->
-                    insertSimpleDistance Pattern.RightOf name anchor distance
+                Just (RightOf { name, thatAnchor, distance }) ->
+                    insertSimpleDistance Pattern.RightOf name thatAnchor distance
 
-                Just (Above name _ anchor distance) ->
-                    insertSimpleDistance Pattern.Above name anchor distance
+                Just (Above { name, thatAnchor, distance }) ->
+                    insertSimpleDistance Pattern.Above name thatAnchor distance
 
-                Just (Below name _ anchor distance) ->
-                    insertSimpleDistance Pattern.Below name anchor distance
+                Just (Below { name, thatAnchor, distance }) ->
+                    insertSimpleDistance Pattern.Below name thatAnchor distance
 
                 Just AtAngle ->
                     ( model, Cmd.none )
 
-                Just (ThroughTwoPoints _ anchorA _ anchorB) ->
-                    case ( anchorA, anchorB ) of
+                Just (ThroughTwoPoints { thatAnchorA, thatAnchorB }) ->
+                    case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
                                 newLine =
@@ -1736,8 +1884,8 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (FromTo _ anchorA _ anchorB) ->
-                    case ( anchorA, anchorB ) of
+                Just (FromTo { thatAnchorA, thatAnchorB }) ->
+                    case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
                                 newLineSegment =
