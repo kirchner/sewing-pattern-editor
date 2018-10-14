@@ -1683,61 +1683,53 @@ update msg model =
 
         -- TOOL PARAMETERS
         NameChanged newName ->
+            let
+                updateName toTool data =
+                    ( { model | tool = Just (toTool { data | name = newName }) }
+                    , Cmd.none
+                    )
+            in
             case model.tool of
                 Just (LeftOf data) ->
-                    ( { model | tool = Just (LeftOf { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName LeftOf data
 
                 Just (RightOf data) ->
-                    ( { model | tool = Just (RightOf { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName RightOf data
 
                 Just (Above data) ->
-                    ( { model | tool = Just (Above { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName Above data
 
                 Just (Below data) ->
-                    ( { model | tool = Just (Below { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName Below data
 
                 Just (ThroughTwoPoints data) ->
-                    ( { model | tool = Just (ThroughTwoPoints { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName ThroughTwoPoints data
 
                 Just (FromTo data) ->
-                    ( { model | tool = Just (FromTo { data | name = newName }) }
-                    , Cmd.none
-                    )
+                    updateName FromTo data
 
                 _ ->
                     ( model, Cmd.none )
 
         DistanceChanged newDistance ->
+            let
+                updateDistance toTool data =
+                    ( { model | tool = Just (toTool { data | distance = newDistance }) }
+                    , Cmd.none
+                    )
+            in
             case model.tool of
                 Just (LeftOf data) ->
-                    ( { model | tool = Just (LeftOf { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
+                    updateDistance LeftOf data
 
                 Just (RightOf data) ->
-                    ( { model | tool = Just (RightOf { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
+                    updateDistance RightOf data
 
                 Just (Above data) ->
-                    ( { model | tool = Just (Above { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
+                    updateDistance Above data
 
                 Just (Below data) ->
-                    ( { model | tool = Just (Below { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
+                    updateDistance Below data
 
                 _ ->
                     ( model, Cmd.none )
@@ -1753,200 +1745,112 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownMsg dropdownMsg ->
+            let
+                updateDropdown toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newAnchor ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.points model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdown
+                                data.thatAnchor
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                toTool
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatAnchor = newAnchor
+                                    }
+                      }
+                    , Cmd.map DropdownMsg dropdownCmd
+                    )
+            in
             case model.tool of
                 Just (LeftOf data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newAnchor ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdown
-                                data.thatAnchor
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                LeftOf
-                                    { data
-                                        | dropdown = newDropdown
-                                        , thatAnchor = newAnchor
-                                    }
-                      }
-                    , Cmd.map DropdownMsg dropdownCmd
-                    )
+                    updateDropdown LeftOf data
 
                 Just (RightOf data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newAnchor ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdown
-                                data.thatAnchor
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                RightOf
-                                    { data
-                                        | dropdown = newDropdown
-                                        , thatAnchor = newAnchor
-                                    }
-                      }
-                    , Cmd.map DropdownMsg dropdownCmd
-                    )
+                    updateDropdown RightOf data
 
                 Just (Above data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newAnchor ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdown
-                                data.thatAnchor
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                Above
-                                    { data
-                                        | dropdown = newDropdown
-                                        , thatAnchor = newAnchor
-                                    }
-                      }
-                    , Cmd.map DropdownMsg dropdownCmd
-                    )
+                    updateDropdown Above data
 
                 Just (Below data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newAnchor ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdown
-                                data.thatAnchor
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                Below
-                                    { data
-                                        | dropdown = newDropdown
-                                        , thatAnchor = newAnchor
-                                    }
-                      }
-                    , Cmd.map DropdownMsg dropdownCmd
-                    )
+                    updateDropdown Below data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownAMsg dropdownMsg ->
+            let
+                updateDropdown toTool data =
+                    let
+                        ( newDropdownA, dropdownCmd, newAnchorA ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.points model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownA
+                                data.thatAnchorA
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                toTool
+                                    { data
+                                        | dropdownA = newDropdownA
+                                        , thatAnchorA = newAnchorA
+                                    }
+                      }
+                    , Cmd.map DropdownAMsg dropdownCmd
+                    )
+            in
             case model.tool of
                 Just (ThroughTwoPoints data) ->
-                    let
-                        ( newDropdownA, dropdownCmd, newAnchorA ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownA
-                                data.thatAnchorA
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                ThroughTwoPoints
-                                    { data
-                                        | dropdownA = newDropdownA
-                                        , thatAnchorA = newAnchorA
-                                    }
-                      }
-                    , Cmd.map DropdownAMsg dropdownCmd
-                    )
+                    updateDropdown ThroughTwoPoints data
 
                 Just (FromTo data) ->
-                    let
-                        ( newDropdownA, dropdownCmd, newAnchorA ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownA
-                                data.thatAnchorA
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                FromTo
-                                    { data
-                                        | dropdownA = newDropdownA
-                                        , thatAnchorA = newAnchorA
-                                    }
-                      }
-                    , Cmd.map DropdownAMsg dropdownCmd
-                    )
+                    updateDropdown FromTo data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownBMsg dropdownMsg ->
+            let
+                updateDropdown toTool data =
+                    let
+                        ( newDropdownB, dropdownCmd, newAnchorB ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.points model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownB
+                                data.thatAnchorB
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                toTool
+                                    { data
+                                        | dropdownB = newDropdownB
+                                        , thatAnchorB = newAnchorB
+                                    }
+                      }
+                    , Cmd.map DropdownBMsg dropdownCmd
+                    )
+            in
             case model.tool of
                 Just (ThroughTwoPoints data) ->
-                    let
-                        ( newDropdownB, dropdownCmd, newAnchorB ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownB
-                                data.thatAnchorB
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                ThroughTwoPoints
-                                    { data
-                                        | dropdownB = newDropdownB
-                                        , thatAnchorB = newAnchorB
-                                    }
-                      }
-                    , Cmd.map DropdownBMsg dropdownCmd
-                    )
+                    updateDropdown ThroughTwoPoints data
 
                 Just (FromTo data) ->
-                    let
-                        ( newDropdownB, dropdownCmd, newAnchorB ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownB
-                                data.thatAnchorB
-                    in
-                    ( { model
-                        | tool =
-                            Just <|
-                                FromTo
-                                    { data
-                                        | dropdownB = newDropdownB
-                                        , thatAnchorB = newAnchorB
-                                    }
-                      }
-                    , Cmd.map DropdownBMsg dropdownCmd
-                    )
+                    updateDropdown FromTo data
 
                 _ ->
                     ( model, Cmd.none )
