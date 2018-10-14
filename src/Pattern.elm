@@ -6,7 +6,7 @@ module Pattern exposing
     , geometry, Geometry, Problems
     , insertPoint
     , insertLine
-    , Detail(..), Length(..), Line(..), LineSegment(..), Point(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments
+    , Detail(..), Length(..), Line(..), LineSegment(..), Point(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments
     )
 
 {-|

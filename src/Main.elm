@@ -116,7 +116,12 @@ type Tool
         , listbox : Listbox
         , thosePoints : Those Point
         }
-    | CutAlongLineSegment (Maybe (That LineSegment)) (Maybe (That Detail))
+    | CutAlongLineSegment
+        { dropdownLineSegment : Dropdown
+        , thatLineSegment : Maybe (That LineSegment)
+        , dropdownDetail : Dropdown
+        , thatDetail : Maybe (That Detail)
+        }
       -- DETAILS
     | CounterClockwise (List (That Point))
 
@@ -195,7 +200,7 @@ isMirrorAt maybeTool =
 
 isCutAlongLineSegment maybeTool =
     case maybeTool of
-        Just (CutAlongLineSegment _ _) ->
+        Just (CutAlongLineSegment _) ->
             True
 
         _ ->
@@ -254,7 +259,7 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
-        CutAlongLineSegment _ _ ->
+        CutAlongLineSegment _ ->
             empty
 
         CounterClockwise targets ->
@@ -294,7 +299,7 @@ selectedLinesFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
-        CutAlongLineSegment _ _ ->
+        CutAlongLineSegment _ ->
             empty
 
         CounterClockwise _ ->
@@ -332,8 +337,8 @@ selectedLineSegmentsFromTool tool =
         MirrorAt _ ->
             empty
 
-        CutAlongLineSegment lineSegment _ ->
-            lineSegment
+        CutAlongLineSegment { thatLineSegment } ->
+            thatLineSegment
                 |> maybeToList
                 |> Those.fromList
 
@@ -372,8 +377,8 @@ selectedDetailsFromTool tool =
         MirrorAt _ ->
             empty
 
-        CutAlongLineSegment _ detail ->
-            detail
+        CutAlongLineSegment { thatDetail } ->
+            thatDetail
                 |> maybeToList
                 |> Those.fromList
 
@@ -655,11 +660,33 @@ viewTool pattern points lines lineSegments details tool =
                         thosePoints
                     ]
 
-            CutAlongLineSegment lineSegment detail ->
+            CutAlongLineSegment { dropdownLineSegment, thatLineSegment, dropdownDetail, thatDetail } ->
                 Element.column
                     [ Element.width Element.fill ]
-                    [ labeledInputRadio LineSegmentChanged "Line segment:" lineSegment lineSegments
-                    , labeledInputRadio DetailChanged "Detail:" detail details
+                    [ labeledDropdown
+                        (Pattern.getLineSegment pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a line segment.."
+                        DropdownLineSegmentMsg
+                        "cut-along-line-segment--line-segment"
+                        "Line segment:"
+                        lineSegments
+                        dropdownLineSegment
+                        thatLineSegment
+                    , labeledDropdown
+                        (Pattern.getDetail pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a detail.."
+                        DropdownDetailMsg
+                        "cut-along-line-segment--detail"
+                        "Detail:"
+                        details
+                        dropdownDetail
+                        thatDetail
                     ]
 
             CounterClockwise targets ->
@@ -886,7 +913,7 @@ labeledInputText focusedOnLoad onChange label name =
             Input.labelLeft
                 [ Element.centerY
                 , Element.paddingXY 5 0
-                , Element.width (Element.px 100)
+                , Element.width (Element.px 120)
                 ]
                 (Element.text label)
         }
@@ -908,7 +935,7 @@ labeledDropdown printOption placeholder msg id label options dropdown selected =
         , Element.width Element.fill
         ]
         [ Element.el
-            [ Element.width (Element.px 100)
+            [ Element.width (Element.px 120)
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
@@ -925,13 +952,22 @@ labeledDropdown printOption placeholder msg id label options dropdown selected =
         ]
 
 
+labeledListbox :
+    (That object -> String)
+    -> (Listbox.Msg (That object) -> Msg)
+    -> String
+    -> String
+    -> List ( That object, Entry object )
+    -> Listbox
+    -> Those object
+    -> Element Msg
 labeledListbox printOption msg id label options listbox selection =
     Element.row
         [ Element.paddingXY 5 7
         , Element.width Element.fill
         ]
         [ Element.el
-            [ Element.width (Element.px 100)
+            [ Element.width (Element.px 120)
             , Element.height Element.fill
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
@@ -973,7 +1009,7 @@ labeledInputRadio msg label selected options =
             Input.labelLeft
                 [ Element.centerY
                 , Element.paddingXY 5 0
-                , Element.width (Element.px 100)
+                , Element.width (Element.px 120)
                 ]
                 (Element.text label)
         , options = List.map option options
@@ -1492,14 +1528,14 @@ type Msg
       --
     | NameChanged String
     | DistanceChanged String
-    | LineSegmentChanged (That LineSegment)
-    | DetailChanged (That Detail)
     | PointAdded (That Point)
     | DropdownMsg (Dropdown.Msg (That Point))
     | DropdownAMsg (Dropdown.Msg (That Point))
     | DropdownBMsg (Dropdown.Msg (That Point))
     | DropdownLineMsg (Dropdown.Msg (That Line))
     | ListboxPointsMsg (Listbox.Msg (That Point))
+    | DropdownLineSegmentMsg (Dropdown.Msg (That LineSegment))
+    | DropdownDetailMsg (Dropdown.Msg (That Detail))
       --
     | CreateClicked
     | CancelClicked
@@ -1626,7 +1662,16 @@ update msg model =
             )
 
         CutAlongLineSegmentClicked ->
-            ( { model | tool = Just (CutAlongLineSegment Nothing Nothing) }
+            ( { model
+                | tool =
+                    Just <|
+                        CutAlongLineSegment
+                            { dropdownLineSegment = Dropdown.init
+                            , thatLineSegment = Nothing
+                            , dropdownDetail = Dropdown.init
+                            , thatDetail = Nothing
+                            }
+              }
             , Cmd.none
             )
 
@@ -1691,26 +1736,6 @@ update msg model =
 
                 Just (Below data) ->
                     ( { model | tool = Just (Below { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        LineSegmentChanged newLineSegment ->
-            case model.tool of
-                Just (CutAlongLineSegment _ detail) ->
-                    ( { model | tool = Just (CutAlongLineSegment (Just newLineSegment) detail) }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        DetailChanged newDetail ->
-            case model.tool of
-                Just (CutAlongLineSegment lineSegment _) ->
-                    ( { model | tool = Just (CutAlongLineSegment lineSegment (Just newDetail)) }
                     , Cmd.none
                     )
 
@@ -1982,6 +2007,62 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        DropdownLineSegmentMsg dropdownMsg ->
+            case model.tool of
+                Just (CutAlongLineSegment data) ->
+                    let
+                        ( newDropdown, dropdownCmd, newLineSegment ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.lineSegments model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownLineSegment
+                                data.thatLineSegment
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                CutAlongLineSegment
+                                    { data
+                                        | dropdownLineSegment = newDropdown
+                                        , thatLineSegment = newLineSegment
+                                    }
+                      }
+                    , Cmd.map DropdownLineSegmentMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DropdownDetailMsg dropdownMsg ->
+            case model.tool of
+                Just (CutAlongLineSegment data) ->
+                    let
+                        ( newDropdown, dropdownCmd, newDetail ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.details model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownDetail
+                                data.thatDetail
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                CutAlongLineSegment
+                                    { data
+                                        | dropdownDetail = newDropdown
+                                        , thatDetail = newDetail
+                                    }
+                      }
+                    , Cmd.map DropdownDetailMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         --
         CancelClicked ->
             ( { model | tool = Nothing }
@@ -2118,12 +2199,12 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (CutAlongLineSegment lineSegment detail) ->
-                    case ( lineSegment, detail ) of
-                        ( Just thatLineSegment, Just thatDetail ) ->
+                Just (CutAlongLineSegment { thatLineSegment, thatDetail }) ->
+                    case ( thatLineSegment, thatDetail ) of
+                        ( Just lineSegment, Just detail ) ->
                             let
                                 newTransformation =
-                                    Pattern.CutAlongLineSegment thatLineSegment thatDetail
+                                    Pattern.CutAlongLineSegment lineSegment detail
 
                                 newPattern =
                                     Pattern.insertTransformation newTransformation model.pattern
