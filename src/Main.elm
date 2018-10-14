@@ -1140,7 +1140,7 @@ viewVariables model =
                                     , Font.variant Font.smallCaps
                                     , Font.color (color (Color.rgb255 229 223 197))
                                     ]
-                                    (Element.text "computed")
+                                    (Element.text "value")
                           , width = Element.shrink
                           , view =
                                 \{ computed } ->
