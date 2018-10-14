@@ -63,6 +63,7 @@ import Axis2d exposing (Axis2d)
 import Circle2d exposing (Circle2d)
 import Dict exposing (Dict)
 import Direction2d
+import Expr exposing (Expr(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
@@ -295,44 +296,37 @@ addTransformationToDetail p transformationId transformation ( previousThat, entr
 ---- EXPRESSIONS
 
 
-type Expr
-    = Number Float
-    | Symbol String
-    | Measurement Measurement
-    | Sum Expr Expr
-    | Difference Expr Expr
-    | Product Expr Expr
-    | Quotient Expr Expr
-
-
-type Measurement
-    = Distance (That Point) (That Point)
-    | AngleOfLine (That Line)
-    | AngleBetween (That Point) (That Point) (That Point)
-
-
 compute : Dict String String -> Expr -> Result DoesNotCompute Float
 compute vars expr =
-    case expr of
-        Number f ->
-            Ok f
-
-        _ ->
-            Err (MissingVariable "TODO")
-
-
-parse : String -> Maybe Expr
-parse value =
-    case String.toFloat value of
-        Nothing ->
+    let
+        functions name args =
             Nothing
 
-        Just f ->
-            Just (Number f)
+        parsedVars =
+            vars
+                |> Dict.toList
+                |> List.filterMap
+                    (\( name, string ) ->
+                        case Expr.parse [] string of
+                            Err _ ->
+                                Nothing
+
+                            Ok varExpr ->
+                                Just ( name, varExpr )
+                    )
+                |> Dict.fromList
+    in
+    case Expr.evaluate functions parsedVars expr of
+        Nothing ->
+            Err TODO
+
+        Just float ->
+            Ok float
 
 
 type DoesNotCompute
-    = MissingVariable String
+    = TODO
+    | MissingVariable String
     | RecursiveExpression (List String)
 
 
@@ -758,7 +752,8 @@ variables (Pattern pattern) =
         |> List.filterMap
             (\( name, value ) ->
                 value
-                    |> parse
+                    |> Expr.parse []
+                    |> Result.toMaybe
                     |> Maybe.andThen (compute pattern.variables >> Result.toMaybe)
                     |> Maybe.map
                         (\computed ->
@@ -772,11 +767,11 @@ variables (Pattern pattern) =
 
 insertVariable : String -> String -> Pattern -> Pattern
 insertVariable name value ((Pattern data) as pattern) =
-    case parse value of
-        Nothing ->
+    case Expr.parse [] value of
+        Err _ ->
             pattern
 
-        Just _ ->
+        Ok _ ->
             Pattern { data | variables = Dict.insert name value data.variables }
 
 
