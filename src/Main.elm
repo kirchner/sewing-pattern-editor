@@ -6,6 +6,7 @@ import Browser exposing (Document)
 import Browser.Navigation exposing (Key)
 import Circle2d
 import Color
+import Css
 import Direction2d
 import Element exposing (Element)
 import Element.Background as Background
@@ -13,20 +14,21 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
-import Html
 import Html.Attributes
+import Html.Styled as Html
+import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
 import LineSegment2d exposing (LineSegment2d)
-import Listbox exposing (Listbox)
-import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Pattern exposing (Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
 import Store exposing (Entry)
+import Styled.Listbox as Listbox exposing (Listbox)
+import Styled.Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Svg exposing (Svg)
-import Svg.Attributes as Attributes
+import Svg.Attributes
 import Svg.Events
 import That exposing (That)
 import Those exposing (Those)
@@ -133,6 +135,131 @@ isLeftOf maybeTool =
 
         _ ->
             False
+
+
+toolDescription : Tool -> Element msg
+toolDescription tool =
+    let
+        simpleDistanceHorizontal kind =
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "point")
+                , Element.text " to the "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text kind)
+                , Element.text " another point."
+                ]
+
+        simpleDistanceVertical kind =
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "point")
+                , Element.text " "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text kind)
+                , Element.text " another point."
+                ]
+    in
+    case tool of
+        LeftOf _ ->
+            simpleDistanceHorizontal "left of"
+
+        RightOf _ ->
+            simpleDistanceHorizontal "right of"
+
+        Above _ ->
+            simpleDistanceVertical "above"
+
+        Below _ ->
+            simpleDistanceVertical "below"
+
+        AtAngle ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "point")
+                , Element.text " relative to another point by providing an "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "angle")
+                , Element.text " and a "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "distance")
+                , Element.text "."
+                ]
+
+        ThroughTwoPoints _ ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "line")
+                , Element.text " through "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "two points")
+                , Element.text "."
+                ]
+
+        FromTo _ ->
+            Element.paragraph []
+                [ Element.text "Connect "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "two points")
+                , Element.text " with a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "line segment")
+                , Element.text "."
+                ]
+
+        MirrorAt _ ->
+            Element.paragraph []
+                [ Element.text "Mirror a "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "set of points")
+                , Element.text " along a "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "line")
+                , Element.text "."
+                ]
+
+        CutAlongLineSegment _ ->
+            Element.paragraph []
+                [ Element.text "Cut a "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "detail")
+                , Element.text " into two along a "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "line segment")
+                , Element.text "."
+                ]
+
+        CounterClockwise _ ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "detail")
+                , Element.text " by connecting "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "points")
+                , Element.text " counterclockwise."
+                ]
 
 
 isRightOf maybeTool =
@@ -416,13 +543,21 @@ view : Model -> Document Msg
 view model =
     { title = "Sewing Pattern Editor"
     , body =
-        [ Element.layout
+        [ Element.layoutWith
+            { options =
+                [ Element.focusStyle
+                    { borderColor = Just (color (Color.rgb255 229 223 197))
+                    , backgroundColor = Nothing
+                    , shadow = Nothing
+                    }
+                ]
+            }
             [ Element.width Element.fill
             , Element.height Element.fill
             , Font.family
                 [ Font.external
-                    { name = "Dosis"
-                    , url = "https://fonts.googleapis.com/css?family=Dosis"
+                    { name = "Roboto"
+                    , url = "https://fonts.googleapis.com/css?family=Roboto"
                     }
                 , Font.sansSerif
                 ]
@@ -458,58 +593,47 @@ viewEditor model =
     Element.row
         [ Element.height Element.fill
         , Element.width Element.fill
-        , Element.inFront <|
-            Element.column
-                [ Element.alignRight
-                , Element.moveLeft 10
-                , Element.moveDown 10
-                , Background.color (color Color.lightGray)
-                , Border.rounded 4
-                , Border.width 2
-                , Border.color (color Color.lightGray)
-                , Element.onLeft <|
-                    case model.tool of
-                        Nothing ->
-                            Element.none
-
-                        Just tool ->
-                            Element.el
-                                [ Element.alignTop
-                                , Element.width (Element.px 400)
-                                , Element.moveLeft 10
-                                , Element.moveUp 2
-                                , Background.color (color Color.lightGray)
-                                , Border.rounded 4
-                                , Border.width 2
-                                , Border.color (color Color.lightGray)
-                                ]
-                                (viewTool
-                                    model.pattern
-                                    (Pattern.points model.pattern)
-                                    (Pattern.lines model.pattern)
-                                    (Pattern.lineSegments model.pattern)
-                                    (Pattern.details model.pattern)
-                                    tool
-                                )
-                ]
-                [ viewToolSelector model.tool
-                , horizontalLine
-                , Element.row
-                    [ Element.padding 5
-                    , Element.spacing 5
-                    , Element.width Element.fill
-                    ]
-                    [ buttonDanger "Clear pattern" ClearPatternClicked
-                    ]
-                ]
         ]
-        [ Element.el
+        [ Element.column
+            [ Element.height Element.fill
+            , Background.color gray900
+            ]
+            [ viewToolSelector model.tool
+            , Element.el [ Element.height Element.fill ] Element.none
+            , Element.row
+                [ Element.padding 5
+                , Element.spacing 5
+                , Element.width Element.fill
+                ]
+                [ buttonDanger "Clear pattern" ClearPatternClicked
+                ]
+            ]
+        , Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
+            , Element.inFront <|
+                case model.tool of
+                    Nothing ->
+                        Element.none
+
+                    Just tool ->
+                        Element.el
+                            [ Element.alignRight
+                            , Element.width (Element.px 300)
+                            , Background.color gray900
+                            ]
+                            (viewTool
+                                model.pattern
+                                (Pattern.points model.pattern)
+                                (Pattern.lines model.pattern)
+                                (Pattern.lineSegments model.pattern)
+                                (Pattern.details model.pattern)
+                                tool
+                            )
             ]
             (Element.html <|
                 Svg.svg
-                    [ Attributes.viewBox "-320 -320 640 640" ]
+                    [ Svg.Attributes.viewBox "-320 -320 640 640" ]
                     (drawPattern
                         model.hoveredPoint
                         selectedPoints
@@ -534,8 +658,10 @@ viewTool pattern points lines lineSegments details tool =
     let
         simpleDistanceTool toolId name dropdown anchor distance =
             Element.column
-                [ Element.width Element.fill ]
-                [ labeledInputText True NameChanged "Name:" name
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ labeledInputText True NameChanged "name" name
                 , labeledDropdown
                     (Pattern.getPoint pattern
                         >> Maybe.andThen .name
@@ -544,19 +670,24 @@ viewTool pattern points lines lineSegments details tool =
                     "Select a point.."
                     DropdownMsg
                     (toolId ++ "-anchor")
-                    "Anchor:"
+                    "anchor"
                     points
                     dropdown
                     anchor
-                , labeledInputText False DistanceChanged "Distance:" distance
+                , labeledInputText False DistanceChanged "distance" distance
                 ]
     in
     Element.column
         [ Element.width Element.fill
-        , Element.padding 5
-        , Element.spacing 10
+        , Element.padding 15
+        , Element.spacing 30
         ]
-        [ case tool of
+        [ Element.el
+            [ Font.size 12
+            , Font.color white
+            ]
+            (toolDescription tool)
+        , case tool of
             LeftOf { name, dropdown, thatAnchor, distance } ->
                 simpleDistanceTool "leftof" name dropdown thatAnchor distance
 
@@ -574,8 +705,10 @@ viewTool pattern points lines lineSegments details tool =
 
             ThroughTwoPoints { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
-                    [ Element.width Element.fill ]
-                    [ labeledInputText True NameChanged "Name:" name
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText True NameChanged "name" name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -584,7 +717,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a point.."
                         DropdownAMsg
                         "through-two-points-anchor-a"
-                        "1st anchor:"
+                        "1st anchor"
                         points
                         dropdownA
                         thatAnchorA
@@ -596,7 +729,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a point.."
                         DropdownBMsg
                         "through-two-points-anchor-b"
-                        "2st anchor:"
+                        "2st anchor"
                         points
                         dropdownB
                         thatAnchorB
@@ -604,8 +737,10 @@ viewTool pattern points lines lineSegments details tool =
 
             FromTo { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
-                    [ Element.width Element.fill ]
-                    [ labeledInputText True NameChanged "Name:" name
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText True NameChanged "name" name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
@@ -614,7 +749,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a point.."
                         DropdownAMsg
                         "from-to-anchor-a"
-                        "1st anchor:"
+                        "1st anchor"
                         points
                         dropdownA
                         thatAnchorA
@@ -626,7 +761,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a point.."
                         DropdownBMsg
                         "from-to-anchor-b"
-                        "2st anchor:"
+                        "2st anchor"
                         points
                         dropdownB
                         thatAnchorB
@@ -634,7 +769,9 @@ viewTool pattern points lines lineSegments details tool =
 
             MirrorAt { dropdown, thatLine, listbox, thosePoints } ->
                 Element.column
-                    [ Element.width Element.fill ]
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
                     [ labeledDropdown
                         (Pattern.getLine pattern
                             >> Maybe.andThen .name
@@ -643,7 +780,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a line.."
                         DropdownLineMsg
                         "mirror-at-line"
-                        "Line:"
+                        "line"
                         lines
                         dropdown
                         thatLine
@@ -654,7 +791,7 @@ viewTool pattern points lines lineSegments details tool =
                         )
                         ListboxPointsMsg
                         "mirror-at-points"
-                        "Targets:"
+                        "targets"
                         points
                         listbox
                         thosePoints
@@ -662,7 +799,9 @@ viewTool pattern points lines lineSegments details tool =
 
             CutAlongLineSegment { dropdownLineSegment, thatLineSegment, dropdownDetail, thatDetail } ->
                 Element.column
-                    [ Element.width Element.fill ]
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
                     [ labeledDropdown
                         (Pattern.getLineSegment pattern
                             >> Maybe.andThen .name
@@ -671,7 +810,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a line segment.."
                         DropdownLineSegmentMsg
                         "cut-along-line-segment--line-segment"
-                        "Line segment:"
+                        "line segment"
                         lineSegments
                         dropdownLineSegment
                         thatLineSegment
@@ -683,7 +822,7 @@ viewTool pattern points lines lineSegments details tool =
                         "Select a detail.."
                         DropdownDetailMsg
                         "cut-along-line-segment--detail"
-                        "Detail:"
+                        "detail"
                         details
                         dropdownDetail
                         thatDetail
@@ -695,7 +834,9 @@ viewTool pattern points lines lineSegments details tool =
                         button "" (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
                 in
                 Element.column
-                    [ Element.width Element.fill ]
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
                     [ Element.text
                         (targets
                             |> List.filterMap (Pattern.getPoint pattern)
@@ -717,15 +858,20 @@ viewTool pattern points lines lineSegments details tool =
 
 viewToolSelector maybeTool =
     Element.column
-        [ Element.padding 5
-        , Element.spacing 5
+        [ Element.padding 10
+        , Element.spacing 30
         , Element.width Element.fill
         ]
         [ Element.column
             [ Element.spacing 5
             , Element.width Element.fill
             ]
-            [ Element.el [ Font.size 16 ] (Element.text "Points:")
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "points")
             , Element.column
                 [ Element.spacing 5 ]
                 [ Element.row
@@ -734,7 +880,12 @@ viewToolSelector maybeTool =
                     ]
                     [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
                     , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
-                    , button "above" "Above" AboveClicked (isAbove maybeTool)
+                    ]
+                , Element.row
+                    [ Element.spacing 5
+                    , Element.width Element.fill
+                    ]
+                    [ button "above" "Above" AboveClicked (isAbove maybeTool)
                     , button "below" "Below" BelowClicked (isBelow maybeTool)
                     ]
                 , Element.row
@@ -749,7 +900,12 @@ viewToolSelector maybeTool =
             [ Element.spacing 5
             , Element.width Element.fill
             ]
-            [ Element.el [ Font.size 16 ] (Element.text "Lines:")
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "lines")
             , Element.column
                 [ Element.spacing 5
                 , Element.width Element.fill
@@ -761,7 +917,12 @@ viewToolSelector maybeTool =
             [ Element.spacing 5
             , Element.width Element.fill
             ]
-            [ Element.el [ Font.size 16 ] (Element.text "Line segments:")
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "line segments")
             , Element.column
                 [ Element.spacing 5
                 , Element.width Element.fill
@@ -773,7 +934,12 @@ viewToolSelector maybeTool =
             [ Element.spacing 5
             , Element.width Element.fill
             ]
-            [ Element.el [ Font.size 16 ] (Element.text "Transformations:")
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "transformations")
             , Element.row
                 [ Element.spacing 5
                 , Element.width Element.fill
@@ -786,7 +952,12 @@ viewToolSelector maybeTool =
             [ Element.spacing 5
             , Element.width Element.fill
             ]
-            [ Element.el [ Font.size 16 ] (Element.text "Details:")
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "details")
             , Element.column
                 [ Element.spacing 5
                 , Element.width Element.fill
@@ -807,20 +978,19 @@ button iconSrc label msg selected =
         [ Element.padding 5
         , Background.color <|
             if selected then
-                color Color.lightCharcoal
+                gray700
 
             else
-                color Color.gray
-        , Border.color (color Color.black)
+                gray800
+        , Border.color gray900
         , Border.width 1
-        , Border.rounded 3
         , Element.mouseOver
             [ Background.color <|
                 if selected then
-                    color Color.lightCharcoal
+                    gray700
 
                 else
-                    color Color.darkGray
+                    gray700
             ]
         ]
         { onPress = Just msg
@@ -840,12 +1010,13 @@ buttonDismiss label msg =
     Input.button
         [ Element.paddingXY 8 7
         , Element.width Element.fill
-        , Background.color (color Color.gray)
-        , Border.color (color Color.black)
+        , Font.size 14
+        , Background.color gray800
+        , Border.color gray800
         , Border.width 1
-        , Border.rounded 3
+        , Font.color white
         , Element.mouseOver
-            [ Background.color (color Color.darkGray) ]
+            [ Background.color gray700 ]
         ]
         { onPress = Just msg
         , label = Element.text label
@@ -856,16 +1027,14 @@ buttonDanger : String -> msg -> Element msg
 buttonDanger label msg =
     Input.button
         [ Element.paddingXY 8 7
-        , Element.width Element.fill
-        , Background.color (color Color.lightRed)
-        , Font.color (color Color.darkCharcoal)
-        , Border.color (color Color.black)
+        , Element.alignRight
+        , Font.size 14
+        , Background.color gray800
+        , Border.color gray800
         , Border.width 1
-        , Border.rounded 3
+        , Font.color white
         , Element.mouseOver
-            [ Background.color (color Color.red)
-            , Font.color (color Color.black)
-            ]
+            [ Background.color gray700 ]
         ]
         { onPress = Just msg
         , label = Element.text label
@@ -876,15 +1045,13 @@ buttonCreate : String -> msg -> Element msg
 buttonCreate label msg =
     Input.button
         [ Element.paddingXY 8 7
-        , Background.color (color Color.lightGreen)
-        , Font.color (color Color.darkCharcoal)
-        , Border.color (color Color.black)
+        , Background.color gray800
+        , Border.color gray800
         , Border.width 1
-        , Border.rounded 3
+        , Font.color white
+        , Font.size 14
         , Element.mouseOver
-            [ Background.color (color Color.green)
-            , Font.color (color Color.black)
-            ]
+            [ Background.color gray700 ]
         ]
         { onPress = Just msg
         , label = Element.text label
@@ -895,8 +1062,13 @@ labeledInputText : Bool -> (String -> msg) -> String -> String -> Element msg
 labeledInputText focusedOnLoad onChange label name =
     let
         defaultAttrs =
-            [ Element.paddingXY 8 7
-            , Element.width Element.fill
+            [ Element.width Element.fill
+            , Element.padding 5
+            , Font.size 16
+            , Font.color white
+            , Background.color gray700
+            , Border.width 1
+            , Border.color gray700
             ]
     in
     Input.text
@@ -910,10 +1082,10 @@ labeledInputText focusedOnLoad onChange label name =
         , text = name
         , placeholder = Nothing
         , label =
-            Input.labelLeft
-                [ Element.centerY
-                , Element.paddingXY 5 0
-                , Element.width (Element.px 120)
+            Input.labelAbove
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.text label)
         }
@@ -930,25 +1102,29 @@ labeledDropdown :
     -> Maybe (That object)
     -> Element Msg
 labeledDropdown printOption placeholder msg id label options dropdown selected =
-    Element.row
-        [ Element.paddingXY 5 7
-        , Element.width Element.fill
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 3
         ]
         [ Element.el
-            [ Element.width (Element.px 120)
+            [ Font.size 12
+            , Font.color (color (Color.rgb255 229 223 197))
+            , Font.variant Font.smallCaps
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
             (Element.text label)
-        , Element.html <|
-            Html.map msg <|
-                Dropdown.view (dropdownViewConfig printOption placeholder)
-                    { id = id
-                    , labelledBy = id ++ "-label"
-                    }
-                    (List.map (Tuple.first >> Listbox.option) options)
-                    dropdown
-                    selected
+        , Element.el [ Element.width Element.fill ] <|
+            Element.html <|
+                Html.toUnstyled <|
+                    Html.map msg <|
+                        Dropdown.view (dropdownViewConfig printOption placeholder)
+                            { id = id
+                            , labelledBy = id ++ "-label"
+                            }
+                            (List.map (Tuple.first >> Listbox.option) options)
+                            dropdown
+                            selected
         ]
 
 
@@ -962,26 +1138,29 @@ labeledListbox :
     -> Those object
     -> Element Msg
 labeledListbox printOption msg id label options listbox selection =
-    Element.row
-        [ Element.paddingXY 5 7
-        , Element.width Element.fill
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 3
         ]
         [ Element.el
-            [ Element.width (Element.px 120)
-            , Element.height Element.fill
+            [ Font.size 12
+            , Font.color (color (Color.rgb255 229 223 197))
+            , Font.variant Font.smallCaps
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
             (Element.text label)
-        , Element.html <|
-            Listbox.view (listboxViewConfig printOption)
-                { id = id
-                , labelledBy = id ++ "-label"
-                , lift = msg
-                }
-                (List.map (Tuple.first >> Listbox.option) options)
-                listbox
-                (Those.toList selection)
+        , Element.el [ Element.width Element.fill ] <|
+            Element.html <|
+                Html.toUnstyled <|
+                    Listbox.view (listboxViewConfig printOption)
+                        { id = id
+                        , labelledBy = id ++ "-label"
+                        , lift = msg
+                        }
+                        (List.map (Tuple.first >> Listbox.option) options)
+                        listbox
+                        (Those.toList selection)
         ]
 
 
@@ -1030,6 +1209,30 @@ color =
     Element.fromRgb << Color.toRgba
 
 
+white =
+    color (Color.rgb255 229 223 197)
+
+
+green900 =
+    color (Color.rgb255 27 94 32)
+
+
+gray700 =
+    color (Color.rgb255 97 97 97)
+
+
+gray750 =
+    color (Color.rgb255 82 82 82)
+
+
+gray800 =
+    color (Color.rgb255 66 66 66)
+
+
+gray900 =
+    color (Color.rgb255 33 33 33)
+
+
 
 ---- DROPDOWN CONFIG
 
@@ -1050,32 +1253,38 @@ dropdownUpdateConfig =
 dropdownViewConfig printOption placeholder =
     Dropdown.viewConfig That.hash
         { container =
-            [ Html.Attributes.style "flex-grow" "10000"
-            , Html.Attributes.style "display" "flex"
-            , Html.Attributes.style "position" "relative"
+            [ Attributes.css
+                [ Css.displayFlex
+                , Css.flexGrow (Css.num 10000)
+                , Css.position Css.relative
+                ]
             ]
         , button =
             \{ maybeSelection } ->
                 { attributes =
-                    [ Html.Attributes.style "margin" "0"
-                    , Html.Attributes.style "padding-bottom" "7px"
-                    , Html.Attributes.style "padding-left" "8px"
-                    , Html.Attributes.style "padding-right" "8px"
-                    , Html.Attributes.style "padding-top" "7px"
-                    , Html.Attributes.style "flex-grow" "10000"
-                    , Html.Attributes.style "display" "flex"
-                    , Html.Attributes.style "border-color" "rgb(0, 0, 0)"
-                    , Html.Attributes.style "border-left-radius" "3px"
-                    , Html.Attributes.style "border-right-radius" "3px"
-                    , Html.Attributes.style "border-style" "solid"
-                    , Html.Attributes.style "border-width" "0.666667px"
-                    , Html.Attributes.style "border-radius" "3px"
-                    , Html.Attributes.style "box-sizing" "border-box"
-                    , Html.Attributes.style "font-family" "\"Dosis\", sans-serif"
-                    , Html.Attributes.style "font-size" "20px"
-                    , Html.Attributes.style "font-style" "normal"
-                    , Html.Attributes.style "font-weight" "400"
-                    , Html.Attributes.style "line-height" "20px"
+                    [ Attributes.css
+                        [ Css.displayFlex
+                        , Css.flexGrow (Css.num 10000)
+                        , Css.margin Css.zero
+                        , Css.paddingLeft (Css.px 5)
+                        , Css.paddingRight (Css.px 5)
+                        , Css.paddingBottom (Css.px 5)
+                        , Css.paddingTop (Css.px 5)
+                        , Css.borderColor (Css.rgb 97 97 97)
+                        , Css.borderStyle Css.solid
+                        , Css.borderWidth (Css.px 1)
+                        , Css.borderRadius (Css.px 3)
+                        , Css.boxSizing Css.borderBox
+                        , Css.fontFamilies [ "Roboto", "sans-serif" ]
+                        , Css.fontSize (Css.px 16)
+                        , Css.fontStyle Css.normal
+                        , Css.fontWeight (Css.int 400)
+                        , Css.lineHeight (Css.px 20)
+                        , Css.backgroundColor (Css.rgb 97 97 97)
+                        , Css.color (Css.rgb 229 223 197)
+                        , Css.focus
+                            [ Css.borderColor (Css.rgb 229 223 197) ]
+                        ]
                     ]
                 , children =
                     [ Html.text <|
@@ -1088,37 +1297,48 @@ dropdownViewConfig printOption placeholder =
                     ]
                 }
         , ul =
-            [ Html.Attributes.style "z-index" "2000"
-            , Html.Attributes.style "width" "100%"
-            , Html.Attributes.style "max-height" "20rem"
-            , Html.Attributes.style "overflow-y" "auto"
-            , Html.Attributes.style "padding" "0"
-            , Html.Attributes.style "margin" "0"
-            , Html.Attributes.style "background" "#fff"
-            , Html.Attributes.style "border" "1px solid #ccc"
-            , Html.Attributes.style "box-sizing" "border-box"
-            , Html.Attributes.style "top" "100%"
+            [ Attributes.css
+                [ Css.zIndex (Css.int 2000)
+                , Css.top (Css.pct 100)
+                , Css.width (Css.pct 100)
+                , Css.maxHeight (Css.rem 20)
+                , Css.overflowY Css.auto
+                , Css.padding Css.zero
+                , Css.margin Css.zero
+                , Css.color (Css.rgb 229 223 197)
+                , Css.backgroundColor (Css.rgb 66 66 66)
+                , Css.borderWidth (Css.px 1)
+                , Css.borderStyle Css.solid
+                , Css.borderColor (Css.rgb 66 66 66)
+                , Css.borderRadius (Css.px 3)
+                , Css.boxSizing Css.borderBox
+                , Css.focus
+                    [ Css.borderColor (Css.rgb 229 223 197) ]
+                ]
             ]
         , liOption =
             \{ focused, hovered } thatPoint ->
                 let
                     defaultAttrs =
-                        [ Html.Attributes.style "display" "block"
-                        , Html.Attributes.style "cursor" "pointer"
-                        , Html.Attributes.style "line-height" "1rem"
-                        , Html.Attributes.style "padding" "10px"
+                        [ Attributes.css
+                            [ Css.display Css.block
+                            , Css.cursor Css.pointer
+                            , Css.lineHeight (Css.rem 1)
+                            , Css.padding (Css.px 10)
+                            , Css.fontSize (Css.px 16)
+                            ]
                         ]
                 in
                 { attributes =
                     if focused then
-                        [ Html.Attributes.style "background-color" "#f5fafd"
-                        , Html.Attributes.style "color" "#495c68"
+                        [ Attributes.css
+                            [ Css.backgroundColor (Css.rgb 97 97 97) ]
                         ]
                             ++ defaultAttrs
 
                     else if hovered then
-                        [ Html.Attributes.style "background-color" "rgb(250, 250, 250)"
-                        , Html.Attributes.style "color" "#495c68"
+                        [ Attributes.css
+                            [ Css.backgroundColor (Css.rgb 82 82 82) ]
                         ]
                             ++ defaultAttrs
 
@@ -1150,36 +1370,47 @@ listboxUpdateConfig =
 listboxViewConfig printOption =
     Listbox.viewConfig That.hash
         { ul =
-            [ Html.Attributes.style "width" "100%"
-            , Html.Attributes.style "max-height" "10rem"
-            , Html.Attributes.style "overflow-y" "auto"
-            , Html.Attributes.style "padding" "0"
-            , Html.Attributes.style "margin" "0"
-            , Html.Attributes.style "background" "#fff"
-            , Html.Attributes.style "border" "1px solid #ccc"
-            , Html.Attributes.style "box-sizing" "border-box"
-            , Html.Attributes.style "top" "100%"
+            [ Attributes.css
+                [ Css.top (Css.pct 100)
+                , Css.width (Css.pct 100)
+                , Css.maxHeight (Css.rem 10)
+                , Css.overflowY Css.auto
+                , Css.padding Css.zero
+                , Css.margin Css.zero
+                , Css.backgroundColor (Css.rgb 66 66 66)
+                , Css.boxSizing Css.borderBox
+                , Css.borderWidth (Css.px 1)
+                , Css.borderStyle Css.solid
+                , Css.borderColor (Css.rgb 66 66 66)
+                , Css.borderRadius (Css.px 3)
+                , Css.color (Css.rgb 229 223 197)
+                , Css.focus
+                    [ Css.borderColor (Css.rgb 229 223 197) ]
+                ]
             ]
         , liOption =
             \{ selected, focused, hovered } thatPoint ->
                 let
                     defaultAttrs =
-                        [ Html.Attributes.style "display" "block"
-                        , Html.Attributes.style "cursor" "pointer"
-                        , Html.Attributes.style "line-height" "1rem"
-                        , Html.Attributes.style "padding" "10px"
+                        [ Attributes.css
+                            [ Css.display Css.block
+                            , Css.cursor Css.pointer
+                            , Css.lineHeight (Css.rem 1)
+                            , Css.padding (Css.px 10)
+                            , Css.fontSize (Css.px 16)
+                            ]
                         ]
                 in
                 { attributes =
                     if focused then
-                        [ Html.Attributes.style "background-color" "#f5fafd"
-                        , Html.Attributes.style "color" "#495c68"
+                        [ Attributes.css
+                            [ Css.backgroundColor (Css.rgb 97 97 97) ]
                         ]
                             ++ defaultAttrs
 
                     else if hovered then
-                        [ Html.Attributes.style "background-color" "rgb(250, 250, 250)"
-                        , Html.Attributes.style "color" "#495c68"
+                        [ Attributes.css
+                            [ Css.backgroundColor (Css.rgb 82 82 82) ]
                         ]
                             ++ defaultAttrs
 
@@ -1187,16 +1418,17 @@ listboxViewConfig printOption =
                         defaultAttrs
                 , children =
                     [ Html.i
-                        [ Html.Attributes.class "fas"
-                        , Html.Attributes.class "fa-check"
-                        , Html.Attributes.style "font-size" "12px"
-                        , Html.Attributes.style "padding-right" "5px"
-                        , Html.Attributes.style "color" <|
-                            if selected then
-                                "inherit"
+                        [ Attributes.class "fas"
+                        , Attributes.class "fa-check"
+                        , Attributes.css
+                            [ Css.fontSize (Css.px 12)
+                            , Css.paddingRight (Css.px 5)
+                            , if selected then
+                                Css.color Css.inherit
 
-                            else
-                                "transparent"
+                              else
+                                Css.color Css.transparent
+                            ]
                         ]
                         []
                     , Html.text (printOption thatPoint)
@@ -1228,17 +1460,17 @@ drawPattern hoveredPoint selectedPoints selectedLines selectedLineSegments selec
     List.concat
         [ [ Svg.defs []
                 [ Svg.marker
-                    [ Attributes.id "arrow"
-                    , Attributes.viewBox "0 0 10 10"
-                    , Attributes.refX "5"
-                    , Attributes.refY "5"
-                    , Attributes.markerWidth "6"
-                    , Attributes.markerHeight "6"
-                    , Attributes.orient "auto-start-reverse"
-                    , Attributes.fill "blue"
+                    [ Svg.Attributes.id "arrow"
+                    , Svg.Attributes.viewBox "0 0 10 10"
+                    , Svg.Attributes.refX "5"
+                    , Svg.Attributes.refY "5"
+                    , Svg.Attributes.markerWidth "6"
+                    , Svg.Attributes.markerHeight "6"
+                    , Svg.Attributes.orient "auto-start-reverse"
+                    , Svg.Attributes.fill "blue"
                     ]
                     [ Svg.path
-                        [ Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
+                        [ Svg.Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
                         []
                     ]
                 ]
@@ -1318,15 +1550,15 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
             Svg.g
                 []
                 [ Svg.lineSegment2d
-                    [ Attributes.stroke "blue"
-                    , Attributes.strokeDasharray "4"
-                    , Attributes.strokeWidth "1"
+                    [ Svg.Attributes.stroke "blue"
+                    , Svg.Attributes.strokeDasharray "4"
+                    , Svg.Attributes.strokeWidth "1"
                     ]
                     (LineSegment2d.fromEndpoints
                         ( p2d, otherPoint )
                     )
                 , Svg.circle2d
-                    [ Attributes.fill "blue" ]
+                    [ Svg.Attributes.fill "blue" ]
                     (Circle2d.withRadius 2 p2d)
                 ]
 
@@ -1340,7 +1572,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
             , (case maybePreviousPoint of
                 Nothing ->
                     Svg.g []
-                        [ Svg.circle2d [ Attributes.fill "blue" ]
+                        [ Svg.circle2d [ Svg.Attributes.fill "blue" ]
                             (Circle2d.withRadius 2 point)
                         ]
 
@@ -1385,26 +1617,26 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                     in
                     Svg.g []
                         [ Svg.mask
-                            [ Attributes.id ("circleMask-" ++ id) ]
+                            [ Svg.Attributes.id ("circleMask-" ++ id) ]
                             [ Svg.boundingBox2d
-                                [ Attributes.fill "white" ]
+                                [ Svg.Attributes.fill "white" ]
                                 (QuadraticSpline2d.boundingBox spline)
                             , Svg.circle2d
-                                [ Attributes.fill "black" ]
+                                [ Svg.Attributes.fill "black" ]
                                 (Circle2d.withRadius 15 startPoint)
                             , Svg.circle2d
-                                [ Attributes.fill "black" ]
+                                [ Svg.Attributes.fill "black" ]
                                 (Circle2d.withRadius 15 endPoint)
                             ]
                         , Svg.quadraticSpline2d
-                            [ Attributes.stroke "blue"
-                            , Attributes.strokeDasharray "4"
-                            , Attributes.fill "none"
-                            , Attributes.markerEnd "url(#arrow)"
-                            , Attributes.mask ("url(#circleMask-" ++ id ++ ")")
+                            [ Svg.Attributes.stroke "blue"
+                            , Svg.Attributes.strokeDasharray "4"
+                            , Svg.Attributes.fill "none"
+                            , Svg.Attributes.markerEnd "url(#arrow)"
+                            , Svg.Attributes.mask ("url(#circleMask-" ++ id ++ ")")
                             ]
                             spline
-                        , Svg.circle2d [ Attributes.fill "blue" ]
+                        , Svg.circle2d [ Svg.Attributes.fill "blue" ]
                             (Circle2d.withRadius 2 point)
                         ]
               )
@@ -1413,12 +1645,12 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
     in
     Svg.g []
         [ Svg.circle2d
-            [ Attributes.fill "black" ]
+            [ Svg.Attributes.fill "black" ]
             (Circle2d.withRadius 2 point2d)
         , if selected then
             Svg.circle2d
-                [ Attributes.stroke "blue"
-                , Attributes.fill "none"
+                [ Svg.Attributes.stroke "blue"
+                , Svg.Attributes.fill "none"
                 ]
                 (Circle2d.withRadius 5 point2d)
 
@@ -1429,17 +1661,17 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
             |> Maybe.map
                 (\name ->
                     Svg.text_
-                        [ Attributes.x (String.fromFloat x)
-                        , Attributes.y (String.fromFloat y)
-                        , Attributes.dy "-5"
-                        , Attributes.style "font: 10px sans-serif;"
-                        , Attributes.textAnchor "middle"
+                        [ Svg.Attributes.x (String.fromFloat x)
+                        , Svg.Attributes.y (String.fromFloat y)
+                        , Svg.Attributes.dy "-5"
+                        , Svg.Attributes.style "font: 10px sans-serif;"
+                        , Svg.Attributes.textAnchor "middle"
                         ]
                         [ Svg.text name ]
                 )
             |> Maybe.withDefault (Svg.text "")
         , Svg.circle2d
-            [ Attributes.fill "transparent"
+            [ Svg.Attributes.fill "transparent"
             , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
             , Svg.Events.onMouseOut (PointHovered Nothing)
             ]
@@ -1454,7 +1686,7 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
             Those.member thatLine selectedLines
     in
     Svg.lineSegment2d
-        [ Attributes.stroke <|
+        [ Svg.Attributes.stroke <|
             if selected then
                 "blue"
 
@@ -1475,7 +1707,7 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
             Those.member thatLineSegment selectedLineSegments
     in
     Svg.lineSegment2d
-        [ Attributes.stroke <|
+        [ Svg.Attributes.stroke <|
             if selected then
                 "blue"
 
@@ -1492,14 +1724,14 @@ drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
             Those.member thatDetail selectedDetails
     in
     Svg.polygon2d
-        [ Attributes.fill "lightGrey"
-        , Attributes.stroke <|
+        [ Svg.Attributes.fill "lightGrey"
+        , Svg.Attributes.stroke <|
             if selected then
                 "blue"
 
             else
                 "black"
-        , Attributes.strokeWidth "1"
+        , Svg.Attributes.strokeWidth "1"
         ]
         polygon2d
 
