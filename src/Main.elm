@@ -83,9 +83,21 @@ port patternReceived : (Value -> msg) -> Sub msg
 
 type alias Model =
     { pattern : Pattern
-    , tool : Maybe Tool
     , hoveredPoint : Maybe (That Point)
+    , dialog : Dialog
+
+    -- RIGHT TOOLBAR
+    , variablesVisible : Bool
     }
+
+
+type Dialog
+    = NoDialog
+    | Tool Tool
+    | CreateVariable
+        { name : String
+        , value : String
+        }
 
 
 type Tool
@@ -548,8 +560,9 @@ init flags url key =
     ( { pattern =
             Pattern.empty
                 |> Pattern.insertPoint (Just "origin") Pattern.Origin
-      , tool = Nothing
       , hoveredPoint = Nothing
+      , dialog = NoDialog
+      , variablesVisible = True
       }
     , requestPattern ()
     )
@@ -589,81 +602,163 @@ view model =
 
 viewEditor : Model -> Element Msg
 viewEditor model =
-    let
-        selectedPoints =
-            model.tool
-                |> Maybe.map selectedPointsFromTool
-                |> Maybe.withDefault (Those.fromList [])
-
-        selectedLines =
-            model.tool
-                |> Maybe.map selectedLinesFromTool
-                |> Maybe.withDefault (Those.fromList [])
-
-        selectedLineSegments =
-            model.tool
-                |> Maybe.map selectedLineSegmentsFromTool
-                |> Maybe.withDefault (Those.fromList [])
-
-        selectedDetails =
-            model.tool
-                |> Maybe.map selectedDetailsFromTool
-                |> Maybe.withDefault (Those.fromList [])
-    in
     Element.row
         [ Element.height Element.fill
         , Element.width Element.fill
         ]
-        [ Element.column
-            [ Element.height Element.fill
-            , Background.color gray900
-            ]
-            [ viewToolSelector model.tool
-            , Element.el [ Element.height Element.fill ] Element.none
-            , Element.row
-                [ Element.padding 5
-                , Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ buttonDanger "Clear pattern" ClearPatternClicked
-                ]
-            ]
-        , Element.el
-            [ Element.width Element.fill
-            , Element.height Element.fill
-            , Element.inFront <|
-                case model.tool of
-                    Nothing ->
-                        Element.none
-
-                    Just tool ->
-                        Element.el
-                            [ Element.alignRight
-                            , Element.width (Element.px 300)
-                            , Background.color gray900
-                            ]
-                            (viewTool
-                                model.pattern
-                                (Pattern.points model.pattern)
-                                (Pattern.lines model.pattern)
-                                (Pattern.lineSegments model.pattern)
-                                (Pattern.details model.pattern)
-                                tool
-                            )
-            ]
-            (Element.html <|
-                Svg.svg
-                    [ Svg.Attributes.viewBox "-320 -320 640 640" ]
-                    (drawPattern
-                        model.hoveredPoint
-                        selectedPoints
-                        selectedLines
-                        selectedLineSegments
-                        selectedDetails
-                        model.pattern
-                    )
-            )
+        [ viewLeftToolbar model
+        , viewWorkspace model
+        , viewRightToolbar model
         ]
+
+
+viewLeftToolbar model =
+    Element.column
+        [ Element.height Element.fill
+        , Background.color gray900
+        ]
+        [ viewToolSelector <|
+            case model.dialog of
+                Tool tool ->
+                    Just tool
+
+                _ ->
+                    Nothing
+        , Element.el [ Element.height Element.fill ] Element.none
+        , Element.row
+            [ Element.padding 5
+            , Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ buttonDanger "Clear pattern" ClearPatternClicked
+            ]
+        ]
+
+
+viewWorkspace model =
+    let
+        maybeTool =
+            case model.dialog of
+                Tool tool ->
+                    Just tool
+
+                _ ->
+                    Nothing
+
+        selectedPoints =
+            maybeTool
+                |> Maybe.map selectedPointsFromTool
+                |> Maybe.withDefault (Those.fromList [])
+
+        selectedLines =
+            maybeTool
+                |> Maybe.map selectedLinesFromTool
+                |> Maybe.withDefault (Those.fromList [])
+
+        selectedLineSegments =
+            maybeTool
+                |> Maybe.map selectedLineSegmentsFromTool
+                |> Maybe.withDefault (Those.fromList [])
+
+        selectedDetails =
+            maybeTool
+                |> Maybe.map selectedDetailsFromTool
+                |> Maybe.withDefault (Those.fromList [])
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.inFront (viewDialog model.pattern model.dialog)
+        ]
+        (Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-320 -320 640 640" ]
+                (drawPattern
+                    model.hoveredPoint
+                    selectedPoints
+                    selectedLines
+                    selectedLineSegments
+                    selectedDetails
+                    model.pattern
+                )
+        )
+
+
+viewRightToolbar model =
+    Element.column
+        [ Element.width (Element.px 400)
+        , Element.height Element.fill
+        , Background.color gray900
+        ]
+        [ viewVariables model
+        ]
+
+
+
+-- DIALOG
+
+
+viewDialog pattern dialog =
+    case dialog of
+        NoDialog ->
+            Element.none
+
+        Tool tool ->
+            Element.el
+                [ Element.alignRight
+                , Element.moveLeft 40
+                , Element.width (Element.px 300)
+                , Background.color gray900
+                ]
+                (viewTool pattern
+                    (Pattern.points pattern)
+                    (Pattern.lines pattern)
+                    (Pattern.lineSegments pattern)
+                    (Pattern.details pattern)
+                    tool
+                )
+
+        CreateVariable { name, value } ->
+            Element.el
+                [ Element.alignRight
+                , Element.moveLeft 40
+                , Element.width (Element.px 500)
+                , Background.color gray900
+                ]
+                (Element.column
+                    [ Element.width Element.fill
+                    , Element.padding 15
+                    , Element.spacing 15
+                    ]
+                    [ Element.paragraph
+                        [ Font.size 12
+                        , Font.color white
+                        ]
+                        [ Element.text "Create a new "
+                        , Element.el
+                            [ Font.bold ]
+                            (Element.text "variable")
+                        ]
+                    , Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing 10
+                        ]
+                        [ labeledInputText VariableNameChanged "name" name
+                        , labeledInputText VariableValueChanged "value" value
+                        ]
+                    , Element.row
+                        [ Element.alignRight
+                        , Element.spacing 5
+                        ]
+                        [ buttonCreate "Create" CreateClicked
+                        , buttonDismiss "Cancel" CancelClicked
+                        ]
+                    ]
+                )
+
+
+
+-- TOOL
 
 
 viewTool :
@@ -985,6 +1080,123 @@ viewToolSelector maybeTool =
                 [ button "counter_clockwise" "Counter clockwise" CounterClockwiseClicked (isCounterClockwise maybeTool)
                 ]
             ]
+        ]
+
+
+
+-- VARIABLES
+
+
+viewVariables model =
+    Element.column
+        [ Element.width Element.fill
+        , Element.padding 10
+        , Element.spacing 10
+        ]
+        [ Input.button
+            [ Element.width Element.fill
+            , Element.padding 5
+            , Border.color gray900
+            , Border.width 1
+            , Element.mouseOver
+                [ Background.color gray800 ]
+            ]
+            { onPress = Just VariablesRulerClicked
+            , label =
+                Element.row
+                    [ Element.width Element.fill
+                    ]
+                    [ Element.el
+                        [ Element.width Element.fill
+                        , Font.size 16
+                        , Font.variant Font.smallCaps
+                        , Font.color (color (Color.rgb255 229 223 197))
+                        ]
+                        (Element.text "variables")
+                    , Element.html <|
+                        Html.toUnstyled <|
+                            Html.i
+                                [ Attributes.class "fas"
+                                , Attributes.class <|
+                                    if model.variablesVisible then
+                                        "fa-chevron-up"
+
+                                    else
+                                        "fa-chevron-down"
+                                , Attributes.css
+                                    [ Css.fontSize (Css.px 12)
+                                    , Css.paddingRight (Css.px 5)
+                                    , Css.color (Css.rgb 229 223 197)
+                                    ]
+                                ]
+                                []
+                    ]
+            }
+        , if model.variablesVisible then
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 15
+                , Element.padding 5
+                ]
+                [ Element.table
+                    [ Element.spacing 7 ]
+                    { data = List.sortBy .name (Pattern.variables model.pattern)
+                    , columns =
+                        [ { header =
+                                Element.el
+                                    [ Font.size 12
+                                    , Font.variant Font.smallCaps
+                                    , Font.color (color (Color.rgb255 229 223 197))
+                                    ]
+                                    (Element.text "name")
+                          , width = Element.fill
+                          , view =
+                                \{ name } ->
+                                    Element.el
+                                        [ Font.size 14
+                                        , Font.color (color (Color.rgb255 229 223 197))
+                                        ]
+                                        (Element.text name)
+                          }
+                        , { header =
+                                Element.el
+                                    [ Font.size 12
+                                    , Font.variant Font.smallCaps
+                                    , Font.color (color (Color.rgb255 229 223 197))
+                                    ]
+                                    (Element.text "computed")
+                          , width = Element.px 80
+                          , view =
+                                \{ computed } ->
+                                    Element.el
+                                        [ Font.size 14
+                                        , Font.color (color (Color.rgb255 229 223 197))
+                                        ]
+                                        (Element.text (String.fromFloat computed))
+                          }
+                        ]
+                    }
+                , Element.row
+                    [ Element.width Element.fill ]
+                    [ Input.button
+                        [ Element.alignRight
+                        , Element.paddingXY 8 7
+                        , Font.size 14
+                        , Background.color gray800
+                        , Border.color gray800
+                        , Border.width 1
+                        , Font.color white
+                        , Element.mouseOver
+                            [ Background.color gray700 ]
+                        ]
+                        { onPress = Just VariableCreateClicked
+                        , label = Element.text "Create variable"
+                        }
+                    ]
+                ]
+
+          else
+            Element.none
         ]
 
 
@@ -1789,6 +2001,11 @@ type Msg
       -- STORAGE
     | ClearPatternClicked
     | PatternReceived Value
+      -- RIGHT TOOLBAR
+    | VariablesRulerClicked
+    | VariableCreateClicked
+    | VariableNameChanged String
+    | VariableValueChanged String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1800,8 +2017,8 @@ update msg model =
         -- POINTS
         LeftOfClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         LeftOf
                             { name = ""
                             , dropdown = Dropdown.init
@@ -1815,8 +2032,8 @@ update msg model =
 
         RightOfClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         RightOf
                             { name = ""
                             , dropdown = Dropdown.init
@@ -1830,8 +2047,8 @@ update msg model =
 
         AboveClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         Above
                             { name = ""
                             , dropdown = Dropdown.init
@@ -1845,8 +2062,8 @@ update msg model =
 
         BelowClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         Below
                             { name = ""
                             , dropdown = Dropdown.init
@@ -1859,7 +2076,7 @@ update msg model =
             )
 
         AtAngleClicked ->
-            ( { model | tool = Just AtAngle }
+            ( { model | dialog = Tool AtAngle }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             )
@@ -1867,8 +2084,8 @@ update msg model =
         -- LINES
         ThroughTwoPointsClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         ThroughTwoPoints
                             { name = ""
                             , dropdownA = Dropdown.init
@@ -1884,8 +2101,8 @@ update msg model =
         -- LINE SEGMENTS
         FromToClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         FromTo
                             { name = ""
                             , dropdownA = Dropdown.init
@@ -1901,8 +2118,8 @@ update msg model =
         -- TRANSFORMATIONS
         MirrorAtClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         MirrorAt
                             { dropdown = Dropdown.init
                             , thatLine = Nothing
@@ -1916,8 +2133,8 @@ update msg model =
 
         CutAlongLineSegmentClicked ->
             ( { model
-                | tool =
-                    Just <|
+                | dialog =
+                    Tool <|
                         CutAlongLineSegment
                             { dropdownLineSegment = Dropdown.init
                             , thatLineSegment = Nothing
@@ -1931,7 +2148,7 @@ update msg model =
 
         -- DETAILS
         CounterClockwiseClicked ->
-            ( { model | tool = Just (CounterClockwise []) }
+            ( { model | dialog = Tool (CounterClockwise []) }
             , Cmd.none
             )
 
@@ -1939,27 +2156,27 @@ update msg model =
         NameChanged newName ->
             let
                 updateName toTool data =
-                    ( { model | tool = Just (toTool { data | name = newName }) }
+                    ( { model | dialog = Tool (toTool { data | name = newName }) }
                     , Cmd.none
                     )
             in
-            case model.tool of
-                Just (LeftOf data) ->
+            case model.dialog of
+                Tool (LeftOf data) ->
                     updateName LeftOf data
 
-                Just (RightOf data) ->
+                Tool (RightOf data) ->
                     updateName RightOf data
 
-                Just (Above data) ->
+                Tool (Above data) ->
                     updateName Above data
 
-                Just (Below data) ->
+                Tool (Below data) ->
                     updateName Below data
 
-                Just (ThroughTwoPoints data) ->
+                Tool (ThroughTwoPoints data) ->
                     updateName ThroughTwoPoints data
 
-                Just (FromTo data) ->
+                Tool (FromTo data) ->
                     updateName FromTo data
 
                 _ ->
@@ -1968,30 +2185,30 @@ update msg model =
         DistanceChanged newDistance ->
             let
                 updateDistance toTool data =
-                    ( { model | tool = Just (toTool { data | distance = newDistance }) }
+                    ( { model | dialog = Tool (toTool { data | distance = newDistance }) }
                     , Cmd.none
                     )
             in
-            case model.tool of
-                Just (LeftOf data) ->
+            case model.dialog of
+                Tool (LeftOf data) ->
                     updateDistance LeftOf data
 
-                Just (RightOf data) ->
+                Tool (RightOf data) ->
                     updateDistance RightOf data
 
-                Just (Above data) ->
+                Tool (Above data) ->
                     updateDistance Above data
 
-                Just (Below data) ->
+                Tool (Below data) ->
                     updateDistance Below data
 
                 _ ->
                     ( model, Cmd.none )
 
         PointAdded thatPoint ->
-            case model.tool of
-                Just (CounterClockwise targets) ->
-                    ( { model | tool = Just (CounterClockwise (thatPoint :: targets)) }
+            case model.dialog of
+                Tool (CounterClockwise targets) ->
+                    ( { model | dialog = Tool (CounterClockwise (thatPoint :: targets)) }
                     , Cmd.none
                     )
 
@@ -2012,8 +2229,8 @@ update msg model =
                                 data.thatAnchor
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 toTool
                                     { data
                                         | dropdown = newDropdown
@@ -2023,17 +2240,17 @@ update msg model =
                     , Cmd.map DropdownMsg dropdownCmd
                     )
             in
-            case model.tool of
-                Just (LeftOf data) ->
+            case model.dialog of
+                Tool (LeftOf data) ->
                     updateDropdown LeftOf data
 
-                Just (RightOf data) ->
+                Tool (RightOf data) ->
                     updateDropdown RightOf data
 
-                Just (Above data) ->
+                Tool (Above data) ->
                     updateDropdown Above data
 
-                Just (Below data) ->
+                Tool (Below data) ->
                     updateDropdown Below data
 
                 _ ->
@@ -2053,8 +2270,8 @@ update msg model =
                                 data.thatAnchorA
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 toTool
                                     { data
                                         | dropdownA = newDropdownA
@@ -2064,11 +2281,11 @@ update msg model =
                     , Cmd.map DropdownAMsg dropdownCmd
                     )
             in
-            case model.tool of
-                Just (ThroughTwoPoints data) ->
+            case model.dialog of
+                Tool (ThroughTwoPoints data) ->
                     updateDropdown ThroughTwoPoints data
 
-                Just (FromTo data) ->
+                Tool (FromTo data) ->
                     updateDropdown FromTo data
 
                 _ ->
@@ -2088,8 +2305,8 @@ update msg model =
                                 data.thatAnchorB
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 toTool
                                     { data
                                         | dropdownB = newDropdownB
@@ -2099,19 +2316,19 @@ update msg model =
                     , Cmd.map DropdownBMsg dropdownCmd
                     )
             in
-            case model.tool of
-                Just (ThroughTwoPoints data) ->
+            case model.dialog of
+                Tool (ThroughTwoPoints data) ->
                     updateDropdown ThroughTwoPoints data
 
-                Just (FromTo data) ->
+                Tool (FromTo data) ->
                     updateDropdown FromTo data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownLineMsg dropdownMsg ->
-            case model.tool of
-                Just (MirrorAt data) ->
+            case model.dialog of
+                Tool (MirrorAt data) ->
                     let
                         ( newDropdown, dropdownCmd, newLine ) =
                             Dropdown.update dropdownUpdateConfig
@@ -2123,8 +2340,8 @@ update msg model =
                                 data.thatLine
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 MirrorAt
                                     { data
                                         | dropdown = newDropdown
@@ -2138,8 +2355,8 @@ update msg model =
                     ( model, Cmd.none )
 
         ListboxPointsMsg listboxMsg ->
-            case model.tool of
-                Just (MirrorAt data) ->
+            case model.dialog of
+                Tool (MirrorAt data) ->
                     let
                         ( newListbox, listboxCmd, newPoints ) =
                             Listbox.update listboxUpdateConfig
@@ -2151,8 +2368,8 @@ update msg model =
                                 (Those.toList data.thosePoints)
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 MirrorAt
                                     { data
                                         | listbox = newListbox
@@ -2166,8 +2383,8 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownLineSegmentMsg dropdownMsg ->
-            case model.tool of
-                Just (CutAlongLineSegment data) ->
+            case model.dialog of
+                Tool (CutAlongLineSegment data) ->
                     let
                         ( newDropdown, dropdownCmd, newLineSegment ) =
                             Dropdown.update dropdownUpdateConfig
@@ -2179,8 +2396,8 @@ update msg model =
                                 data.thatLineSegment
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 CutAlongLineSegment
                                     { data
                                         | dropdownLineSegment = newDropdown
@@ -2194,8 +2411,8 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownDetailMsg dropdownMsg ->
-            case model.tool of
-                Just (CutAlongLineSegment data) ->
+            case model.dialog of
+                Tool (CutAlongLineSegment data) ->
                     let
                         ( newDropdown, dropdownCmd, newDetail ) =
                             Dropdown.update dropdownUpdateConfig
@@ -2207,8 +2424,8 @@ update msg model =
                                 data.thatDetail
                     in
                     ( { model
-                        | tool =
-                            Just <|
+                        | dialog =
+                            Tool <|
                                 CutAlongLineSegment
                                     { data
                                         | dropdownDetail = newDropdown
@@ -2223,7 +2440,7 @@ update msg model =
 
         --
         CancelClicked ->
-            ( { model | tool = Nothing }
+            ( { model | dialog = NoDialog }
             , Cmd.none
             )
 
@@ -2250,7 +2467,7 @@ update msg model =
                             in
                             ( { model
                                 | pattern = newPattern
-                                , tool = Nothing
+                                , dialog = NoDialog
                               }
                             , safePattern (Pattern.encode newPattern)
                             )
@@ -2261,23 +2478,23 @@ update msg model =
                 lastState =
                     Pattern.lastState model.pattern
             in
-            case model.tool of
-                Just (LeftOf { name, thatAnchor, distance }) ->
+            case model.dialog of
+                Tool (LeftOf { name, thatAnchor, distance }) ->
                     insertSimpleDistance Pattern.LeftOf name thatAnchor distance
 
-                Just (RightOf { name, thatAnchor, distance }) ->
+                Tool (RightOf { name, thatAnchor, distance }) ->
                     insertSimpleDistance Pattern.RightOf name thatAnchor distance
 
-                Just (Above { name, thatAnchor, distance }) ->
+                Tool (Above { name, thatAnchor, distance }) ->
                     insertSimpleDistance Pattern.Above name thatAnchor distance
 
-                Just (Below { name, thatAnchor, distance }) ->
+                Tool (Below { name, thatAnchor, distance }) ->
                     insertSimpleDistance Pattern.Below name thatAnchor distance
 
-                Just AtAngle ->
+                Tool AtAngle ->
                     ( model, Cmd.none )
 
-                Just (ThroughTwoPoints { name, thatAnchorA, thatAnchorB }) ->
+                Tool (ThroughTwoPoints { name, thatAnchorA, thatAnchorB }) ->
                     case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
@@ -2299,7 +2516,7 @@ update msg model =
                             in
                             ( { model
                                 | pattern = newPattern
-                                , tool = Nothing
+                                , dialog = NoDialog
                               }
                             , safePattern (Pattern.encode newPattern)
                             )
@@ -2307,7 +2524,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (FromTo { name, thatAnchorA, thatAnchorB }) ->
+                Tool (FromTo { name, thatAnchorA, thatAnchorB }) ->
                     case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
@@ -2329,7 +2546,7 @@ update msg model =
                             in
                             ( { model
                                 | pattern = newPattern
-                                , tool = Nothing
+                                , dialog = NoDialog
                               }
                             , safePattern (Pattern.encode newPattern)
                             )
@@ -2337,7 +2554,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (MirrorAt { thatLine, thosePoints }) ->
+                Tool (MirrorAt { thatLine, thosePoints }) ->
                     case thatLine of
                         Just line ->
                             let
@@ -2349,7 +2566,7 @@ update msg model =
                             in
                             ( { model
                                 | pattern = newPattern
-                                , tool = Nothing
+                                , dialog = NoDialog
                               }
                             , safePattern (Pattern.encode newPattern)
                             )
@@ -2357,7 +2574,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (CutAlongLineSegment { thatLineSegment, thatDetail }) ->
+                Tool (CutAlongLineSegment { thatLineSegment, thatDetail }) ->
                     case ( thatLineSegment, thatDetail ) of
                         ( Just lineSegment, Just detail ) ->
                             let
@@ -2369,7 +2586,7 @@ update msg model =
                             in
                             ( { model
                                 | pattern = newPattern
-                                , tool = Nothing
+                                , dialog = NoDialog
                               }
                             , safePattern (Pattern.encode newPattern)
                             )
@@ -2377,7 +2594,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (CounterClockwise targets) ->
+                Tool (CounterClockwise targets) ->
                     let
                         newDetail =
                             targets
@@ -2388,12 +2605,24 @@ update msg model =
                     in
                     ( { model
                         | pattern = newPattern
-                        , tool = Nothing
+                        , dialog = NoDialog
                       }
                     , safePattern (Pattern.encode newPattern)
                     )
 
-                Nothing ->
+                CreateVariable { name, value } ->
+                    let
+                        newPattern =
+                            Pattern.insertVariable name value model.pattern
+                    in
+                    ( { model
+                        | pattern = newPattern
+                        , dialog = NoDialog
+                      }
+                    , safePattern (Pattern.encode newPattern)
+                    )
+
+                NoDialog ->
                     ( model, Cmd.none )
 
         -- PATTERN
@@ -2411,7 +2640,7 @@ update msg model =
             in
             ( { model
                 | pattern = newPattern
-                , tool = Nothing
+                , dialog = NoDialog
               }
             , safePattern (Pattern.encode newPattern)
             )
@@ -2432,6 +2661,37 @@ update msg model =
                     ( { model | pattern = newPattern }
                     , Cmd.none
                     )
+
+        VariablesRulerClicked ->
+            ( { model | variablesVisible = not model.variablesVisible }
+            , Cmd.none
+            )
+
+        VariableCreateClicked ->
+            ( { model | dialog = CreateVariable { name = "", value = "" } }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        VariableNameChanged newName ->
+            case model.dialog of
+                CreateVariable data ->
+                    ( { model | dialog = CreateVariable { data | name = newName } }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        VariableValueChanged newValue ->
+            case model.dialog of
+                CreateVariable data ->
+                    ( { model | dialog = CreateVariable { data | value = newValue } }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg

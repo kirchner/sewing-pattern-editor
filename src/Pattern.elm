@@ -1,9 +1,11 @@
 module Pattern exposing
     ( Pattern
     , empty
+    , variables
     , points, lines
     , getPoint, getLine
     , geometry, Geometry, Problems
+    , insertVariable, removeVariable
     , insertPoint
     , insertLine
     , Detail(..), Length(..), Line(..), LineSegment(..), Point(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments
@@ -18,7 +20,9 @@ module Pattern exposing
 
 # Read
 
-@docs points, circles, lines, variables
+@docs variables
+
+@docs points, circles, lines
 
 @docs getPoint, getCircle, getLine
 
@@ -84,7 +88,7 @@ type alias PatternData =
     , lines : Store Line
     , lineSegments : Store LineSegment
     , details : Store Detail
-    , variables : Dict String Expr
+    , variables : Dict String String
     , transformations : Transformations
     }
 
@@ -307,7 +311,7 @@ type Measurement
     | AngleBetween (That Point) (That Point) (That Point)
 
 
-compute : Dict String Expr -> Expr -> Result DoesNotCompute Float
+compute : Dict String String -> Expr -> Result DoesNotCompute Float
 compute vars expr =
     case expr of
         Number f ->
@@ -315,6 +319,16 @@ compute vars expr =
 
         _ ->
             Err (MissingVariable "TODO")
+
+
+parse : String -> Maybe Expr
+parse value =
+    case String.toFloat value of
+        Nothing ->
+            Nothing
+
+        Just f ->
+            Just (Number f)
 
 
 type DoesNotCompute
@@ -734,6 +748,45 @@ polygon2d ((Pattern pattern) as p) thatDetail =
 
 
 
+---- VARIABLES
+
+
+variables : Pattern -> List { name : String, value : String, computed : Float }
+variables (Pattern pattern) =
+    pattern.variables
+        |> Dict.toList
+        |> List.filterMap
+            (\( name, value ) ->
+                value
+                    |> parse
+                    |> Maybe.andThen (compute pattern.variables >> Result.toMaybe)
+                    |> Maybe.map
+                        (\computed ->
+                            { name = name
+                            , value = value
+                            , computed = computed
+                            }
+                        )
+            )
+
+
+insertVariable : String -> String -> Pattern -> Pattern
+insertVariable name value ((Pattern data) as pattern) =
+    case parse value of
+        Nothing ->
+            pattern
+
+        Just _ ->
+            Pattern { data | variables = Dict.insert name value data.variables }
+
+
+removeVariable : String -> Pattern -> Pattern
+removeVariable name (Pattern data) =
+    Pattern
+        { data | variables = Dict.remove name data.variables }
+
+
+
 ---- POINTS
 
 
@@ -915,6 +968,7 @@ encode (Pattern pattern) =
         , ( "lineSegments", Store.encode encodeLineSegment pattern.lineSegments )
         , ( "details", Store.encode encodeDetail pattern.details )
         , ( "transformations", encodeTransformations pattern.transformations )
+        , ( "variables", encodeVariables pattern.variables )
         ]
 
 
@@ -933,6 +987,19 @@ encodeTransformations { entries, nextId } =
           )
         , ( "nextId", Encode.int nextId )
         ]
+
+
+encodeVariables : Dict String String -> Value
+encodeVariables =
+    let
+        encodePair ( name, value ) =
+            Encode.object
+                [ ( "name", Encode.string name )
+                , ( "value", Encode.string value )
+                ]
+    in
+    Dict.toList
+        >> Encode.list encodePair
 
 
 encodePoint : Point -> Value
@@ -1072,7 +1139,7 @@ decoder =
         |> Decode.required "lines" (Store.decoder lineDecoder)
         |> Decode.required "lineSegments" (Store.decoder lineSegmentDecoder)
         |> Decode.required "details" (Store.decoder detailDecoder)
-        |> Decode.hardcoded Dict.empty
+        |> Decode.required "variables" variablesDecoder
         |> Decode.required "transformations" transformationsDecoder
         |> Decode.map Pattern
 
@@ -1088,6 +1155,18 @@ transformationsDecoder =
     Decode.succeed Transformations
         |> Decode.required "entries" (Decode.list entryDecoder)
         |> Decode.required "nextId" Decode.int
+
+
+variablesDecoder : Decoder (Dict String String)
+variablesDecoder =
+    let
+        pairDecoder =
+            Decode.succeed Tuple.pair
+                |> Decode.required "name" Decode.string
+                |> Decode.required "value" Decode.string
+    in
+    Decode.list pairDecoder
+        |> Decode.map Dict.fromList
 
 
 pointDecoder : Decoder Point
