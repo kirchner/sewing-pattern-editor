@@ -103,7 +103,8 @@ type Tool
         }
       -- LINE SEGMENTS
     | FromTo
-        { dropdownA : Dropdown
+        { name : String
+        , dropdownA : Dropdown
         , thatAnchorA : Maybe (That Point)
         , dropdownB : Dropdown
         , thatAnchorB : Maybe (That Point)
@@ -596,10 +597,11 @@ viewTool pattern points lines lineSegments details tool =
                         thatAnchorB
                     ]
 
-            FromTo { dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
+            FromTo { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
                     [ Element.width Element.fill ]
-                    [ labeledDropdown
+                    [ labeledInputText True NameChanged "Name:" name
+                    , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
@@ -1598,7 +1600,8 @@ update msg model =
                 | tool =
                     Just <|
                         FromTo
-                            { dropdownA = Dropdown.init
+                            { name = ""
+                            , dropdownA = Dropdown.init
                             , thatAnchorA = Nothing
                             , dropdownB = Dropdown.init
                             , thatAnchorB = Nothing
@@ -1658,6 +1661,11 @@ update msg model =
 
                 Just (ThroughTwoPoints data) ->
                     ( { model | tool = Just (ThroughTwoPoints { data | name = newName }) }
+                    , Cmd.none
+                    )
+
+                Just (FromTo data) ->
+                    ( { model | tool = Just (FromTo { data | name = newName }) }
                     , Cmd.none
                     )
 
@@ -2060,7 +2068,7 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (FromTo { thatAnchorA, thatAnchorB }) ->
+                Just (FromTo { name, thatAnchorA, thatAnchorB }) ->
                     case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
@@ -2070,7 +2078,15 @@ update msg model =
                                         thatPointB
 
                                 newPattern =
-                                    Pattern.insertLineSegment newLineSegment model.pattern
+                                    Pattern.insertLineSegment
+                                        (if name == "" then
+                                            Nothing
+
+                                         else
+                                            Just name
+                                        )
+                                        newLineSegment
+                                        model.pattern
                             in
                             ( { model
                                 | pattern = newPattern

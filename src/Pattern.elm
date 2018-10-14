@@ -1,35 +1,13 @@
-module Pattern
-    exposing
-        ( Detail(..)
-        , Geometry
-        , Length(..)
-        , Line(..)
-        , LineSegment(..)
-        , Pattern
-        , Point(..)
-        , Problems
-        , Transformation(..)
-        , computeLength
-        , decoder
-        , details
-        , empty
-        , encode
-        , exprFromFloat
-        , geometry
-        , getLine
-        , getPoint
-        , getPointGeometries
-        , getPointGeometry
-        , insertDetail
-        , insertLine
-        , insertLineSegment
-        , insertPoint
-        , insertTransformation
-        , lastState
-        , lineSegments
-        , lines
-        , points
-        )
+module Pattern exposing
+    ( Pattern
+    , empty
+    , points, lines
+    , getPoint, getLine
+    , geometry, Geometry, Problems
+    , insertPoint
+    , insertLine
+    , Detail(..), Length(..), Line(..), LineSegment(..), Point(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments
+    )
 
 {-|
 
@@ -212,6 +190,7 @@ addTransformationToPoint p transformationId transformation ( previousThat, entry
         MirrorAt thatLine thosePoints ->
             if Those.member previousThat thosePoints then
                 [ addChange transformationId Nothing previousThat entry ]
+
             else
                 [ ( previousThat, entry ) ]
 
@@ -234,8 +213,10 @@ addTransformationToPoint p transformationId transformation ( previousThat, entry
                     in
                     if That.areEqual previousThat thatPointA then
                         [ addChange transformationId (Just 0) previousThat entry ]
+
                     else if That.areEqual previousThat thatPointB then
                         [ addChange transformationId (Just 1) previousThat entry ]
+
                     else
                         [ ( previousThat, entry ) ]
 
@@ -277,6 +258,7 @@ addTransformationToDetail p transformationId transformation ( previousThat, entr
                         [ addChange transformationId (Just 0) previousThat entry
                         , addChange transformationId (Just 1) previousThat entry
                         ]
+
                     else
                         [ ( previousThat, entry ) ]
 
@@ -406,6 +388,7 @@ allUntil : State -> Transformations -> List ( State, Transformation )
 allUntil (State id) { entries } =
     if id == -1 then
         []
+
     else
         allUntilHelp [] False id entries
 
@@ -421,12 +404,14 @@ allUntilHelp sum found id entries =
         [] ->
             if found then
                 sum
+
             else
                 []
 
         ( nextId, entry ) :: rest ->
             if nextId == id then
                 ( State nextId, entry ) :: sum
+
             else
                 allUntilHelp (( State nextId, entry ) :: sum) found id rest
 
@@ -451,6 +436,7 @@ getTransformation (Pattern pattern) id =
             (\( nextId, transformation ) ->
                 if nextId == id then
                     Just transformation
+
                 else
                     Nothing
             )
@@ -648,6 +634,7 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                                                 FromTo _ to ->
                                                     to
                                             )
+
                                     else if branch == 1 then
                                         Just
                                             ( case lineSegment.value of
@@ -657,6 +644,7 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                                                 FromTo from _ ->
                                                     from
                                             )
+
                                     else
                                         Nothing
                             in
@@ -675,10 +663,12 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                                                                 ( target :: targetsUnknown
                                                                 , InDetail
                                                                 )
+
                                                             else if That.areEqual target endPoint then
                                                                 ( targetsUnknown ++ [ target ]
                                                                 , OutsideDetail
                                                                 )
+
                                                             else
                                                                 ( []
                                                                 , Unknown (target :: targetsUnknown)
@@ -689,6 +679,7 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                                                                 ( target :: targetsDetail
                                                                 , OutsideDetail
                                                                 )
+
                                                             else
                                                                 ( target :: targetsDetail
                                                                 , InDetail
@@ -699,6 +690,7 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                                                                 ( target :: targetsDetail
                                                                 , InDetail
                                                                 )
+
                                                             else
                                                                 ( targetsDetail
                                                                 , OutsideDetail
@@ -753,6 +745,7 @@ getPointGeometriesHelp geometries pattern thatPoint =
         point2d pattern thatPoint
             :: geometries
             |> List.filterMap identity
+
     else
         getPointGeometriesHelp
             (point2d pattern thatPoint :: geometries)
@@ -814,10 +807,10 @@ getLineSegment (Pattern pattern) =
     Store.get pattern.lineSegments << That.objectId
 
 
-insertLineSegment : LineSegment -> Pattern -> Pattern
-insertLineSegment lineSegment (Pattern pattern) =
+insertLineSegment : Maybe String -> LineSegment -> Pattern -> Pattern
+insertLineSegment maybeName lineSegment (Pattern pattern) =
     Pattern
-        { pattern | lineSegments = Store.insert Nothing lineSegment pattern.lineSegments }
+        { pattern | lineSegments = Store.insert maybeName lineSegment pattern.lineSegments }
 
 
 
@@ -1177,6 +1170,7 @@ typeDecoder type_ dataDecoder =
             (\rawType ->
                 if rawType == type_ then
                     dataDecoder
+
                 else
                     Decode.fail "not a valid type"
             )
