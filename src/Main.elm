@@ -22,6 +22,7 @@ import Accessibility.Widget as Widget
 import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
 import Browser.Dom
+import Browser.Events
 import Browser.Navigation exposing (Key)
 import Circle2d
 import Color
@@ -2804,7 +2805,26 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    patternReceived PatternReceived
+    Sub.batch
+        [ patternReceived PatternReceived
+        , case model.dialog of
+            NoDialog ->
+                Sub.none
+
+            _ ->
+                Browser.Events.onKeyDown
+                    (Decode.field "key" Decode.string
+                        |> Decode.andThen
+                            (\key ->
+                                case key of
+                                    "Escape" ->
+                                        Decode.succeed CancelClicked
+
+                                    _ ->
+                                        Decode.fail "not handling that key here"
+                            )
+                    )
+        ]
 
 
 onUrlRequest urlRequest =
