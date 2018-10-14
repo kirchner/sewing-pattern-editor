@@ -787,10 +787,10 @@ getLine (Pattern pattern) =
     Store.get pattern.lines << That.objectId
 
 
-insertLine : Line -> Pattern -> Pattern
-insertLine line (Pattern pattern) =
+insertLine : Maybe String -> Line -> Pattern -> Pattern
+insertLine maybeName line (Pattern pattern) =
     Pattern
-        { pattern | lines = Store.insert Nothing line pattern.lines }
+        { pattern | lines = Store.insert maybeName line pattern.lines }
 
 
 

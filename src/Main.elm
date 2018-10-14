@@ -1,5 +1,6 @@
 port module Main exposing (main)
 
+import Accessibility.Widget as Widget
 import Axis2d exposing (Axis2d)
 import Browser exposing (Document)
 import Browser.Navigation exposing (Key)
@@ -17,7 +18,7 @@ import Html.Attributes
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
 import LineSegment2d exposing (LineSegment2d)
-import Listbox
+import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Pattern exposing (Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
@@ -94,7 +95,8 @@ type Tool
     | AtAngle
       -- LINES
     | ThroughTwoPoints
-        { dropdownA : Dropdown
+        { name : String
+        , dropdownA : Dropdown
         , thatAnchorA : Maybe (That Point)
         , dropdownB : Dropdown
         , thatAnchorB : Maybe (That Point)
@@ -107,7 +109,12 @@ type Tool
         , thatAnchorB : Maybe (That Point)
         }
       -- TRANSFORMATIONS
-    | MirrorAt (Maybe (That Line)) (Those Point)
+    | MirrorAt
+        { dropdown : Dropdown
+        , thatLine : Maybe (That Line)
+        , listbox : Listbox
+        , thosePoints : Those Point
+        }
     | CutAlongLineSegment (Maybe (That LineSegment)) (Maybe (That Detail))
       -- DETAILS
     | CounterClockwise (List (That Point))
@@ -178,7 +185,7 @@ isFromTo maybeTool =
 
 isMirrorAt maybeTool =
     case maybeTool of
-        Just (MirrorAt _ _) ->
+        Just (MirrorAt _) ->
             True
 
         _ ->
@@ -243,8 +250,8 @@ selectedPointsFromTool tool =
                 |> List.filterMap identity
                 |> Those.fromList
 
-        MirrorAt _ targets ->
-            targets
+        MirrorAt { thosePoints } ->
+            thosePoints
 
         CutAlongLineSegment _ _ ->
             empty
@@ -281,8 +288,8 @@ selectedLinesFromTool tool =
         FromTo _ ->
             empty
 
-        MirrorAt line _ ->
-            line
+        MirrorAt { thatLine } ->
+            thatLine
                 |> maybeToList
                 |> Those.fromList
 
@@ -321,7 +328,7 @@ selectedLineSegmentsFromTool tool =
         FromTo _ ->
             empty
 
-        MirrorAt _ _ ->
+        MirrorAt _ ->
             empty
 
         CutAlongLineSegment lineSegment _ ->
@@ -361,7 +368,7 @@ selectedDetailsFromTool tool =
         FromTo _ ->
             empty
 
-        MirrorAt _ _ ->
+        MirrorAt _ ->
             empty
 
         CutAlongLineSegment _ detail ->
@@ -519,15 +526,16 @@ viewTool :
     -> Element Msg
 viewTool pattern points lines lineSegments details tool =
     let
-        simpleDistanceTool toolId newName dropdown anchor distance =
+        simpleDistanceTool toolId name dropdown anchor distance =
             Element.column
                 [ Element.width Element.fill ]
-                [ labeledInputText True NameChanged "Name:" newName
+                [ labeledInputText True NameChanged "Name:" name
                 , labeledDropdown
                     (Pattern.getPoint pattern
                         >> Maybe.andThen .name
                         >> Maybe.withDefault "<no name>"
                     )
+                    "Select a point.."
                     DropdownMsg
                     (toolId ++ "-anchor")
                     "Anchor:"
@@ -558,14 +566,16 @@ viewTool pattern points lines lineSegments details tool =
             AtAngle ->
                 Element.none
 
-            ThroughTwoPoints { dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
+            ThroughTwoPoints { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
                     [ Element.width Element.fill ]
-                    [ labeledDropdown
+                    [ labeledInputText True NameChanged "Name:" name
+                    , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
+                        "Select a point.."
                         DropdownAMsg
                         "through-two-points-anchor-a"
                         "1st anchor:"
@@ -577,6 +587,7 @@ viewTool pattern points lines lineSegments details tool =
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
+                        "Select a point.."
                         DropdownBMsg
                         "through-two-points-anchor-b"
                         "2st anchor:"
@@ -593,6 +604,7 @@ viewTool pattern points lines lineSegments details tool =
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
+                        "Select a point.."
                         DropdownAMsg
                         "from-to-anchor-a"
                         "1st anchor:"
@@ -604,6 +616,7 @@ viewTool pattern points lines lineSegments details tool =
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
+                        "Select a point.."
                         DropdownBMsg
                         "from-to-anchor-b"
                         "2st anchor:"
@@ -612,31 +625,32 @@ viewTool pattern points lines lineSegments details tool =
                         thatAnchorB
                     ]
 
-            MirrorAt line targets ->
-                let
-                    pointCheckbox ( thatPoint, { name } ) =
-                        Input.checkbox
-                            [ Element.width Element.fill ]
-                            { onChange = PointChecked thatPoint
-                            , icon = Input.defaultCheckbox
-                            , checked = Those.member thatPoint targets
-                            , label =
-                                Input.labelRight []
-                                    (Element.text (Maybe.withDefault "<unnamed>" name))
-                            }
-                in
+            MirrorAt { dropdown, thatLine, listbox, thosePoints } ->
                 Element.column
                     [ Element.width Element.fill ]
-                    [ labeledInputRadio LineChanged "Line:" line lines
-                    , Element.column
-                        [ Element.paddingXY 5 0 ]
-                        [ Element.text "Targets:"
-                        , Element.column
-                            [ Element.padding 5
-                            , Element.spacing 4
-                            ]
-                            (List.map pointCheckbox points)
-                        ]
+                    [ labeledDropdown
+                        (Pattern.getLine pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a line.."
+                        DropdownLineMsg
+                        "mirror-at-line"
+                        "Line:"
+                        lines
+                        dropdown
+                        thatLine
+                    , labeledListbox
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        ListboxPointsMsg
+                        "mirror-at-points"
+                        "Targets:"
+                        points
+                        listbox
+                        thosePoints
                     ]
 
             CutAlongLineSegment lineSegment detail ->
@@ -876,7 +890,17 @@ labeledInputText focusedOnLoad onChange label name =
         }
 
 
-labeledDropdown printOption msg id label options dropdown selected =
+labeledDropdown :
+    (That object -> String)
+    -> String
+    -> (Dropdown.Msg (That object) -> Msg)
+    -> String
+    -> String
+    -> List ( That object, Entry object )
+    -> Dropdown
+    -> Maybe (That object)
+    -> Element Msg
+labeledDropdown printOption placeholder msg id label options dropdown selected =
     Element.row
         [ Element.paddingXY 5 7
         , Element.width Element.fill
@@ -889,13 +913,37 @@ labeledDropdown printOption msg id label options dropdown selected =
             (Element.text label)
         , Element.html <|
             Html.map msg <|
-                Dropdown.view (dropdownViewConfig printOption)
+                Dropdown.view (dropdownViewConfig printOption placeholder)
                     { id = id
                     , labelledBy = id ++ "-label"
                     }
                     (List.map (Tuple.first >> Listbox.option) options)
                     dropdown
                     selected
+        ]
+
+
+labeledListbox printOption msg id label options listbox selection =
+    Element.row
+        [ Element.paddingXY 5 7
+        , Element.width Element.fill
+        ]
+        [ Element.el
+            [ Element.width (Element.px 100)
+            , Element.height Element.fill
+            , Element.htmlAttribute <|
+                Html.Attributes.id (id ++ "-label")
+            ]
+            (Element.text label)
+        , Element.html <|
+            Listbox.view (listboxViewConfig printOption)
+                { id = id
+                , labelledBy = id ++ "-label"
+                , lift = msg
+                }
+                (List.map (Tuple.first >> Listbox.option) options)
+                listbox
+                (Those.toList selection)
         ]
 
 
@@ -961,7 +1009,7 @@ dropdownUpdateConfig =
         }
 
 
-dropdownViewConfig printOption =
+dropdownViewConfig printOption placeholder =
     Dropdown.viewConfig That.hash
         { container =
             [ Html.Attributes.style "flex-grow" "10000"
@@ -995,7 +1043,7 @@ dropdownViewConfig printOption =
                     [ Html.text <|
                         case maybeSelection of
                             Nothing ->
-                                "Select a point.."
+                                placeholder
 
                             Just thatPoint ->
                                 printOption thatPoint
@@ -1007,6 +1055,7 @@ dropdownViewConfig printOption =
             , Html.Attributes.style "max-height" "20rem"
             , Html.Attributes.style "overflow-y" "auto"
             , Html.Attributes.style "padding" "0"
+            , Html.Attributes.style "margin" "0"
             , Html.Attributes.style "background" "#fff"
             , Html.Attributes.style "border" "1px solid #ccc"
             , Html.Attributes.style "box-sizing" "border-box"
@@ -1041,6 +1090,83 @@ dropdownViewConfig printOption =
                     [ Html.text (printOption thatPoint) ]
                 }
         , liDivider = Listbox.noDivider
+        }
+
+
+
+---- LISTBOX CONFIG
+
+
+listboxUpdateConfig =
+    Listbox.updateConfig That.hash
+        { jumpAtEnds = True
+        , separateFocus = True
+        , selectionFollowsFocus = False
+        , handleHomeAndEnd = True
+        , typeAhead = Listbox.noTypeAhead
+        , minimalGap = 0
+        , initialGap = 0
+        }
+
+
+listboxViewConfig printOption =
+    Listbox.viewConfig That.hash
+        { ul =
+            [ Html.Attributes.style "width" "100%"
+            , Html.Attributes.style "max-height" "10rem"
+            , Html.Attributes.style "overflow-y" "auto"
+            , Html.Attributes.style "padding" "0"
+            , Html.Attributes.style "margin" "0"
+            , Html.Attributes.style "background" "#fff"
+            , Html.Attributes.style "border" "1px solid #ccc"
+            , Html.Attributes.style "box-sizing" "border-box"
+            , Html.Attributes.style "top" "100%"
+            ]
+        , liOption =
+            \{ selected, focused, hovered } thatPoint ->
+                let
+                    defaultAttrs =
+                        [ Html.Attributes.style "display" "block"
+                        , Html.Attributes.style "cursor" "pointer"
+                        , Html.Attributes.style "line-height" "1rem"
+                        , Html.Attributes.style "padding" "10px"
+                        ]
+                in
+                { attributes =
+                    if focused then
+                        [ Html.Attributes.style "background-color" "#f5fafd"
+                        , Html.Attributes.style "color" "#495c68"
+                        ]
+                            ++ defaultAttrs
+
+                    else if hovered then
+                        [ Html.Attributes.style "background-color" "rgb(250, 250, 250)"
+                        , Html.Attributes.style "color" "#495c68"
+                        ]
+                            ++ defaultAttrs
+
+                    else
+                        defaultAttrs
+                , children =
+                    [ Html.i
+                        [ Html.Attributes.class "fas"
+                        , Html.Attributes.class "fa-check"
+                        , Html.Attributes.style "font-size" "12px"
+                        , Html.Attributes.style "padding-right" "5px"
+                        , Html.Attributes.style "color" <|
+                            if selected then
+                                "inherit"
+
+                            else
+                                "transparent"
+                        ]
+                        []
+                    , Html.text (printOption thatPoint)
+                    ]
+                }
+        , liDivider = Listbox.noDivider
+        , empty = Html.text ""
+        , focusable = True
         }
 
 
@@ -1364,14 +1490,14 @@ type Msg
       --
     | NameChanged String
     | DistanceChanged String
-    | LineChanged (That Line)
     | LineSegmentChanged (That LineSegment)
     | DetailChanged (That Detail)
-    | PointChecked (That Point) Bool
     | PointAdded (That Point)
     | DropdownMsg (Dropdown.Msg (That Point))
     | DropdownAMsg (Dropdown.Msg (That Point))
     | DropdownBMsg (Dropdown.Msg (That Point))
+    | DropdownLineMsg (Dropdown.Msg (That Line))
+    | ListboxPointsMsg (Listbox.Msg (That Point))
       --
     | CreateClicked
     | CancelClicked
@@ -1456,7 +1582,8 @@ update msg model =
                 | tool =
                     Just <|
                         ThroughTwoPoints
-                            { dropdownA = Dropdown.init
+                            { name = ""
+                            , dropdownA = Dropdown.init
                             , thatAnchorA = Nothing
                             , dropdownB = Dropdown.init
                             , thatAnchorB = Nothing
@@ -1482,7 +1609,16 @@ update msg model =
 
         -- TRANSFORMATIONS
         MirrorAtClicked ->
-            ( { model | tool = Just (MirrorAt Nothing Those.none) }
+            ( { model
+                | tool =
+                    Just <|
+                        MirrorAt
+                            { dropdown = Dropdown.init
+                            , thatLine = Nothing
+                            , listbox = Listbox.init
+                            , thosePoints = Those.none
+                            }
+              }
             , Cmd.none
             )
 
@@ -1520,6 +1656,11 @@ update msg model =
                     , Cmd.none
                     )
 
+                Just (ThroughTwoPoints data) ->
+                    ( { model | tool = Just (ThroughTwoPoints { data | name = newName }) }
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -1548,16 +1689,6 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        LineChanged newLine ->
-            case model.tool of
-                Just (MirrorAt line targets) ->
-                    ( { model | tool = Just (MirrorAt (Just newLine) targets) }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
         LineSegmentChanged newLineSegment ->
             case model.tool of
                 Just (CutAlongLineSegment _ detail) ->
@@ -1572,25 +1703,6 @@ update msg model =
             case model.tool of
                 Just (CutAlongLineSegment lineSegment _) ->
                     ( { model | tool = Just (CutAlongLineSegment lineSegment (Just newDetail)) }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        PointChecked thatPoint checked ->
-            case model.tool of
-                Just (MirrorAt line targets) ->
-                    ( { model
-                        | tool =
-                            Just <|
-                                MirrorAt line <|
-                                    if checked then
-                                        Those.insert thatPoint targets
-
-                                    else
-                                        Those.remove thatPoint targets
-                      }
                     , Cmd.none
                     )
 
@@ -1777,7 +1889,7 @@ update msg model =
                                         , thatAnchorB = newAnchorB
                                     }
                       }
-                    , Cmd.map DropdownAMsg dropdownCmd
+                    , Cmd.map DropdownBMsg dropdownCmd
                     )
 
                 Just (FromTo data) ->
@@ -1801,6 +1913,62 @@ update msg model =
                                     }
                       }
                     , Cmd.map DropdownBMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DropdownLineMsg dropdownMsg ->
+            case model.tool of
+                Just (MirrorAt data) ->
+                    let
+                        ( newDropdown, dropdownCmd, newLine ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.lines model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdown
+                                data.thatLine
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                MirrorAt
+                                    { data
+                                        | dropdown = newDropdown
+                                        , thatLine = newLine
+                                    }
+                      }
+                    , Cmd.map DropdownLineMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ListboxPointsMsg listboxMsg ->
+            case model.tool of
+                Just (MirrorAt data) ->
+                    let
+                        ( newListbox, listboxCmd, newPoints ) =
+                            Listbox.update listboxUpdateConfig
+                                (Pattern.points model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                listboxMsg
+                                data.listbox
+                                (Those.toList data.thosePoints)
+                    in
+                    ( { model
+                        | tool =
+                            Just <|
+                                MirrorAt
+                                    { data
+                                        | listbox = newListbox
+                                        , thosePoints = Those.fromList newPoints
+                                    }
+                      }
+                    , Cmd.map ListboxPointsMsg listboxCmd
                     )
 
                 _ ->
@@ -1862,7 +2030,7 @@ update msg model =
                 Just AtAngle ->
                     ( model, Cmd.none )
 
-                Just (ThroughTwoPoints { thatAnchorA, thatAnchorB }) ->
+                Just (ThroughTwoPoints { name, thatAnchorA, thatAnchorB }) ->
                     case ( thatAnchorA, thatAnchorB ) of
                         ( Just thatPointA, Just thatPointB ) ->
                             let
@@ -1872,7 +2040,15 @@ update msg model =
                                         thatPointB
 
                                 newPattern =
-                                    Pattern.insertLine newLine model.pattern
+                                    Pattern.insertLine
+                                        (if name == "" then
+                                            Nothing
+
+                                         else
+                                            Just name
+                                        )
+                                        newLine
+                                        model.pattern
                             in
                             ( { model
                                 | pattern = newPattern
@@ -1906,12 +2082,12 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Just (MirrorAt line targets) ->
-                    case line of
-                        Just thatLine ->
+                Just (MirrorAt { thatLine, thosePoints }) ->
+                    case thatLine of
+                        Just line ->
                             let
                                 newTransformation =
-                                    Pattern.MirrorAt thatLine targets
+                                    Pattern.MirrorAt line thosePoints
 
                                 newPattern =
                                     Pattern.insertTransformation newTransformation model.pattern
