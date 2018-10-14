@@ -1652,7 +1652,7 @@ update msg model =
                                 anchorB
                     in
                     ( { model | tool = Just (FromTo dropdownA anchorA newDropdownB newAnchorB) }
-                    , Cmd.map DropdownAMsg dropdownCmd
+                    , Cmd.map DropdownBMsg dropdownCmd
                     )
 
                 _ ->
