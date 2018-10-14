@@ -1146,6 +1146,51 @@ viewVariables model =
                                 \{ computed } ->
                                     viewFloatValue computed
                           }
+                        , { header = Element.none
+                          , width = Element.shrink
+                          , view =
+                                \_ ->
+                                    Element.row
+                                        [ Element.paddingEach
+                                            { left = 5
+                                            , right = 0
+                                            , top = 0
+                                            , bottom = 0
+                                            }
+                                        , Element.spacing 10
+                                        ]
+                                        [ Input.button
+                                            [ Font.color white
+                                            , Border.width 1
+                                            , Border.color gray900
+                                            , Element.mouseOver
+                                                [ Font.color gray700 ]
+                                            ]
+                                            { onPress = Nothing
+                                            , label =
+                                                Element.el
+                                                    [ Element.centerX
+                                                    , Element.centerY
+                                                    ]
+                                                    (icon "edit")
+                                            }
+                                        , Input.button
+                                            [ Font.color white
+                                            , Border.width 1
+                                            , Border.color gray900
+                                            , Element.mouseOver
+                                                [ Font.color gray700 ]
+                                            ]
+                                            { onPress = Nothing
+                                            , label =
+                                                Element.el
+                                                    [ Element.centerX
+                                                    , Element.centerY
+                                                    ]
+                                                    (icon "trash")
+                                            }
+                                        ]
+                          }
                         ]
                     }
                 , Element.row
@@ -1252,6 +1297,51 @@ viewPoints model =
                                             (Point2d.yCoordinate >> viewFloatValue)
                                         |> Maybe.withDefault Element.none
                           }
+                        , { header = Element.none
+                          , width = Element.shrink
+                          , view =
+                                \_ ->
+                                    Element.row
+                                        [ Element.paddingEach
+                                            { left = 5
+                                            , right = 0
+                                            , top = 0
+                                            , bottom = 0
+                                            }
+                                        , Element.spacing 10
+                                        ]
+                                        [ Input.button
+                                            [ Font.color white
+                                            , Border.width 1
+                                            , Border.color gray900
+                                            , Element.mouseOver
+                                                [ Font.color gray700 ]
+                                            ]
+                                            { onPress = Nothing
+                                            , label =
+                                                Element.el
+                                                    [ Element.centerX
+                                                    , Element.centerY
+                                                    ]
+                                                    (icon "edit")
+                                            }
+                                        , Input.button
+                                            [ Font.color white
+                                            , Border.width 1
+                                            , Border.color gray900
+                                            , Element.mouseOver
+                                                [ Font.color gray700 ]
+                                            ]
+                                            { onPress = Nothing
+                                            , label =
+                                                Element.el
+                                                    [ Element.centerX
+                                                    , Element.centerY
+                                                    ]
+                                                    (icon "trash")
+                                            }
+                                        ]
+                          }
                         ]
                     }
                 ]
@@ -1263,6 +1353,20 @@ viewPoints model =
 
 
 ---- REUSABLE ELEMENTS
+
+
+icon name =
+    Element.html <|
+        Html.toUnstyled <|
+            Html.i
+                [ Attributes.class "fas"
+                , Attributes.class ("fa-" ++ name)
+                , Attributes.css
+                    [ Css.fontSize (Css.px 12)
+                    , Css.color Css.inherit
+                    ]
+                ]
+                []
 
 
 accordionToggle msg name visible =
