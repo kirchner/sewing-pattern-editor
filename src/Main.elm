@@ -35,6 +35,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
 import Html.Attributes
+import Html.Events as Events
 import Html.Styled as Html
 import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode
@@ -86,6 +87,8 @@ type alias Model =
     { windowWidth : Int
     , windowHeight : Int
     , zoom : Float
+    , center : Position
+    , maybeDrag : Maybe Drag
 
     -- PATTERN
     , pattern : Pattern
@@ -95,6 +98,18 @@ type alias Model =
     -- RIGHT TOOLBAR
     , variablesVisible : Bool
     , pointsVisible : Bool
+    }
+
+
+type alias Drag =
+    { start : Position
+    , current : Position
+    }
+
+
+type alias Position =
+    { x : Float
+    , y : Float
     }
 
 
@@ -573,6 +588,8 @@ init flags url key =
     ( { windowWidth = flags.windowWidth
       , windowHeight = flags.windowHeight
       , zoom = 1
+      , center = Position 0 0
+      , maybeDrag = Nothing
       , pattern =
             Pattern.empty
                 |> Pattern.insertPoint (Just "origin") Pattern.Origin
@@ -663,6 +680,11 @@ viewWorkspace model =
             Svg.svg
                 [ Svg.Attributes.viewBox (viewBox model)
                 , Html.Attributes.style "user-select" "none"
+                , Events.on "mousedown" <|
+                    Decode.map MouseDown <|
+                        Decode.map2 Position
+                            (Decode.field "screenX" Decode.float)
+                            (Decode.field "screenY" Decode.float)
                 ]
                 (drawPattern
                     model.hoveredPoint
@@ -679,13 +701,19 @@ viewOverlay model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
+        , Element.htmlAttribute <|
+            Html.Attributes.style "pointer-events" "none"
         ]
         [ Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
             ]
             [ viewLeftToolbar model
-            , Element.el [ Element.width Element.fill ] Element.none
+            , Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                Element.none
             , viewZoom model
             , viewRightToolbar model
             ]
@@ -693,6 +721,8 @@ viewOverlay model =
             [ Element.width Element.fill
             , Element.height (Element.px 40)
             , Background.color gray950
+            , Element.htmlAttribute <|
+                Html.Attributes.style "pointer-events" "auto"
             ]
             [ Element.newTabLink
                 [ Element.alignRight
@@ -710,6 +740,8 @@ viewLeftToolbar model =
     Element.column
         [ Element.height Element.fill
         , Background.color gray900
+        , Element.htmlAttribute <|
+            Html.Attributes.style "pointer-events" "auto"
         ]
         [ viewToolSelector <|
             case model.dialog of
@@ -741,6 +773,8 @@ viewZoom model =
             [ Input.button
                 [ Element.mouseOver
                     [ Font.color gray700 ]
+                , Element.htmlAttribute <|
+                    Html.Attributes.style "pointer-events" "auto"
                 ]
                 { onPress = Just ZoomPlusClicked
                 , label =
@@ -749,6 +783,8 @@ viewZoom model =
             , Input.button
                 [ Element.mouseOver
                     [ Font.color gray700 ]
+                , Element.htmlAttribute <|
+                    Html.Attributes.style "pointer-events" "auto"
                 ]
                 { onPress = Just ZoomMinusClicked
                 , label =
@@ -766,10 +802,20 @@ viewBox model =
 
         height =
             toFloat model.windowHeight * model.zoom
+
+        actualCenter =
+            case model.maybeDrag of
+                Nothing ->
+                    model.center
+
+                Just drag ->
+                    { x = model.center.x + (drag.start.x - drag.current.x) * model.zoom
+                    , y = model.center.y + (drag.start.y - drag.current.y) * model.zoom
+                    }
     in
     String.join " "
-        [ String.fromFloat (-1 * width / 2)
-        , String.fromFloat (-1 * height / 2)
+        [ String.fromFloat (actualCenter.x - width / 2)
+        , String.fromFloat (actualCenter.y - height / 2)
         , String.fromFloat width
         , String.fromFloat height
         ]
@@ -781,6 +827,8 @@ viewRightToolbar model =
         [ Element.width (Element.px 400)
         , Element.height Element.fill
         , Background.color gray900
+        , Element.htmlAttribute <|
+            Html.Attributes.style "pointer-events" "auto"
         ]
         [ viewVariables model
         , viewPoints model
@@ -798,7 +846,7 @@ viewDialog pattern dialog =
 
         Tool tool ->
             Element.el
-                [ Element.alignRight
+                [ Element.centerX
                 , Element.moveLeft 40
                 , Element.width (Element.px 300)
                 , Background.color gray900
@@ -2034,7 +2082,12 @@ drawPattern hoveredPoint selectedPoints selectedLines selectedLineSegments selec
         ]
 
 
-drawPoint : Pattern -> Maybe (That Point) -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg Msg
+drawPoint :
+    Pattern
+    -> Maybe (That Point)
+    -> Those Point
+    -> ( That Point, Maybe String, Point2d )
+    -> Svg Msg
 drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
     let
         ( x, y ) =
@@ -2297,6 +2350,9 @@ type Msg
     | WindowResized Int Int
     | ZoomPlusClicked
     | ZoomMinusClicked
+    | MouseDown Position
+    | MouseMove Position
+    | MouseUp Position
       -- POINTS
     | LeftOfClicked
     | RightOfClicked
@@ -2360,6 +2416,46 @@ update msg model =
 
         ZoomMinusClicked ->
             ( { model | zoom = model.zoom * 1.1 }
+            , Cmd.none
+            )
+
+        MouseDown position ->
+            ( { model
+                | maybeDrag =
+                    Just
+                        { start = position
+                        , current = position
+                        }
+              }
+            , Cmd.none
+            )
+
+        MouseMove position ->
+            case model.maybeDrag of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just drag ->
+                    ( { model | maybeDrag = Just { drag | current = position } }
+                    , Cmd.none
+                    )
+
+        MouseUp position ->
+            let
+                newCenter =
+                    case model.maybeDrag of
+                        Nothing ->
+                            model.center
+
+                        Just drag ->
+                            { x = model.center.x + (drag.start.x - position.x) * model.zoom
+                            , y = model.center.y + (drag.start.y - position.y) * model.zoom
+                            }
+            in
+            ( { model
+                | maybeDrag = Nothing
+                , center = newCenter
+              }
             , Cmd.none
             )
 
@@ -3053,6 +3149,23 @@ subscriptions model =
     Sub.batch
         [ patternReceived PatternReceived
         , Browser.Events.onResize WindowResized
+        , case model.maybeDrag of
+            Nothing ->
+                Sub.none
+
+            Just _ ->
+                Sub.batch
+                    [ Browser.Events.onMouseMove <|
+                        Decode.map MouseMove <|
+                            Decode.map2 Position
+                                (Decode.field "screenX" Decode.float)
+                                (Decode.field "screenY" Decode.float)
+                    , Browser.Events.onMouseUp <|
+                        Decode.map MouseUp <|
+                            Decode.map2 Position
+                                (Decode.field "screenX" Decode.float)
+                                (Decode.field "screenY" Decode.float)
+                    ]
         , case model.dialog of
             NoDialog ->
                 Sub.none
