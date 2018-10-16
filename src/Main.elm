@@ -85,6 +85,7 @@ port patternReceived : (Value -> msg) -> Sub msg
 type alias Model =
     { windowWidth : Int
     , windowHeight : Int
+    , zoom : Float
 
     -- PATTERN
     , pattern : Pattern
@@ -571,6 +572,7 @@ init : Flags -> Url -> Key -> ( Model, Cmd Msg )
 init flags url key =
     ( { windowWidth = flags.windowWidth
       , windowHeight = flags.windowHeight
+      , zoom = 1
       , pattern =
             Pattern.empty
                 |> Pattern.insertPoint (Just "origin") Pattern.Origin
@@ -613,67 +615,12 @@ view model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.inFront <|
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        ]
-                        [ viewEditor model
-                        , Element.row
-                            [ Element.width Element.fill
-                            , Element.height (Element.px 40)
-                            , Background.color gray950
-                            ]
-                            [ Element.newTabLink
-                                [ Element.alignRight
-                                , Element.paddingXY 10 5
-                                , Font.color white
-                                ]
-                                { url = "https://github.com/kirchner/sewing-pattern-editor"
-                                , label = devIcon "github-plain"
-                                }
-                            ]
-                        ]
+                , Element.inFront (viewOverlay model)
                 ]
                 (viewWorkspace model)
             )
         ]
     }
-
-
-viewEditor : Model -> Element Msg
-viewEditor model =
-    Element.row
-        [ Element.height Element.fill
-        , Element.width Element.fill
-        ]
-        [ viewLeftToolbar model
-        , Element.el [ Element.width Element.fill ] Element.none
-        , viewRightToolbar model
-        ]
-
-
-viewLeftToolbar model =
-    Element.column
-        [ Element.height Element.fill
-        , Background.color gray900
-        ]
-        [ viewToolSelector <|
-            case model.dialog of
-                Tool tool ->
-                    Just tool
-
-                _ ->
-                    Nothing
-        , Element.el [ Element.height Element.fill ] Element.none
-        , Element.row
-            [ Element.padding 10
-            , Element.spacing 5
-            , Element.width Element.fill
-            ]
-            [ buttonDanger "Clear pattern" ClearPatternClicked
-            ]
-        ]
 
 
 viewWorkspace : Model -> Element Msg
@@ -728,20 +675,103 @@ viewWorkspace model =
         )
 
 
+viewOverlay model =
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Element.row
+            [ Element.height Element.fill
+            , Element.width Element.fill
+            ]
+            [ viewLeftToolbar model
+            , Element.el [ Element.width Element.fill ] Element.none
+            , viewZoom model
+            , viewRightToolbar model
+            ]
+        , Element.row
+            [ Element.width Element.fill
+            , Element.height (Element.px 40)
+            , Background.color gray950
+            ]
+            [ Element.newTabLink
+                [ Element.alignRight
+                , Element.paddingXY 10 5
+                , Font.color white
+                ]
+                { url = "https://github.com/kirchner/sewing-pattern-editor"
+                , label = devIcon "github-plain"
+                }
+            ]
+        ]
+
+
+viewLeftToolbar model =
+    Element.column
+        [ Element.height Element.fill
+        , Background.color gray900
+        ]
+        [ viewToolSelector <|
+            case model.dialog of
+                Tool tool ->
+                    Just tool
+
+                _ ->
+                    Nothing
+        , Element.el [ Element.height Element.fill ] Element.none
+        , Element.row
+            [ Element.padding 10
+            , Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ buttonDanger "Clear pattern" ClearPatternClicked
+            ]
+        ]
+
+
+viewZoom model =
+    Element.column
+        [ Element.height Element.fill ]
+        [ Element.el [ Element.height Element.fill ] Element.none
+        , Element.row
+            [ Element.width Element.fill
+            , Element.padding 20
+            , Element.spacing 10
+            ]
+            [ Input.button
+                [ Element.mouseOver
+                    [ Font.color gray700 ]
+                ]
+                { onPress = Just ZoomPlusClicked
+                , label =
+                    bigIcon "search-plus"
+                }
+            , Input.button
+                [ Element.mouseOver
+                    [ Font.color gray700 ]
+                ]
+                { onPress = Just ZoomMinusClicked
+                , label =
+                    bigIcon "search-minus"
+                }
+            ]
+        ]
+
+
 viewBox : Model -> String
 viewBox model =
     let
         width =
-            model.windowWidth
+            toFloat model.windowWidth * model.zoom
 
         height =
-            model.windowHeight
+            toFloat model.windowHeight * model.zoom
     in
     String.join " "
-        [ String.fromInt (-1 * width // 2)
-        , String.fromInt (-1 * height // 2)
-        , String.fromInt width
-        , String.fromInt height
+        [ String.fromFloat (-1 * width / 2)
+        , String.fromFloat (-1 * height / 2)
+        , String.fromFloat width
+        , String.fromFloat height
         ]
 
 
@@ -1422,6 +1452,20 @@ icon name =
                 , Attributes.class ("fa-" ++ name)
                 , Attributes.css
                     [ Css.fontSize (Css.px 12)
+                    , Css.color Css.inherit
+                    ]
+                ]
+                []
+
+
+bigIcon name =
+    Element.html <|
+        Html.toUnstyled <|
+            Html.i
+                [ Attributes.class "fas"
+                , Attributes.class ("fa-" ++ name)
+                , Attributes.css
+                    [ Css.fontSize (Css.px 24)
                     , Css.color Css.inherit
                     ]
                 ]
@@ -2251,6 +2295,8 @@ drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
 type Msg
     = NoOp
     | WindowResized Int Int
+    | ZoomPlusClicked
+    | ZoomMinusClicked
       -- POINTS
     | LeftOfClicked
     | RightOfClicked
@@ -2304,6 +2350,16 @@ update msg model =
                 | windowWidth = newWidth
                 , windowHeight = newHeight
               }
+            , Cmd.none
+            )
+
+        ZoomPlusClicked ->
+            ( { model | zoom = model.zoom / 1.1 }
+            , Cmd.none
+            )
+
+        ZoomMinusClicked ->
+            ( { model | zoom = model.zoom * 1.1 }
             , Cmd.none
             )
 
