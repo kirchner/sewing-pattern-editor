@@ -57,7 +57,7 @@ import Url exposing (Url)
 import Vector2d
 
 
-main : Program {} Model Msg
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
@@ -83,7 +83,11 @@ port patternReceived : (Value -> msg) -> Sub msg
 
 
 type alias Model =
-    { pattern : Pattern
+    { windowWidth : Int
+    , windowHeight : Int
+
+    -- PATTERN
+    , pattern : Pattern
     , hoveredPoint : Maybe (That Point)
     , dialog : Dialog
 
@@ -557,9 +561,17 @@ maybeToList maybeA =
             [ a ]
 
 
-init : {} -> Url -> Key -> ( Model, Cmd Msg )
+type alias Flags =
+    { windowWidth : Int
+    , windowHeight : Int
+    }
+
+
+init : Flags -> Url -> Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( { pattern =
+    ( { windowWidth = flags.windowWidth
+      , windowHeight = flags.windowHeight
+      , pattern =
             Pattern.empty
                 |> Pattern.insertPoint (Just "origin") Pattern.Origin
       , hoveredPoint = Nothing
@@ -598,7 +610,33 @@ view model =
                 , Font.sansSerif
                 ]
             ]
-            (viewEditor model)
+            (Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.inFront <|
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        ]
+                        [ viewEditor model
+                        , Element.row
+                            [ Element.width Element.fill
+                            , Element.height (Element.px 40)
+                            , Background.color gray950
+                            ]
+                            [ Element.newTabLink
+                                [ Element.alignRight
+                                , Element.paddingXY 10 5
+                                , Font.color white
+                                ]
+                                { url = "https://github.com/kirchner/sewing-pattern-editor"
+                                , label = devIcon "github-plain"
+                                }
+                            ]
+                        ]
+                ]
+                (viewWorkspace model)
+            )
         ]
     }
 
@@ -610,7 +648,7 @@ viewEditor model =
         , Element.width Element.fill
         ]
         [ viewLeftToolbar model
-        , viewWorkspace model
+        , Element.el [ Element.width Element.fill ] Element.none
         , viewRightToolbar model
         ]
 
@@ -629,7 +667,7 @@ viewLeftToolbar model =
                     Nothing
         , Element.el [ Element.height Element.fill ] Element.none
         , Element.row
-            [ Element.padding 5
+            [ Element.padding 10
             , Element.spacing 5
             , Element.width Element.fill
             ]
@@ -638,6 +676,7 @@ viewLeftToolbar model =
         ]
 
 
+viewWorkspace : Model -> Element Msg
 viewWorkspace model =
     let
         maybeTool =
@@ -675,7 +714,9 @@ viewWorkspace model =
         ]
         (Element.html <|
             Svg.svg
-                [ Svg.Attributes.viewBox "-320 -320 640 640" ]
+                [ Svg.Attributes.viewBox (viewBox model)
+                , Html.Attributes.style "user-select" "none"
+                ]
                 (drawPattern
                     model.hoveredPoint
                     selectedPoints
@@ -687,6 +728,24 @@ viewWorkspace model =
         )
 
 
+viewBox : Model -> String
+viewBox model =
+    let
+        width =
+            model.windowWidth
+
+        height =
+            model.windowHeight
+    in
+    String.join " "
+        [ String.fromInt (-1 * width // 2)
+        , String.fromInt (-1 * height // 2)
+        , String.fromInt width
+        , String.fromInt height
+        ]
+
+
+viewRightToolbar : Model -> Element Msg
 viewRightToolbar model =
     Element.column
         [ Element.width (Element.px 400)
@@ -1369,6 +1428,19 @@ icon name =
                 []
 
 
+devIcon name =
+    Element.html <|
+        Html.toUnstyled <|
+            Html.i
+                [ Attributes.class ("devicon-" ++ name)
+                , Attributes.css
+                    [ Css.fontSize (Css.px 24)
+                    , Css.color Css.inherit
+                    ]
+                ]
+                []
+
+
 accordionToggle msg name visible =
     Input.button
         [ Element.width Element.fill
@@ -1465,8 +1537,8 @@ buttonDismiss label msg =
 buttonDanger : String -> msg -> Element msg
 buttonDanger label msg =
     Input.button
-        [ Element.paddingXY 8 7
-        , Element.alignRight
+        [ Element.padding 8
+        , Element.width Element.fill
         , Font.size 14
         , Background.color gray800
         , Border.color gray800
@@ -1476,7 +1548,7 @@ buttonDanger label msg =
             [ Background.color gray700 ]
         ]
         { onPress = Just msg
-        , label = Element.text label
+        , label = Element.el [ Element.centerX ] (Element.text label)
         }
 
 
@@ -1663,6 +1735,10 @@ gray800 =
 
 gray900 =
     color (Color.rgb255 33 33 33)
+
+
+gray950 =
+    color (Color.rgb255 22 22 22)
 
 
 
@@ -2126,8 +2202,8 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
                 "grey"
         ]
         (LineSegment2d.fromEndpoints
-            ( Point2d.along axis2d -1000
-            , Point2d.along axis2d 1000
+            ( Point2d.along axis2d -10000
+            , Point2d.along axis2d 10000
             )
         )
 
@@ -2174,6 +2250,7 @@ drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
 
 type Msg
     = NoOp
+    | WindowResized Int Int
       -- POINTS
     | LeftOfClicked
     | RightOfClicked
@@ -2221,6 +2298,14 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        WindowResized newWidth newHeight ->
+            ( { model
+                | windowWidth = newWidth
+                , windowHeight = newHeight
+              }
+            , Cmd.none
+            )
 
         -- POINTS
         LeftOfClicked ->
@@ -2911,6 +2996,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ patternReceived PatternReceived
+        , Browser.Events.onResize WindowResized
         , case model.dialog of
             NoDialog ->
                 Sub.none

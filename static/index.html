@@ -4,12 +4,16 @@
     <meta charset="utf-8">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.rawgit.com/konpa/devicon/df6431e323547add1b4cf45992913f15286456d3/devicon.min.css">
   </head>
   <body>
     <script src="elm.js"></script>
     <script>
       var app = Elm.Main.init({
-          flags: null
+          flags: {
+              windowWidth: window.innerWidth,
+              windowHeight: window.innerHeight
+          }
       });
 
       app.ports.safePattern.subscribe(function(pattern) {
