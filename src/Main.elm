@@ -851,7 +851,7 @@ viewDialog pattern dialog =
 
         CreateVariable { name, value } ->
             Element.el
-                [ Element.alignRight
+                [ Element.centerX
                 , Element.moveLeft 40
                 , Element.width (Element.px 500)
                 , Background.color gray900
