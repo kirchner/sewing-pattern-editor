@@ -686,14 +686,14 @@ viewWorkspace model =
                             (Decode.field "screenX" Decode.float)
                             (Decode.field "screenY" Decode.float)
                 ]
-                (drawPattern
+                [ drawPattern model
                     model.hoveredPoint
                     selectedPoints
                     selectedLines
                     selectedLineSegments
                     selectedDetails
                     model.pattern
-                )
+                ]
         )
 
 
@@ -802,20 +802,10 @@ viewBox model =
 
         height =
             toFloat model.windowHeight * model.zoom
-
-        actualCenter =
-            case model.maybeDrag of
-                Nothing ->
-                    model.center
-
-                Just drag ->
-                    { x = model.center.x + (drag.start.x - drag.current.x) * model.zoom
-                    , y = model.center.y + (drag.start.y - drag.current.y) * model.zoom
-                    }
     in
     String.join " "
-        [ String.fromFloat (actualCenter.x - width / 2)
-        , String.fromFloat (actualCenter.y - height / 2)
+        [ String.fromFloat (-1 * width / 2)
+        , String.fromFloat (-1 * height / 2)
         , String.fromFloat width
         , String.fromFloat height
         ]
@@ -2045,41 +2035,63 @@ listboxViewConfig printOption =
 
 
 drawPattern :
-    Maybe (That Point)
+    Model
+    -> Maybe (That Point)
     -> Those Point
     -> Those Line
     -> Those LineSegment
     -> Those Detail
     -> Pattern
-    -> List (Svg Msg)
-drawPattern hoveredPoint selectedPoints selectedLines selectedLineSegments selectedDetails pattern =
+    -> Svg Msg
+drawPattern model hoveredPoint selectedPoints selectedLines selectedLineSegments selectedDetails pattern =
     let
         ( geometry, problems ) =
             Pattern.geometry pattern
-    in
-    List.concat
-        [ [ Svg.defs []
-                [ Svg.marker
-                    [ Svg.Attributes.id "arrow"
-                    , Svg.Attributes.viewBox "0 0 10 10"
-                    , Svg.Attributes.refX "5"
-                    , Svg.Attributes.refY "5"
-                    , Svg.Attributes.markerWidth "6"
-                    , Svg.Attributes.markerHeight "6"
-                    , Svg.Attributes.orient "auto-start-reverse"
-                    , Svg.Attributes.fill "blue"
-                    ]
-                    [ Svg.path
-                        [ Svg.Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
-                        []
-                    ]
+
+        translation =
+            positionToTranslation <|
+                case model.maybeDrag of
+                    Nothing ->
+                        model.center
+
+                    Just drag ->
+                        { x = model.center.x + (drag.start.x - drag.current.x) * model.zoom
+                        , y = model.center.y + (drag.start.y - drag.current.y) * model.zoom
+                        }
+
+        positionToTranslation { x, y } =
+            String.concat
+                [ "translate("
+                , String.fromFloat (-1 * x)
+                , " "
+                , String.fromFloat (-1 * y)
+                , ")"
                 ]
-          ]
-        , List.map (drawDetail selectedDetails) geometry.details
-        , List.map (drawLine selectedLines) geometry.lines
-        , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
-        , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
-        ]
+    in
+    Svg.g [ Svg.Attributes.transform translation ] <|
+        List.concat
+            [ [ Svg.defs []
+                    [ Svg.marker
+                        [ Svg.Attributes.id "arrow"
+                        , Svg.Attributes.viewBox "0 0 10 10"
+                        , Svg.Attributes.refX "5"
+                        , Svg.Attributes.refY "5"
+                        , Svg.Attributes.markerWidth "6"
+                        , Svg.Attributes.markerHeight "6"
+                        , Svg.Attributes.orient "auto-start-reverse"
+                        , Svg.Attributes.fill "blue"
+                        ]
+                        [ Svg.path
+                            [ Svg.Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
+                            []
+                        ]
+                    ]
+              ]
+            , List.map (drawDetail selectedDetails) geometry.details
+            , List.map (drawLine selectedLines) geometry.lines
+            , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
+            , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
+            ]
 
 
 drawPoint :
