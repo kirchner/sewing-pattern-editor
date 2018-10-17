@@ -875,7 +875,7 @@ viewDialog pattern dialog =
                         , Element.spacing 10
                         ]
                         [ labeledInputText VariableNameChanged "name" name
-                        , labeledInputText VariableValueChanged "value" value
+                        , labeledFormulaInputText VariableValueChanged "value" value
                         ]
                     , Element.row
                         [ Element.alignRight
@@ -920,7 +920,7 @@ viewTool pattern points lines lineSegments details tool =
                     points
                     dropdown
                     anchor
-                , labeledInputText DistanceChanged "distance" distance
+                , labeledFormulaInputText DistanceChanged "distance" distance
                 ]
     in
     Element.column
@@ -1672,6 +1672,118 @@ labeledInputText onChange label name =
                 [ Font.size 12
                 , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text label)
+        }
+
+
+labeledFormulaInputText : (String -> msg) -> String -> String -> Element msg
+labeledFormulaInputText onChange label text =
+    let
+        lineCount =
+            List.length (String.split "\n" text)
+    in
+    Input.multiline
+        [ Element.width Element.fill
+        , Element.paddingEach <|
+            if lineCount == 1 then
+                { left = 5
+                , right = 5
+                , top = 10
+                , bottom = 0
+                }
+
+            else
+                { left =
+                    if lineCount < 10 then
+                        30
+
+                    else
+                        40
+                , right = 5
+                , top = 10
+                , bottom = 0
+                }
+        , Element.inFront <|
+            if lineCount == 1 then
+                Element.none
+
+            else
+                Element.row
+                    [ Element.height Element.fill
+                    , Element.paddingXY 5 0
+                    , Element.spacing 5
+                    ]
+                    [ Element.column
+                        [ Font.size 16
+                        , Font.color white
+                        , Font.family
+                            [ Font.external
+                                { name = "Roboto Mono"
+                                , url = "https://fonts.googleapis.com/css?family=Roboto+Mono"
+                                }
+                            , Font.monospace
+                            ]
+                        , Element.spacing 5
+                        ]
+                        (List.range 1 lineCount
+                            |> List.map
+                                (\lineNumber ->
+                                    Element.el
+                                        [ Element.alignRight ]
+                                        (Element.text (String.fromInt lineNumber))
+                                )
+                        )
+                    , Element.el
+                        [ Element.paddingXY 0 5
+                        , Element.height Element.fill
+                        ]
+                        (Element.el
+                            [ Element.height Element.fill
+                            , Element.width (Element.px 1)
+                            , Background.color white
+                            ]
+                            Element.none
+                        )
+                    ]
+        , Element.spacing 5
+        , Font.size 16
+        , Font.color white
+        , Font.family
+            [ Font.external
+                { name = "Roboto Mono"
+                , url = "https://fonts.googleapis.com/css?family=Roboto+Mono"
+                }
+            , Font.monospace
+            ]
+        , Background.color gray700
+        , Border.width 1
+        , Border.color gray700
+        , Element.htmlAttribute <|
+            Html.Attributes.id (label ++ "-input")
+        , Element.htmlAttribute <|
+            Html.Attributes.rows lineCount
+        , Element.htmlAttribute <|
+            Html.Attributes.style "white-space" "pre"
+        ]
+        { onChange = onChange
+        , text = text
+        , placeholder = Nothing
+        , spellcheck = False
+        , label =
+            Input.labelAbove
+                [ Font.size 12
+                , Font.color (color (Color.rgb255 229 223 197))
+                , Font.variant Font.smallCaps
+                , Element.htmlAttribute <|
+                    Html.Attributes.style "font-variant" "small-caps"
+                , Font.family
+                    [ Font.external
+                        { name = "Roboto"
+                        , url = "https://fonts.googleapis.com/css?family=Roboto"
+                        }
+                    , Font.sansSerif
+                    ]
                 ]
                 (Element.text label)
         }
