@@ -38,8 +38,9 @@ import Html.Attributes
 import Html.Events as Events
 import Html.Styled as Html
 import Html.Styled.Attributes as Attributes
-import Json.Decode as Decode
-import Json.Encode exposing (Value)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Decode
+import Json.Encode as Encode exposing (Value)
 import LineSegment2d exposing (LineSegment2d)
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
@@ -58,7 +59,7 @@ import Url exposing (Url)
 import Vector2d
 
 
-main : Program Flags Model Msg
+main : Program Value Model Msg
 main =
     Browser.application
         { init = init
@@ -77,6 +78,15 @@ port requestPattern : () -> Cmd msg
 
 
 port patternReceived : (Value -> msg) -> Sub msg
+
+
+port safeViewport : Value -> Cmd msg
+
+
+port requestViewport : () -> Cmd msg
+
+
+port viewportReceived : (Value -> msg) -> Sub msg
 
 
 
@@ -99,6 +109,39 @@ type alias Model =
     , variablesVisible : Bool
     , pointsVisible : Bool
     }
+
+
+type alias Viewport =
+    { zoom : Float
+    , center : Position
+    }
+
+
+encodeViewport : Model -> Value
+encodeViewport model =
+    Encode.object
+        [ ( "zoom", Encode.float model.zoom )
+        , ( "center", encodePosition model.center )
+        ]
+
+
+encodePosition : Position -> Value
+encodePosition { x, y } =
+    Encode.object
+        [ ( "x", Encode.float x )
+        , ( "y", Encode.float y )
+        ]
+
+
+viewportDecoder : Decoder Viewport
+viewportDecoder =
+    Decode.succeed Viewport
+        |> Decode.required "zoom" Decode.float
+        |> Decode.required "center"
+            (Decode.succeed Position
+                |> Decode.required "x" Decode.float
+                |> Decode.required "y" Decode.float
+            )
 
 
 type alias Drag =
@@ -675,24 +718,61 @@ maybeToList maybeA =
 type alias Flags =
     { windowWidth : Int
     , windowHeight : Int
+    , pattern : Maybe Pattern
+    , viewport : Maybe Viewport
     }
 
 
-init : Flags -> Url -> Key -> ( Model, Cmd Msg )
-init flags url key =
-    ( { windowWidth = flags.windowWidth
-      , windowHeight = flags.windowHeight
-      , zoom = 1
-      , center = Position 0 0
-      , maybeDrag = Nothing
-      , pattern = defaultPattern
-      , hoveredPoint = Nothing
-      , dialog = NoDialog
-      , variablesVisible = True
-      , pointsVisible = False
-      }
-    , requestPattern ()
-    )
+flagsDecoder : Decoder Flags
+flagsDecoder =
+    Decode.succeed Flags
+        |> Decode.required "windowWidth" Decode.int
+        |> Decode.required "windowHeight" Decode.int
+        |> Decode.optional "pattern" (Decode.map Just Pattern.decoder) Nothing
+        |> Decode.optional "viewport" (Decode.map Just viewportDecoder) Nothing
+
+
+init : Value -> Url -> Key -> ( Model, Cmd Msg )
+init value url key =
+    case Decode.decodeValue flagsDecoder value of
+        Err error ->
+            ( { windowWidth = 1280
+              , windowHeight = 640
+              , zoom = 1
+              , center = Position 0 0
+              , maybeDrag = Nothing
+              , pattern = defaultPattern
+              , hoveredPoint = Nothing
+              , dialog = NoDialog
+              , variablesVisible = True
+              , pointsVisible = False
+              }
+            , Cmd.batch
+                [ requestPattern ()
+                , requestViewport ()
+                ]
+            )
+
+        Ok flags ->
+            ( { windowWidth = flags.windowWidth
+              , windowHeight = flags.windowHeight
+              , zoom =
+                    flags.viewport
+                        |> Maybe.map .zoom
+                        |> Maybe.withDefault 1
+              , center =
+                    flags.viewport
+                        |> Maybe.map .center
+                        |> Maybe.withDefault (Position 0 0)
+              , maybeDrag = Nothing
+              , pattern = Maybe.withDefault defaultPattern flags.pattern
+              , hoveredPoint = Nothing
+              , dialog = NoDialog
+              , variablesVisible = True
+              , pointsVisible = False
+              }
+            , Cmd.none
+            )
 
 
 defaultPattern =
@@ -1298,7 +1378,8 @@ viewToolSelector maybeTool =
         viewGroup name rows =
             Element.column
                 [ Element.spacing 5
-                , Element.width Element.fill ]
+                , Element.width Element.fill
+                ]
                 [ Element.el
                     [ Font.size 12
                     , Font.variant Font.smallCaps
@@ -2687,6 +2768,7 @@ type Msg
       -- STORAGE
     | ClearPatternClicked
     | PatternReceived Value
+    | ViewportReceived Value
       -- RIGHT TOOLBAR
     | VariablesRulerClicked
     | VariableCreateClicked
@@ -2710,13 +2792,21 @@ update msg model =
             )
 
         ZoomPlusClicked ->
-            ( { model | zoom = model.zoom / 1.1 }
-            , Cmd.none
+            let
+                newModel =
+                    { model | zoom = model.zoom / 1.1 }
+            in
+            ( newModel
+            , safeViewport (encodeViewport newModel)
             )
 
         ZoomMinusClicked ->
-            ( { model | zoom = model.zoom * 1.1 }
-            , Cmd.none
+            let
+                newModel =
+                    { model | zoom = model.zoom * 1.1 }
+            in
+            ( newModel
+            , safeViewport (encodeViewport newModel)
             )
 
         MouseDown position ->
@@ -2751,12 +2841,15 @@ update msg model =
                             { x = model.center.x + (drag.start.x - position.x) * model.zoom
                             , y = model.center.y + (drag.start.y - position.y) * model.zoom
                             }
+
+                newModel =
+                    { model
+                        | maybeDrag = Nothing
+                        , center = newCenter
+                    }
             in
-            ( { model
-                | maybeDrag = Nothing
-                , center = newCenter
-              }
-            , Cmd.none
+            ( newModel
+            , safeViewport (encodeViewport newModel)
             )
 
         -- POINTS
@@ -3490,6 +3583,21 @@ update msg model =
                     , Cmd.none
                     )
 
+        ViewportReceived value ->
+            case Decode.decodeValue viewportDecoder value of
+                Err error ->
+                    ( model
+                    , safeViewport (encodeViewport model)
+                    )
+
+                Ok { zoom, center } ->
+                    ( { model
+                        | zoom = zoom
+                        , center = center
+                      }
+                    , Cmd.none
+                    )
+
         VariablesRulerClicked ->
             ( { model | variablesVisible = not model.variablesVisible }
             , Cmd.none
@@ -3619,6 +3727,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ patternReceived PatternReceived
+        , viewportReceived ViewportReceived
         , Browser.Events.onResize WindowResized
         , case model.maybeDrag of
             Nothing ->
