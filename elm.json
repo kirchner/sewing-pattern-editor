@@ -18,7 +18,7 @@
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
             "elm-community/list-extra": "8.0.0",
-            "ianmackenzie/elm-geometry": "1.1.0",
+            "ianmackenzie/elm-geometry": "1.2.1",
             "ianmackenzie/elm-geometry-svg": "1.0.1",
             "mdgriffith/elm-ui": "1.1.0",
             "rtfeldman/elm-css": "15.1.0",

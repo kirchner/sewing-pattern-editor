@@ -19,7 +19,9 @@ port module Main exposing (main)
 -}
 
 import Accessibility.Widget as Widget
+import Array
 import Axis2d exposing (Axis2d)
+import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
@@ -57,6 +59,7 @@ import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
 import Vector2d
+import VoronoiDiagram2d
 
 
 main : Program Value Model Msg
@@ -2508,17 +2511,6 @@ drawPattern model hoveredPoint selectedPoints selectedLines selectedLineSegments
             Pattern.geometry pattern
 
         translation =
-            positionToTranslation <|
-                case model.maybeDrag of
-                    Nothing ->
-                        model.center
-
-                    Just drag ->
-                        { x = model.center.x + (drag.start.x - drag.current.x) * model.zoom
-                        , y = model.center.y + (drag.start.y - drag.current.y) * model.zoom
-                        }
-
-        positionToTranslation { x, y } =
             String.concat
                 [ "translate("
                 , String.fromFloat (-1 * x)
@@ -2526,6 +2518,38 @@ drawPattern model hoveredPoint selectedPoints selectedLines selectedLineSegments
                 , String.fromFloat (-1 * y)
                 , ")"
                 ]
+
+        { x, y } =
+            case model.maybeDrag of
+                Nothing ->
+                    model.center
+
+                Just drag ->
+                    { x = model.center.x + (drag.start.x - drag.current.x) * model.zoom
+                    , y = model.center.y + (drag.start.y - drag.current.y) * model.zoom
+                    }
+
+        hoverPolygons =
+            VoronoiDiagram2d.fromVerticesBy
+                (\( _, _, p2d ) -> p2d)
+                (Array.fromList geometry.points)
+                |> Result.toMaybe
+                |> Maybe.map (VoronoiDiagram2d.polygons boundingBox2d)
+                |> Maybe.withDefault []
+
+        boundingBox2d =
+            BoundingBox2d.fromExtrema
+                { minX = -1 * width / 2 + x
+                , minY = -1 * height / 2 + y
+                , maxX = (-1 * width / 2) + width + x
+                , maxY = (-1 * height / 2) + height + y
+                }
+
+        width =
+            toFloat model.windowWidth * model.zoom
+
+        height =
+            toFloat model.windowHeight * model.zoom
     in
     Svg.g [ Svg.Attributes.transform translation ] <|
         List.concat
@@ -2551,6 +2575,7 @@ drawPattern model hoveredPoint selectedPoints selectedLines selectedLineSegments
             , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
             , List.map drawCircle geometry.circles
             , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
+            , List.map drawHoverPolygon hoverPolygons
             ]
 
 
@@ -2742,13 +2767,16 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                         [ Svg.text name ]
                 )
             |> Maybe.withDefault (Svg.text "")
-        , Svg.circle2d
-            [ Svg.Attributes.fill "transparent"
-            , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
-            , Svg.Events.onMouseOut (PointHovered Nothing)
-            ]
-            (Circle2d.withRadius 5 point2d)
         ]
+
+
+drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
+    Svg.polygon2d
+        [ Svg.Attributes.fill "transparent"
+        , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
+        , Svg.Events.onMouseOut (PointHovered Nothing)
+        ]
+        polygon2d
 
 
 drawLine : Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
