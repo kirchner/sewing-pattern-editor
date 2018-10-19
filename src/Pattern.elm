@@ -1,15 +1,17 @@
 module Pattern exposing
     ( Pattern
     , empty
-    , Point(..)
+    , Point(..), points, insertPoint, getPoint
     , leftOf, rightOf, above, below
     , atAngle
+    , betweenRatio, betweenLength
+    , Circle(..), circles, insertCircle, getCircle
+    , centeredAt
     , variables
-    , points, lines
-    , getPoint, getLine
+    , lines
+    , getLine
     , geometry, Geometry, Problems
     , insertVariable, removeVariable
-    , insertPoint
     , insertLine
     , Detail(..), Length(..), Line(..), LineSegment(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments, origin, point2d
     )
@@ -21,22 +23,34 @@ module Pattern exposing
 @docs empty
 
 
+## Objects
+
+
 # Points
 
-@docs Point
+@docs Point, points, insertPoint, getPoint
 
 @docs leftOf, rightOf, above, below
 
 @docs atAngle
+
+@docs betweenRatio, betweenLength
+
+
+# Circles
+
+@docs Circle, circles, insertCircle, getCircle
+
+@docs centeredAt
 
 
 # Read
 
 @docs variables
 
-@docs points, circles, lines
+@docs lines
 
-@docs getPoint, getCircle, getLine
+@docs getLine
 
 @docs geometry, Geometry, Problems
 
@@ -45,9 +59,9 @@ module Pattern exposing
 
 @docs insertVariable, removeVariable, renameVariable
 
-@docs insertPoint, replacePoint, removePoint
+@docs replacePoint, removePoint
 
-@docs insertCircle, replaceCircle, removeCircle
+@docs replaceCircle, removeCircle
 
 @docs insertLine, replaceLine, removeLine
 
@@ -130,8 +144,8 @@ type Point
     | Above (That Point) String
     | Below (That Point) String
     | AtAngle (That Point) String String
-    | BetweenRatio (That Point) (That Point) Ratio
-    | BetweenLength (That Point) (That Point) Length
+    | BetweenRatio (That Point) (That Point) String
+    | BetweenLength (That Point) (That Point) String
       -- ON OBJECT
     | OnLineThatX (That Line) Coordinate
     | OnLineThatY (That Line) Coordinate
@@ -171,7 +185,7 @@ type LineSegment
 
 
 type Circle
-    = CenteredThat (That Point) Length
+    = CenteredAt (That Point) String
 
 
 type Curve
@@ -509,6 +523,10 @@ geometry pattern =
             point2d pattern thatPoint
                 |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
 
+        geometryCircle ( thatCircle, { name } ) =
+            circle2d pattern thatCircle
+                |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
+
         geometryLine ( thatLine, { name } ) =
             axis2d pattern thatLine
                 |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
@@ -525,7 +543,10 @@ geometry pattern =
             pattern
                 |> points
                 |> List.filterMap geometryPoint
-      , circles = []
+      , circles =
+            pattern
+                |> circles
+                |> List.filterMap geometryCircle
       , lines =
             pattern
                 |> lines
@@ -618,8 +639,41 @@ point2d pattern thatPoint =
                                     )
                         )
 
+            Just (BetweenRatio thatAnchorA thatAnchorB rawRatio) ->
+                Maybe.map3
+                    (\anchorA anchorB ratio ->
+                        anchorA
+                            |> Point2d.translateBy
+                                (Vector2d.from anchorA anchorB
+                                    |> Vector2d.scaleBy ratio
+                                )
+                    )
+                    (point2d pattern thatAnchorA)
+                    (point2d pattern thatAnchorB)
+                    (rawRatio
+                        |> Expr.parse []
+                        |> Result.toMaybe
+                        |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                    )
+
             _ ->
                 Nothing
+
+
+circle2d : Pattern -> That Circle -> Maybe Circle2d
+circle2d pattern thatCircle =
+    case Maybe.map .value (getCircle pattern thatCircle) of
+        Just (CenteredAt thatCenter rawRadius) ->
+            Maybe.map2 Circle2d.withRadius
+                (rawRadius
+                    |> Expr.parse []
+                    |> Result.toMaybe
+                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                )
+                (point2d pattern thatCenter)
+
+        Nothing ->
+            Nothing
 
 
 axis2d : Pattern -> That Line -> Maybe Axis2d
@@ -898,6 +952,54 @@ atAngle (Pattern pattern) thatPoint rawAngle rawDistance =
             Nothing
 
 
+betweenRatio : Pattern -> That Point -> That Point -> String -> Maybe Point
+betweenRatio (Pattern pattern) thatAnchorA thatAnchorB rawRatio =
+    case Expr.parse [] rawRatio of
+        Ok _ ->
+            if
+                Store.member pattern.points (That.objectId thatAnchorA)
+                    && Store.member pattern.points (That.objectId thatAnchorB)
+            then
+                Just (BetweenRatio thatAnchorA thatAnchorB rawRatio)
+
+            else
+                Nothing
+
+        Err _ ->
+            Nothing
+
+
+betweenLength : Pattern -> That Point -> That Point -> String -> Maybe Point
+betweenLength (Pattern pattern) thatAnchorA thatAnchorB rawLength =
+    case Expr.parse [] rawLength of
+        Ok _ ->
+            if
+                Store.member pattern.points (That.objectId thatAnchorA)
+                    && Store.member pattern.points (That.objectId thatAnchorB)
+            then
+                Just (BetweenRatio thatAnchorA thatAnchorB rawLength)
+
+            else
+                Nothing
+
+        Err _ ->
+            Nothing
+
+
+centeredAt : Pattern -> That Point -> String -> Maybe Circle
+centeredAt (Pattern pattern) thatCenter rawRadius =
+    case Expr.parse [] rawRadius of
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatCenter) then
+                Just (CenteredAt thatCenter rawRadius)
+
+            else
+                Nothing
+
+        Err _ ->
+            Nothing
+
+
 
 --
 
@@ -940,6 +1042,33 @@ insertPoint : Maybe String -> Point -> Pattern -> Pattern
 insertPoint name point (Pattern pattern) =
     Pattern
         { pattern | points = Store.insert name point pattern.points }
+
+
+
+---- CIRCLES
+
+
+circles : Pattern -> List ( That Circle, Entry Circle )
+circles ((Pattern pattern) as p) =
+    pattern.circles
+        |> Store.toList
+        |> List.map (Tuple.mapFirst (thatCircleFromId p))
+
+
+thatCircleFromId : Pattern -> Int -> That Circle
+thatCircleFromId (Pattern pattern) id =
+    that [] id
+
+
+getCircle : Pattern -> That Circle -> Maybe (Entry Circle)
+getCircle (Pattern pattern) =
+    Store.get pattern.circles << That.objectId
+
+
+insertCircle : Maybe String -> Circle -> Pattern -> Pattern
+insertCircle name circle (Pattern pattern) =
+    Pattern
+        { pattern | circles = Store.insert name circle pattern.circles }
 
 
 
@@ -1076,6 +1205,7 @@ encode : Pattern -> Value
 encode (Pattern pattern) =
     Encode.object
         [ ( "points", Store.encode encodePoint pattern.points )
+        , ( "circles", Store.encode encodeCircle pattern.circles )
         , ( "lines", Store.encode encodeLine pattern.lines )
         , ( "lineSegments", Store.encode encodeLineSegment pattern.lineSegments )
         , ( "details", Store.encode encodeDetail pattern.details )
@@ -1154,8 +1284,32 @@ encodePoint point =
                 , ( "distance", Encode.string distance )
                 ]
 
+        BetweenRatio anchorA anchorB ratio ->
+            withType "betweenRatio"
+                [ ( "anchorA", That.encode anchorA )
+                , ( "anchorB", That.encode anchorB )
+                , ( "ratio", Encode.string ratio )
+                ]
+
+        BetweenLength anchorA anchorB length ->
+            withType "betweenLength"
+                [ ( "anchorA", That.encode anchorA )
+                , ( "anchorB", That.encode anchorB )
+                , ( "length", Encode.string length )
+                ]
+
         _ ->
             Encode.null
+
+
+encodeCircle : Circle -> Value
+encodeCircle circle =
+    case circle of
+        CenteredAt center radius ->
+            withType "centeredAt"
+                [ ( "center", That.encode center )
+                , ( "radius", Encode.string radius )
+                ]
 
 
 encodeLine : Line -> Value
@@ -1250,7 +1404,7 @@ decoder : Decoder Pattern
 decoder =
     Decode.succeed PatternData
         |> Decode.required "points" (Store.decoder pointDecoder)
-        |> Decode.hardcoded Store.empty
+        |> Decode.required "circles" (Store.decoder circleDecoder)
         |> Decode.required "lines" (Store.decoder lineDecoder)
         |> Decode.required "lineSegments" (Store.decoder lineSegmentDecoder)
         |> Decode.required "details" (Store.decoder detailDecoder)
@@ -1312,6 +1466,26 @@ pointDecoder =
                 (Decode.field "anchor" That.decoder)
                 (Decode.field "angle" Decode.string)
                 (Decode.field "distance" Decode.string)
+        , typeDecoder "betweenRatio" <|
+            Decode.map3 BetweenRatio
+                (Decode.field "anchorA" That.decoder)
+                (Decode.field "anchorB" That.decoder)
+                (Decode.field "ratio" Decode.string)
+        , typeDecoder "betweenLength" <|
+            Decode.map3 BetweenLength
+                (Decode.field "anchorA" That.decoder)
+                (Decode.field "anchorB" That.decoder)
+                (Decode.field "length" Decode.string)
+        ]
+
+
+circleDecoder : Decoder Circle
+circleDecoder =
+    Decode.oneOf
+        [ typeDecoder "centeredAt" <|
+            Decode.map2 CenteredAt
+                (Decode.field "center" That.decoder)
+                (Decode.field "radius" Decode.string)
         ]
 
 

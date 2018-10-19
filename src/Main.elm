@@ -24,7 +24,7 @@ import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation exposing (Key)
-import Circle2d
+import Circle2d exposing (Circle2d)
 import Color
 import Css
 import Direction2d
@@ -41,7 +41,7 @@ import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode
 import Json.Encode exposing (Value)
 import LineSegment2d exposing (LineSegment2d)
-import Pattern exposing (Detail, Line, LineSegment, Pattern, Point)
+import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
@@ -155,6 +155,29 @@ type Tool
         , angle : String
         , distance : String
         }
+    | BetweenRatio
+        { name : String
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , dropdownAnchorB : Dropdown
+        , maybeThatAnchorB : Maybe (That Point)
+        , ratio : String
+        }
+    | BetweenLength
+        { name : String
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , dropdownAnchorB : Dropdown
+        , maybeThatAnchorB : Maybe (That Point)
+        , length : String
+        }
+      -- CIRCLES
+    | CenteredAt
+        { name : String
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , radius : String
+        }
       -- LINES
     | ThroughTwoPoints
         { name : String
@@ -253,6 +276,49 @@ toolDescription tool =
                 , Element.el
                     [ Font.bold ]
                     (Element.text "distance")
+                , Element.text "."
+                ]
+
+        BetweenRatio _ ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "point")
+                , Element.text " between two other points at a certain "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "ratio")
+                , Element.text "."
+                ]
+
+        BetweenLength _ ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "point")
+                , Element.text " between two other points at a certain "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "length")
+                , Element.text "."
+                ]
+
+        CenteredAt _ ->
+            Element.paragraph []
+                [ Element.text "Create a new "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "circle")
+                , Element.text " by providing its "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "center point")
+                , Element.text " and the "
+                , Element.el
+                    [ Font.bold ]
+                    (Element.text "radius")
                 , Element.text "."
                 ]
 
@@ -358,6 +424,33 @@ isAtAngle maybeTool =
             False
 
 
+isBeetweenRatio maybeTool =
+    case maybeTool of
+        Just (BetweenRatio _) ->
+            True
+
+        _ ->
+            False
+
+
+isBeetweenLength maybeTool =
+    case maybeTool of
+        Just (BetweenLength _) ->
+            True
+
+        _ ->
+            False
+
+
+isCenteredAt maybeTool =
+    case maybeTool of
+        Just (CenteredAt _) ->
+            True
+
+        _ ->
+            False
+
+
 isThroughTwoPoints maybeTool =
     case maybeTool of
         Just (ThroughTwoPoints _) ->
@@ -413,6 +506,11 @@ selectedPointsFromTool tool =
             data.maybeThatAnchorA
                 |> maybeToList
                 |> Those.fromList
+
+        anchorAandB data =
+            [ data.maybeThatAnchorA, data.maybeThatAnchorB ]
+                |> List.filterMap identity
+                |> Those.fromList
     in
     case tool of
         LeftOf data ->
@@ -430,15 +528,20 @@ selectedPointsFromTool tool =
         AtAngle data ->
             onlyAnchorA data
 
-        ThroughTwoPoints { maybeThatAnchorA, maybeThatAnchorB } ->
-            [ maybeThatAnchorA, maybeThatAnchorB ]
-                |> List.filterMap identity
-                |> Those.fromList
+        BetweenRatio data ->
+            anchorAandB data
 
-        FromTo { maybeThatAnchorA, maybeThatAnchorB } ->
-            [ maybeThatAnchorA, maybeThatAnchorB ]
-                |> List.filterMap identity
-                |> Those.fromList
+        BetweenLength data ->
+            anchorAandB data
+
+        CenteredAt data ->
+            onlyAnchorA data
+
+        ThroughTwoPoints data ->
+            anchorAandB data
+
+        FromTo data ->
+            anchorAandB data
 
         MirrorAt { thosePoints } ->
             thosePoints
@@ -470,6 +573,15 @@ selectedLinesFromTool tool =
             empty
 
         AtAngle _ ->
+            empty
+
+        BetweenRatio _ ->
+            empty
+
+        BetweenLength _ ->
+            empty
+
+        CenteredAt _ ->
             empty
 
         ThroughTwoPoints _ ->
@@ -512,6 +624,15 @@ selectedLineSegmentsFromTool tool =
         AtAngle _ ->
             empty
 
+        BetweenRatio _ ->
+            empty
+
+        BetweenLength _ ->
+            empty
+
+        CenteredAt _ ->
+            empty
+
         ThroughTwoPoints _ ->
             empty
 
@@ -550,6 +671,15 @@ selectedDetailsFromTool tool =
             empty
 
         AtAngle _ ->
+            empty
+
+        BetweenRatio _ ->
+            empty
+
+        BetweenLength _ ->
+            empty
+
+        CenteredAt _ ->
             empty
 
         ThroughTwoPoints _ ->
@@ -976,6 +1106,93 @@ viewTool pattern points lines lineSegments details tool =
                     , labeledFormulaInputText DistanceChanged "distance" distance
                     ]
 
+            BetweenRatio data ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText NameChanged "name" data.name
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownAnchorAMsg
+                        "between-ratio-anchor-a"
+                        "1st anchor"
+                        points
+                        data.dropdownAnchorA
+                        data.maybeThatAnchorA
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownAnchorBMsg
+                        "between-ratio-anchor-b"
+                        "2st anchor"
+                        points
+                        data.dropdownAnchorB
+                        data.maybeThatAnchorB
+                    , labeledFormulaInputText RatioChanged "ratio" data.ratio
+                    ]
+
+            BetweenLength data ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText NameChanged "name" data.name
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownAnchorAMsg
+                        "between-length-anchor-a"
+                        "1st anchor"
+                        points
+                        data.dropdownAnchorA
+                        data.maybeThatAnchorA
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownAnchorBMsg
+                        "between-length-anchor-b"
+                        "2st anchor"
+                        points
+                        data.dropdownAnchorB
+                        data.maybeThatAnchorB
+                    , labeledFormulaInputText LengthChanged "length" data.length
+                    ]
+
+            CenteredAt data ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText NameChanged "name" data.name
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownAnchorAMsg
+                        "centered-at-anchor"
+                        "anchor"
+                        points
+                        data.dropdownAnchorA
+                        data.maybeThatAnchorA
+                    , labeledFormulaInputText RadiusChanged "radius" data.radius
+                    ]
+
             ThroughTwoPoints data ->
                 Element.column
                     [ Element.width Element.fill
@@ -1167,6 +1384,33 @@ viewToolSelector maybeTool =
                     ]
                     [ button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
                     ]
+                , Element.row
+                    [ Element.spacing 5
+                    , Element.width Element.fill
+                    ]
+                    [ button "at_angle" "Between at ratio" BetweenRatioClicked <|
+                        isBeetweenRatio maybeTool
+                    , button "at_angle" "Between at length" BetweenLengthClicked <|
+                        isBeetweenLength maybeTool
+                    ]
+                ]
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.width Element.fill
+            ]
+            [ Element.el
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "circles")
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill
+                ]
+                [ button "through_two_points" "Centered at" CenteredAtClicked <|
+                    isCenteredAt maybeTool
                 ]
             ]
         , Element.column
@@ -2229,6 +2473,7 @@ drawPattern model hoveredPoint selectedPoints selectedLines selectedLineSegments
             , List.map (drawDetail selectedDetails) geometry.details
             , List.map (drawLine selectedLines) geometry.lines
             , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
+            , List.map drawCircle geometry.circles
             , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
             ]
 
@@ -2451,7 +2696,10 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
         )
 
 
-drawLineSegment : Those LineSegment -> ( That LineSegment, Maybe String, LineSegment2d ) -> Svg msg
+drawLineSegment :
+    Those LineSegment
+    -> ( That LineSegment, Maybe String, LineSegment2d )
+    -> Svg msg
 drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
     let
         selected =
@@ -2466,6 +2714,16 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
                 "grey"
         ]
         lineSegment2d
+
+
+drawCircle : ( That Circle, Maybe String, Circle2d ) -> Svg msg
+drawCircle ( thatCircle, maybeName, circle2d ) =
+    Svg.circle2d
+        [ Svg.Attributes.stroke "grey"
+        , Svg.Attributes.strokeWidth "1px"
+        , Svg.Attributes.fill "transparent"
+        ]
+        circle2d
 
 
 drawDetail : Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
@@ -2505,6 +2763,10 @@ type Msg
     | AboveClicked
     | BelowClicked
     | AtAngleClicked
+    | BetweenRatioClicked
+    | BetweenLengthClicked
+      -- TOOL CIRCLES
+    | CenteredAtClicked
       -- TOOL LINES
     | ThroughTwoPointsClicked
       -- TOOL LINE SEGMENTS
@@ -2518,6 +2780,9 @@ type Msg
     | NameChanged String
     | AngleChanged String
     | DistanceChanged String
+    | RatioChanged String
+    | LengthChanged String
+    | RadiusChanged String
     | PointAdded (That Point)
     | DropdownAnchorAMsg (Dropdown.Msg (That Point))
     | DropdownAnchorBMsg (Dropdown.Msg (That Point))
@@ -2682,6 +2947,56 @@ update msg model =
                 |> Task.attempt (\_ -> NoOp)
             )
 
+        BetweenRatioClicked ->
+            ( { model
+                | dialog =
+                    Tool <|
+                        BetweenRatio
+                            { name = ""
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
+                            , dropdownAnchorB = Dropdown.init
+                            , maybeThatAnchorB = Nothing
+                            , ratio = ""
+                            }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        BetweenLengthClicked ->
+            ( { model
+                | dialog =
+                    Tool <|
+                        BetweenLength
+                            { name = ""
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
+                            , dropdownAnchorB = Dropdown.init
+                            , maybeThatAnchorB = Nothing
+                            , length = ""
+                            }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        -- CIRCLES
+        CenteredAtClicked ->
+            ( { model
+                | dialog =
+                    Tool <|
+                        CenteredAt
+                            { name = ""
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
+                            , radius = ""
+                            }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
         -- LINES
         ThroughTwoPointsClicked ->
             ( { model
@@ -2777,6 +3092,15 @@ update msg model =
                 Tool (AtAngle data) ->
                     updateName AtAngle data
 
+                Tool (BetweenRatio data) ->
+                    updateName BetweenRatio data
+
+                Tool (BetweenLength data) ->
+                    updateName BetweenLength data
+
+                Tool (CenteredAt data) ->
+                    updateName CenteredAt data
+
                 Tool (ThroughTwoPoints data) ->
                     updateName ThroughTwoPoints data
 
@@ -2822,6 +3146,36 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        RatioChanged newRatio ->
+            case model.dialog of
+                Tool (BetweenRatio data) ->
+                    ( { model | dialog = Tool (BetweenRatio { data | ratio = newRatio }) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        LengthChanged newLength ->
+            case model.dialog of
+                Tool (BetweenLength data) ->
+                    ( { model | dialog = Tool (BetweenLength { data | length = newLength }) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        RadiusChanged newRadius ->
+            case model.dialog of
+                Tool (CenteredAt data) ->
+                    ( { model | dialog = Tool (CenteredAt { data | radius = newRadius }) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         PointAdded thatPoint ->
             case model.dialog of
                 Tool (CounterClockwise targets) ->
@@ -2849,6 +3203,15 @@ update msg model =
                 Tool (AtAngle data) ->
                     updateDropdownAnchorA model AtAngle dropdownMsg data
 
+                Tool (BetweenRatio data) ->
+                    updateDropdownAnchorA model BetweenRatio dropdownMsg data
+
+                Tool (BetweenLength data) ->
+                    updateDropdownAnchorA model BetweenLength dropdownMsg data
+
+                Tool (CenteredAt data) ->
+                    updateDropdownAnchorA model CenteredAt dropdownMsg data
+
                 Tool (ThroughTwoPoints data) ->
                     updateDropdownAnchorA model ThroughTwoPoints dropdownMsg data
 
@@ -2860,6 +3223,12 @@ update msg model =
 
         DropdownAnchorBMsg dropdownMsg ->
             case model.dialog of
+                Tool (BetweenRatio data) ->
+                    updateDropdownAnchorB model BetweenRatio dropdownMsg data
+
+                Tool (BetweenLength data) ->
+                    updateDropdownAnchorB model BetweenLength dropdownMsg data
+
                 Tool (ThroughTwoPoints data) ->
                     updateDropdownAnchorB model ThroughTwoPoints dropdownMsg data
 
@@ -3026,6 +3395,44 @@ update msg model =
                                 data.angle
                                 data.distance
                                 |> Maybe.map (insertPoint data.name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
+
+                Tool (BetweenRatio data) ->
+                    Maybe.map2
+                        (\thatAnchorA thatAnchorB ->
+                            Pattern.betweenRatio model.pattern
+                                thatAnchorA
+                                thatAnchorB
+                                data.ratio
+                                |> Maybe.map (insertPoint data.name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
+                        )
+                        data.maybeThatAnchorA
+                        data.maybeThatAnchorB
+                        |> Maybe.withDefault ( model, Cmd.none )
+
+                Tool (BetweenLength data) ->
+                    Maybe.map2
+                        (\thatAnchorA thatAnchorB ->
+                            Pattern.betweenLength model.pattern
+                                thatAnchorA
+                                thatAnchorB
+                                data.length
+                                |> Maybe.map (insertPoint data.name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
+                        )
+                        data.maybeThatAnchorA
+                        data.maybeThatAnchorB
+                        |> Maybe.withDefault ( model, Cmd.none )
+
+                Tool (CenteredAt data) ->
+                    case data.maybeThatAnchorA of
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                        Just thatAnchor ->
+                            Pattern.centeredAt model.pattern thatAnchor data.radius
+                                |> Maybe.map (insertCircle data.name model)
                                 |> Maybe.withDefault ( model, Cmd.none )
 
                 Tool (ThroughTwoPoints data) ->
@@ -3288,6 +3695,27 @@ insertPoint name model newPoint =
                     Just name
                 )
                 newPoint
+                model.pattern
+    in
+    ( { model
+        | pattern = newPattern
+        , dialog = NoDialog
+      }
+    , safePattern (Pattern.encode newPattern)
+    )
+
+
+insertCircle name model newCircle =
+    let
+        newPattern =
+            Pattern.insertCircle
+                (if name == "" then
+                    Nothing
+
+                 else
+                    Just name
+                )
+                newCircle
                 model.pattern
     in
     ( { model
