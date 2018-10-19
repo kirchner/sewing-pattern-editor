@@ -225,29 +225,31 @@ toolDescription tool =
     let
         simpleDistanceHorizontal kind =
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "point")
-                , Element.text " to the "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text kind)
-                , Element.text " another point."
+                [ s "Create a new "
+                , strong "point"
+                , s " to the "
+                , strong kind
+                , s " another point."
                 ]
 
         simpleDistanceVertical kind =
             Element.paragraph []
-                [ Element.text "Create a new "
+                [ s "Create a new "
                 , Element.el
                     [ Font.bold ]
                     (Element.text "point")
-                , Element.text " "
+                , s " "
                 , Element.el
                     [ Font.bold ]
                     (Element.text kind)
-                , Element.text " another point."
+                , s " another point."
                 ]
+
+        s =
+            Element.text
+
+        strong =
+            Element.el [ Font.bold ] << Element.text
     in
     case tool of
         LeftOf _ ->
@@ -264,127 +266,87 @@ toolDescription tool =
 
         AtAngle _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "point")
-                , Element.text " relative to another point by providing an "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "angle")
-                , Element.text " and a "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "distance")
-                , Element.text "."
+                [ s "Create a new "
+                , strong "point"
+                , s " relative to another point by providing an "
+                , strong "angle"
+                , s " and a "
+                , strong "distance"
+                , s "."
                 ]
 
         BetweenRatio _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "point")
-                , Element.text " between two other points at a certain "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "ratio")
-                , Element.text "."
+                [ s "Create a new "
+                , strong "point"
+                , s " between two other points at a certain "
+                , strong "ratio"
+                , s "."
                 ]
 
         BetweenLength _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "point")
-                , Element.text " between two other points at a certain "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "length")
-                , Element.text "."
+                [ s "Create a new "
+                , strong "point"
+                , s " between two other points at a certain "
+                , strong "length"
+                , s "."
                 ]
 
         CenteredAt _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "circle")
-                , Element.text " by providing its "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "center point")
-                , Element.text " and the "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "radius")
-                , Element.text "."
+                [ s "Create a new "
+                , strong "circle"
+                , s " by providing its "
+                , strong "center point"
+                , s " and the "
+                , strong "radius"
+                , s "."
                 ]
 
         ThroughTwoPoints _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "line")
-                , Element.text " through "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "two points")
-                , Element.text "."
+                [ s "Create a new "
+                , strong "line"
+                , s " through "
+                , strong "two points"
+                , s "."
                 ]
 
         FromTo _ ->
             Element.paragraph []
-                [ Element.text "Connect "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "two points")
-                , Element.text " with a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "line segment")
-                , Element.text "."
+                [ s "Connect "
+                , strong "two points"
+                , s " with a new "
+                , strong "line segment"
+                , s "."
                 ]
 
         MirrorAt _ ->
             Element.paragraph []
-                [ Element.text "Mirror a "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "set of points")
-                , Element.text " along a "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "line")
-                , Element.text "."
+                [ s "Mirror a "
+                , strong "set of points"
+                , s " along a "
+                , strong "line"
+                , s "."
                 ]
 
         CutAlongLineSegment _ ->
             Element.paragraph []
-                [ Element.text "Cut a "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "detail")
-                , Element.text " into two along a "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "line segment")
-                , Element.text "."
+                [ s "Cut a "
+                , strong "detail"
+                , s " into two along a "
+                , strong "line segment"
+                , s "."
                 ]
 
         CounterClockwise _ ->
             Element.paragraph []
-                [ Element.text "Create a new "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "detail")
-                , Element.text " by connecting "
-                , Element.el
-                    [ Font.bold ]
-                    (Element.text "points")
-                , Element.text " counterclockwise."
+                [ s "Create a new "
+                , strong "detail"
+                , s " by connecting "
+                , strong "points"
+                , s " counterclockwise."
                 ]
 
 
@@ -968,62 +930,27 @@ viewRightToolbar model =
 
 
 viewDialog pattern dialog =
-    case dialog of
-        NoDialog ->
-            Element.none
+    Element.el
+        [ Element.centerX
+        , Element.moveLeft 40
+        , Element.width (Element.px 300)
+        , Background.color gray900
+        ]
+        (case dialog of
+            NoDialog ->
+                Element.none
 
-        Tool tool ->
-            Element.el
-                [ Element.centerX
-                , Element.moveLeft 40
-                , Element.width (Element.px 300)
-                , Background.color gray900
-                ]
-                (viewTool pattern
+            Tool tool ->
+                viewTool pattern
                     (Pattern.points pattern)
                     (Pattern.lines pattern)
                     (Pattern.lineSegments pattern)
                     (Pattern.details pattern)
                     tool
-                )
 
-        CreateVariable { name, value } ->
-            Element.el
-                [ Element.centerX
-                , Element.moveLeft 40
-                , Element.width (Element.px 500)
-                , Background.color gray900
-                ]
-                (Element.column
-                    [ Element.width Element.fill
-                    , Element.padding 15
-                    , Element.spacing 15
-                    ]
-                    [ Element.paragraph
-                        [ Font.size 12
-                        , Font.color white
-                        ]
-                        [ Element.text "Create a new "
-                        , Element.el
-                            [ Font.bold ]
-                            (Element.text "variable")
-                        ]
-                    , Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing 10
-                        ]
-                        [ labeledInputText VariableNameChanged "name" name
-                        , labeledFormulaInputText VariableValueChanged "value" value
-                        ]
-                    , Element.row
-                        [ Element.alignRight
-                        , Element.spacing 5
-                        ]
-                        [ buttonCreate "Create" CreateClicked
-                        , buttonDismiss "Cancel" CancelClicked
-                        ]
-                    ]
-                )
+            CreateVariable { name, value } ->
+                viewVariable name value
+        )
 
 
 
@@ -1039,303 +966,60 @@ viewTool :
     -> Tool
     -> Element Msg
 viewTool pattern points lines lineSegments details tool =
-    let
-        simpleDistanceTool toolId { name, dropdownAnchorA, maybeThatAnchorA, distance } =
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing 10
-                ]
-                [ labeledInputText NameChanged "name" name
-                , labeledDropdown
-                    (Pattern.getPoint pattern
-                        >> Maybe.andThen .name
-                        >> Maybe.withDefault "<no name>"
-                    )
-                    "Select a point.."
-                    DropdownAnchorAMsg
-                    (toolId ++ "-anchor")
-                    "anchor"
-                    points
-                    dropdownAnchorA
-                    maybeThatAnchorA
-                , labeledFormulaInputText DistanceChanged "distance" distance
-                ]
-    in
     Element.column
         [ Element.width Element.fill
         , Element.padding 15
-        , Element.spacing 30
+        , Element.spacing 20
         ]
         [ Element.el
             [ Font.size 12
             , Font.color white
             ]
             (toolDescription tool)
-        , case tool of
-            LeftOf data ->
-                simpleDistanceTool "leftof" data
+        , Element.column
+            [ Element.width Element.fill
+            , Element.spacing 10
+            ]
+            (case tool of
+                LeftOf data ->
+                    viewSimpleDistanceTool pattern points "leftof" data
 
-            RightOf data ->
-                simpleDistanceTool "rightof" data
+                RightOf data ->
+                    viewSimpleDistanceTool pattern points "rightof" data
 
-            Above data ->
-                simpleDistanceTool "above" data
+                Above data ->
+                    viewSimpleDistanceTool pattern points "above" data
 
-            Below data ->
-                simpleDistanceTool "below" data
+                Below data ->
+                    viewSimpleDistanceTool pattern points "below" data
 
-            AtAngle { name, dropdownAnchorA, maybeThatAnchorA, angle, distance } ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "at-angle-anchor"
-                        "anchor"
-                        points
-                        dropdownAnchorA
-                        maybeThatAnchorA
-                    , labeledFormulaInputText AngleChanged "angle" angle
-                    , labeledFormulaInputText DistanceChanged "distance" distance
-                    ]
+                AtAngle data ->
+                    viewAngle pattern points data
 
-            BetweenRatio data ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" data.name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "between-ratio-anchor-a"
-                        "1st anchor"
-                        points
-                        data.dropdownAnchorA
-                        data.maybeThatAnchorA
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorBMsg
-                        "between-ratio-anchor-b"
-                        "2st anchor"
-                        points
-                        data.dropdownAnchorB
-                        data.maybeThatAnchorB
-                    , labeledFormulaInputText RatioChanged "ratio" data.ratio
-                    ]
+                BetweenRatio data ->
+                    viewBetweenRatio pattern points data
 
-            BetweenLength data ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" data.name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "between-length-anchor-a"
-                        "1st anchor"
-                        points
-                        data.dropdownAnchorA
-                        data.maybeThatAnchorA
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorBMsg
-                        "between-length-anchor-b"
-                        "2st anchor"
-                        points
-                        data.dropdownAnchorB
-                        data.maybeThatAnchorB
-                    , labeledFormulaInputText LengthChanged "length" data.length
-                    ]
+                BetweenLength data ->
+                    viewBetweenLength pattern points data
 
-            CenteredAt data ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" data.name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "centered-at-anchor"
-                        "anchor"
-                        points
-                        data.dropdownAnchorA
-                        data.maybeThatAnchorA
-                    , labeledFormulaInputText RadiusChanged "radius" data.radius
-                    ]
+                CenteredAt data ->
+                    viewCenteredAt pattern points data
 
-            ThroughTwoPoints data ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" data.name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "through-two-points-anchor-a"
-                        "1st anchor"
-                        points
-                        data.dropdownAnchorA
-                        data.maybeThatAnchorA
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorBMsg
-                        "through-two-points-anchor-b"
-                        "2st anchor"
-                        points
-                        data.dropdownAnchorB
-                        data.maybeThatAnchorB
-                    ]
+                ThroughTwoPoints data ->
+                    viewThroughTwoPoints pattern points data
 
-            FromTo data ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledInputText NameChanged "name" data.name
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorAMsg
-                        "from-to-anchor-a"
-                        "1st anchor"
-                        points
-                        data.dropdownAnchorA
-                        data.maybeThatAnchorA
-                    , labeledDropdown
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a point.."
-                        DropdownAnchorBMsg
-                        "from-to-anchor-b"
-                        "2st anchor"
-                        points
-                        data.dropdownAnchorB
-                        data.maybeThatAnchorB
-                    ]
+                FromTo data ->
+                    viewFromTo pattern points data
 
-            MirrorAt { dropdown, thatLine, listbox, thosePoints } ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledDropdown
-                        (Pattern.getLine pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a line.."
-                        DropdownLineMsg
-                        "mirror-at-line"
-                        "line"
-                        lines
-                        dropdown
-                        thatLine
-                    , labeledListbox
-                        (Pattern.getPoint pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        ListboxPointsMsg
-                        "mirror-at-points"
-                        "targets"
-                        points
-                        listbox
-                        thosePoints
-                    ]
+                MirrorAt data ->
+                    viewMirrorAt pattern points lines data
 
-            CutAlongLineSegment { dropdownLineSegment, thatLineSegment, dropdownDetail, thatDetail } ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ labeledDropdown
-                        (Pattern.getLineSegment pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a line segment.."
-                        DropdownLineSegmentMsg
-                        "cut-along-line-segment--line-segment"
-                        "line segment"
-                        lineSegments
-                        dropdownLineSegment
-                        thatLineSegment
-                    , labeledDropdown
-                        (Pattern.getDetail pattern
-                            >> Maybe.andThen .name
-                            >> Maybe.withDefault "<no name>"
-                        )
-                        "Select a detail.."
-                        DropdownDetailMsg
-                        "cut-along-line-segment--detail"
-                        "detail"
-                        details
-                        dropdownDetail
-                        thatDetail
-                    ]
+                CutAlongLineSegment data ->
+                    viewCutAlongLineSegment pattern lineSegments details data
 
-            CounterClockwise targets ->
-                let
-                    pointButton ( thatPoint, { name } ) =
-                        button "" (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
-                in
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ Element.text
-                        (targets
-                            |> List.filterMap (Pattern.getPoint pattern)
-                            |> List.map (.name >> Maybe.withDefault "<unnamed>")
-                            |> String.join ", "
-                        )
-                    , Element.column [] <|
-                        List.map pointButton points
-                    ]
+                CounterClockwise targets ->
+                    viewCounterClockwise pattern points targets
+            )
         , Element.row
             [ Element.alignRight
             , Element.spacing 5
@@ -1346,141 +1030,337 @@ viewTool pattern points lines lineSegments details tool =
         ]
 
 
+viewSimpleDistanceTool pattern points toolId data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown (toolId ++ "-anchor")
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledFormulaInputText DistanceChanged "distance" data.distance
+    ]
+
+
+viewAngle pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "at-angle-anchor"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledFormulaInputText AngleChanged "angle" data.angle
+    , labeledFormulaInputText DistanceChanged "distance" data.distance
+    ]
+
+
+viewBetweenRatio pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "between-ratio-anchor-a"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "1st anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledDropdown "between-ratio-anchor-b"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorBMsg
+        , label = "2st anchor"
+        , options = points
+        }
+        data.dropdownAnchorB
+        data.maybeThatAnchorB
+    , labeledFormulaInputText RatioChanged "ratio" data.ratio
+    ]
+
+
+viewBetweenLength pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "between-length-anchor-a"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "1st anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledDropdown "between-length-anchor-b"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorBMsg
+        , label = "2st anchor"
+        , options = points
+        }
+        data.dropdownAnchorB
+        data.maybeThatAnchorB
+    , labeledFormulaInputText LengthChanged "length" data.length
+    ]
+
+
+viewCenteredAt pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "centered-at-anchor"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledFormulaInputText RadiusChanged "radius" data.radius
+    ]
+
+
+viewThroughTwoPoints pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "through-two-points-anchor-a"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "1st anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledDropdown "through-two-points-anchor-b"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorBMsg
+        , label = "2st anchor"
+        , options = points
+        }
+        data.dropdownAnchorB
+        data.maybeThatAnchorB
+    ]
+
+
+viewFromTo pattern points data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "from-to-anchor-a"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorAMsg
+        , label = "1st anchor"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledDropdown "from-to-anchor-b"
+        { optionToName = pointName pattern
+        , placeholder = "Select a point.."
+        , lift = DropdownAnchorBMsg
+        , label = "2st anchor"
+        , options = points
+        }
+        data.dropdownAnchorB
+        data.maybeThatAnchorB
+    ]
+
+
+viewMirrorAt pattern points lines data =
+    [ labeledDropdown "mirror-at-line"
+        { optionToName = lineName pattern
+        , placeholder = "Select a line.."
+        , lift = DropdownLineMsg
+        , label = "line"
+        , options = lines
+        }
+        data.dropdown
+        data.thatLine
+    , labeledListbox "mirror-at-points"
+        { optionToName = pointName pattern
+        , lift = ListboxPointsMsg
+        , label = "targets"
+        , options = points
+        }
+        data.listbox
+        data.thosePoints
+    ]
+
+
+viewCutAlongLineSegment pattern lineSegments details data =
+    [ labeledDropdown "cut-along-line-segment--line-segment"
+        { optionToName = lineSegmentName pattern
+        , placeholder = "Select a line segment.."
+        , lift = DropdownLineSegmentMsg
+        , label = "line segment"
+        , options = lineSegments
+        }
+        data.dropdownLineSegment
+        data.thatLineSegment
+    , labeledDropdown "cut-along-line-segment--detail"
+        { optionToName = detailName pattern
+        , placeholder = "Select a detail.."
+        , lift = DropdownDetailMsg
+        , label = "detail"
+        , options = details
+        }
+        data.dropdownDetail
+        data.thatDetail
+    ]
+
+
+viewCounterClockwise pattern points targets =
+    let
+        pointButton ( thatPoint, { name } ) =
+            button "" (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
+    in
+    [ Element.text
+        (targets
+            |> List.filterMap (Pattern.getPoint pattern)
+            |> List.map (.name >> Maybe.withDefault "<unnamed>")
+            |> String.join ", "
+        )
+    , Element.column [] <|
+        List.map pointButton points
+    ]
+
+
+pointName pattern =
+    Pattern.getPoint pattern
+        >> Maybe.andThen .name
+        >> Maybe.withDefault "<unnamed>"
+
+
+lineName pattern =
+    Pattern.getLine pattern
+        >> Maybe.andThen .name
+        >> Maybe.withDefault "<unnamed>"
+
+
+lineSegmentName pattern =
+    Pattern.getLineSegment pattern
+        >> Maybe.andThen .name
+        >> Maybe.withDefault "<unnamed>"
+
+
+detailName pattern =
+    Pattern.getDetail pattern
+        >> Maybe.andThen .name
+        >> Maybe.withDefault "<unnamed>"
+
+
+
+-- VARIABLE
+
+
+viewVariable name value =
+    Element.column
+        [ Element.width Element.fill
+        , Element.padding 15
+        , Element.spacing 15
+        ]
+        [ Element.paragraph
+            [ Font.size 12
+            , Font.color white
+            ]
+            [ Element.text "Create a new "
+            , Element.el
+                [ Font.bold ]
+                (Element.text "variable")
+            ]
+        , Element.column
+            [ Element.width Element.fill
+            , Element.spacing 10
+            ]
+            [ labeledInputText VariableNameChanged "name" name
+            , labeledFormulaInputText VariableValueChanged "value" value
+            ]
+        , Element.row
+            [ Element.alignRight
+            , Element.spacing 5
+            ]
+            [ buttonCreate "Create" CreateClicked
+            , buttonDismiss "Cancel" CancelClicked
+            ]
+        ]
+
+
+
+-- TOOL SELECTOR
+
+
 viewToolSelector maybeTool =
+    let
+        viewGroup name rows =
+            Element.column
+                [ Element.spacing 5
+                , Element.width Element.fill ]
+                [ Element.el
+                    [ Font.size 12
+                    , Font.variant Font.smallCaps
+                    , Font.color (color (Color.rgb255 229 223 197))
+                    ]
+                    (Element.text name)
+                , Element.column
+                    [ Element.spacing 5 ]
+                    (List.map viewRow rows)
+                ]
+
+        viewRow buttons =
+            Element.row
+                [ Element.spacing 5
+                , Element.width Element.fill
+                ]
+                buttons
+    in
     Element.column
         [ Element.padding 10
-        , Element.spacing 30
+        , Element.spacing 10
         , Element.width Element.fill
         ]
-        [ Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
+        [ viewGroup "points"
+            [ [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
+              , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
+              ]
+            , [ button "above" "Above" AboveClicked (isAbove maybeTool)
+              , button "below" "Below" BelowClicked (isBelow maybeTool)
+              ]
+            , [ button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
+              ]
+            , [ button "at_angle" "Between at ratio" BetweenRatioClicked <|
+                    isBeetweenRatio maybeTool
+              , button "at_angle" "Between at length" BetweenLengthClicked <|
+                    isBeetweenLength maybeTool
+              ]
             ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "points")
-            , Element.column
-                [ Element.spacing 5 ]
-                [ Element.row
-                    [ Element.spacing 5
-                    , Element.width Element.fill
-                    ]
-                    [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
-                    , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
-                    ]
-                , Element.row
-                    [ Element.spacing 5
-                    , Element.width Element.fill
-                    ]
-                    [ button "above" "Above" AboveClicked (isAbove maybeTool)
-                    , button "below" "Below" BelowClicked (isBelow maybeTool)
-                    ]
-                , Element.row
-                    [ Element.spacing 5
-                    , Element.width Element.fill
-                    ]
-                    [ button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
-                    ]
-                , Element.row
-                    [ Element.spacing 5
-                    , Element.width Element.fill
-                    ]
-                    [ button "at_angle" "Between at ratio" BetweenRatioClicked <|
-                        isBeetweenRatio maybeTool
-                    , button "at_angle" "Between at length" BetweenLengthClicked <|
-                        isBeetweenLength maybeTool
-                    ]
-                ]
-            ]
-        , Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
-            ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "circles")
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "through_two_points" "Centered at" CenteredAtClicked <|
+        , viewGroup "circles"
+            [ [ button "through_two_points" "Centered at" CenteredAtClicked <|
                     isCenteredAt maybeTool
-                ]
+              ]
             ]
-        , Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
+        , viewGroup "lines"
+            [ [ button "through_two_points" "Through two points" ThroughTwoPointsClicked <|
+                    isThroughTwoPoints maybeTool
+              ]
             ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "lines")
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "through_two_points" "Through two points" ThroughTwoPointsClicked (isThroughTwoPoints maybeTool)
-                ]
+        , viewGroup "line segments"
+            [ [ button "from_to" "From to" FromToClicked (isFromTo maybeTool)
+              ]
             ]
-        , Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
+        , viewGroup "transformations"
+            [ [ button "mirror_at" "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
+              , button "cut_along_line_segment" "Cut along line segment" CutAlongLineSegmentClicked <|
+                    isCutAlongLineSegment maybeTool
+              ]
             ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "line segments")
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "from_to" "From to" FromToClicked (isFromTo maybeTool)
-                ]
-            ]
-        , Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
-            ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "transformations")
-            , Element.row
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "mirror_at" "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
-                , button "cut_along_line_segment" "Cut along line segment" CutAlongLineSegmentClicked (isCutAlongLineSegment maybeTool)
-                ]
-            ]
-        , Element.column
-            [ Element.spacing 5
-            , Element.width Element.fill
-            ]
-            [ Element.el
-                [ Font.size 12
-                , Font.variant Font.smallCaps
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "details")
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                [ button "counter_clockwise" "Counter clockwise" CounterClockwiseClicked (isCounterClockwise maybeTool)
-                ]
+        , viewGroup "details"
+            [ [ button "counter_clockwise" "Counter clockwise" CounterClockwiseClicked <|
+                    isCounterClockwise maybeTool
+              ]
             ]
         ]
 
@@ -2061,16 +1941,22 @@ labeledFormulaInputText onChange label text =
 
 
 labeledDropdown :
-    (That object -> String)
-    -> String
-    -> (Dropdown.Msg (That object) -> Msg)
-    -> String
-    -> String
-    -> List ( That object, Entry object )
+    String
+    ->
+        { lift : Dropdown.Msg (That object) -> Msg
+        , optionToName : That object -> String
+        , placeholder : String
+        , label : String
+        , options : List ( That object, Entry object )
+        }
     -> Dropdown
     -> Maybe (That object)
     -> Element Msg
-labeledDropdown printOption placeholder msg id label options dropdown selected =
+labeledDropdown id customization dropdown selection =
+    let
+        { optionToName, placeholder, lift, label, options } =
+            customization
+    in
     Element.column
         [ Element.width Element.fill
         , Element.spacing 3
@@ -2086,27 +1972,30 @@ labeledDropdown printOption placeholder msg id label options dropdown selected =
         , Element.el [ Element.width Element.fill ] <|
             Element.html <|
                 Html.toUnstyled <|
-                    Html.map msg <|
-                        Dropdown.view (dropdownViewConfig printOption placeholder)
+                    Html.map lift <|
+                        Dropdown.view
+                            (dropdownViewConfig optionToName placeholder)
                             { id = id
                             , labelledBy = id ++ "-label"
                             }
                             (List.map (Tuple.first >> Listbox.option) options)
                             dropdown
-                            selected
+                            selection
         ]
 
 
 labeledListbox :
-    (That object -> String)
-    -> (Listbox.Msg (That object) -> Msg)
-    -> String
-    -> String
-    -> List ( That object, Entry object )
+    String
+    ->
+        { optionToName : That object -> String
+        , lift : Listbox.Msg (That object) -> Msg
+        , label : String
+        , options : List ( That object, Entry object )
+        }
     -> Listbox
     -> Those object
     -> Element Msg
-labeledListbox printOption msg id label options listbox selection =
+labeledListbox id { optionToName, lift, label, options } listbox selection =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 3
@@ -2122,10 +2011,10 @@ labeledListbox printOption msg id label options listbox selection =
         , Element.el [ Element.width Element.fill ] <|
             Element.html <|
                 Html.toUnstyled <|
-                    Listbox.view (listboxViewConfig printOption)
+                    Listbox.view (listboxViewConfig optionToName)
                         { id = id
                         , labelledBy = id ++ "-label"
-                        , lift = msg
+                        , lift = lift
                         }
                         (List.map (Tuple.first >> Listbox.option) options)
                         listbox
