@@ -126,50 +126,50 @@ type Tool
     = -- POINTS
       LeftOf
         { name : String
-        , dropdown : Dropdown
-        , thatAnchor : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | RightOf
         { name : String
-        , dropdown : Dropdown
-        , thatAnchor : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | Above
         { name : String
-        , dropdown : Dropdown
-        , thatAnchor : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | Below
         { name : String
-        , dropdown : Dropdown
-        , thatAnchor : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | AtAngle
         { name : String
-        , dropdown : Dropdown
-        , thatAnchor : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
         , angle : String
         , distance : String
         }
       -- LINES
     | ThroughTwoPoints
         { name : String
-        , dropdownA : Dropdown
-        , thatAnchorA : Maybe (That Point)
-        , dropdownB : Dropdown
-        , thatAnchorB : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , dropdownAnchorB : Dropdown
+        , maybeThatAnchorB : Maybe (That Point)
         }
       -- LINE SEGMENTS
     | FromTo
         { name : String
-        , dropdownA : Dropdown
-        , thatAnchorA : Maybe (That Point)
-        , dropdownB : Dropdown
-        , thatAnchorB : Maybe (That Point)
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , dropdownAnchorB : Dropdown
+        , maybeThatAnchorB : Maybe (That Point)
         }
       -- TRANSFORMATIONS
     | MirrorAt
@@ -408,40 +408,35 @@ selectedPointsFromTool tool =
     let
         empty =
             Those.fromList []
+
+        onlyAnchorA data =
+            data.maybeThatAnchorA
+                |> maybeToList
+                |> Those.fromList
     in
     case tool of
-        LeftOf { thatAnchor } ->
-            thatAnchor
-                |> maybeToList
-                |> Those.fromList
+        LeftOf data ->
+            onlyAnchorA data
 
-        RightOf { thatAnchor } ->
-            thatAnchor
-                |> maybeToList
-                |> Those.fromList
+        RightOf data ->
+            onlyAnchorA data
 
-        Above { thatAnchor } ->
-            thatAnchor
-                |> maybeToList
-                |> Those.fromList
+        Above data ->
+            onlyAnchorA data
 
-        Below { thatAnchor } ->
-            thatAnchor
-                |> maybeToList
-                |> Those.fromList
+        Below data ->
+            onlyAnchorA data
 
-        AtAngle { thatAnchor } ->
-            thatAnchor
-                |> maybeToList
-                |> Those.fromList
+        AtAngle data ->
+            onlyAnchorA data
 
-        ThroughTwoPoints { thatAnchorA, thatAnchorB } ->
-            [ thatAnchorA, thatAnchorB ]
+        ThroughTwoPoints { maybeThatAnchorA, maybeThatAnchorB } ->
+            [ maybeThatAnchorA, maybeThatAnchorB ]
                 |> List.filterMap identity
                 |> Those.fromList
 
-        FromTo { thatAnchorA, thatAnchorB } ->
-            [ thatAnchorA, thatAnchorB ]
+        FromTo { maybeThatAnchorA, maybeThatAnchorB } ->
+            [ maybeThatAnchorA, maybeThatAnchorB ]
                 |> List.filterMap identity
                 |> Those.fromList
 
@@ -915,7 +910,7 @@ viewTool :
     -> Element Msg
 viewTool pattern points lines lineSegments details tool =
     let
-        simpleDistanceTool toolId name dropdown anchor distance =
+        simpleDistanceTool toolId { name, dropdownAnchorA, maybeThatAnchorA, distance } =
             Element.column
                 [ Element.width Element.fill
                 , Element.spacing 10
@@ -927,12 +922,12 @@ viewTool pattern points lines lineSegments details tool =
                         >> Maybe.withDefault "<no name>"
                     )
                     "Select a point.."
-                    DropdownMsg
+                    DropdownAnchorAMsg
                     (toolId ++ "-anchor")
                     "anchor"
                     points
-                    dropdown
-                    anchor
+                    dropdownAnchorA
+                    maybeThatAnchorA
                 , labeledFormulaInputText DistanceChanged "distance" distance
                 ]
     in
@@ -947,19 +942,19 @@ viewTool pattern points lines lineSegments details tool =
             ]
             (toolDescription tool)
         , case tool of
-            LeftOf { name, dropdown, thatAnchor, distance } ->
-                simpleDistanceTool "leftof" name dropdown thatAnchor distance
+            LeftOf data ->
+                simpleDistanceTool "leftof" data
 
-            RightOf { name, dropdown, thatAnchor, distance } ->
-                simpleDistanceTool "rightof" name dropdown thatAnchor distance
+            RightOf data ->
+                simpleDistanceTool "rightof" data
 
-            Above { name, dropdown, thatAnchor, distance } ->
-                simpleDistanceTool "above" name dropdown thatAnchor distance
+            Above data ->
+                simpleDistanceTool "above" data
 
-            Below { name, dropdown, thatAnchor, distance } ->
-                simpleDistanceTool "below" name dropdown thatAnchor distance
+            Below data ->
+                simpleDistanceTool "below" data
 
-            AtAngle { name, dropdown, thatAnchor, angle, distance } ->
+            AtAngle { name, dropdownAnchorA, maybeThatAnchorA, angle, distance } ->
                 Element.column
                     [ Element.width Element.fill
                     , Element.spacing 10
@@ -971,78 +966,78 @@ viewTool pattern points lines lineSegments details tool =
                             >> Maybe.withDefault "<no name>"
                         )
                         "Select a point.."
-                        DropdownMsg
+                        DropdownAnchorAMsg
                         "at-angle-anchor"
                         "anchor"
                         points
-                        dropdown
-                        thatAnchor
+                        dropdownAnchorA
+                        maybeThatAnchorA
                     , labeledFormulaInputText AngleChanged "angle" angle
                     , labeledFormulaInputText DistanceChanged "distance" distance
                     ]
 
-            ThroughTwoPoints { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
+            ThroughTwoPoints data ->
                 Element.column
                     [ Element.width Element.fill
                     , Element.spacing 10
                     ]
-                    [ labeledInputText NameChanged "name" name
+                    [ labeledInputText NameChanged "name" data.name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
                         "Select a point.."
-                        DropdownAMsg
+                        DropdownAnchorAMsg
                         "through-two-points-anchor-a"
                         "1st anchor"
                         points
-                        dropdownA
-                        thatAnchorA
+                        data.dropdownAnchorA
+                        data.maybeThatAnchorA
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
                         "Select a point.."
-                        DropdownBMsg
+                        DropdownAnchorBMsg
                         "through-two-points-anchor-b"
                         "2st anchor"
                         points
-                        dropdownB
-                        thatAnchorB
+                        data.dropdownAnchorB
+                        data.maybeThatAnchorB
                     ]
 
-            FromTo { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
+            FromTo data ->
                 Element.column
                     [ Element.width Element.fill
                     , Element.spacing 10
                     ]
-                    [ labeledInputText NameChanged "name" name
+                    [ labeledInputText NameChanged "name" data.name
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
                         "Select a point.."
-                        DropdownAMsg
+                        DropdownAnchorAMsg
                         "from-to-anchor-a"
                         "1st anchor"
                         points
-                        dropdownA
-                        thatAnchorA
+                        data.dropdownAnchorA
+                        data.maybeThatAnchorA
                     , labeledDropdown
                         (Pattern.getPoint pattern
                             >> Maybe.andThen .name
                             >> Maybe.withDefault "<no name>"
                         )
                         "Select a point.."
-                        DropdownBMsg
+                        DropdownAnchorBMsg
                         "from-to-anchor-b"
                         "2st anchor"
                         points
-                        dropdownB
-                        thatAnchorB
+                        data.dropdownAnchorB
+                        data.maybeThatAnchorB
                     ]
 
             MirrorAt { dropdown, thatLine, listbox, thosePoints } ->
@@ -2504,34 +2499,33 @@ type Msg
     | MouseDown Position
     | MouseMove Position
     | MouseUp Position
-      -- POINTS
+      -- TOOL POINTS
     | LeftOfClicked
     | RightOfClicked
     | AboveClicked
     | BelowClicked
     | AtAngleClicked
-      -- LINES
+      -- TOOL LINES
     | ThroughTwoPointsClicked
-      -- LINE SEGMENTS
+      -- TOOL LINE SEGMENTS
     | FromToClicked
-      -- TRANSFORMATIONS
+      -- TOOL TRANSFORMATIONS
     | MirrorAtClicked
     | CutAlongLineSegmentClicked
-      -- DETAILS
+      -- TOOL DETAILS
     | CounterClockwiseClicked
-      --
+      -- TOOL PARAMETERS
     | NameChanged String
     | AngleChanged String
     | DistanceChanged String
     | PointAdded (That Point)
-    | DropdownMsg (Dropdown.Msg (That Point))
-    | DropdownAMsg (Dropdown.Msg (That Point))
-    | DropdownBMsg (Dropdown.Msg (That Point))
+    | DropdownAnchorAMsg (Dropdown.Msg (That Point))
+    | DropdownAnchorBMsg (Dropdown.Msg (That Point))
     | DropdownLineMsg (Dropdown.Msg (That Line))
     | ListboxPointsMsg (Listbox.Msg (That Point))
     | DropdownLineSegmentMsg (Dropdown.Msg (That LineSegment))
     | DropdownDetailMsg (Dropdown.Msg (That Detail))
-      --
+      -- TOOL ACTIONS
     | CreateClicked
     | CancelClicked
       -- PATTERN
@@ -2618,8 +2612,8 @@ update msg model =
                     Tool <|
                         LeftOf
                             { name = ""
-                            , dropdown = Dropdown.init
-                            , thatAnchor = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
                             , distance = ""
                             }
               }
@@ -2633,8 +2627,8 @@ update msg model =
                     Tool <|
                         RightOf
                             { name = ""
-                            , dropdown = Dropdown.init
-                            , thatAnchor = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
                             , distance = ""
                             }
               }
@@ -2648,8 +2642,8 @@ update msg model =
                     Tool <|
                         Above
                             { name = ""
-                            , dropdown = Dropdown.init
-                            , thatAnchor = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
                             , distance = ""
                             }
               }
@@ -2663,8 +2657,8 @@ update msg model =
                     Tool <|
                         Below
                             { name = ""
-                            , dropdown = Dropdown.init
-                            , thatAnchor = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
                             , distance = ""
                             }
               }
@@ -2678,8 +2672,8 @@ update msg model =
                     Tool <|
                         AtAngle
                             { name = ""
-                            , dropdown = Dropdown.init
-                            , thatAnchor = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
                             , angle = ""
                             , distance = ""
                             }
@@ -2695,10 +2689,10 @@ update msg model =
                     Tool <|
                         ThroughTwoPoints
                             { name = ""
-                            , dropdownA = Dropdown.init
-                            , thatAnchorA = Nothing
-                            , dropdownB = Dropdown.init
-                            , thatAnchorB = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
+                            , dropdownAnchorB = Dropdown.init
+                            , maybeThatAnchorB = Nothing
                             }
               }
             , Browser.Dom.focus "name-input"
@@ -2712,10 +2706,10 @@ update msg model =
                     Tool <|
                         FromTo
                             { name = ""
-                            , dropdownA = Dropdown.init
-                            , thatAnchorA = Nothing
-                            , dropdownB = Dropdown.init
-                            , thatAnchorB = Nothing
+                            , dropdownAnchorA = Dropdown.init
+                            , maybeThatAnchorA = Nothing
+                            , dropdownAnchorB = Dropdown.init
+                            , maybeThatAnchorB = Nothing
                             }
               }
             , Browser.Dom.focus "name-input"
@@ -2838,44 +2832,39 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        DropdownMsg dropdownMsg ->
+        DropdownAnchorAMsg dropdownMsg ->
             case model.dialog of
                 Tool (LeftOf data) ->
-                    updateDropdown model LeftOf dropdownMsg data
+                    updateDropdownAnchorA model LeftOf dropdownMsg data
 
                 Tool (RightOf data) ->
-                    updateDropdown model RightOf dropdownMsg data
+                    updateDropdownAnchorA model RightOf dropdownMsg data
 
                 Tool (Above data) ->
-                    updateDropdown model Above dropdownMsg data
+                    updateDropdownAnchorA model Above dropdownMsg data
 
                 Tool (Below data) ->
-                    updateDropdown model Below dropdownMsg data
+                    updateDropdownAnchorA model Below dropdownMsg data
 
                 Tool (AtAngle data) ->
-                    updateDropdown model AtAngle dropdownMsg data
+                    updateDropdownAnchorA model AtAngle dropdownMsg data
+
+                Tool (ThroughTwoPoints data) ->
+                    updateDropdownAnchorA model ThroughTwoPoints dropdownMsg data
+
+                Tool (FromTo data) ->
+                    updateDropdownAnchorA model FromTo dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none )
 
-        DropdownAMsg dropdownMsg ->
+        DropdownAnchorBMsg dropdownMsg ->
             case model.dialog of
                 Tool (ThroughTwoPoints data) ->
-                    updateDropdownA model ThroughTwoPoints dropdownMsg data
+                    updateDropdownAnchorB model ThroughTwoPoints dropdownMsg data
 
                 Tool (FromTo data) ->
-                    updateDropdownA model FromTo dropdownMsg data
-
-                _ ->
-                    ( model, Cmd.none )
-
-        DropdownBMsg dropdownMsg ->
-            case model.dialog of
-                Tool (ThroughTwoPoints data) ->
-                    updateDropdownB model ThroughTwoPoints dropdownMsg data
-
-                Tool (FromTo data) ->
-                    updateDropdownB model FromTo dropdownMsg data
+                    updateDropdownAnchorB model FromTo dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none )
@@ -3000,58 +2989,61 @@ update msg model =
 
         CreateClicked ->
             let
-                insertSimpleDistance constructor name anchor distance =
-                    case anchor of
+                insertSimpleDistance constructor data =
+                    case data.maybeThatAnchorA of
                         Nothing ->
                             ( model, Cmd.none )
 
                         Just thatAnchor ->
-                            constructor model.pattern thatAnchor distance
-                                |> Maybe.map (insertPoint name model)
+                            constructor model.pattern thatAnchor data.distance
+                                |> Maybe.map (insertPoint data.name model)
                                 |> Maybe.withDefault ( model, Cmd.none )
 
                 lastState =
                     Pattern.lastState model.pattern
             in
             case model.dialog of
-                Tool (LeftOf { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.leftOf name thatAnchor distance
+                Tool (LeftOf data) ->
+                    insertSimpleDistance Pattern.leftOf data
 
-                Tool (RightOf { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.rightOf name thatAnchor distance
+                Tool (RightOf data) ->
+                    insertSimpleDistance Pattern.rightOf data
 
-                Tool (Above { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.above name thatAnchor distance
+                Tool (Above data) ->
+                    insertSimpleDistance Pattern.above data
 
-                Tool (Below { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.below name thatAnchor distance
+                Tool (Below data) ->
+                    insertSimpleDistance Pattern.below data
 
-                Tool (AtAngle { name, thatAnchor, angle, distance }) ->
-                    case thatAnchor of
+                Tool (AtAngle data) ->
+                    case data.maybeThatAnchorA of
                         Nothing ->
                             ( model, Cmd.none )
 
-                        Just anchor ->
-                            Pattern.atAngle model.pattern anchor angle distance
-                                |> Maybe.map (insertPoint name model)
+                        Just thatAnchor ->
+                            Pattern.atAngle model.pattern
+                                thatAnchor
+                                data.angle
+                                data.distance
+                                |> Maybe.map (insertPoint data.name model)
                                 |> Maybe.withDefault ( model, Cmd.none )
 
-                Tool (ThroughTwoPoints { name, thatAnchorA, thatAnchorB }) ->
-                    case ( thatAnchorA, thatAnchorB ) of
-                        ( Just thatPointA, Just thatPointB ) ->
+                Tool (ThroughTwoPoints data) ->
+                    case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
+                        ( Just thatAnchorA, Just thatAnchorB ) ->
                             let
                                 newLine =
                                     Pattern.ThroughTwoPoints
-                                        thatPointA
-                                        thatPointB
+                                        thatAnchorA
+                                        thatAnchorB
 
                                 newPattern =
                                     Pattern.insertLine
-                                        (if name == "" then
+                                        (if data.name == "" then
                                             Nothing
 
                                          else
-                                            Just name
+                                            Just data.name
                                         )
                                         newLine
                                         model.pattern
@@ -3066,22 +3058,22 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-                Tool (FromTo { name, thatAnchorA, thatAnchorB }) ->
-                    case ( thatAnchorA, thatAnchorB ) of
-                        ( Just thatPointA, Just thatPointB ) ->
+                Tool (FromTo data) ->
+                    case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
+                        ( Just thatAnchorA, Just thatAnchorB ) ->
                             let
                                 newLineSegment =
                                     Pattern.FromTo
-                                        thatPointA
-                                        thatPointB
+                                        thatAnchorA
+                                        thatAnchorB
 
                                 newPattern =
                                     Pattern.insertLineSegment
-                                        (if name == "" then
+                                        (if data.name == "" then
                                             Nothing
 
                                          else
-                                            Just name
+                                            Just data.name
                                         )
                                         newLineSegment
                                         model.pattern
@@ -3239,75 +3231,49 @@ update msg model =
             )
 
 
-updateDropdown model toTool dropdownMsg data =
+updateDropdownAnchorA model toTool dropdownMsg data =
     let
-        ( newDropdown, dropdownCmd, newAnchor ) =
+        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
             Dropdown.update dropdownUpdateConfig
                 (Pattern.points model.pattern
                     |> List.map (Tuple.first >> Listbox.option)
                 )
                 dropdownMsg
-                data.dropdown
-                data.thatAnchor
+                data.dropdownAnchorA
+                data.maybeThatAnchorA
+
+        newTool =
+            toTool
+                { data
+                    | dropdownAnchorA = newDropdown
+                    , maybeThatAnchorA = newMaybeThatAnchor
+                }
     in
-    ( { model
-        | dialog =
-            Tool <|
-                toTool
-                    { data
-                        | dropdown = newDropdown
-                        , thatAnchor = newAnchor
-                    }
-      }
-    , Cmd.map DropdownMsg dropdownCmd
+    ( { model | dialog = Tool newTool }
+    , Cmd.map DropdownAnchorAMsg dropdownCmd
     )
 
 
-updateDropdownA model toTool dropdownMsg data =
+updateDropdownAnchorB model toTool dropdownMsg data =
     let
-        ( newDropdownA, dropdownCmd, newAnchorA ) =
+        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
             Dropdown.update dropdownUpdateConfig
                 (Pattern.points model.pattern
                     |> List.map (Tuple.first >> Listbox.option)
                 )
                 dropdownMsg
-                data.dropdownA
-                data.thatAnchorA
-    in
-    ( { model
-        | dialog =
-            Tool <|
-                toTool
-                    { data
-                        | dropdownA = newDropdownA
-                        , thatAnchorA = newAnchorA
-                    }
-      }
-    , Cmd.map DropdownAMsg dropdownCmd
-    )
+                data.dropdownAnchorB
+                data.maybeThatAnchorB
 
-
-updateDropdownB model toTool dropdownMsg data =
-    let
-        ( newDropdownB, dropdownCmd, newAnchorB ) =
-            Dropdown.update dropdownUpdateConfig
-                (Pattern.points model.pattern
-                    |> List.map (Tuple.first >> Listbox.option)
-                )
-                dropdownMsg
-                data.dropdownB
-                data.thatAnchorB
+        newTool =
+            toTool
+                { data
+                    | dropdownAnchorB = newDropdown
+                    , maybeThatAnchorB = newMaybeThatAnchor
+                }
     in
-    ( { model
-        | dialog =
-            Tool <|
-                toTool
-                    { data
-                        | dropdownB = newDropdownB
-                        , thatAnchorB = newAnchorB
-                    }
-      }
-    , Cmd.map DropdownBMsg dropdownCmd
+    ( { model | dialog = Tool newTool }
+    , Cmd.map DropdownAnchorBMsg dropdownCmd
     )
 
 
