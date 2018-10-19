@@ -1,7 +1,7 @@
 module Pattern exposing
     ( Pattern
     , empty
-    , Point(..), points, insertPoint, getPoint
+    , Point(..), points, insertPoint, getPoint, updatePoint
     , leftOf, rightOf, above, below
     , atAngle
     , betweenRatio, betweenLength
@@ -29,7 +29,7 @@ module Pattern exposing
 
 # Points
 
-@docs Point, points, insertPoint, getPoint
+@docs Point, points, insertPoint, getPoint, updatePoint
 
 @docs leftOf, rightOf, above, below
 
@@ -1074,6 +1074,15 @@ points =
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
 getPoint (Pattern pattern) =
     Store.get pattern.points << That.objectId
+
+
+updatePoint : That Point -> Point -> Pattern -> Pattern
+updatePoint thatPoint point (Pattern pattern) =
+    Pattern
+        { pattern
+            | points =
+                Store.updateValue (That.objectId thatPoint) point pattern.points
+        }
 
 
 getPointGeometry : Pattern -> That Point -> Maybe Point2d

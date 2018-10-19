@@ -189,30 +189,39 @@ type ToolTag
 
 toolToTag : Tool -> ToolTag
 toolToTag tool =
+    let
+        pointDataToTag pointData =
+            case pointData of
+                LeftOf _ ->
+                    LeftOfTag
+
+                RightOf _ ->
+                    RightOfTag
+
+                Above _ ->
+                    AboveTag
+
+                Below _ ->
+                    BelowTag
+
+                AtAngle _ ->
+                    AtAngleTag
+
+                BetweenRatio _ ->
+                    BetweenRatioTag
+
+                BetweenLength _ ->
+                    BetweenLengthTag
+
+                CircleCircle _ ->
+                    CircleCircleTag
+    in
     case tool of
-        LeftOf _ ->
-            LeftOfTag
+        CreatePoint _ pointData ->
+            pointDataToTag pointData
 
-        RightOf _ ->
-            RightOfTag
-
-        Above _ ->
-            AboveTag
-
-        Below _ ->
-            BelowTag
-
-        AtAngle _ ->
-            AtAngleTag
-
-        BetweenRatio _ ->
-            BetweenRatioTag
-
-        BetweenLength _ ->
-            BetweenLengthTag
-
-        CircleCircle _ ->
-            CircleCircleTag
+        EditPoint _ pointData ->
+            pointDataToTag pointData
 
         CenteredAt _ ->
             CenteredAtTag
@@ -233,63 +242,59 @@ toolToTag tool =
             CounterClockwiseTag
 
 
-type Tool
-    = -- POINTS
-      LeftOf
-        { name : String
-        , dropdownAnchorA : Dropdown
+type PointData
+    = LeftOf
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | RightOf
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | Above
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | Below
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , distance : String
         }
     | AtAngle
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , angle : String
         , distance : String
         }
     | BetweenRatio
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , dropdownAnchorB : Dropdown
         , maybeThatAnchorB : Maybe (That Point)
         , ratio : String
         }
     | BetweenLength
-        { name : String
-        , dropdownAnchorA : Dropdown
+        { dropdownAnchorA : Dropdown
         , maybeThatAnchorA : Maybe (That Point)
         , dropdownAnchorB : Dropdown
         , maybeThatAnchorB : Maybe (That Point)
         , length : String
         }
     | CircleCircle
-        { name : String
-        , dropdownCircleA : Dropdown
+        { dropdownCircleA : Dropdown
         , maybeThatCircleA : Maybe (That Circle)
         , dropdownCircleB : Dropdown
         , maybeThatCircleB : Maybe (That Circle)
         , first : Bool
         }
+
+
+type Tool
+    = CreatePoint String PointData
+    | EditPoint (That Point) PointData
       -- CIRCLES
     | CenteredAt
         { name : String
@@ -484,31 +489,39 @@ selectedPointsFromTool tool =
             [ data.maybeThatAnchorA, data.maybeThatAnchorB ]
                 |> List.filterMap identity
                 |> Those.fromList
+
+        selectedPointsFromPointData pointData =
+            case pointData of
+                LeftOf data ->
+                    onlyAnchorA data
+
+                RightOf data ->
+                    onlyAnchorA data
+
+                Above data ->
+                    onlyAnchorA data
+
+                Below data ->
+                    onlyAnchorA data
+
+                AtAngle data ->
+                    onlyAnchorA data
+
+                BetweenRatio data ->
+                    anchorAandB data
+
+                BetweenLength data ->
+                    anchorAandB data
+
+                CircleCircle _ ->
+                    empty
     in
     case tool of
-        LeftOf data ->
-            onlyAnchorA data
+        CreatePoint _ pointData ->
+            selectedPointsFromPointData pointData
 
-        RightOf data ->
-            onlyAnchorA data
-
-        Above data ->
-            onlyAnchorA data
-
-        Below data ->
-            onlyAnchorA data
-
-        AtAngle data ->
-            onlyAnchorA data
-
-        BetweenRatio data ->
-            anchorAandB data
-
-        BetweenLength data ->
-            anchorAandB data
-
-        CircleCircle _ ->
-            empty
+        EditPoint _ pointData ->
+            selectedPointsFromPointData pointData
 
         CenteredAt data ->
             onlyAnchorA data
@@ -534,31 +547,39 @@ selectedLinesFromTool tool =
     let
         empty =
             Those.fromList []
+
+        selectedLinesFromPointData pointData =
+            case pointData of
+                LeftOf _ ->
+                    empty
+
+                RightOf _ ->
+                    empty
+
+                Above _ ->
+                    empty
+
+                Below _ ->
+                    empty
+
+                AtAngle _ ->
+                    empty
+
+                BetweenRatio _ ->
+                    empty
+
+                BetweenLength _ ->
+                    empty
+
+                CircleCircle _ ->
+                    empty
     in
     case tool of
-        LeftOf _ ->
-            empty
+        CreatePoint _ pointData ->
+            selectedLinesFromPointData pointData
 
-        RightOf _ ->
-            empty
-
-        Above _ ->
-            empty
-
-        Below _ ->
-            empty
-
-        AtAngle _ ->
-            empty
-
-        BetweenRatio _ ->
-            empty
-
-        BetweenLength _ ->
-            empty
-
-        CircleCircle _ ->
-            empty
+        EditPoint _ pointData ->
+            selectedLinesFromPointData pointData
 
         CenteredAt _ ->
             empty
@@ -586,31 +607,39 @@ selectedLineSegmentsFromTool tool =
     let
         empty =
             Those.fromList []
+
+        selectedLineSegmentsFromPointData pointData =
+            case pointData of
+                LeftOf _ ->
+                    empty
+
+                RightOf _ ->
+                    empty
+
+                Above _ ->
+                    empty
+
+                Below _ ->
+                    empty
+
+                AtAngle _ ->
+                    empty
+
+                BetweenRatio _ ->
+                    empty
+
+                BetweenLength _ ->
+                    empty
+
+                CircleCircle _ ->
+                    empty
     in
     case tool of
-        LeftOf _ ->
-            empty
+        CreatePoint _ pointData ->
+            selectedLineSegmentsFromPointData pointData
 
-        RightOf _ ->
-            empty
-
-        Above _ ->
-            empty
-
-        Below _ ->
-            empty
-
-        AtAngle _ ->
-            empty
-
-        BetweenRatio _ ->
-            empty
-
-        BetweenLength _ ->
-            empty
-
-        CircleCircle _ ->
-            empty
+        EditPoint _ pointData ->
+            selectedLineSegmentsFromPointData pointData
 
         CenteredAt _ ->
             empty
@@ -638,31 +667,39 @@ selectedDetailsFromTool tool =
     let
         empty =
             Those.fromList []
+
+        selectedDetailsFromPointData pointData =
+            case pointData of
+                LeftOf _ ->
+                    empty
+
+                RightOf _ ->
+                    empty
+
+                Above _ ->
+                    empty
+
+                Below _ ->
+                    empty
+
+                AtAngle _ ->
+                    empty
+
+                BetweenRatio _ ->
+                    empty
+
+                BetweenLength _ ->
+                    empty
+
+                CircleCircle _ ->
+                    empty
     in
     case tool of
-        LeftOf _ ->
-            empty
+        CreatePoint _ pointData ->
+            selectedDetailsFromPointData pointData
 
-        RightOf _ ->
-            empty
-
-        Above _ ->
-            empty
-
-        Below _ ->
-            empty
-
-        AtAngle _ ->
-            empty
-
-        BetweenRatio _ ->
-            empty
-
-        BetweenLength _ ->
-            empty
-
-        CircleCircle _ ->
-            empty
+        EditPoint _ pointData ->
+            selectedDetailsFromPointData pointData
 
         CenteredAt _ ->
             empty
@@ -927,8 +964,7 @@ viewLeftToolbar model =
                     Nothing
         , Element.el [ Element.height Element.fill ] Element.none
         , Element.row
-            [ Element.padding 10
-            , Element.spacing 5
+            [ Element.paddingXY 10 5
             , Element.width Element.fill
             ]
             [ buttonDanger "Clear pattern" ClearPatternClicked
@@ -1064,29 +1100,59 @@ viewTool pattern points circles lines lineSegments details tool =
             , Element.spacing 10
             ]
             (case tool of
-                LeftOf data ->
-                    viewSimpleDistanceTool pattern points "leftof" data
+                CreatePoint name pointData ->
+                    labeledInputText NameChanged "name" name
+                        :: (case pointData of
+                                LeftOf data ->
+                                    viewSimpleDistanceTool pattern points "leftof" data
 
-                RightOf data ->
-                    viewSimpleDistanceTool pattern points "rightof" data
+                                RightOf data ->
+                                    viewSimpleDistanceTool pattern points "rightof" data
 
-                Above data ->
-                    viewSimpleDistanceTool pattern points "above" data
+                                Above data ->
+                                    viewSimpleDistanceTool pattern points "above" data
 
-                Below data ->
-                    viewSimpleDistanceTool pattern points "below" data
+                                Below data ->
+                                    viewSimpleDistanceTool pattern points "below" data
 
-                AtAngle data ->
-                    viewAngle pattern points data
+                                AtAngle data ->
+                                    viewAngle pattern points data
 
-                BetweenRatio data ->
-                    viewBetweenRatio pattern points data
+                                BetweenRatio data ->
+                                    viewBetweenRatio pattern points data
 
-                BetweenLength data ->
-                    viewBetweenLength pattern points data
+                                BetweenLength data ->
+                                    viewBetweenLength pattern points data
 
-                CircleCircle data ->
-                    viewCircleCircle pattern circles data
+                                CircleCircle data ->
+                                    viewCircleCircle pattern circles data
+                           )
+
+                EditPoint _ pointData ->
+                    case pointData of
+                        LeftOf data ->
+                            viewSimpleDistanceTool pattern points "leftof" data
+
+                        RightOf data ->
+                            viewSimpleDistanceTool pattern points "rightof" data
+
+                        Above data ->
+                            viewSimpleDistanceTool pattern points "above" data
+
+                        Below data ->
+                            viewSimpleDistanceTool pattern points "below" data
+
+                        AtAngle data ->
+                            viewAngle pattern points data
+
+                        BetweenRatio data ->
+                            viewBetweenRatio pattern points data
+
+                        BetweenLength data ->
+                            viewBetweenLength pattern points data
+
+                        CircleCircle data ->
+                            viewCircleCircle pattern circles data
 
                 CenteredAt data ->
                     viewCenteredAt pattern points data
@@ -1110,15 +1176,22 @@ viewTool pattern points circles lines lineSegments details tool =
             [ Element.alignRight
             , Element.spacing 5
             ]
-            [ buttonCreate "Create" CreateClicked
+            [ case tool of
+                CreatePoint _ _ ->
+                    buttonCreate "Create" CreateClicked
+
+                EditPoint _ _ ->
+                    buttonCreate "Update" UpdateClicked
+
+                _ ->
+                    buttonCreate "Create" CreateClicked
             , buttonDismiss "Cancel" CancelClicked
             ]
         ]
 
 
 viewSimpleDistanceTool pattern points toolId data =
-    [ labeledInputText NameChanged "name" data.name
-    , labeledDropdown (toolId ++ "-anchor")
+    [ labeledDropdown (toolId ++ "-anchor")
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorAMsg
@@ -1132,8 +1205,7 @@ viewSimpleDistanceTool pattern points toolId data =
 
 
 viewAngle pattern points data =
-    [ labeledInputText NameChanged "name" data.name
-    , labeledDropdown "at-angle-anchor"
+    [ labeledDropdown "at-angle-anchor"
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorAMsg
@@ -1148,8 +1220,7 @@ viewAngle pattern points data =
 
 
 viewBetweenRatio pattern points data =
-    [ labeledInputText NameChanged "name" data.name
-    , labeledDropdown "between-ratio-anchor-a"
+    [ labeledDropdown "between-ratio-anchor-a"
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorAMsg
@@ -1172,8 +1243,7 @@ viewBetweenRatio pattern points data =
 
 
 viewBetweenLength pattern points data =
-    [ labeledInputText NameChanged "name" data.name
-    , labeledDropdown "between-length-anchor-a"
+    [ labeledDropdown "between-length-anchor-a"
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorAMsg
@@ -1196,8 +1266,7 @@ viewBetweenLength pattern points data =
 
 
 viewCircleCircle pattern circles data =
-    [ labeledInputText NameChanged "name" data.name
-    , labeledDropdown "circle-circle--circle-a"
+    [ labeledDropdown "circle-circle--circle-a"
         { optionToName = circleName pattern
         , placeholder = "Select a circle.."
         , lift = DropdownCircleAMsg
@@ -1740,7 +1809,7 @@ viewPoints model =
                         , { header = Element.none
                           , width = Element.shrink
                           , view =
-                                \_ ->
+                                \( thatPoint, _ ) ->
                                     Element.row
                                         [ Element.paddingEach
                                             { left = 5
@@ -1757,7 +1826,7 @@ viewPoints model =
                                             , Element.mouseOver
                                                 [ Font.color gray700 ]
                                             ]
-                                            { onPress = Nothing
+                                            { onPress = Just (EditPointClicked thatPoint)
                                             , label =
                                                 Element.el
                                                     [ Element.centerX
@@ -2843,6 +2912,7 @@ type Msg
     | SelectToolHovered ToolTag
     | SelectToolUnhovered
     | SelectToolClicked ToolTag
+    | EditPointClicked (That Point)
       -- TOOL PARAMETERS
     | NameChanged String
     | AngleChanged String
@@ -2862,6 +2932,7 @@ type Msg
     | FirstChanged Bool
       -- TOOL ACTIONS
     | CreateClicked
+    | UpdateClicked
     | CancelClicked
       -- PATTERN
     | PointHovered (Maybe (That Point))
@@ -2968,75 +3039,75 @@ update msg model =
                 tool =
                     case toolTag of
                         LeftOfTag ->
-                            LeftOf
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , distance = ""
-                                }
+                            CreatePoint "" <|
+                                LeftOf
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , distance = ""
+                                    }
 
                         RightOfTag ->
-                            RightOf
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , distance = ""
-                                }
+                            CreatePoint "" <|
+                                RightOf
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , distance = ""
+                                    }
 
                         AboveTag ->
-                            Above
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , distance = ""
-                                }
+                            CreatePoint "" <|
+                                Above
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , distance = ""
+                                    }
 
                         BelowTag ->
-                            Below
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , distance = ""
-                                }
+                            CreatePoint "" <|
+                                Below
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , distance = ""
+                                    }
 
                         AtAngleTag ->
-                            AtAngle
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , angle = ""
-                                , distance = ""
-                                }
+                            CreatePoint "" <|
+                                AtAngle
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , angle = ""
+                                    , distance = ""
+                                    }
 
                         BetweenRatioTag ->
-                            BetweenRatio
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , dropdownAnchorB = Dropdown.init
-                                , maybeThatAnchorB = Nothing
-                                , ratio = ""
-                                }
+                            CreatePoint "" <|
+                                BetweenRatio
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , dropdownAnchorB = Dropdown.init
+                                    , maybeThatAnchorB = Nothing
+                                    , ratio = ""
+                                    }
 
                         BetweenLengthTag ->
-                            BetweenLength
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
-                                , maybeThatAnchorA = Nothing
-                                , dropdownAnchorB = Dropdown.init
-                                , maybeThatAnchorB = Nothing
-                                , length = ""
-                                }
+                            CreatePoint "" <|
+                                BetweenLength
+                                    { dropdownAnchorA = Dropdown.init
+                                    , maybeThatAnchorA = Nothing
+                                    , dropdownAnchorB = Dropdown.init
+                                    , maybeThatAnchorB = Nothing
+                                    , length = ""
+                                    }
 
                         CircleCircleTag ->
-                            CircleCircle
-                                { name = ""
-                                , dropdownCircleA = Dropdown.init
-                                , maybeThatCircleA = Nothing
-                                , dropdownCircleB = Dropdown.init
-                                , maybeThatCircleB = Nothing
-                                , first = True
-                                }
+                            CreatePoint "" <|
+                                CircleCircle
+                                    { dropdownCircleA = Dropdown.init
+                                    , maybeThatCircleA = Nothing
+                                    , dropdownCircleB = Dropdown.init
+                                    , maybeThatCircleB = Nothing
+                                    , first = True
+                                    }
 
                         CenteredAtTag ->
                             CenteredAt
@@ -3097,6 +3168,154 @@ update msg model =
                         |> Task.attempt (\_ -> NoOp)
             )
 
+        EditPointClicked thatPoint ->
+            case Pattern.getPoint model.pattern thatPoint of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just { name, value } ->
+                    case value of
+                        Pattern.Origin _ _ ->
+                            ( model, Cmd.none )
+
+                        Pattern.LeftOf thatAnchor distance ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            LeftOf
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchor
+                                                , distance = distance
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.RightOf thatAnchor distance ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            RightOf
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchor
+                                                , distance = distance
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.Above thatAnchor distance ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            Above
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchor
+                                                , distance = distance
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.Below thatAnchor distance ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            Below
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchor
+                                                , distance = distance
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.AtAngle thatAnchor angle distance ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            AtAngle
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchor
+                                                , angle = angle
+                                                , distance = distance
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.BetweenRatio thatAnchorA thatAnchorB ratio ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            BetweenRatio
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchorA
+                                                , dropdownAnchorB = Dropdown.init
+                                                , maybeThatAnchorB = Just thatAnchorB
+                                                , ratio = ratio
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.BetweenLength thatAnchorA thatAnchorB length ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            BetweenLength
+                                                { dropdownAnchorA = Dropdown.init
+                                                , maybeThatAnchorA = Just thatAnchorA
+                                                , dropdownAnchorB = Dropdown.init
+                                                , maybeThatAnchorB = Just thatAnchorB
+                                                , length = length
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.FirstCircleCircle thatCircleA thatCircleB ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            CircleCircle
+                                                { dropdownCircleA = Dropdown.init
+                                                , maybeThatCircleA = Just thatCircleA
+                                                , dropdownCircleB = Dropdown.init
+                                                , maybeThatCircleB = Just thatCircleB
+                                                , first = True
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        Pattern.SecondCircleCircle thatCircleA thatCircleB ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            CircleCircle
+                                                { dropdownCircleA = Dropdown.init
+                                                , maybeThatCircleA = Just thatCircleA
+                                                , dropdownCircleB = Dropdown.init
+                                                , maybeThatCircleB = Just thatCircleB
+                                                , first = False
+                                                }
+                              }
+                            , Cmd.none
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
         -- TOOL PARAMETERS
         NameChanged newName ->
             let
@@ -3106,29 +3325,16 @@ update msg model =
                     )
             in
             case model.dialog of
-                Tool (LeftOf data) ->
-                    updateName LeftOf data
+                NoDialog ->
+                    ( model, Cmd.none )
 
-                Tool (RightOf data) ->
-                    updateName RightOf data
+                Tool (CreatePoint name toolData) ->
+                    ( { model | dialog = Tool (CreatePoint newName toolData) }
+                    , Cmd.none
+                    )
 
-                Tool (Above data) ->
-                    updateName Above data
-
-                Tool (Below data) ->
-                    updateName Below data
-
-                Tool (AtAngle data) ->
-                    updateName AtAngle data
-
-                Tool (BetweenRatio data) ->
-                    updateName BetweenRatio data
-
-                Tool (BetweenLength data) ->
-                    updateName BetweenLength data
-
-                Tool (CircleCircle data) ->
-                    updateName CircleCircle data
+                Tool (EditPoint _ _) ->
+                    ( model, Cmd.none )
 
                 Tool (CenteredAt data) ->
                     updateName CenteredAt data
@@ -3139,13 +3345,43 @@ update msg model =
                 Tool (FromTo data) ->
                     updateName FromTo data
 
-                _ ->
+                Tool (MirrorAt _) ->
+                    ( model, Cmd.none )
+
+                Tool (CutAlongLineSegment _) ->
+                    ( model, Cmd.none )
+
+                Tool (CounterClockwise _) ->
+                    ( model, Cmd.none )
+
+                CreateVariable _ ->
                     ( model, Cmd.none )
 
         AngleChanged newAngle ->
+            let
+                updateAngle toPointData data =
+                    toPointData { data | angle = newAngle }
+
+                updatePointData pointData =
+                    case pointData of
+                        AtAngle data ->
+                            updateAngle AtAngle data
+
+                        _ ->
+                            pointData
+            in
             case model.dialog of
-                Tool (AtAngle data) ->
-                    ( { model | dialog = Tool (AtAngle { data | angle = newAngle }) }
+                Tool (CreatePoint name pointData) ->
+                    ( { model
+                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                      }
+                    , Cmd.none
+                    )
+
+                Tool (EditPoint thatPoint pointData) ->
+                    ( { model
+                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                      }
                     , Cmd.none
                     )
 
@@ -3154,34 +3390,72 @@ update msg model =
 
         DistanceChanged newDistance ->
             let
-                updateDistance toTool data =
-                    ( { model | dialog = Tool (toTool { data | distance = newDistance }) }
-                    , Cmd.none
-                    )
+                updateDistance toPointData data =
+                    toPointData { data | distance = newDistance }
+
+                updatePointData pointData =
+                    case pointData of
+                        LeftOf data ->
+                            updateDistance LeftOf data
+
+                        RightOf data ->
+                            updateDistance RightOf data
+
+                        Above data ->
+                            updateDistance Above data
+
+                        Below data ->
+                            updateDistance Below data
+
+                        AtAngle data ->
+                            updateDistance AtAngle data
+
+                        _ ->
+                            pointData
             in
             case model.dialog of
-                Tool (LeftOf data) ->
-                    updateDistance LeftOf data
+                Tool (CreatePoint name pointData) ->
+                    ( { model
+                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                      }
+                    , Cmd.none
+                    )
 
-                Tool (RightOf data) ->
-                    updateDistance RightOf data
-
-                Tool (Above data) ->
-                    updateDistance Above data
-
-                Tool (Below data) ->
-                    updateDistance Below data
-
-                Tool (AtAngle data) ->
-                    updateDistance AtAngle data
+                Tool (EditPoint thatPoint pointData) ->
+                    ( { model
+                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
 
         RatioChanged newRatio ->
+            let
+                updateRatio toPointData data =
+                    toPointData { data | ratio = newRatio }
+
+                updatePointData pointData =
+                    case pointData of
+                        BetweenRatio data ->
+                            updateRatio BetweenRatio data
+
+                        _ ->
+                            pointData
+            in
             case model.dialog of
-                Tool (BetweenRatio data) ->
-                    ( { model | dialog = Tool (BetweenRatio { data | ratio = newRatio }) }
+                Tool (CreatePoint name pointData) ->
+                    ( { model
+                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                      }
+                    , Cmd.none
+                    )
+
+                Tool (EditPoint thatPoint pointData) ->
+                    ( { model
+                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                      }
                     , Cmd.none
                     )
 
@@ -3189,9 +3463,30 @@ update msg model =
                     ( model, Cmd.none )
 
         LengthChanged newLength ->
+            let
+                updateLength toPointData data =
+                    toPointData { data | length = newLength }
+
+                updatePointData pointData =
+                    case pointData of
+                        BetweenLength data ->
+                            updateLength BetweenLength data
+
+                        _ ->
+                            pointData
+            in
             case model.dialog of
-                Tool (BetweenLength data) ->
-                    ( { model | dialog = Tool (BetweenLength { data | length = newLength }) }
+                Tool (CreatePoint name pointData) ->
+                    ( { model
+                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                      }
+                    , Cmd.none
+                    )
+
+                Tool (EditPoint thatPoint pointData) ->
+                    ( { model
+                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                      }
                     , Cmd.none
                     )
 
@@ -3219,27 +3514,39 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownAnchorAMsg dropdownMsg ->
+            let
+                updateDropdown toPointData pointData =
+                    case pointData of
+                        LeftOf data ->
+                            updateDropdownAnchorA model (toPointData << LeftOf) dropdownMsg data
+
+                        RightOf data ->
+                            updateDropdownAnchorA model (toPointData << RightOf) dropdownMsg data
+
+                        Above data ->
+                            updateDropdownAnchorA model (toPointData << Above) dropdownMsg data
+
+                        Below data ->
+                            updateDropdownAnchorA model (toPointData << Below) dropdownMsg data
+
+                        AtAngle data ->
+                            updateDropdownAnchorA model (toPointData << AtAngle) dropdownMsg data
+
+                        BetweenRatio data ->
+                            updateDropdownAnchorA model (toPointData << BetweenRatio) dropdownMsg data
+
+                        BetweenLength data ->
+                            updateDropdownAnchorA model (toPointData << BetweenLength) dropdownMsg data
+
+                        _ ->
+                            ( model, Cmd.none )
+            in
             case model.dialog of
-                Tool (LeftOf data) ->
-                    updateDropdownAnchorA model LeftOf dropdownMsg data
+                Tool (CreatePoint name pointData) ->
+                    updateDropdown (CreatePoint name) pointData
 
-                Tool (RightOf data) ->
-                    updateDropdownAnchorA model RightOf dropdownMsg data
-
-                Tool (Above data) ->
-                    updateDropdownAnchorA model Above dropdownMsg data
-
-                Tool (Below data) ->
-                    updateDropdownAnchorA model Below dropdownMsg data
-
-                Tool (AtAngle data) ->
-                    updateDropdownAnchorA model AtAngle dropdownMsg data
-
-                Tool (BetweenRatio data) ->
-                    updateDropdownAnchorA model BetweenRatio dropdownMsg data
-
-                Tool (BetweenLength data) ->
-                    updateDropdownAnchorA model BetweenLength dropdownMsg data
+                Tool (EditPoint thatPoint pointData) ->
+                    updateDropdown (EditPoint thatPoint) pointData
 
                 Tool (CenteredAt data) ->
                     updateDropdownAnchorA model CenteredAt dropdownMsg data
@@ -3254,12 +3561,24 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownAnchorBMsg dropdownMsg ->
-            case model.dialog of
-                Tool (BetweenRatio data) ->
-                    updateDropdownAnchorB model BetweenRatio dropdownMsg data
+            let
+                updateDropdown toPointData pointData =
+                    case pointData of
+                        BetweenRatio data ->
+                            updateDropdownAnchorB model (toPointData << BetweenRatio) dropdownMsg data
 
-                Tool (BetweenLength data) ->
-                    updateDropdownAnchorB model BetweenLength dropdownMsg data
+                        BetweenLength data ->
+                            updateDropdownAnchorB model (toPointData << BetweenLength) dropdownMsg data
+
+                        _ ->
+                            ( model, Cmd.none )
+            in
+            case model.dialog of
+                Tool (CreatePoint name pointData) ->
+                    updateDropdown (CreatePoint name) pointData
+
+                Tool (EditPoint thatPoint pointData) ->
+                    updateDropdown (EditPoint thatPoint) pointData
 
                 Tool (ThroughTwoPoints data) ->
                     updateDropdownAnchorB model ThroughTwoPoints dropdownMsg data
@@ -3383,8 +3702,8 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownCircleAMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CircleCircle data) ->
+            let
+                updateCircleA toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
                             Dropdown.update dropdownUpdateConfig
@@ -3397,22 +3716,28 @@ update msg model =
                     in
                     ( { model
                         | dialog =
-                            Tool <|
-                                CircleCircle
-                                    { data
-                                        | dropdownCircleA = newDropdown
-                                        , maybeThatCircleA = newMaybeThatCircle
-                                    }
+                            toTool
+                                { data
+                                    | dropdownCircleA = newDropdown
+                                    , maybeThatCircleA = newMaybeThatCircle
+                                }
                       }
                     , Cmd.map DropdownCircleAMsg dropdownCmd
                     )
+            in
+            case model.dialog of
+                Tool (CreatePoint name (CircleCircle data)) ->
+                    updateCircleA (Tool << CreatePoint name << CircleCircle) data
+
+                Tool (EditPoint thatPoint (CircleCircle data)) ->
+                    updateCircleA (Tool << EditPoint thatPoint << CircleCircle) data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownCircleBMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CircleCircle data) ->
+            let
+                updateCircleB toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
                             Dropdown.update dropdownUpdateConfig
@@ -3425,25 +3750,38 @@ update msg model =
                     in
                     ( { model
                         | dialog =
-                            Tool <|
-                                CircleCircle
-                                    { data
-                                        | dropdownCircleB = newDropdown
-                                        , maybeThatCircleB = newMaybeThatCircle
-                                    }
+                            toTool
+                                { data
+                                    | dropdownCircleB = newDropdown
+                                    , maybeThatCircleB = newMaybeThatCircle
+                                }
                       }
                     , Cmd.map DropdownCircleBMsg dropdownCmd
                     )
+            in
+            case model.dialog of
+                Tool (CreatePoint name (CircleCircle data)) ->
+                    updateCircleB (Tool << CreatePoint name << CircleCircle) data
+
+                Tool (EditPoint thatPoint (CircleCircle data)) ->
+                    updateCircleB (Tool << EditPoint thatPoint << CircleCircle) data
 
                 _ ->
                     ( model, Cmd.none )
 
         FirstChanged newFirst ->
-            case model.dialog of
-                Tool (CircleCircle data) ->
-                    ( { model | dialog = Tool (CircleCircle { data | first = newFirst }) }
+            let
+                updateFirst toTool data =
+                    ( { model | dialog = toTool { data | first = newFirst } }
                     , Cmd.none
                     )
+            in
+            case model.dialog of
+                Tool (CreatePoint name (CircleCircle data)) ->
+                    updateFirst (Tool << CreatePoint name << CircleCircle) data
+
+                Tool (EditPoint thatPoint (CircleCircle data)) ->
+                    updateFirst (Tool << EditPoint thatPoint << CircleCircle) data
 
                 _ ->
                     ( model, Cmd.none )
@@ -3456,92 +3794,94 @@ update msg model =
 
         CreateClicked ->
             let
-                insertSimpleDistance constructor data =
+                insertSimpleDistance constructor name data =
                     case data.maybeThatAnchorA of
                         Nothing ->
                             ( model, Cmd.none )
 
                         Just thatAnchor ->
                             constructor model.pattern thatAnchor data.distance
-                                |> Maybe.map (insertPoint data.name model)
+                                |> Maybe.map (insertPoint name model)
                                 |> Maybe.withDefault ( model, Cmd.none )
-
-                lastState =
-                    Pattern.lastState model.pattern
             in
             case model.dialog of
-                Tool (LeftOf data) ->
-                    insertSimpleDistance Pattern.leftOf data
+                Tool (CreatePoint name pointData) ->
+                    case pointData of
+                        LeftOf data ->
+                            insertSimpleDistance Pattern.leftOf name data
 
-                Tool (RightOf data) ->
-                    insertSimpleDistance Pattern.rightOf data
+                        RightOf data ->
+                            insertSimpleDistance Pattern.rightOf name data
 
-                Tool (Above data) ->
-                    insertSimpleDistance Pattern.above data
+                        Above data ->
+                            insertSimpleDistance Pattern.above name data
 
-                Tool (Below data) ->
-                    insertSimpleDistance Pattern.below data
+                        Below data ->
+                            insertSimpleDistance Pattern.below name data
 
-                Tool (AtAngle data) ->
-                    case data.maybeThatAnchorA of
-                        Nothing ->
-                            ( model, Cmd.none )
+                        AtAngle data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
 
-                        Just thatAnchor ->
-                            Pattern.atAngle model.pattern
-                                thatAnchor
-                                data.angle
-                                data.distance
-                                |> Maybe.map (insertPoint data.name model)
+                                Just thatAnchor ->
+                                    Pattern.atAngle model.pattern
+                                        thatAnchor
+                                        data.angle
+                                        data.distance
+                                        |> Maybe.map (insertPoint name model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        BetweenRatio data ->
+                            Maybe.map2
+                                (\thatAnchorA thatAnchorB ->
+                                    Pattern.betweenRatio model.pattern
+                                        thatAnchorA
+                                        thatAnchorB
+                                        data.ratio
+                                        |> Maybe.map (insertPoint name model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatAnchorA
+                                data.maybeThatAnchorB
                                 |> Maybe.withDefault ( model, Cmd.none )
 
-                Tool (BetweenRatio data) ->
-                    Maybe.map2
-                        (\thatAnchorA thatAnchorB ->
-                            Pattern.betweenRatio model.pattern
-                                thatAnchorA
-                                thatAnchorB
-                                data.ratio
-                                |> Maybe.map (insertPoint data.name model)
+                        BetweenLength data ->
+                            Maybe.map2
+                                (\thatAnchorA thatAnchorB ->
+                                    Pattern.betweenLength model.pattern
+                                        thatAnchorA
+                                        thatAnchorB
+                                        data.length
+                                        |> Maybe.map (insertPoint name model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatAnchorA
+                                data.maybeThatAnchorB
                                 |> Maybe.withDefault ( model, Cmd.none )
-                        )
-                        data.maybeThatAnchorA
-                        data.maybeThatAnchorB
-                        |> Maybe.withDefault ( model, Cmd.none )
 
-                Tool (BetweenLength data) ->
-                    Maybe.map2
-                        (\thatAnchorA thatAnchorB ->
-                            Pattern.betweenLength model.pattern
-                                thatAnchorA
-                                thatAnchorB
-                                data.length
-                                |> Maybe.map (insertPoint data.name model)
+                        CircleCircle data ->
+                            Maybe.map2
+                                (\thatCircleA thatCircleB ->
+                                    (if data.first then
+                                        Pattern.firstCircleCircle model.pattern
+                                            thatCircleA
+                                            thatCircleB
+
+                                     else
+                                        Pattern.secondCircleCircle model.pattern
+                                            thatCircleA
+                                            thatCircleB
+                                    )
+                                        |> Maybe.map (insertPoint name model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatCircleA
+                                data.maybeThatCircleB
                                 |> Maybe.withDefault ( model, Cmd.none )
-                        )
-                        data.maybeThatAnchorA
-                        data.maybeThatAnchorB
-                        |> Maybe.withDefault ( model, Cmd.none )
 
-                Tool (CircleCircle data) ->
-                    Maybe.map2
-                        (\thatCircleA thatCircleB ->
-                            (if data.first then
-                                Pattern.firstCircleCircle model.pattern
-                                    thatCircleA
-                                    thatCircleB
-
-                             else
-                                Pattern.secondCircleCircle model.pattern
-                                    thatCircleA
-                                    thatCircleB
-                            )
-                                |> Maybe.map (insertPoint data.name model)
-                                |> Maybe.withDefault ( model, Cmd.none )
-                        )
-                        data.maybeThatCircleA
-                        data.maybeThatCircleB
-                        |> Maybe.withDefault ( model, Cmd.none )
+                Tool (EditPoint _ _) ->
+                    ( model, Cmd.none )
 
                 Tool (CenteredAt data) ->
                     case data.maybeThatAnchorA of
@@ -3682,6 +4022,114 @@ update msg model =
                     )
 
                 NoDialog ->
+                    ( model, Cmd.none )
+
+        UpdateClicked ->
+            case model.dialog of
+                Tool (EditPoint thatPoint pointData) ->
+                    case pointData of
+                        LeftOf data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just thatAnchor ->
+                                    Pattern.leftOf model.pattern thatAnchor data.distance
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        RightOf data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just thatAnchor ->
+                                    Pattern.rightOf model.pattern thatAnchor data.distance
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        Above data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just thatAnchor ->
+                                    Pattern.above model.pattern thatAnchor data.distance
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        Below data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just thatAnchor ->
+                                    Pattern.below model.pattern thatAnchor data.distance
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        AtAngle data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just thatAnchor ->
+                                    Pattern.atAngle model.pattern
+                                        thatAnchor
+                                        data.angle
+                                        data.distance
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+
+                        BetweenRatio data ->
+                            Maybe.map2
+                                (\thatAnchorA thatAnchorB ->
+                                    Pattern.betweenRatio model.pattern
+                                        thatAnchorA
+                                        thatAnchorB
+                                        data.ratio
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatAnchorA
+                                data.maybeThatAnchorB
+                                |> Maybe.withDefault ( model, Cmd.none )
+
+                        BetweenLength data ->
+                            Maybe.map2
+                                (\thatAnchorA thatAnchorB ->
+                                    Pattern.betweenLength model.pattern
+                                        thatAnchorA
+                                        thatAnchorB
+                                        data.length
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatAnchorA
+                                data.maybeThatAnchorB
+                                |> Maybe.withDefault ( model, Cmd.none )
+
+                        CircleCircle data ->
+                            Maybe.map2
+                                (\thatCircleA thatCircleB ->
+                                    (if data.first then
+                                        Pattern.firstCircleCircle model.pattern
+                                            thatCircleA
+                                            thatCircleB
+
+                                     else
+                                        Pattern.secondCircleCircle model.pattern
+                                            thatCircleA
+                                            thatCircleB
+                                    )
+                                        |> Maybe.map (updatePoint thatPoint model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
+                                )
+                                data.maybeThatCircleA
+                                data.maybeThatCircleB
+                                |> Maybe.withDefault ( model, Cmd.none )
+
+                _ ->
                     ( model, Cmd.none )
 
         -- PATTERN
@@ -3829,6 +4277,19 @@ insertPoint name model newPoint =
                 )
                 newPoint
                 model.pattern
+    in
+    ( { model
+        | pattern = newPattern
+        , dialog = NoDialog
+      }
+    , safePattern (Pattern.encode newPattern)
+    )
+
+
+updatePoint thatPoint model newPoint =
+    let
+        newPattern =
+            Pattern.updatePoint thatPoint newPoint model.pattern
     in
     ( { model
         | pattern = newPattern

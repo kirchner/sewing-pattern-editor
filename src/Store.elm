@@ -8,6 +8,7 @@ module Store exposing
     , insert
     , member
     , toList
+    , updateValue
     , values
     )
 
@@ -71,6 +72,17 @@ insert name value (Store store) =
 get : Store a -> Int -> Maybe (Entry a)
 get (Store { entries }) id =
     Dict.get id entries
+
+
+updateValue : Int -> a -> Store a -> Store a
+updateValue id newValue (Store data) =
+    Store
+        { data
+            | entries =
+                Dict.update id
+                    (Maybe.map (\entry -> { entry | value = newValue }))
+                    data.entries
+        }
 
 
 member : Store a -> Int -> Bool
