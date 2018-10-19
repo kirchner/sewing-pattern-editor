@@ -149,6 +149,12 @@ type Tool
         , distance : String
         }
     | AtAngle
+        { name : String
+        , dropdown : Dropdown
+        , thatAnchor : Maybe (That Point)
+        , angle : String
+        , distance : String
+        }
       -- LINES
     | ThroughTwoPoints
         { name : String
@@ -233,7 +239,7 @@ toolDescription tool =
         Below _ ->
             simpleDistanceVertical "below"
 
-        AtAngle ->
+        AtAngle _ ->
             Element.paragraph []
                 [ Element.text "Create a new "
                 , Element.el
@@ -345,7 +351,7 @@ isBelow maybeTool =
 
 isAtAngle maybeTool =
     case maybeTool of
-        Just AtAngle ->
+        Just (AtAngle _) ->
             True
 
         _ ->
@@ -424,8 +430,10 @@ selectedPointsFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
-        AtAngle ->
-            empty
+        AtAngle { thatAnchor } ->
+            thatAnchor
+                |> maybeToList
+                |> Those.fromList
 
         ThroughTwoPoints { thatAnchorA, thatAnchorB } ->
             [ thatAnchorA, thatAnchorB ]
@@ -466,7 +474,7 @@ selectedLinesFromTool tool =
         Below _ ->
             empty
 
-        AtAngle ->
+        AtAngle _ ->
             empty
 
         ThroughTwoPoints _ ->
@@ -506,7 +514,7 @@ selectedLineSegmentsFromTool tool =
         Below _ ->
             empty
 
-        AtAngle ->
+        AtAngle _ ->
             empty
 
         ThroughTwoPoints _ ->
@@ -546,7 +554,7 @@ selectedDetailsFromTool tool =
         Below _ ->
             empty
 
-        AtAngle ->
+        AtAngle _ ->
             empty
 
         ThroughTwoPoints _ ->
@@ -590,9 +598,7 @@ init flags url key =
       , zoom = 1
       , center = Position 0 0
       , maybeDrag = Nothing
-      , pattern =
-            Pattern.empty
-                |> Pattern.insertPoint (Just "origin") Pattern.Origin
+      , pattern = defaultPattern
       , hoveredPoint = Nothing
       , dialog = NoDialog
       , variablesVisible = True
@@ -600,6 +606,13 @@ init flags url key =
       }
     , requestPattern ()
     )
+
+
+defaultPattern =
+    Pattern.empty
+        |> Pattern.insertPoint
+            (Just "origin")
+            (Pattern.origin { x = 0, y = 0 })
 
 
 
@@ -946,8 +959,27 @@ viewTool pattern points lines lineSegments details tool =
             Below { name, dropdown, thatAnchor, distance } ->
                 simpleDistanceTool "below" name dropdown thatAnchor distance
 
-            AtAngle ->
-                Element.none
+            AtAngle { name, dropdown, thatAnchor, angle, distance } ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ labeledInputText NameChanged "name" name
+                    , labeledDropdown
+                        (Pattern.getPoint pattern
+                            >> Maybe.andThen .name
+                            >> Maybe.withDefault "<no name>"
+                        )
+                        "Select a point.."
+                        DropdownMsg
+                        "at-angle-anchor"
+                        "anchor"
+                        points
+                        dropdown
+                        thatAnchor
+                    , labeledFormulaInputText AngleChanged "angle" angle
+                    , labeledFormulaInputText DistanceChanged "distance" distance
+                    ]
 
             ThroughTwoPoints { name, dropdownA, thatAnchorA, dropdownB, thatAnchorB } ->
                 Element.column
@@ -1377,7 +1409,7 @@ viewPoints model =
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.el [ Element.alignRight ]
-                    (Element.text (String.fromFloat value))
+                    (Element.text (String.fromInt (round value)))
                 )
     in
     Element.column
@@ -2233,21 +2265,20 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                             |> Maybe.andThen (Pattern.getPoint pattern)
                             |> Maybe.map .value
                       of
-                        Just (Pattern.LeftOf thatAnchorPoint distance) ->
-                            drawAnchorLine thatAnchorPoint distance <|
-                                \float -> Vector2d.fromComponents ( -1 * float, 0 )
+                        Just (Pattern.LeftOf thatAnchorPoint _) ->
+                            drawAnchorLine thatAnchorPoint hoveredPoint
 
-                        Just (Pattern.RightOf thatAnchorPoint distance) ->
-                            drawAnchorLine thatAnchorPoint distance <|
-                                \float -> Vector2d.fromComponents ( float, 0 )
+                        Just (Pattern.RightOf thatAnchorPoint _) ->
+                            drawAnchorLine thatAnchorPoint hoveredPoint
 
-                        Just (Pattern.Above thatAnchorPoint distance) ->
-                            drawAnchorLine thatAnchorPoint distance <|
-                                \float -> Vector2d.fromComponents ( 0, -1 * float )
+                        Just (Pattern.Above thatAnchorPoint _) ->
+                            drawAnchorLine thatAnchorPoint hoveredPoint
 
-                        Just (Pattern.Below thatAnchorPoint distance) ->
-                            drawAnchorLine thatAnchorPoint distance <|
-                                \float -> Vector2d.fromComponents ( 0, float )
+                        Just (Pattern.Below thatAnchorPoint _) ->
+                            drawAnchorLine thatAnchorPoint hoveredPoint
+
+                        Just (Pattern.AtAngle thatAnchorPoint _ _) ->
+                            drawAnchorLine thatAnchorPoint hoveredPoint
 
                         _ ->
                             Svg.text ""
@@ -2265,31 +2296,27 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
             else
                 Svg.text ""
 
-        drawAnchorLine thatAnchorPoint distance toDirection =
-            Maybe.map2 (drawDashedLine toDirection)
-                (Pattern.getPointGeometry pattern thatAnchorPoint)
-                (Pattern.computeLength pattern distance)
+        drawAnchorLine thatAnchorPoint maybeHoveredPoint =
+            Maybe.map2
+                (\point2dA point2dB ->
+                    Svg.g
+                        []
+                        [ Svg.lineSegment2d
+                            [ Svg.Attributes.stroke "blue"
+                            , Svg.Attributes.strokeDasharray "4"
+                            , Svg.Attributes.strokeWidth "1"
+                            ]
+                            (LineSegment2d.fromEndpoints
+                                ( point2dA, point2dB )
+                            )
+                        , Svg.circle2d
+                            [ Svg.Attributes.fill "blue" ]
+                            (Circle2d.withRadius 2 point2dA)
+                        ]
+                )
+                (Maybe.andThen (Pattern.point2d pattern) maybeHoveredPoint)
+                (Pattern.point2d pattern thatAnchorPoint)
                 |> Maybe.withDefault (Svg.text "")
-
-        drawDashedLine toDirection p2d float =
-            let
-                otherPoint =
-                    Point2d.translateBy (toDirection float) p2d
-            in
-            Svg.g
-                []
-                [ Svg.lineSegment2d
-                    [ Svg.Attributes.stroke "blue"
-                    , Svg.Attributes.strokeDasharray "4"
-                    , Svg.Attributes.strokeWidth "1"
-                    ]
-                    (LineSegment2d.fromEndpoints
-                        ( p2d, otherPoint )
-                    )
-                , Svg.circle2d
-                    [ Svg.Attributes.fill "blue" ]
-                    (Circle2d.withRadius 2 p2d)
-                ]
 
         drawPointChain points =
             List.foldl drawLink ( Nothing, [] ) points
@@ -2494,6 +2521,7 @@ type Msg
     | CounterClockwiseClicked
       --
     | NameChanged String
+    | AngleChanged String
     | DistanceChanged String
     | PointAdded (That Point)
     | DropdownMsg (Dropdown.Msg (That Point))
@@ -2645,7 +2673,17 @@ update msg model =
             )
 
         AtAngleClicked ->
-            ( { model | dialog = Tool AtAngle }
+            ( { model
+                | dialog =
+                    Tool <|
+                        AtAngle
+                            { name = ""
+                            , dropdown = Dropdown.init
+                            , thatAnchor = Nothing
+                            , angle = ""
+                            , distance = ""
+                            }
+              }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             )
@@ -2742,11 +2780,24 @@ update msg model =
                 Tool (Below data) ->
                     updateName Below data
 
+                Tool (AtAngle data) ->
+                    updateName AtAngle data
+
                 Tool (ThroughTwoPoints data) ->
                     updateName ThroughTwoPoints data
 
                 Tool (FromTo data) ->
                     updateName FromTo data
+
+                _ ->
+                    ( model, Cmd.none )
+
+        AngleChanged newAngle ->
+            case model.dialog of
+                Tool (AtAngle data) ->
+                    ( { model | dialog = Tool (AtAngle { data | angle = newAngle }) }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -2771,6 +2822,9 @@ update msg model =
                 Tool (Below data) ->
                     updateDistance Below data
 
+                Tool (AtAngle data) ->
+                    updateDistance AtAngle data
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -2785,112 +2839,43 @@ update msg model =
                     ( model, Cmd.none )
 
         DropdownMsg dropdownMsg ->
-            let
-                updateDropdown toTool data =
-                    let
-                        ( newDropdown, dropdownCmd, newAnchor ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdown
-                                data.thatAnchor
-                    in
-                    ( { model
-                        | dialog =
-                            Tool <|
-                                toTool
-                                    { data
-                                        | dropdown = newDropdown
-                                        , thatAnchor = newAnchor
-                                    }
-                      }
-                    , Cmd.map DropdownMsg dropdownCmd
-                    )
-            in
             case model.dialog of
                 Tool (LeftOf data) ->
-                    updateDropdown LeftOf data
+                    updateDropdown model LeftOf dropdownMsg data
 
                 Tool (RightOf data) ->
-                    updateDropdown RightOf data
+                    updateDropdown model RightOf dropdownMsg data
 
                 Tool (Above data) ->
-                    updateDropdown Above data
+                    updateDropdown model Above dropdownMsg data
 
                 Tool (Below data) ->
-                    updateDropdown Below data
+                    updateDropdown model Below dropdownMsg data
+
+                Tool (AtAngle data) ->
+                    updateDropdown model AtAngle dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownAMsg dropdownMsg ->
-            let
-                updateDropdown toTool data =
-                    let
-                        ( newDropdownA, dropdownCmd, newAnchorA ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownA
-                                data.thatAnchorA
-                    in
-                    ( { model
-                        | dialog =
-                            Tool <|
-                                toTool
-                                    { data
-                                        | dropdownA = newDropdownA
-                                        , thatAnchorA = newAnchorA
-                                    }
-                      }
-                    , Cmd.map DropdownAMsg dropdownCmd
-                    )
-            in
             case model.dialog of
                 Tool (ThroughTwoPoints data) ->
-                    updateDropdown ThroughTwoPoints data
+                    updateDropdownA model ThroughTwoPoints dropdownMsg data
 
                 Tool (FromTo data) ->
-                    updateDropdown FromTo data
+                    updateDropdownA model FromTo dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none )
 
         DropdownBMsg dropdownMsg ->
-            let
-                updateDropdown toTool data =
-                    let
-                        ( newDropdownB, dropdownCmd, newAnchorB ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.points model.pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownB
-                                data.thatAnchorB
-                    in
-                    ( { model
-                        | dialog =
-                            Tool <|
-                                toTool
-                                    { data
-                                        | dropdownB = newDropdownB
-                                        , thatAnchorB = newAnchorB
-                                    }
-                      }
-                    , Cmd.map DropdownBMsg dropdownCmd
-                    )
-            in
             case model.dialog of
                 Tool (ThroughTwoPoints data) ->
-                    updateDropdown ThroughTwoPoints data
+                    updateDropdownB model ThroughTwoPoints dropdownMsg data
 
                 Tool (FromTo data) ->
-                    updateDropdown FromTo data
+                    updateDropdownB model FromTo dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none )
@@ -3016,52 +3001,40 @@ update msg model =
         CreateClicked ->
             let
                 insertSimpleDistance constructor name anchor distance =
-                    case ( anchor, String.toFloat distance ) of
-                        ( Just thatPoint, Just by ) ->
-                            let
-                                newPoint =
-                                    constructor thatPoint
-                                        (Pattern.Length (Pattern.exprFromFloat by))
-
-                                newPattern =
-                                    Pattern.insertPoint
-                                        (if name == "" then
-                                            Nothing
-
-                                         else
-                                            Just name
-                                        )
-                                        newPoint
-                                        model.pattern
-                            in
-                            ( { model
-                                | pattern = newPattern
-                                , dialog = NoDialog
-                              }
-                            , safePattern (Pattern.encode newPattern)
-                            )
-
-                        _ ->
+                    case anchor of
+                        Nothing ->
                             ( model, Cmd.none )
+
+                        Just thatAnchor ->
+                            constructor model.pattern thatAnchor distance
+                                |> Maybe.map (insertPoint name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                 lastState =
                     Pattern.lastState model.pattern
             in
             case model.dialog of
                 Tool (LeftOf { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.LeftOf name thatAnchor distance
+                    insertSimpleDistance Pattern.leftOf name thatAnchor distance
 
                 Tool (RightOf { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.RightOf name thatAnchor distance
+                    insertSimpleDistance Pattern.rightOf name thatAnchor distance
 
                 Tool (Above { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.Above name thatAnchor distance
+                    insertSimpleDistance Pattern.above name thatAnchor distance
 
                 Tool (Below { name, thatAnchor, distance }) ->
-                    insertSimpleDistance Pattern.Below name thatAnchor distance
+                    insertSimpleDistance Pattern.below name thatAnchor distance
 
-                Tool AtAngle ->
-                    ( model, Cmd.none )
+                Tool (AtAngle { name, thatAnchor, angle, distance }) ->
+                    case thatAnchor of
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                        Just anchor ->
+                            Pattern.atAngle model.pattern anchor angle distance
+                                |> Maybe.map (insertPoint name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                 Tool (ThroughTwoPoints { name, thatAnchorA, thatAnchorB }) ->
                     case ( thatAnchorA, thatAnchorB ) of
@@ -3204,8 +3177,7 @@ update msg model =
         ClearPatternClicked ->
             let
                 newPattern =
-                    Pattern.empty
-                        |> Pattern.insertPoint (Just "origin") Pattern.Origin
+                    defaultPattern
             in
             ( { model
                 | pattern = newPattern
@@ -3219,8 +3191,7 @@ update msg model =
                 Err error ->
                     let
                         newPattern =
-                            Pattern.empty
-                                |> Pattern.insertPoint (Just "origin") Pattern.Origin
+                            defaultPattern
                     in
                     ( { model | pattern = newPattern }
                     , safePattern (Pattern.encode newPattern)
@@ -3266,6 +3237,99 @@ update msg model =
             ( { model | pointsVisible = not model.pointsVisible }
             , Cmd.none
             )
+
+
+updateDropdown model toTool dropdownMsg data =
+    let
+        ( newDropdown, dropdownCmd, newAnchor ) =
+            Dropdown.update dropdownUpdateConfig
+                (Pattern.points model.pattern
+                    |> List.map (Tuple.first >> Listbox.option)
+                )
+                dropdownMsg
+                data.dropdown
+                data.thatAnchor
+    in
+    ( { model
+        | dialog =
+            Tool <|
+                toTool
+                    { data
+                        | dropdown = newDropdown
+                        , thatAnchor = newAnchor
+                    }
+      }
+    , Cmd.map DropdownMsg dropdownCmd
+    )
+
+
+updateDropdownA model toTool dropdownMsg data =
+    let
+        ( newDropdownA, dropdownCmd, newAnchorA ) =
+            Dropdown.update dropdownUpdateConfig
+                (Pattern.points model.pattern
+                    |> List.map (Tuple.first >> Listbox.option)
+                )
+                dropdownMsg
+                data.dropdownA
+                data.thatAnchorA
+    in
+    ( { model
+        | dialog =
+            Tool <|
+                toTool
+                    { data
+                        | dropdownA = newDropdownA
+                        , thatAnchorA = newAnchorA
+                    }
+      }
+    , Cmd.map DropdownAMsg dropdownCmd
+    )
+
+
+updateDropdownB model toTool dropdownMsg data =
+    let
+        ( newDropdownB, dropdownCmd, newAnchorB ) =
+            Dropdown.update dropdownUpdateConfig
+                (Pattern.points model.pattern
+                    |> List.map (Tuple.first >> Listbox.option)
+                )
+                dropdownMsg
+                data.dropdownB
+                data.thatAnchorB
+    in
+    ( { model
+        | dialog =
+            Tool <|
+                toTool
+                    { data
+                        | dropdownB = newDropdownB
+                        , thatAnchorB = newAnchorB
+                    }
+      }
+    , Cmd.map DropdownBMsg dropdownCmd
+    )
+
+
+insertPoint name model newPoint =
+    let
+        newPattern =
+            Pattern.insertPoint
+                (if name == "" then
+                    Nothing
+
+                 else
+                    Just name
+                )
+                newPoint
+                model.pattern
+    in
+    ( { model
+        | pattern = newPattern
+        , dialog = NoDialog
+      }
+    , safePattern (Pattern.encode newPattern)
+    )
 
 
 subscriptions : Model -> Sub Msg

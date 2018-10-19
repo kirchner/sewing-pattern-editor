@@ -6,6 +6,7 @@ module Store exposing
     , encode
     , get
     , insert
+    , member
     , toList
     , values
     )
@@ -70,6 +71,11 @@ insert name value (Store store) =
 get : Store a -> Int -> Maybe (Entry a)
 get (Store { entries }) id =
     Dict.get id entries
+
+
+member : Store a -> Int -> Bool
+member (Store { entries }) id =
+    Dict.member id entries
 
 
 toList : Store a -> List ( Int, Entry a )

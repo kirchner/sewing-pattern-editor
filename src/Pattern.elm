@@ -1,6 +1,9 @@
 module Pattern exposing
     ( Pattern
     , empty
+    , Point(..)
+    , leftOf, rightOf, above, below
+    , atAngle
     , variables
     , points, lines
     , getPoint, getLine
@@ -8,7 +11,7 @@ module Pattern exposing
     , insertVariable, removeVariable
     , insertPoint
     , insertLine
-    , Detail(..), Length(..), Line(..), LineSegment(..), Point(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments
+    , Detail(..), Length(..), Line(..), LineSegment(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments, origin, point2d
     )
 
 {-|
@@ -16,6 +19,15 @@ module Pattern exposing
 @docs Pattern
 
 @docs empty
+
+
+# Points
+
+@docs Point
+
+@docs leftOf, rightOf, above, below
+
+@docs atAngle
 
 
 # Read
@@ -112,12 +124,12 @@ empty =
 
 
 type Point
-    = Origin
-    | LeftOf (That Point) Length
-    | RightOf (That Point) Length
-    | Above (That Point) Length
-    | Below (That Point) Length
-    | AtAngle (That Point) Angle Length
+    = Origin Float Float
+    | LeftOf (That Point) String
+    | RightOf (That Point) String
+    | Above (That Point) String
+    | Below (That Point) String
+    | AtAngle (That Point) String String
     | BetweenRatio (That Point) (That Point) Ratio
     | BetweenLength (That Point) (That Point) Length
       -- ON OBJECT
@@ -296,14 +308,14 @@ addTransformationToDetail p transformationId transformation ( previousThat, entr
 ---- EXPRESSIONS
 
 
-compute : Dict String String -> Expr -> Result DoesNotCompute Float
-compute vars expr =
+compute : Pattern -> Expr -> Result DoesNotCompute Float
+compute (Pattern pattern) expr =
     let
         functions name args =
             Nothing
 
         parsedVars =
-            vars
+            pattern.variables
                 |> Dict.toList
                 |> List.filterMap
                     (\( name, string ) ->
@@ -352,8 +364,8 @@ type Length
 
 
 computeLength : Pattern -> Length -> Maybe Float
-computeLength (Pattern pattern) (Length expr) =
-    compute pattern.variables expr
+computeLength pattern (Length expr) =
+    compute pattern expr
         |> Result.toMaybe
 
 
@@ -539,19 +551,24 @@ geometry pattern =
 point2d : Pattern -> That Point -> Maybe Point2d
 point2d pattern thatPoint =
     let
-        simpleDistance anchor expr toDirection =
-            case compute Dict.empty expr of
+        simpleDistance anchor rawLength toDirection =
+            case Expr.parse [] rawLength of
                 Err _ ->
                     Nothing
 
-                Ok distance ->
-                    let
-                        v =
-                            toDirection distance
-                    in
-                    anchor
-                        |> point2d pattern
-                        |> Maybe.map (Point2d.translateBy v)
+                Ok exprLength ->
+                    case compute pattern exprLength of
+                        Err _ ->
+                            Nothing
+
+                        Ok distance ->
+                            let
+                                v =
+                                    toDirection distance
+                            in
+                            anchor
+                                |> point2d pattern
+                                |> Maybe.map (Point2d.translateBy v)
 
         applyTransformations point =
             thatPoint
@@ -561,24 +578,45 @@ point2d pattern thatPoint =
     in
     Maybe.map applyTransformations <|
         case Maybe.map .value (getPoint pattern thatPoint) of
-            Just Origin ->
-                Just Point2d.origin
+            Just (Origin x y) ->
+                Just (Point2d.fromCoordinates ( x, y ))
 
-            Just (LeftOf anchor (Length expr)) ->
-                simpleDistance anchor expr <|
+            Just (LeftOf anchor rawLength) ->
+                simpleDistance anchor rawLength <|
                     \distance -> Vector2d.fromComponents ( -1 * distance, 0 )
 
-            Just (RightOf anchor (Length expr)) ->
-                simpleDistance anchor expr <|
+            Just (RightOf anchor rawLength) ->
+                simpleDistance anchor rawLength <|
                     \distance -> Vector2d.fromComponents ( distance, 0 )
 
-            Just (Above anchor (Length expr)) ->
-                simpleDistance anchor expr <|
+            Just (Above anchor rawLength) ->
+                simpleDistance anchor rawLength <|
                     \distance -> Vector2d.fromComponents ( 0, -1 * distance )
 
-            Just (Below anchor (Length expr)) ->
-                simpleDistance anchor expr <|
+            Just (Below anchor rawLength) ->
+                simpleDistance anchor rawLength <|
                     \distance -> Vector2d.fromComponents ( 0, distance )
+
+            Just (AtAngle anchor rawAngle rawDistance) ->
+                Maybe.map2 Tuple.pair
+                    (Result.toMaybe (Expr.parse [] rawAngle))
+                    (Result.toMaybe (Expr.parse [] rawDistance))
+                    |> Maybe.andThen
+                        (\( exprAngle, exprDistance ) ->
+                            Maybe.map2 Tuple.pair
+                                (Result.toMaybe (compute pattern exprAngle))
+                                (Result.toMaybe (compute pattern exprDistance))
+                                |> Maybe.andThen
+                                    (\( angle, distance ) ->
+                                        anchor
+                                            |> point2d pattern
+                                            |> Maybe.map
+                                                (Point2d.translateBy <|
+                                                    Vector2d.fromPolarComponents
+                                                        ( distance, degrees angle )
+                                                )
+                                    )
+                        )
 
             _ ->
                 Nothing
@@ -746,15 +784,15 @@ polygon2d ((Pattern pattern) as p) thatDetail =
 
 
 variables : Pattern -> List { name : String, value : String, computed : Float }
-variables (Pattern pattern) =
-    pattern.variables
+variables ((Pattern data) as pattern) =
+    data.variables
         |> Dict.toList
         |> List.filterMap
             (\( name, value ) ->
                 value
                     |> Expr.parse []
                     |> Result.toMaybe
-                    |> Maybe.andThen (compute pattern.variables >> Result.toMaybe)
+                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
                     |> Maybe.map
                         (\computed ->
                             { name = name
@@ -783,6 +821,85 @@ removeVariable name (Pattern data) =
 
 
 ---- POINTS
+
+
+origin : { x : Float, y : Float } -> Point
+origin { x, y } =
+    Origin x y
+
+
+leftOf : Pattern -> That Point -> String -> Maybe Point
+leftOf (Pattern pattern) thatPoint rawLength =
+    case Expr.parse [] rawLength of
+        Err _ ->
+            Nothing
+
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (LeftOf thatPoint rawLength)
+
+            else
+                Nothing
+
+
+rightOf : Pattern -> That Point -> String -> Maybe Point
+rightOf (Pattern pattern) thatPoint rawLength =
+    case Expr.parse [] rawLength of
+        Err _ ->
+            Nothing
+
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (RightOf thatPoint rawLength)
+
+            else
+                Nothing
+
+
+above : Pattern -> That Point -> String -> Maybe Point
+above (Pattern pattern) thatPoint rawLength =
+    case Expr.parse [] rawLength of
+        Err _ ->
+            Nothing
+
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (Above thatPoint rawLength)
+
+            else
+                Nothing
+
+
+below : Pattern -> That Point -> String -> Maybe Point
+below (Pattern pattern) thatPoint rawLength =
+    case Expr.parse [] rawLength of
+        Err _ ->
+            Nothing
+
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (Below thatPoint rawLength)
+
+            else
+                Nothing
+
+
+atAngle : Pattern -> That Point -> String -> String -> Maybe Point
+atAngle (Pattern pattern) thatPoint rawAngle rawDistance =
+    case ( Expr.parse [] rawAngle, Expr.parse [] rawDistance ) of
+        ( Ok _, Ok _ ) ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (AtAngle thatPoint rawAngle rawDistance)
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+
+
+--
 
 
 points : Pattern -> List ( That Point, Entry Point )
@@ -1000,38 +1117,41 @@ encodeVariables =
 encodePoint : Point -> Value
 encodePoint point =
     case point of
-        Origin ->
-            withType "origin" []
+        Origin x y ->
+            withType "origin"
+                [ ( "x", Encode.float x )
+                , ( "y", Encode.float y )
+                ]
 
         LeftOf anchor length ->
             withType "leftOf"
                 [ ( "anchor", That.encode anchor )
-                , ( "distance", encodeLength length )
+                , ( "distance", Encode.string length )
                 ]
 
         RightOf anchor length ->
             withType "rightOf"
                 [ ( "anchor", That.encode anchor )
-                , ( "distance", encodeLength length )
+                , ( "distance", Encode.string length )
                 ]
 
         Above anchor length ->
             withType "above"
                 [ ( "anchor", That.encode anchor )
-                , ( "distance", encodeLength length )
+                , ( "distance", Encode.string length )
                 ]
 
         Below anchor length ->
             withType "below"
                 [ ( "anchor", That.encode anchor )
-                , ( "distance", encodeLength length )
+                , ( "distance", Encode.string length )
                 ]
 
-        AtAngle anchor angle length ->
+        AtAngle anchor angle distance ->
             withType "atAngle"
                 [ ( "anchor", That.encode anchor )
-                , ( "angle", encodeAngle angle )
-                , ( "distance", encodeLength length )
+                , ( "angle", Encode.string angle )
+                , ( "distance", Encode.string distance )
                 ]
 
         _ ->
@@ -1167,28 +1287,31 @@ variablesDecoder =
 pointDecoder : Decoder Point
 pointDecoder =
     Decode.oneOf
-        [ typeDecoder "origin" (Decode.succeed Origin)
+        [ typeDecoder "origin" <|
+            Decode.map2 Origin
+                (Decode.field "x" Decode.float)
+                (Decode.field "y" Decode.float)
         , typeDecoder "leftOf" <|
             Decode.map2 LeftOf
                 (Decode.field "anchor" That.decoder)
-                (Decode.field "distance" lengthDecoder)
+                (Decode.field "distance" Decode.string)
         , typeDecoder "rightOf" <|
             Decode.map2 RightOf
                 (Decode.field "anchor" That.decoder)
-                (Decode.field "distance" lengthDecoder)
+                (Decode.field "distance" Decode.string)
         , typeDecoder "above" <|
             Decode.map2 Above
                 (Decode.field "anchor" That.decoder)
-                (Decode.field "distance" lengthDecoder)
+                (Decode.field "distance" Decode.string)
         , typeDecoder "below" <|
             Decode.map2 Below
                 (Decode.field "anchor" That.decoder)
-                (Decode.field "distance" lengthDecoder)
+                (Decode.field "distance" Decode.string)
         , typeDecoder "atAngle" <|
             Decode.map3 AtAngle
                 (Decode.field "anchor" That.decoder)
-                (Decode.field "angle" angleDecoder)
-                (Decode.field "distance" lengthDecoder)
+                (Decode.field "angle" Decode.string)
+                (Decode.field "distance" Decode.string)
         ]
 
 
