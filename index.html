@@ -9,10 +9,25 @@
   <body>
     <script src="elm.js"></script>
     <script>
+      var pattern;
+      var viewport;
+
+      var rawPattern = window.localStorage.getItem('pattern');
+      if (rawPattern !== null) {
+          pattern = JSON.parse(rawPattern);
+      }
+
+      var rawViewport = window.localStorage.getItem('viewport');
+      if (rawViewport !== null) {
+          viewport = JSON.parse(rawViewport);
+      }
+
       var app = Elm.Main.init({
           flags: {
               windowWidth: window.innerWidth,
-              windowHeight: window.innerHeight
+              windowHeight: window.innerHeight,
+              pattern: pattern,
+              viewport: viewport
           }
       });
 
@@ -35,6 +50,27 @@
               return;
           }
           app.ports.patternReceived.send(pattern);
+      });
+
+      app.ports.safeViewport.subscribe(function(viewport) {
+          window.localStorage.setItem('viewport', JSON.stringify(viewport));
+      });
+
+      app.ports.requestViewport.subscribe(function() {
+          var rawViewport = window.localStorage.getItem('viewport');
+          if (rawViewport === null) {
+              return;
+          }
+
+          var viewport = JSON.parse(rawViewport);
+          if (viewport === undefined) {
+              return;
+          }
+
+          if (app === undefined) {
+              return;
+          }
+          app.ports.viewportReceived.send(viewport);
       });
     </script>
   </body>
