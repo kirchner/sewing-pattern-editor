@@ -33,6 +33,7 @@ import Direction2d
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events
 import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
@@ -106,6 +107,7 @@ type alias Model =
     -- PATTERN
     , pattern : Pattern
     , hoveredPoint : Maybe (That Point)
+    , hoveredTool : Maybe ToolTag
     , dialog : Dialog
 
     -- RIGHT TOOLBAR
@@ -166,6 +168,69 @@ type Dialog
         { name : String
         , value : String
         }
+
+
+type ToolTag
+    = LeftOfTag
+    | RightOfTag
+    | AboveTag
+    | BelowTag
+    | AtAngleTag
+    | BetweenRatioTag
+    | BetweenLengthTag
+    | CircleCircleTag
+    | CenteredAtTag
+    | ThroughTwoPointsTag
+    | FromToTag
+    | MirrorAtTag
+    | CutAlongLineSegmentTag
+    | CounterClockwiseTag
+
+
+toolToTag : Tool -> ToolTag
+toolToTag tool =
+    case tool of
+        LeftOf _ ->
+            LeftOfTag
+
+        RightOf _ ->
+            RightOfTag
+
+        Above _ ->
+            AboveTag
+
+        Below _ ->
+            BelowTag
+
+        AtAngle _ ->
+            AtAngleTag
+
+        BetweenRatio _ ->
+            BetweenRatioTag
+
+        BetweenLength _ ->
+            BetweenLengthTag
+
+        CircleCircle _ ->
+            CircleCircleTag
+
+        CenteredAt _ ->
+            CenteredAtTag
+
+        ThroughTwoPoints _ ->
+            ThroughTwoPointsTag
+
+        FromTo _ ->
+            FromToTag
+
+        MirrorAt _ ->
+            MirrorAtTag
+
+        CutAlongLineSegment _ ->
+            CutAlongLineSegmentTag
+
+        CounterClockwise _ ->
+            CounterClockwiseTag
 
 
 type Tool
@@ -265,17 +330,8 @@ type Tool
     | CounterClockwise (List (That Point))
 
 
-isLeftOf maybeTool =
-    case maybeTool of
-        Just (LeftOf _) ->
-            True
-
-        _ ->
-            False
-
-
-toolDescription : Tool -> Element msg
-toolDescription tool =
+toolDescription : ToolTag -> Element msg
+toolDescription toolTag =
     let
         simpleDistanceHorizontal kind =
             Element.paragraph []
@@ -305,20 +361,20 @@ toolDescription tool =
         strong =
             Element.el [ Font.bold ] << Element.text
     in
-    case tool of
-        LeftOf _ ->
+    case toolTag of
+        LeftOfTag ->
             simpleDistanceHorizontal "left of"
 
-        RightOf _ ->
+        RightOfTag ->
             simpleDistanceHorizontal "right of"
 
-        Above _ ->
+        AboveTag ->
             simpleDistanceVertical "above"
 
-        Below _ ->
+        BelowTag ->
             simpleDistanceVertical "below"
 
-        AtAngle _ ->
+        AtAngleTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "point"
@@ -329,7 +385,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        BetweenRatio _ ->
+        BetweenRatioTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "point"
@@ -338,7 +394,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        BetweenLength _ ->
+        BetweenLengthTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "point"
@@ -347,7 +403,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        CircleCircle _ ->
+        CircleCircleTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "point"
@@ -356,7 +412,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        CenteredAt _ ->
+        CenteredAtTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "circle"
@@ -367,7 +423,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        ThroughTwoPoints _ ->
+        ThroughTwoPointsTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "line"
@@ -376,7 +432,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        FromTo _ ->
+        FromToTag ->
             Element.paragraph []
                 [ s "Connect "
                 , strong "two points"
@@ -385,7 +441,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        MirrorAt _ ->
+        MirrorAtTag ->
             Element.paragraph []
                 [ s "Mirror a "
                 , strong "set of points"
@@ -394,7 +450,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        CutAlongLineSegment _ ->
+        CutAlongLineSegmentTag ->
             Element.paragraph []
                 [ s "Cut a "
                 , strong "detail"
@@ -403,7 +459,7 @@ toolDescription tool =
                 , s "."
                 ]
 
-        CounterClockwise _ ->
+        CounterClockwiseTag ->
             Element.paragraph []
                 [ s "Create a new "
                 , strong "detail"
@@ -411,123 +467,6 @@ toolDescription tool =
                 , strong "points"
                 , s " counterclockwise."
                 ]
-
-
-isRightOf maybeTool =
-    case maybeTool of
-        Just (RightOf _) ->
-            True
-
-        _ ->
-            False
-
-
-isAbove maybeTool =
-    case maybeTool of
-        Just (Above _) ->
-            True
-
-        _ ->
-            False
-
-
-isBelow maybeTool =
-    case maybeTool of
-        Just (Below _) ->
-            True
-
-        _ ->
-            False
-
-
-isAtAngle maybeTool =
-    case maybeTool of
-        Just (AtAngle _) ->
-            True
-
-        _ ->
-            False
-
-
-isBeetweenRatio maybeTool =
-    case maybeTool of
-        Just (BetweenRatio _) ->
-            True
-
-        _ ->
-            False
-
-
-isBeetweenLength maybeTool =
-    case maybeTool of
-        Just (BetweenLength _) ->
-            True
-
-        _ ->
-            False
-
-
-isCircleCircle maybeTool =
-    case maybeTool of
-        Just (CircleCircle _) ->
-            True
-
-        _ ->
-            False
-
-
-isCenteredAt maybeTool =
-    case maybeTool of
-        Just (CenteredAt _) ->
-            True
-
-        _ ->
-            False
-
-
-isThroughTwoPoints maybeTool =
-    case maybeTool of
-        Just (ThroughTwoPoints _) ->
-            True
-
-        _ ->
-            False
-
-
-isFromTo maybeTool =
-    case maybeTool of
-        Just (FromTo _) ->
-            True
-
-        _ ->
-            False
-
-
-isMirrorAt maybeTool =
-    case maybeTool of
-        Just (MirrorAt _) ->
-            True
-
-        _ ->
-            False
-
-
-isCutAlongLineSegment maybeTool =
-    case maybeTool of
-        Just (CutAlongLineSegment _) ->
-            True
-
-        _ ->
-            False
-
-
-isCounterClockwise maybeTool =
-    case maybeTool of
-        Just (CounterClockwise _) ->
-            True
-
-        _ ->
-            False
 
 
 selectedPointsFromTool : Tool -> Those Point
@@ -784,6 +723,7 @@ init value url key =
               , maybeDrag = Nothing
               , pattern = defaultPattern
               , hoveredPoint = Nothing
+              , hoveredTool = Nothing
               , dialog = NoDialog
               , variablesVisible = True
               , pointsVisible = False
@@ -808,6 +748,7 @@ init value url key =
               , maybeDrag = Nothing
               , pattern = Maybe.withDefault defaultPattern flags.pattern
               , hoveredPoint = Nothing
+              , hoveredTool = Nothing
               , dialog = NoDialog
               , variablesVisible = True
               , pointsVisible = False
@@ -941,13 +882,26 @@ viewOverlay model =
         , Element.row
             [ Element.width Element.fill
             , Element.height (Element.px 40)
+            , Element.paddingXY 10 5
+            , Element.spacing 5
             , Background.color gray950
             , Element.htmlAttribute <|
                 Html.Attributes.style "pointer-events" "auto"
             ]
-            [ Element.newTabLink
+            [ case model.hoveredTool of
+                Nothing ->
+                    Element.none
+
+                Just toolTag ->
+                    Element.el
+                        [ Font.size 12
+                        , Font.color white
+                        , Element.width Element.fill
+                        ]
+                        (toolDescription toolTag)
+            , Element.newTabLink
                 [ Element.alignRight
-                , Element.paddingXY 10 5
+                , Element.paddingXY 5 5
                 , Font.color white
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
@@ -964,7 +918,7 @@ viewLeftToolbar model =
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
         ]
-        [ viewToolSelector <|
+        [ viewToolSelector model.hoveredTool <|
             case model.dialog of
                 Tool tool ->
                     Just tool
@@ -1098,7 +1052,7 @@ viewTool pattern points circles lines lineSegments details tool =
             [ Font.size 12
             , Font.color white
             ]
-            (toolDescription tool)
+            (toolDescription (toolToTag tool))
         , Element.column
             [ Element.width Element.fill
             , Element.spacing 10
@@ -1396,7 +1350,18 @@ viewCutAlongLineSegment pattern lineSegments details data =
 viewCounterClockwise pattern points targets =
     let
         pointButton ( thatPoint, { name } ) =
-            button "" (Maybe.withDefault "<unnamed>" name) (PointAdded thatPoint) False
+            Input.button
+                [ Element.padding 5
+                , Background.color gray800
+                , Border.color gray900
+                , Border.width 1
+                , Element.mouseOver
+                    [ Background.color gray700 ]
+                ]
+                { onPress = Just (PointAdded thatPoint)
+                , label =
+                    Element.text (Maybe.withDefault "<unnamed>" name)
+                }
     in
     [ Element.text
         (targets
@@ -1479,7 +1444,7 @@ viewVariable name value =
 -- TOOL SELECTOR
 
 
-viewToolSelector maybeTool =
+viewToolSelector hoveredTool maybeTool =
     let
         viewGroup name rows =
             Element.column
@@ -1503,6 +1468,14 @@ viewToolSelector maybeTool =
                 , Element.width Element.fill
                 ]
                 buttons
+
+        is toolTag =
+            case maybeTool of
+                Nothing ->
+                    False
+
+                Just tool ->
+                    toolToTag tool == toolTag
     in
     Element.column
         [ Element.padding 10
@@ -1510,46 +1483,39 @@ viewToolSelector maybeTool =
         , Element.width Element.fill
         ]
         [ viewGroup "points"
-            [ [ button "left_of" "Left of" LeftOfClicked (isLeftOf maybeTool)
-              , button "right_of" "Right of" RightOfClicked (isRightOf maybeTool)
+            [ [ button hoveredTool LeftOfTag "left_of" "Left of"
+              , button hoveredTool RightOfTag "right_of" "Right of"
               ]
-            , [ button "above" "Above" AboveClicked (isAbove maybeTool)
-              , button "below" "Below" BelowClicked (isBelow maybeTool)
+            , [ button hoveredTool AboveTag "above" "Above"
+              , button hoveredTool BelowTag "below" "Below"
               ]
-            , [ button "at_angle" "At angle" AtAngleClicked (isAtAngle maybeTool)
+            , [ button hoveredTool AtAngleTag "at_angle" "At angle"
               ]
-            , [ button "at_angle" "Between at ratio" BetweenRatioClicked <|
-                    isBeetweenRatio maybeTool
-              , button "at_angle" "Between at length" BetweenLengthClicked <|
-                    isBeetweenLength maybeTool
+            , [ button hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
+              , button hoveredTool BetweenLengthTag "at_angle" "Between at length"
               ]
-            , [ button "at_angle" "Circle-Circle intersection" CircleCircleClicked <|
-                    isCircleCircle maybeTool
+            , [ button hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
               ]
             ]
         , viewGroup "circles"
-            [ [ button "through_two_points" "Centered at" CenteredAtClicked <|
-                    isCenteredAt maybeTool
+            [ [ button hoveredTool CenteredAtTag "through_two_points" "Centered at"
               ]
             ]
         , viewGroup "lines"
-            [ [ button "through_two_points" "Through two points" ThroughTwoPointsClicked <|
-                    isThroughTwoPoints maybeTool
+            [ [ button hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
               ]
             ]
         , viewGroup "line segments"
-            [ [ button "from_to" "From to" FromToClicked (isFromTo maybeTool)
+            [ [ button hoveredTool FromToTag "from_to" "From to"
               ]
             ]
         , viewGroup "transformations"
-            [ [ button "mirror_at" "Mirror at" MirrorAtClicked (isMirrorAt maybeTool)
-              , button "cut_along_line_segment" "Cut along line segment" CutAlongLineSegmentClicked <|
-                    isCutAlongLineSegment maybeTool
+            [ [ button hoveredTool MirrorAtTag "mirror_at" "Mirror at"
+              , button hoveredTool CutAlongLineSegmentTag "cut_along_line_segment" "Cut along line segment"
               ]
             ]
         , viewGroup "details"
-            [ [ button "counter_clockwise" "Counter clockwise" CounterClockwiseClicked <|
-                    isCounterClockwise maybeTool
+            [ [ button hoveredTool CounterClockwiseTag "counter_clockwise" "Counter clockwise"
               ]
             ]
         ]
@@ -1906,8 +1872,12 @@ accordionToggle msg name visible =
         }
 
 
-button : String -> String -> msg -> Bool -> Element msg
-button iconSrc label msg selected =
+button : Maybe ToolTag -> ToolTag -> String -> String -> Element Msg
+button maybeHoveredTool toolTag iconSrc label =
+    let
+        selected =
+            Just toolTag == maybeHoveredTool
+    in
     Input.button
         [ Element.padding 5
         , Background.color <|
@@ -1918,6 +1888,8 @@ button iconSrc label msg selected =
                 gray800
         , Border.color gray900
         , Border.width 1
+        , Element.Events.onMouseEnter (SelectToolHovered toolTag)
+        , Element.Events.onMouseLeave SelectToolUnhovered
         , Element.mouseOver
             [ Background.color <|
                 if selected then
@@ -1927,7 +1899,7 @@ button iconSrc label msg selected =
                     gray700
             ]
         ]
-        { onPress = Just msg
+        { onPress = Just (SelectToolClicked toolTag)
         , label =
             Element.image
                 [ Element.width (Element.px 48)
@@ -2862,25 +2834,9 @@ type Msg
     | MouseMove Position
     | MouseUp Position
       -- TOOL POINTS
-    | LeftOfClicked
-    | RightOfClicked
-    | AboveClicked
-    | BelowClicked
-    | AtAngleClicked
-    | BetweenRatioClicked
-    | BetweenLengthClicked
-    | CircleCircleClicked
-      -- TOOL CIRCLES
-    | CenteredAtClicked
-      -- TOOL LINES
-    | ThroughTwoPointsClicked
-      -- TOOL LINE SEGMENTS
-    | FromToClicked
-      -- TOOL TRANSFORMATIONS
-    | MirrorAtClicked
-    | CutAlongLineSegmentClicked
-      -- TOOL DETAILS
-    | CounterClockwiseClicked
+    | SelectToolHovered ToolTag
+    | SelectToolUnhovered
+    | SelectToolClicked ToolTag
       -- TOOL PARAMETERS
     | NameChanged String
     | AngleChanged String
@@ -2991,218 +2947,148 @@ update msg model =
             )
 
         -- POINTS
-        LeftOfClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        LeftOf
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , distance = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        RightOfClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        RightOf
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , distance = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        AboveClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        Above
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , distance = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        BelowClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        Below
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , distance = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        AtAngleClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        AtAngle
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , angle = ""
-                            , distance = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        BetweenRatioClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        BetweenRatio
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , dropdownAnchorB = Dropdown.init
-                            , maybeThatAnchorB = Nothing
-                            , ratio = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        BetweenLengthClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        BetweenLength
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , dropdownAnchorB = Dropdown.init
-                            , maybeThatAnchorB = Nothing
-                            , length = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        CircleCircleClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        CircleCircle
-                            { name = ""
-                            , dropdownCircleA = Dropdown.init
-                            , maybeThatCircleA = Nothing
-                            , dropdownCircleB = Dropdown.init
-                            , maybeThatCircleB = Nothing
-                            , first = True
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        -- CIRCLES
-        CenteredAtClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        CenteredAt
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , radius = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        -- LINES
-        ThroughTwoPointsClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        ThroughTwoPoints
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , dropdownAnchorB = Dropdown.init
-                            , maybeThatAnchorB = Nothing
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        -- LINE SEGMENTS
-        FromToClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        FromTo
-                            { name = ""
-                            , dropdownAnchorA = Dropdown.init
-                            , maybeThatAnchorA = Nothing
-                            , dropdownAnchorB = Dropdown.init
-                            , maybeThatAnchorB = Nothing
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        -- TRANSFORMATIONS
-        MirrorAtClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        MirrorAt
-                            { dropdown = Dropdown.init
-                            , thatLine = Nothing
-                            , listbox = Listbox.init
-                            , thosePoints = Those.none
-                            }
-              }
-            , Dropdown.focus "mirror-at-line"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        CutAlongLineSegmentClicked ->
-            ( { model
-                | dialog =
-                    Tool <|
-                        CutAlongLineSegment
-                            { dropdownLineSegment = Dropdown.init
-                            , thatLineSegment = Nothing
-                            , dropdownDetail = Dropdown.init
-                            , thatDetail = Nothing
-                            }
-              }
-            , Dropdown.focus "cut-along-line-segment--line-segment"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        -- DETAILS
-        CounterClockwiseClicked ->
-            ( { model | dialog = Tool (CounterClockwise []) }
+        SelectToolHovered toolTag ->
+            ( { model | hoveredTool = Just toolTag }
             , Cmd.none
+            )
+
+        SelectToolUnhovered ->
+            ( { model | hoveredTool = Nothing }
+            , Cmd.none
+            )
+
+        SelectToolClicked toolTag ->
+            let
+                tool =
+                    case toolTag of
+                        LeftOfTag ->
+                            LeftOf
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
+
+                        RightOfTag ->
+                            RightOf
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
+
+                        AboveTag ->
+                            Above
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
+
+                        BelowTag ->
+                            Below
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
+
+                        AtAngleTag ->
+                            AtAngle
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , angle = ""
+                                , distance = ""
+                                }
+
+                        BetweenRatioTag ->
+                            BetweenRatio
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                , ratio = ""
+                                }
+
+                        BetweenLengthTag ->
+                            BetweenLength
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                , length = ""
+                                }
+
+                        CircleCircleTag ->
+                            CircleCircle
+                                { name = ""
+                                , dropdownCircleA = Dropdown.init
+                                , maybeThatCircleA = Nothing
+                                , dropdownCircleB = Dropdown.init
+                                , maybeThatCircleB = Nothing
+                                , first = True
+                                }
+
+                        CenteredAtTag ->
+                            CenteredAt
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , radius = ""
+                                }
+
+                        ThroughTwoPointsTag ->
+                            ThroughTwoPoints
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                }
+
+                        FromToTag ->
+                            FromTo
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                }
+
+                        MirrorAtTag ->
+                            MirrorAt
+                                { dropdown = Dropdown.init
+                                , thatLine = Nothing
+                                , listbox = Listbox.init
+                                , thosePoints = Those.none
+                                }
+
+                        CutAlongLineSegmentTag ->
+                            CutAlongLineSegment
+                                { dropdownLineSegment = Dropdown.init
+                                , thatLineSegment = Nothing
+                                , dropdownDetail = Dropdown.init
+                                , thatDetail = Nothing
+                                }
+
+                        CounterClockwiseTag ->
+                            CounterClockwise []
+            in
+            ( { model | dialog = Tool tool }
+            , case toolTag of
+                CutAlongLineSegmentTag ->
+                    Dropdown.focus "cut-along-line-segment--line-segment"
+                        |> Task.attempt (\_ -> NoOp)
+
+                CounterClockwiseTag ->
+                    Cmd.none
+
+                _ ->
+                    Browser.Dom.focus "name-input"
+                        |> Task.attempt (\_ -> NoOp)
             )
 
         -- TOOL PARAMETERS
