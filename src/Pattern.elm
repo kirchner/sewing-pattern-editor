@@ -5,6 +5,7 @@ module Pattern exposing
     , leftOf, rightOf, above, below
     , atAngle
     , betweenRatio, betweenLength
+    , firstCircleCircle, secondCircleCircle
     , Circle(..), circles, insertCircle, getCircle
     , centeredAt
     , variables
@@ -35,6 +36,8 @@ module Pattern exposing
 @docs atAngle
 
 @docs betweenRatio, betweenLength
+
+@docs firstCircleCircle, secondCircleCircle
 
 
 # Circles
@@ -87,6 +90,7 @@ module Pattern exposing
 
 import Axis2d exposing (Axis2d)
 import Circle2d exposing (Circle2d)
+import Circle2d.Extra as Circle2d exposing (Intersection(..))
 import Dict exposing (Dict)
 import Direction2d
 import Expr exposing (Expr(..))
@@ -656,6 +660,40 @@ point2d pattern thatPoint =
                         |> Maybe.andThen (compute pattern >> Result.toMaybe)
                     )
 
+            Just (FirstCircleCircle thatCircleA thatCircleB) ->
+                Maybe.map2 Tuple.pair
+                    (circle2d pattern thatCircleA)
+                    (circle2d pattern thatCircleB)
+                    |> Maybe.andThen
+                        (\( circleA, circleB ) ->
+                            case Circle2d.intersectionCircle circleA circleB of
+                                NoIntersection ->
+                                    Nothing
+
+                                OnePoint point ->
+                                    Just point
+
+                                TwoPoints point _ ->
+                                    Just point
+                        )
+
+            Just (SecondCircleCircle thatCircleA thatCircleB) ->
+                Maybe.map2 Tuple.pair
+                    (circle2d pattern thatCircleA)
+                    (circle2d pattern thatCircleB)
+                    |> Maybe.andThen
+                        (\( circleA, circleB ) ->
+                            case Circle2d.intersectionCircle circleA circleB of
+                                NoIntersection ->
+                                    Nothing
+
+                                OnePoint point ->
+                                    Just point
+
+                                TwoPoints _ point ->
+                                    Just point
+                        )
+
             _ ->
                 Nothing
 
@@ -986,6 +1024,30 @@ betweenLength (Pattern pattern) thatAnchorA thatAnchorB rawLength =
             Nothing
 
 
+firstCircleCircle : Pattern -> That Circle -> That Circle -> Maybe Point
+firstCircleCircle (Pattern pattern) thatCircleA thatCircleB =
+    if
+        Store.member pattern.circles (That.objectId thatCircleA)
+            && Store.member pattern.circles (That.objectId thatCircleB)
+    then
+        Just (FirstCircleCircle thatCircleA thatCircleB)
+
+    else
+        Nothing
+
+
+secondCircleCircle : Pattern -> That Circle -> That Circle -> Maybe Point
+secondCircleCircle (Pattern pattern) thatCircleA thatCircleB =
+    if
+        Store.member pattern.circles (That.objectId thatCircleA)
+            && Store.member pattern.circles (That.objectId thatCircleB)
+    then
+        Just (SecondCircleCircle thatCircleA thatCircleB)
+
+    else
+        Nothing
+
+
 centeredAt : Pattern -> That Point -> String -> Maybe Circle
 centeredAt (Pattern pattern) thatCenter rawRadius =
     case Expr.parse [] rawRadius of
@@ -1298,6 +1360,18 @@ encodePoint point =
                 , ( "length", Encode.string length )
                 ]
 
+        FirstCircleCircle circleA circleB ->
+            withType "firstCircleCircle"
+                [ ( "circleA", That.encode circleA )
+                , ( "circleB", That.encode circleB )
+                ]
+
+        SecondCircleCircle circleA circleB ->
+            withType "secondCircleCircle"
+                [ ( "circleA", That.encode circleA )
+                , ( "circleB", That.encode circleB )
+                ]
+
         _ ->
             Encode.null
 
@@ -1476,6 +1550,14 @@ pointDecoder =
                 (Decode.field "anchorA" That.decoder)
                 (Decode.field "anchorB" That.decoder)
                 (Decode.field "length" Decode.string)
+        , typeDecoder "firstCircleCircle" <|
+            Decode.map2 FirstCircleCircle
+                (Decode.field "circleA" That.decoder)
+                (Decode.field "circleB" That.decoder)
+        , typeDecoder "secondCircleCircle" <|
+            Decode.map2 SecondCircleCircle
+                (Decode.field "circleA" That.decoder)
+                (Decode.field "circleB" That.decoder)
         ]
 
 

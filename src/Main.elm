@@ -214,6 +214,14 @@ type Tool
         , maybeThatAnchorB : Maybe (That Point)
         , length : String
         }
+    | CircleCircle
+        { name : String
+        , dropdownCircleA : Dropdown
+        , maybeThatCircleA : Maybe (That Circle)
+        , dropdownCircleB : Dropdown
+        , maybeThatCircleB : Maybe (That Circle)
+        , first : Bool
+        }
       -- CIRCLES
     | CenteredAt
         { name : String
@@ -336,6 +344,15 @@ toolDescription tool =
                 , s "."
                 ]
 
+        CircleCircle _ ->
+            Element.paragraph []
+                [ s "Create a new "
+                , strong "point"
+                , s " at the intersection of two "
+                , strong "circles"
+                , s "."
+                ]
+
         CenteredAt _ ->
             Element.paragraph []
                 [ s "Create a new "
@@ -447,6 +464,15 @@ isBeetweenLength maybeTool =
             False
 
 
+isCircleCircle maybeTool =
+    case maybeTool of
+        Just (CircleCircle _) ->
+            True
+
+        _ ->
+            False
+
+
 isCenteredAt maybeTool =
     case maybeTool of
         Just (CenteredAt _) ->
@@ -539,6 +565,9 @@ selectedPointsFromTool tool =
         BetweenLength data ->
             anchorAandB data
 
+        CircleCircle _ ->
+            empty
+
         CenteredAt data ->
             onlyAnchorA data
 
@@ -584,6 +613,9 @@ selectedLinesFromTool tool =
             empty
 
         BetweenLength _ ->
+            empty
+
+        CircleCircle _ ->
             empty
 
         CenteredAt _ ->
@@ -635,6 +667,9 @@ selectedLineSegmentsFromTool tool =
         BetweenLength _ ->
             empty
 
+        CircleCircle _ ->
+            empty
+
         CenteredAt _ ->
             empty
 
@@ -682,6 +717,9 @@ selectedDetailsFromTool tool =
             empty
 
         BetweenLength _ ->
+            empty
+
+        CircleCircle _ ->
             empty
 
         CenteredAt _ ->
@@ -1023,6 +1061,7 @@ viewDialog pattern dialog =
             Tool tool ->
                 viewTool pattern
                     (Pattern.points pattern)
+                    (Pattern.circles pattern)
                     (Pattern.lines pattern)
                     (Pattern.lineSegments pattern)
                     (Pattern.details pattern)
@@ -1040,12 +1079,13 @@ viewDialog pattern dialog =
 viewTool :
     Pattern
     -> List ( That Point, Entry Point )
+    -> List ( That Circle, Entry Circle )
     -> List ( That Line, Entry Line )
     -> List ( That LineSegment, Entry LineSegment )
     -> List ( That Detail, Entry Detail )
     -> Tool
     -> Element Msg
-viewTool pattern points lines lineSegments details tool =
+viewTool pattern points circles lines lineSegments details tool =
     Element.column
         [ Element.width Element.fill
         , Element.padding 15
@@ -1081,6 +1121,9 @@ viewTool pattern points lines lineSegments details tool =
 
                 BetweenLength data ->
                     viewBetweenLength pattern points data
+
+                CircleCircle data ->
+                    viewCircleCircle pattern circles data
 
                 CenteredAt data ->
                     viewCenteredAt pattern points data
@@ -1186,6 +1229,60 @@ viewBetweenLength pattern points data =
         data.dropdownAnchorB
         data.maybeThatAnchorB
     , labeledFormulaInputText LengthChanged "length" data.length
+    ]
+
+
+viewCircleCircle pattern circles data =
+    [ labeledInputText NameChanged "name" data.name
+    , labeledDropdown "circle-circle--circle-a"
+        { optionToName = circleName pattern
+        , placeholder = "Select a circle.."
+        , lift = DropdownCircleAMsg
+        , label = "1st circle"
+        , options = circles
+        }
+        data.dropdownCircleA
+        data.maybeThatCircleA
+    , labeledDropdown "circle-circle--circle-b"
+        { optionToName = circleName pattern
+        , placeholder = "Select a circle.."
+        , lift = DropdownCircleBMsg
+        , label = "2st circle"
+        , options = circles
+        }
+        data.dropdownCircleB
+        data.maybeThatCircleB
+    , Input.radioRow
+        [ Element.width Element.fill
+        , Element.padding 5
+        , Element.spacing 10
+        , Font.size 16
+        , Font.color white
+        ]
+        { onChange = FirstChanged
+        , options =
+            [ Input.option True <|
+                Element.el
+                    [ Border.width 1
+                    , Border.color gray900
+                    ]
+                    (Element.text "first")
+            , Input.option False <|
+                Element.el
+                    [ Border.width 1
+                    , Border.color gray900
+                    ]
+                    (Element.text "second")
+            ]
+        , selected = Just data.first
+        , label =
+            Input.labelAbove
+                [ Font.size 12
+                , Font.variant Font.smallCaps
+                , Font.color (color (Color.rgb255 229 223 197))
+                ]
+                (Element.text "intersection")
+        }
     ]
 
 
@@ -1315,6 +1412,12 @@ pointName pattern =
         >> Maybe.withDefault "<unnamed>"
 
 
+circleName pattern =
+    Pattern.getCircle pattern
+        >> Maybe.andThen .name
+        >> Maybe.withDefault "<unnamed>"
+
+
 lineName pattern =
     Pattern.getLine pattern
         >> Maybe.andThen .name
@@ -1416,6 +1519,9 @@ viewToolSelector maybeTool =
                     isBeetweenRatio maybeTool
               , button "at_angle" "Between at length" BetweenLengthClicked <|
                     isBeetweenLength maybeTool
+              ]
+            , [ button "at_angle" "Circle-Circle intersection" CircleCircleClicked <|
+                    isCircleCircle maybeTool
               ]
             ]
         , viewGroup "circles"
@@ -2735,6 +2841,7 @@ type Msg
     | AtAngleClicked
     | BetweenRatioClicked
     | BetweenLengthClicked
+    | CircleCircleClicked
       -- TOOL CIRCLES
     | CenteredAtClicked
       -- TOOL LINES
@@ -2760,6 +2867,9 @@ type Msg
     | ListboxPointsMsg (Listbox.Msg (That Point))
     | DropdownLineSegmentMsg (Dropdown.Msg (That LineSegment))
     | DropdownDetailMsg (Dropdown.Msg (That Detail))
+    | DropdownCircleAMsg (Dropdown.Msg (That Circle))
+    | DropdownCircleBMsg (Dropdown.Msg (That Circle))
+    | FirstChanged Bool
       -- TOOL ACTIONS
     | CreateClicked
     | CancelClicked
@@ -2963,6 +3073,23 @@ update msg model =
                 |> Task.attempt (\_ -> NoOp)
             )
 
+        CircleCircleClicked ->
+            ( { model
+                | dialog =
+                    Tool <|
+                        CircleCircle
+                            { name = ""
+                            , dropdownCircleA = Dropdown.init
+                            , maybeThatCircleA = Nothing
+                            , dropdownCircleB = Dropdown.init
+                            , maybeThatCircleB = Nothing
+                            , first = True
+                            }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
         -- CIRCLES
         CenteredAtClicked ->
             ( { model
@@ -3079,6 +3206,9 @@ update msg model =
 
                 Tool (BetweenLength data) ->
                     updateName BetweenLength data
+
+                Tool (CircleCircle data) ->
+                    updateName CircleCircle data
 
                 Tool (CenteredAt data) ->
                     updateName CenteredAt data
@@ -3332,6 +3462,72 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        DropdownCircleAMsg dropdownMsg ->
+            case model.dialog of
+                Tool (CircleCircle data) ->
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.circles model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownCircleA
+                                data.maybeThatCircleA
+                    in
+                    ( { model
+                        | dialog =
+                            Tool <|
+                                CircleCircle
+                                    { data
+                                        | dropdownCircleA = newDropdown
+                                        , maybeThatCircleA = newMaybeThatCircle
+                                    }
+                      }
+                    , Cmd.map DropdownCircleAMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DropdownCircleBMsg dropdownMsg ->
+            case model.dialog of
+                Tool (CircleCircle data) ->
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.circles model.pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownCircleB
+                                data.maybeThatCircleB
+                    in
+                    ( { model
+                        | dialog =
+                            Tool <|
+                                CircleCircle
+                                    { data
+                                        | dropdownCircleB = newDropdown
+                                        , maybeThatCircleB = newMaybeThatCircle
+                                    }
+                      }
+                    , Cmd.map DropdownCircleBMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        FirstChanged newFirst ->
+            case model.dialog of
+                Tool (CircleCircle data) ->
+                    ( { model | dialog = Tool (CircleCircle { data | first = newFirst }) }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         --
         CancelClicked ->
             ( { model | dialog = NoDialog }
@@ -3405,6 +3601,26 @@ update msg model =
                         )
                         data.maybeThatAnchorA
                         data.maybeThatAnchorB
+                        |> Maybe.withDefault ( model, Cmd.none )
+
+                Tool (CircleCircle data) ->
+                    Maybe.map2
+                        (\thatCircleA thatCircleB ->
+                            (if data.first then
+                                Pattern.firstCircleCircle model.pattern
+                                    thatCircleA
+                                    thatCircleB
+
+                             else
+                                Pattern.secondCircleCircle model.pattern
+                                    thatCircleA
+                                    thatCircleB
+                            )
+                                |> Maybe.map (insertPoint data.name model)
+                                |> Maybe.withDefault ( model, Cmd.none )
+                        )
+                        data.maybeThatCircleA
+                        data.maybeThatCircleB
                         |> Maybe.withDefault ( model, Cmd.none )
 
                 Tool (CenteredAt data) ->
