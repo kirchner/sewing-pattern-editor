@@ -1005,28 +1005,34 @@ viewRightToolbar model =
 
 
 viewDialog pattern dialog =
-    Element.el
-        [ Element.centerX
-        , Element.moveLeft 40
-        , Element.width (Element.px 300)
-        , Background.color gray900
-        ]
-        (case dialog of
-            NoDialog ->
-                Element.none
+    case dialog of
+        NoDialog ->
+            Element.none
 
-            Tool tool ->
-                viewTool pattern
+        Tool tool ->
+            Element.el
+                [ Element.alignLeft
+                , Element.moveRight 200
+                , Element.width (Element.px 300)
+                , Background.color gray900
+                ]
+                (viewTool pattern
                     (Pattern.points pattern)
                     (Pattern.circles pattern)
                     (Pattern.lines pattern)
                     (Pattern.lineSegments pattern)
                     (Pattern.details pattern)
                     tool
+                )
 
-            CreateVariable { name, value } ->
-                viewVariable name value
-        )
+        CreateVariable { name, value } ->
+            Element.el
+                [ Element.centerX
+                , Element.moveRight 150
+                , Element.width (Element.px 350)
+                , Background.color gray900
+                ]
+                (viewVariable name value)
 
 
 
