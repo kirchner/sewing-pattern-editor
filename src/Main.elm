@@ -111,6 +111,7 @@ type alias Model =
     , dialog : Dialog
 
     -- RIGHT TOOLBAR
+    , rightToolbarVisible : Bool
     , variablesVisible : Bool
     , pointsVisible : Bool
     }
@@ -762,6 +763,7 @@ init value url key =
               , hoveredPoint = Nothing
               , hoveredTool = Nothing
               , dialog = NoDialog
+              , rightToolbarVisible = False
               , variablesVisible = True
               , pointsVisible = False
               }
@@ -787,6 +789,7 @@ init value url key =
               , hoveredPoint = Nothing
               , hoveredTool = Nothing
               , dialog = NoDialog
+              , rightToolbarVisible = False
               , variablesVisible = True
               , pointsVisible = False
               }
@@ -1024,15 +1027,60 @@ viewBox model =
 
 viewRightToolbar : Model -> Element Msg
 viewRightToolbar model =
-    Element.column
-        [ Element.width (Element.px 400)
-        , Element.height Element.fill
-        , Background.color gray900
+    Element.row
+        [ Element.height Element.fill
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
         ]
-        [ viewVariables model
-        , viewPoints model
+        [ Input.button
+            [ Element.height Element.fill
+            , Element.padding 2
+            , Background.color gray900
+            , Border.color gray900
+            , Border.width 1
+            , Element.mouseOver
+                [ Background.color gray800 ]
+            ]
+            { onPress = Just ToolbarToggleClicked
+            , label =
+                Element.el
+                    [ Element.height Element.fill
+                    ]
+                    (Element.el
+                        [ Element.centerY
+                        , Element.centerX
+                        ]
+                        (Element.html <|
+                            Html.toUnstyled <|
+                                Html.i
+                                    [ Attributes.class "fas"
+                                    , Attributes.class <|
+                                        if model.rightToolbarVisible then
+                                            "fa-chevron-right"
+
+                                        else
+                                            "fa-chevron-left"
+                                    , Attributes.css
+                                        [ Css.fontSize (Css.px 12)
+                                        , Css.color (Css.rgb 229 223 197)
+                                        ]
+                                    ]
+                                    []
+                        )
+                    )
+            }
+        , if model.rightToolbarVisible then
+            Element.column
+                [ Element.width (Element.px 400)
+                , Element.height Element.fill
+                , Background.color gray900
+                ]
+                [ viewVariables model
+                , viewPoints model
+                ]
+
+          else
+            Element.none
         ]
 
 
@@ -2941,6 +2989,7 @@ type Msg
     | PatternReceived Value
     | ViewportReceived Value
       -- RIGHT TOOLBAR
+    | ToolbarToggleClicked
     | VariablesRulerClicked
     | VariableCreateClicked
     | VariableNameChanged String
@@ -4181,6 +4230,11 @@ update msg model =
                       }
                     , Cmd.none
                     )
+
+        ToolbarToggleClicked ->
+            ( { model | rightToolbarVisible = not model.rightToolbarVisible }
+            , Cmd.none
+            )
 
         VariablesRulerClicked ->
             ( { model | variablesVisible = not model.variablesVisible }
