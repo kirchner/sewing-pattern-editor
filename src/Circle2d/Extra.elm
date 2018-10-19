@@ -51,11 +51,14 @@ intersectionCircle circle1 circle2 =
                 + squared x2
                 + squared y2
 
-        squared f =
-            f * f
+        cPrim =
+            c - a * x1 - b * y1
 
         underRoot =
-            squared r1 * (squared a + squared b) - squared c
+            squared r1 * (squared a + squared b) - squared cPrim
+
+        squared f =
+            f * f
     in
     if underRoot > 0 then
         let
@@ -67,13 +70,13 @@ intersectionCircle circle1 circle2 =
         in
         TwoPoints
             (Point2d.fromCoordinates
-                ( (a * c + b * root) / denominator
-                , (b * c - a * root) / denominator
+                ( x1 + (a * cPrim + b * root) / denominator
+                , y1 + (b * cPrim - a * root) / denominator
                 )
             )
             (Point2d.fromCoordinates
-                ( (a * c - b * root) / denominator
-                , (b * c + a * root) / denominator
+                ( x1 + (a * cPrim - b * root) / denominator
+                , y1 + (b * cPrim + a * root) / denominator
                 )
             )
 
@@ -84,8 +87,8 @@ intersectionCircle circle1 circle2 =
         in
         OnePoint
             (Point2d.fromCoordinates
-                ( a * c / denominator
-                , b * c / denominator
+                ( x1 + a * cPrim / denominator
+                , y1 + b * cPrim / denominator
                 )
             )
 
