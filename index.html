@@ -7,70 +7,32 @@
     <link rel="stylesheet" href="https://cdn.rawgit.com/konpa/devicon/df6431e323547add1b4cf45992913f15286456d3/devicon.min.css">
   </head>
   <body>
-    <script src="/assets/js/elm.js"></script>
+    <script src="assets/js/elm.js"></script>
     <script>
-      var pattern;
-      var viewport;
-
-      var rawPattern = window.localStorage.getItem('pattern');
-      if (rawPattern !== null) {
-          pattern = JSON.parse(rawPattern);
-      }
-
-      var rawViewport = window.localStorage.getItem('viewport');
-      if (rawViewport !== null) {
-          viewport = JSON.parse(rawViewport);
-      }
-
+      var storageKey = "sewing-pattern-editor-storage";
+      var cache = JSON.parse(window.localStorage.getItem(storageKey));
       var app = Elm.Main.init({
-          flags: {
-              windowWidth: window.innerWidth,
-              windowHeight: window.innerHeight,
-              pattern: pattern,
-              viewport: viewport
-          }
+        flags: {
+          windowWidth: window.innerWidth,
+          windowHeight: window.innerHeight,
+          cache: cache
+        }
       });
 
-      app.ports.safePattern.subscribe(function(pattern) {
-          window.localStorage.setItem('pattern', JSON.stringify(pattern));
+      app.ports.safeCache.subscribe(function(value) {
+        if (value === null) {
+          window.localStorage.removeItem(storageKey);
+        } else {
+          window.localStorage.setItem(storageKey, JSON.stringify(value));
+        }
+
+        setTimeout(function() { app.ports.onCacheChange.send(value) }, 0);
       });
 
-      app.ports.requestPattern.subscribe(function() {
-          var rawPattern = window.localStorage.getItem('pattern');
-          if (rawPattern === null) {
-              return;
-          }
-
-          var pattern = JSON.parse(rawPattern);
-          if (pattern === undefined) {
-              return;
-          }
-
-          if (app === undefined) {
-              return;
-          }
-          app.ports.patternReceived.send(pattern);
-      });
-
-      app.ports.safeViewport.subscribe(function(viewport) {
-          window.localStorage.setItem('viewport', JSON.stringify(viewport));
-      });
-
-      app.ports.requestViewport.subscribe(function() {
-          var rawViewport = window.localStorage.getItem('viewport');
-          if (rawViewport === null) {
-              return;
-          }
-
-          var viewport = JSON.parse(rawViewport);
-          if (viewport === undefined) {
-              return;
-          }
-
-          if (app === undefined) {
-              return;
-          }
-          app.ports.viewportReceived.send(viewport);
+      window.addEventListener("storage", function(event) {
+        if (event.storageArea === window.localeStorage && event.key === storageKey) {
+          app.ports.onCacheChange.send(event.newValue);
+        }
       });
     </script>
   </body>
