@@ -32,7 +32,8 @@ main =
 
 
 type alias Model =
-    { key : Navigation.Key
+    { prefix : String
+    , key : Navigation.Key
     , page : Page
     , windowWidth : Int
     , windowHeight : Int
@@ -103,7 +104,8 @@ init value url key =
                                 Route.Pattern patternSlug ->
                                     Pattern "first-pattern" Pattern.init
             in
-            ( { key = key
+            ( { prefix = Route.prefixFromUrl url
+              , key = key
               , page = page
               , windowWidth = 1280
               , windowHeight = 640
@@ -137,7 +139,8 @@ init value url key =
                                         Just viewedPattern ->
                                             Pattern patternSlug Pattern.init
             in
-            ( { key = key
+            ( { prefix = Route.prefixFromUrl url
+              , key = key
               , page = page
               , windowWidth = flags.windowWidth
               , windowHeight = flags.windowHeight
@@ -188,6 +191,7 @@ view model =
                     let
                         patternDocument =
                             Pattern.view
+                                model.prefix
                                 model.windowWidth
                                 model.windowHeight
                                 patternSlug

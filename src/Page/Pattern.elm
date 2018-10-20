@@ -741,8 +741,8 @@ encodeViewedPattern viewedPattern =
 ---- VIEW
 
 
-view : Int -> Int -> String -> ViewedPattern -> Model -> Document Msg
-view windowWidth windowHeight patternSlug viewedPattern model =
+view : String -> Int -> Int -> String -> ViewedPattern -> Model -> Document Msg
+view prefix windowWidth windowHeight patternSlug viewedPattern model =
     let
         { pattern, zoom, center } =
             viewedPattern
@@ -771,7 +771,7 @@ view windowWidth windowHeight patternSlug viewedPattern model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.inFront (viewOverlay patternSlug pattern model)
+                , Element.inFront (viewOverlay prefix patternSlug pattern model)
                 ]
                 (viewWorkspace windowWidth windowHeight viewedPattern model)
             )
@@ -842,7 +842,7 @@ viewWorkspace windowWidth windowHeight viewedPattern model =
         )
 
 
-viewOverlay patternSlug pattern model =
+viewOverlay prefix patternSlug pattern model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -875,7 +875,7 @@ viewOverlay patternSlug pattern model =
             [ Element.height Element.fill
             , Element.width Element.fill
             ]
-            [ viewLeftToolbar model
+            [ viewLeftToolbar prefix model
             , Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -916,14 +916,14 @@ viewOverlay patternSlug pattern model =
         ]
 
 
-viewLeftToolbar model =
+viewLeftToolbar prefix model =
     Element.column
         [ Element.height Element.fill
         , Background.color gray900
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
         ]
-        [ viewToolSelector model.hoveredTool <|
+        [ viewToolSelector prefix model.hoveredTool <|
             case model.dialog of
                 Tool tool ->
                     Just tool
@@ -1526,7 +1526,7 @@ viewVariable name value =
 -- TOOL SELECTOR
 
 
-viewToolSelector hoveredTool maybeTool =
+viewToolSelector prefix hoveredTool maybeTool =
     let
         viewGroup name rows =
             Element.column
@@ -1565,37 +1565,37 @@ viewToolSelector hoveredTool maybeTool =
         , Element.width Element.fill
         ]
         [ viewGroup "points"
-            [ [ button hoveredTool LeftOfTag "left_of" "Left of"
-              , button hoveredTool RightOfTag "right_of" "Right of"
-              , button hoveredTool AtAngleTag "at_angle" "At angle"
+            [ [ button prefix hoveredTool LeftOfTag "left_of" "Left of"
+              , button prefix hoveredTool RightOfTag "right_of" "Right of"
+              , button prefix hoveredTool AtAngleTag "at_angle" "At angle"
               ]
-            , [ button hoveredTool AboveTag "above" "Above"
-              , button hoveredTool BelowTag "below" "Below"
-              , button hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
+            , [ button prefix hoveredTool AboveTag "above" "Above"
+              , button prefix hoveredTool BelowTag "below" "Below"
+              , button prefix hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
               ]
-            , [ button hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
-              , button hoveredTool BetweenLengthTag "at_angle" "Between at length"
+            , [ button prefix hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
+              , button prefix hoveredTool BetweenLengthTag "at_angle" "Between at length"
               ]
             ]
         , viewGroup "circles"
-            [ [ button hoveredTool CenteredAtTag "through_two_points" "Centered at"
+            [ [ button prefix hoveredTool CenteredAtTag "through_two_points" "Centered at"
               ]
             ]
         , viewGroup "lines"
-            [ [ button hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
+            [ [ button prefix hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
               ]
             ]
         , viewGroup "line segments"
-            [ [ button hoveredTool FromToTag "from_to" "From to"
+            [ [ button prefix hoveredTool FromToTag "from_to" "From to"
               ]
             ]
         , viewGroup "transformations"
-            [ [ button hoveredTool MirrorAtTag "mirror_at" "Mirror at"
-              , button hoveredTool CutAlongLineSegmentTag "cut_along_line_segment" "Cut along line segment"
+            [ [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror at"
+              , button prefix hoveredTool CutAlongLineSegmentTag "cut_along_line_segment" "Cut along line segment"
               ]
             ]
         , viewGroup "details"
-            [ [ button hoveredTool CounterClockwiseTag "counter_clockwise" "Counter clockwise"
+            [ [ button prefix hoveredTool CounterClockwiseTag "counter_clockwise" "Counter clockwise"
               ]
             ]
         ]
@@ -1911,8 +1911,8 @@ accordionToggle msg name visible =
         }
 
 
-button : Maybe ToolTag -> ToolTag -> String -> String -> Element Msg
-button maybeHoveredTool toolTag iconSrc label =
+button : String -> Maybe ToolTag -> ToolTag -> String -> String -> Element Msg
+button prefix maybeHoveredTool toolTag iconSrc label =
     let
         selected =
             Just toolTag == maybeHoveredTool
@@ -1944,9 +1944,8 @@ button maybeHoveredTool toolTag iconSrc label =
                 [ Element.width (Element.px 48)
                 , Element.height (Element.px 48)
                 ]
-                { src = "/assets/icons/" ++ iconSrc ++ ".svg"
-                , description = label
-                }
+                { src = prefix ++ "/assets/icons/" ++ iconSrc ++ ".svg"
+                , description = label }
         }
 
 
