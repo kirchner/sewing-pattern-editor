@@ -36,10 +36,11 @@ import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
-import Browser.Navigation exposing (Key)
+import Browser.Navigation as Navigation
 import Circle2d exposing (Circle2d)
 import Color
 import Css
+import Design exposing (Grey(..))
 import Direction2d
 import Element exposing (Element)
 import Element.Background as Background
@@ -71,6 +72,7 @@ import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
 import Vector2d
+import View.Icon
 import VoronoiDiagram2d
 
 
@@ -739,8 +741,8 @@ encodeViewedPattern viewedPattern =
 ---- VIEW
 
 
-view : Int -> Int -> ViewedPattern -> Model -> Document Msg
-view windowWidth windowHeight viewedPattern model =
+view : Int -> Int -> String -> ViewedPattern -> Model -> Document Msg
+view windowWidth windowHeight patternSlug viewedPattern model =
     let
         { pattern, zoom, center } =
             viewedPattern
@@ -769,7 +771,7 @@ view windowWidth windowHeight viewedPattern model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.inFront (viewOverlay pattern model)
+                , Element.inFront (viewOverlay patternSlug pattern model)
                 ]
                 (viewWorkspace windowWidth windowHeight viewedPattern model)
             )
@@ -840,7 +842,7 @@ viewWorkspace windowWidth windowHeight viewedPattern model =
         )
 
 
-viewOverlay pattern model =
+viewOverlay patternSlug pattern model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -848,6 +850,28 @@ viewOverlay pattern model =
             Html.Attributes.style "pointer-events" "none"
         ]
         [ Element.row
+            [ Element.width Element.fill
+            , Element.padding Design.small
+            , Element.spacing Design.xSmall
+            , Design.backgroundColor Darkest
+            , Design.fontColor Darkest
+            , Font.size Design.small
+            , Element.htmlAttribute <|
+                Html.Attributes.style "pointer-events" "auto"
+            ]
+            [ Input.button
+                [ Element.mouseOver
+                    [ Font.color (Design.toColor Brightish) ]
+                ]
+                { onPress = Just PatternsClicked
+                , label = Element.text "Patterns"
+                }
+            , Element.el []
+                (View.Icon.fa "angle-right")
+            , Element.el []
+                (Element.text patternSlug)
+            ]
+        , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
             ]
@@ -886,7 +910,7 @@ viewOverlay pattern model =
                 , Font.color white
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = devIcon "github-plain"
+                , label = View.Icon.dev "github-plain"
                 }
             ]
         ]
@@ -927,7 +951,7 @@ viewZoom model =
                 ]
                 { onPress = Just ZoomPlusClicked
                 , label =
-                    bigIcon "search-plus"
+                    View.Icon.faLarge "search-plus"
                 }
             , Input.button
                 [ Element.mouseOver
@@ -937,7 +961,7 @@ viewZoom model =
                 ]
                 { onPress = Just ZoomMinusClicked
                 , label =
-                    bigIcon "search-minus"
+                    View.Icon.faLarge "search-minus"
                 }
             ]
         ]
@@ -1031,7 +1055,7 @@ viewDialog pattern dialog =
         Tool tool ->
             Element.el
                 [ Element.alignLeft
-                , Element.moveRight 200
+                , Element.moveRight 300
                 , Element.width (Element.px 300)
                 , Background.color gray900
                 ]
@@ -1543,16 +1567,14 @@ viewToolSelector hoveredTool maybeTool =
         [ viewGroup "points"
             [ [ button hoveredTool LeftOfTag "left_of" "Left of"
               , button hoveredTool RightOfTag "right_of" "Right of"
+              , button hoveredTool AtAngleTag "at_angle" "At angle"
               ]
             , [ button hoveredTool AboveTag "above" "Above"
               , button hoveredTool BelowTag "below" "Below"
-              ]
-            , [ button hoveredTool AtAngleTag "at_angle" "At angle"
+              , button hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
               ]
             , [ button hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
               , button hoveredTool BetweenLengthTag "at_angle" "Between at length"
-              ]
-            , [ button hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
               ]
             ]
         , viewGroup "circles"
@@ -1664,7 +1686,7 @@ viewVariables pattern model =
                                                     [ Element.centerX
                                                     , Element.centerY
                                                     ]
-                                                    (icon "edit")
+                                                    (View.Icon.fa "edit")
                                             }
                                         , Input.button
                                             [ Font.color white
@@ -1679,7 +1701,7 @@ viewVariables pattern model =
                                                     [ Element.centerX
                                                     , Element.centerY
                                                     ]
-                                                    (icon "trash")
+                                                    (View.Icon.fa "trash")
                                             }
                                         ]
                           }
@@ -1815,7 +1837,7 @@ viewPoints pattern model =
                                                     [ Element.centerX
                                                     , Element.centerY
                                                     ]
-                                                    (icon "edit")
+                                                    (View.Icon.fa "edit")
                                             }
                                         , Input.button
                                             [ Font.color white
@@ -1830,7 +1852,7 @@ viewPoints pattern model =
                                                     [ Element.centerX
                                                     , Element.centerY
                                                     ]
-                                                    (icon "trash")
+                                                    (View.Icon.fa "trash")
                                             }
                                         ]
                           }
@@ -1845,47 +1867,6 @@ viewPoints pattern model =
 
 
 ---- REUSABLE ELEMENTS
-
-
-icon name =
-    Element.html <|
-        Html.toUnstyled <|
-            Html.i
-                [ Attributes.class "fas"
-                , Attributes.class ("fa-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 12)
-                    , Css.color Css.inherit
-                    ]
-                ]
-                []
-
-
-bigIcon name =
-    Element.html <|
-        Html.toUnstyled <|
-            Html.i
-                [ Attributes.class "fas"
-                , Attributes.class ("fa-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 24)
-                    , Css.color Css.inherit
-                    ]
-                ]
-                []
-
-
-devIcon name =
-    Element.html <|
-        Html.toUnstyled <|
-            Html.i
-                [ Attributes.class ("devicon-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 24)
-                    , Css.color Css.inherit
-                    ]
-                ]
-                []
 
 
 accordionToggle msg name visible =
@@ -2933,10 +2914,17 @@ type Msg
     | VariableNameChanged String
     | VariableValueChanged String
     | PointsRulerClicked
+      -- TOP BAR
+    | PatternsClicked
 
 
-update : ViewedPattern -> Msg -> Model -> ( Model, Cmd Msg, Maybe ViewedPattern )
-update ({ pattern, zoom, center } as viewedPattern) msg model =
+update :
+    Navigation.Key
+    -> ViewedPattern
+    -> Msg
+    -> Model
+    -> ( Model, Cmd Msg, Maybe ViewedPattern )
+update key ({ pattern, zoom, center } as viewedPattern) msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none, Nothing )
@@ -4173,6 +4161,12 @@ update ({ pattern, zoom, center } as viewedPattern) msg model =
         PointsRulerClicked ->
             ( { model | pointsVisible = not model.pointsVisible }
             , Cmd.none
+            , Nothing
+            )
+
+        PatternsClicked ->
+            ( model
+            , Navigation.pushUrl key "/"
             , Nothing
             )
 

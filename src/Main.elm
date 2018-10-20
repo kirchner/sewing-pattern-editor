@@ -7,6 +7,7 @@ import Html
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Page.Home as Home
 import Page.Pattern as Pattern exposing (ViewedPattern)
 import Pattern exposing (Pattern)
 import Port
@@ -31,7 +32,8 @@ main =
 
 
 type alias Model =
-    { page : Page
+    { key : Navigation.Key
+    , page : Page
     , windowWidth : Int
     , windowHeight : Int
     , cache : Dict String ViewedPattern
@@ -101,7 +103,8 @@ init value url key =
                                 Route.Pattern patternSlug ->
                                     Pattern "first-pattern" Pattern.init
             in
-            ( { page = page
+            ( { key = key
+              , page = page
               , windowWidth = 1280
               , windowHeight = 640
               , cache = initialCache
@@ -134,7 +137,8 @@ init value url key =
                                         Just viewedPattern ->
                                             Pattern patternSlug Pattern.init
             in
-            ( { page = page
+            ( { key = key
+              , page = page
               , windowWidth = flags.windowWidth
               , windowHeight = flags.windowHeight
               , cache = cache
@@ -160,8 +164,17 @@ view model =
             }
 
         Home ->
+            let
+                namedPatterns =
+                    model.cache
+                        |> Dict.toList
+                        |> List.map
+                            (\( patternSlug, { pattern } ) ->
+                                ( patternSlug, pattern )
+                            )
+            in
             { title = "Sewing pattern editor"
-            , body = [ Html.text "hello" ]
+            , body = [ Html.map HomeMsg (Home.view namedPatterns) ]
             }
 
         Pattern patternSlug patternModel ->
@@ -177,6 +190,7 @@ view model =
                             Pattern.view
                                 model.windowWidth
                                 model.windowHeight
+                                patternSlug
                                 viewedPattern
                                 patternModel
                     in
@@ -195,6 +209,7 @@ type Msg
     | UrlChanged Url
     | CacheChanged Value
       -- PAGES
+    | HomeMsg Home.Msg
     | PatternMsg Pattern.Msg
 
 
@@ -231,8 +246,10 @@ update msg model =
         ( _, NotFound ) ->
             ( model, Cmd.none )
 
-        ( _, Home ) ->
-            ( model, Cmd.none )
+        ( HomeMsg homeMsg, Home ) ->
+            ( model
+            , Home.update model.key homeMsg
+            )
 
         ( PatternMsg patternMsg, Pattern patternSlug patternModel ) ->
             case Dict.get patternSlug model.cache of
@@ -242,7 +259,7 @@ update msg model =
                 Just viewedPattern ->
                     let
                         ( newPatternModel, patternCmd, maybeNewViewedPattern ) =
-                            Pattern.update viewedPattern patternMsg patternModel
+                            Pattern.update model.key viewedPattern patternMsg patternModel
 
                         newModel =
                             { model | page = Pattern patternSlug newPatternModel }
@@ -265,20 +282,34 @@ update msg model =
                                 ]
                             )
 
+        _ ->
+            ( model, Cmd.none )
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
-    case maybeRoute of
-        Nothing ->
-            ( model, Cmd.none )
+    let
+        newPage =
+            case maybeRoute of
+                Nothing ->
+                    NotFound
 
-        Just newRoute ->
-            case newRoute of
-                Route.Home ->
-                    ( model, Cmd.none )
+                Just newRoute ->
+                    case newRoute of
+                        Route.Home ->
+                            Home
 
-                Route.Pattern patternSlug ->
-                    ( model, Cmd.none )
+                        Route.Pattern patternSlug ->
+                            case Dict.get patternSlug model.cache of
+                                Nothing ->
+                                    NotFound
+
+                                Just viewedPattern ->
+                                    Pattern patternSlug Pattern.init
+    in
+    ( { model | page = newPage }
+    , Cmd.none
+    )
 
 
 subscriptions : Model -> Sub Msg
