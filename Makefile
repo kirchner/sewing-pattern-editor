@@ -1,17 +1,19 @@
-optimized:
-	mkdir -p gh-pages
-	cp static/index.html gh-pages/
-	mkdir -p gh-pages/icons
-	cp icons/*.svg gh-pages/icons/
-	elm make src/Main.elm --optimize --output gh-pages/elm.js
-	uglifyjs gh-pages/elm.js \
+optimized: setup-gh-pages
+	mkdir -p assets/js
+	elm make src/Main.elm --optimize --output assets/js/elm.js
+	uglifyjs assets/js/elm.js \
 	    --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
-	    | uglifyjs --mangle --output=gh-pages/elm.min.js
-	mv gh-pages/elm.min.js gh-pages/elm.js
+	    | uglifyjs --mangle --output=assets/js/elm.min.js
+	mv assets/js/elm.min.js assets/js/elm.js
+	cp assets/js/elm.js gh-pages/assets/js/elm.js
 
-dev:
-	mkdir -p gh-pages
-	cp static/index.html gh-pages/
-	mkdir -p gh-pages/icons
-	cp icons/*.svg gh-pages/icons/
-	elm make src/Main.elm --output gh-pages/elm.js
+dev: setup-gh-pages
+	mkdir -p assets/js
+	elm make src/Main.elm --output assets/js/elm.js
+	cp assets/js/elm.js gh-pages/assets/js/elm.js
+
+setup-gh-pages:
+	mkdir -p gh-pages/assets/js
+	mkdir -p gh-pages/assets/icons
+	cp src/index.html gh-pages/
+	cp assets/icons/*.svg gh-pages/assets/icons/

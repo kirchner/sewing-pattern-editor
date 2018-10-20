@@ -23,3 +23,18 @@ a line perpendicular to some other line at 2/3 of that line', etc..
 Eventually, you should be able to feed this program all these construction
 steps, so that you only have to update the input measurements to adjust your
 sewing patterns.
+
+
+## Run locally
+
+You can either use elm reactor:
+
+```
+$ elm reactor
+```
+
+Or you can use the go server, by running
+
+```
+$ go run server/main.go
+```

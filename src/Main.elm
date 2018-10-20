@@ -2028,7 +2028,7 @@ button maybeHoveredTool toolTag iconSrc label =
                 [ Element.width (Element.px 48)
                 , Element.height (Element.px 48)
                 ]
-                { src = "icons/" ++ iconSrc ++ ".svg"
+                { src = "/assets/icons/" ++ iconSrc ++ ".svg"
                 , description = label
                 }
         }
