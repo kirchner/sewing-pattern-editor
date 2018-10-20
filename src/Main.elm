@@ -1,4 +1,4 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 {-
    Sewing pattern editor
@@ -48,6 +48,7 @@ import LineSegment2d exposing (LineSegment2d)
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
+import Port
 import QuadraticSpline2d
 import Store exposing (Entry)
 import Styled.Listbox as Listbox exposing (Listbox)
@@ -73,24 +74,6 @@ main =
         , onUrlRequest = onUrlRequest
         , onUrlChange = onUrlChange
         }
-
-
-port safePattern : Value -> Cmd msg
-
-
-port requestPattern : () -> Cmd msg
-
-
-port patternReceived : (Value -> msg) -> Sub msg
-
-
-port safeViewport : Value -> Cmd msg
-
-
-port requestViewport : () -> Cmd msg
-
-
-port viewportReceived : (Value -> msg) -> Sub msg
 
 
 
@@ -768,8 +751,8 @@ init value url key =
               , pointsVisible = False
               }
             , Cmd.batch
-                [ requestPattern ()
-                , requestViewport ()
+                [ Port.requestPattern ()
+                , Port.requestViewport ()
                 ]
             )
 
@@ -3017,7 +3000,7 @@ update msg model =
                     { model | zoom = model.zoom / 1.1 }
             in
             ( newModel
-            , safeViewport (encodeViewport newModel)
+            , Port.safeViewport (encodeViewport newModel)
             )
 
         ZoomMinusClicked ->
@@ -3026,7 +3009,7 @@ update msg model =
                     { model | zoom = model.zoom * 1.1 }
             in
             ( newModel
-            , safeViewport (encodeViewport newModel)
+            , Port.safeViewport (encodeViewport newModel)
             )
 
         MouseDown position ->
@@ -3069,7 +3052,7 @@ update msg model =
                     }
             in
             ( newModel
-            , safeViewport (encodeViewport newModel)
+            , Port.safeViewport (encodeViewport newModel)
             )
 
         -- POINTS
@@ -3966,7 +3949,7 @@ update msg model =
                                 | pattern = newPattern
                                 , dialog = NoDialog
                               }
-                            , safePattern (Pattern.encode newPattern)
+                            , Port.safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -3996,7 +3979,7 @@ update msg model =
                                 | pattern = newPattern
                                 , dialog = NoDialog
                               }
-                            , safePattern (Pattern.encode newPattern)
+                            , Port.safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -4016,7 +3999,7 @@ update msg model =
                                 | pattern = newPattern
                                 , dialog = NoDialog
                               }
-                            , safePattern (Pattern.encode newPattern)
+                            , Port.safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -4036,7 +4019,7 @@ update msg model =
                                 | pattern = newPattern
                                 , dialog = NoDialog
                               }
-                            , safePattern (Pattern.encode newPattern)
+                            , Port.safePattern (Pattern.encode newPattern)
                             )
 
                         _ ->
@@ -4055,7 +4038,7 @@ update msg model =
                         | pattern = newPattern
                         , dialog = NoDialog
                       }
-                    , safePattern (Pattern.encode newPattern)
+                    , Port.safePattern (Pattern.encode newPattern)
                     )
 
                 CreateVariable { name, value } ->
@@ -4067,7 +4050,7 @@ update msg model =
                         | pattern = newPattern
                         , dialog = NoDialog
                       }
-                    , safePattern (Pattern.encode newPattern)
+                    , Port.safePattern (Pattern.encode newPattern)
                     )
 
                 NoDialog ->
@@ -4197,7 +4180,7 @@ update msg model =
                 | pattern = newPattern
                 , dialog = NoDialog
               }
-            , safePattern (Pattern.encode newPattern)
+            , Port.safePattern (Pattern.encode newPattern)
             )
 
         PatternReceived value ->
@@ -4208,7 +4191,7 @@ update msg model =
                             defaultPattern
                     in
                     ( { model | pattern = newPattern }
-                    , safePattern (Pattern.encode newPattern)
+                    , Port.safePattern (Pattern.encode newPattern)
                     )
 
                 Ok newPattern ->
@@ -4220,7 +4203,7 @@ update msg model =
             case Decode.decodeValue viewportDecoder value of
                 Err error ->
                     ( model
-                    , safeViewport (encodeViewport model)
+                    , Port.safeViewport (encodeViewport model)
                     )
 
                 Ok { zoom, center } ->
@@ -4336,7 +4319,7 @@ insertPoint name model newPoint =
         | pattern = newPattern
         , dialog = NoDialog
       }
-    , safePattern (Pattern.encode newPattern)
+    , Port.safePattern (Pattern.encode newPattern)
     )
 
 
@@ -4349,7 +4332,7 @@ updatePoint thatPoint model newPoint =
         | pattern = newPattern
         , dialog = NoDialog
       }
-    , safePattern (Pattern.encode newPattern)
+    , Port.safePattern (Pattern.encode newPattern)
     )
 
 
@@ -4370,15 +4353,15 @@ insertCircle name model newCircle =
         | pattern = newPattern
         , dialog = NoDialog
       }
-    , safePattern (Pattern.encode newPattern)
+    , Port.safePattern (Pattern.encode newPattern)
     )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ patternReceived PatternReceived
-        , viewportReceived ViewportReceived
+        [ Port.patternReceived PatternReceived
+        , Port.viewportReceived ViewportReceived
         , Browser.Events.onResize WindowResized
         , case model.maybeDrag of
             Nothing ->
