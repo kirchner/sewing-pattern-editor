@@ -37,7 +37,7 @@ view namedPatterns =
     Element.layoutWith
         { options =
             [ Element.focusStyle
-                { borderColor = Just (Design.toColor Brightest)
+                { borderColor = Nothing
                 , backgroundColor = Nothing
                 , shadow = Nothing
                 }
@@ -111,7 +111,6 @@ view namedPatterns =
                 )
             , Element.row
                 [ Element.width Element.fill
-                , Element.height (Element.px 40)
                 , Element.paddingXY 10 5
                 , Element.spacing 5
                 , Design.backgroundColor Darkest
@@ -119,7 +118,7 @@ view namedPatterns =
                 ]
                 [ Element.newTabLink
                     [ Element.alignRight
-                    , Element.paddingXY 5 5
+                    , Element.padding 5
                     ]
                     { url = "https://github.com/kirchner/sewing-pattern-editor"
                     , label = View.Icon.dev "github-plain"

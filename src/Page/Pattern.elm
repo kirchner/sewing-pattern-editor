@@ -752,7 +752,7 @@ view prefix windowWidth windowHeight patternSlug viewedPattern model =
         [ Element.layoutWith
             { options =
                 [ Element.focusStyle
-                    { borderColor = Just (color (Color.rgb255 229 223 197))
+                    { borderColor = Nothing
                     , backgroundColor = Nothing
                     , shadow = Nothing
                     }
@@ -816,12 +816,12 @@ viewWorkspace windowWidth windowHeight viewedPattern model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.inFront (viewDialog pattern model.dialog)
         ]
         (Element.html <|
             Svg.svg
                 [ Svg.Attributes.viewBox (viewBox windowWidth windowHeight zoom)
                 , Html.Attributes.style "user-select" "none"
+                , Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
                 , Events.on "mousedown" <|
                     Decode.map MouseDown <|
                         Decode.map2 Position
@@ -858,6 +858,7 @@ viewOverlay prefix patternSlug pattern model =
             , Font.size Design.small
             , Element.htmlAttribute <|
                 Html.Attributes.style "pointer-events" "auto"
+            , Element.below (viewDialog pattern model.dialog)
             ]
             [ Input.button
                 [ Element.mouseOver
@@ -886,7 +887,6 @@ viewOverlay prefix patternSlug pattern model =
             ]
         , Element.row
             [ Element.width Element.fill
-            , Element.height (Element.px 40)
             , Element.paddingXY 10 5
             , Element.spacing 5
             , Background.color gray950
@@ -906,7 +906,7 @@ viewOverlay prefix patternSlug pattern model =
                         (toolDescription toolTag)
             , Element.newTabLink
                 [ Element.alignRight
-                , Element.paddingXY 5 5
+                , Element.padding 5
                 , Font.color white
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
@@ -993,17 +993,18 @@ viewRightToolbar pattern model =
         ]
         [ Input.button
             [ Element.height Element.fill
-            , Element.padding 2
+            , Element.padding 5
             , Background.color gray900
-            , Border.color gray900
-            , Border.width 1
             , Element.mouseOver
                 [ Background.color gray800 ]
+            , Element.htmlAttribute <|
+                Html.Attributes.style "z-index" "1"
             ]
             { onPress = Just ToolbarToggleClicked
             , label =
                 Element.el
                     [ Element.height Element.fill
+                    , Element.width Element.fill
                     ]
                     (Element.el
                         [ Element.centerY
@@ -1108,7 +1109,7 @@ viewTool pattern points circles lines lineSegments details tool =
             ]
             (case tool of
                 CreatePoint name pointData ->
-                    labeledInputText NameChanged "name" name
+                    labeledInputText NameChanged "pick a name" name
                         :: (case pointData of
                                 LeftOf data ->
                                     viewSimpleDistanceTool pattern points "leftof" data
@@ -1180,7 +1181,7 @@ viewTool pattern points circles lines lineSegments details tool =
                     viewCounterClockwise pattern points targets
             )
         , Element.row
-            [ Element.alignRight
+            [ Element.width Element.fill
             , Element.spacing 5
             ]
             [ case tool of
@@ -1200,9 +1201,9 @@ viewTool pattern points circles lines lineSegments details tool =
 viewSimpleDistanceTool pattern points toolId data =
     [ labeledDropdown (toolId ++ "-anchor")
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "anchor"
+        , label = "start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1214,9 +1215,9 @@ viewSimpleDistanceTool pattern points toolId data =
 viewAngle pattern points data =
     [ labeledDropdown "at-angle-anchor"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "anchor"
+        , label = "start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1229,18 +1230,18 @@ viewAngle pattern points data =
 viewBetweenRatio pattern points data =
     [ labeledDropdown "between-ratio-anchor-a"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "1st anchor"
+        , label = "1st point"
         , options = points
         }
         data.dropdownAnchorA
         data.maybeThatAnchorA
     , labeledDropdown "between-ratio-anchor-b"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorBMsg
-        , label = "2st anchor"
+        , label = "2st point"
         , options = points
         }
         data.dropdownAnchorB
@@ -1252,18 +1253,18 @@ viewBetweenRatio pattern points data =
 viewBetweenLength pattern points data =
     [ labeledDropdown "between-length-anchor-a"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "1st anchor"
+        , label = "1st point"
         , options = points
         }
         data.dropdownAnchorA
         data.maybeThatAnchorA
     , labeledDropdown "between-length-anchor-b"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorBMsg
-        , label = "2st anchor"
+        , label = "2st point"
         , options = points
         }
         data.dropdownAnchorB
@@ -1275,7 +1276,7 @@ viewBetweenLength pattern points data =
 viewCircleCircle pattern circles data =
     [ labeledDropdown "circle-circle--circle-a"
         { optionToName = circleName pattern
-        , placeholder = "Select a circle.."
+        , placeholder = ""
         , lift = DropdownCircleAMsg
         , label = "1st circle"
         , options = circles
@@ -1284,7 +1285,7 @@ viewCircleCircle pattern circles data =
         data.maybeThatCircleA
     , labeledDropdown "circle-circle--circle-b"
         { optionToName = circleName pattern
-        , placeholder = "Select a circle.."
+        , placeholder = ""
         , lift = DropdownCircleBMsg
         , label = "2st circle"
         , options = circles
@@ -1320,18 +1321,18 @@ viewCircleCircle pattern circles data =
                 , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
-                (Element.text "intersection")
+                (Element.text "which intersection")
         }
     ]
 
 
 viewCenteredAt pattern points data =
-    [ labeledInputText NameChanged "name" data.name
+    [ labeledInputText NameChanged "pick a name" data.name
     , labeledDropdown "centered-at-anchor"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "anchor"
+        , label = "center point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1341,21 +1342,21 @@ viewCenteredAt pattern points data =
 
 
 viewThroughTwoPoints pattern points data =
-    [ labeledInputText NameChanged "name" data.name
+    [ labeledInputText NameChanged "pick a name" data.name
     , labeledDropdown "through-two-points-anchor-a"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "1st anchor"
+        , label = "1st point"
         , options = points
         }
         data.dropdownAnchorA
         data.maybeThatAnchorA
     , labeledDropdown "through-two-points-anchor-b"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorBMsg
-        , label = "2st anchor"
+        , label = "2st point"
         , options = points
         }
         data.dropdownAnchorB
@@ -1364,12 +1365,12 @@ viewThroughTwoPoints pattern points data =
 
 
 viewFromTo pattern points data =
-    [ labeledInputText NameChanged "name" data.name
+    [ labeledInputText NameChanged "pick a name" data.name
     , labeledDropdown "from-to-anchor-a"
         { optionToName = pointName pattern
-        , placeholder = "Select a point.."
+        , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "1st anchor"
+        , label = "start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1378,7 +1379,7 @@ viewFromTo pattern points data =
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorBMsg
-        , label = "2st anchor"
+        , label = "end point"
         , options = points
         }
         data.dropdownAnchorB
@@ -1389,9 +1390,9 @@ viewFromTo pattern points data =
 viewMirrorAt pattern points lines data =
     [ labeledDropdown "mirror-at-line"
         { optionToName = lineName pattern
-        , placeholder = "Select a line.."
+        , placeholder = ""
         , lift = DropdownLineMsg
-        , label = "line"
+        , label = "mirror line"
         , options = lines
         }
         data.dropdown
@@ -1399,7 +1400,7 @@ viewMirrorAt pattern points lines data =
     , labeledListbox "mirror-at-points"
         { optionToName = pointName pattern
         , lift = ListboxPointsMsg
-        , label = "targets"
+        , label = "mirrored points"
         , options = points
         }
         data.listbox
@@ -1410,7 +1411,7 @@ viewMirrorAt pattern points lines data =
 viewCutAlongLineSegment pattern lineSegments details data =
     [ labeledDropdown "cut-along-line-segment--line-segment"
         { optionToName = lineSegmentName pattern
-        , placeholder = "Select a line segment.."
+        , placeholder = ""
         , lift = DropdownLineSegmentMsg
         , label = "line segment"
         , options = lineSegments
@@ -1419,7 +1420,7 @@ viewCutAlongLineSegment pattern lineSegments details data =
         data.thatLineSegment
     , labeledDropdown "cut-along-line-segment--detail"
         { optionToName = detailName pattern
-        , placeholder = "Select a detail.."
+        , placeholder = ""
         , lift = DropdownDetailMsg
         , label = "detail"
         , options = details
@@ -1509,7 +1510,7 @@ viewVariable name value =
             [ Element.width Element.fill
             , Element.spacing 10
             ]
-            [ labeledInputText VariableNameChanged "name" name
+            [ labeledInputText VariableNameChanged "pick a name" name
             , labeledFormulaInputText VariableValueChanged "value" value
             ]
         , Element.row
@@ -1945,7 +1946,8 @@ button prefix maybeHoveredTool toolTag iconSrc label =
                 , Element.height (Element.px 48)
                 ]
                 { src = prefix ++ "/assets/icons/" ++ iconSrc ++ ".svg"
-                , description = label }
+                , description = label
+                }
         }
 
 
@@ -1953,7 +1955,7 @@ buttonDismiss : String -> msg -> Element msg
 buttonDismiss label msg =
     Input.button
         [ Element.paddingXY 8 7
-        , Element.width Element.fill
+        , Element.alignRight
         , Font.size 14
         , Background.color gray800
         , Border.color gray800
@@ -1989,6 +1991,7 @@ buttonCreate : String -> msg -> Element msg
 buttonCreate label msg =
     Input.button
         [ Element.paddingXY 8 7
+        , Element.alignLeft
         , Background.color gray800
         , Border.color gray800
         , Border.width 1
@@ -2011,9 +2014,9 @@ labeledInputText onChange label name =
         , Font.color white
         , Background.color gray700
         , Border.width 1
-        , Border.color gray700
+        , Border.color (Design.toColor Brightish)
         , Element.htmlAttribute <|
-            Html.Attributes.id (label ++ "-input")
+            Html.Attributes.id "name-input"
         ]
         { onChange = onChange
         , text = name
@@ -2109,7 +2112,7 @@ labeledFormulaInputText onChange label text =
             ]
         , Background.color gray700
         , Border.width 1
-        , Border.color gray700
+        , Border.color (Design.toColor Brightish)
         , Element.htmlAttribute <|
             Html.Attributes.id (label ++ "-input")
         , Element.htmlAttribute <|
@@ -2332,7 +2335,7 @@ dropdownViewConfig printOption placeholder =
                         , Css.paddingRight (Css.px 5)
                         , Css.paddingBottom (Css.px 5)
                         , Css.paddingTop (Css.px 5)
-                        , Css.borderColor (Css.rgb 97 97 97)
+                        , Css.borderColor (Css.rgb 180 180 180)
                         , Css.borderStyle Css.solid
                         , Css.borderWidth (Css.px 1)
                         , Css.borderRadius (Css.px 3)
@@ -2342,6 +2345,7 @@ dropdownViewConfig printOption placeholder =
                         , Css.fontStyle Css.normal
                         , Css.fontWeight (Css.int 400)
                         , Css.lineHeight (Css.px 20)
+                        , Css.height (Css.px 29)
                         , Css.backgroundColor (Css.rgb 97 97 97)
                         , Css.color (Css.rgb 229 223 197)
                         , Css.focus
