@@ -1,7 +1,17 @@
-module Page.Home exposing (Msg, update, view)
+module Page.Home exposing
+    ( Model
+    , Msg
+    , init
+    , subscriptions
+    , update
+    , view
+    )
 
+import Browser.Dom
+import Browser.Events
 import Browser.Navigation as Navigation
 import Design exposing (Grey(..))
+import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -9,31 +19,133 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
+import Json.Decode as Decode
+import Page.Pattern exposing (ViewedPattern)
 import Pattern exposing (Pattern)
+import Task
 import View.Icon
 
 
+type alias Model =
+    { dialog : Dialog }
+
+
+type Dialog
+    = NoDialog
+    | CreateProject String
+
+
+init : Model
+init =
+    { dialog = NoDialog }
+
+
 type Msg
-    = DownloadPatternPressed String
+    = NoOp
+    | DownloadPatternPressed String
     | OpenPatternPressed String
     | DeletePatternPressed String
+    | AddProjectClicked
+    | NewProjectNameChanged String
+    | NewProjectCreateClicked
+    | NewProjectCancelClicked
 
 
-update : Navigation.Key -> Msg -> Cmd msg
-update key msg =
+update :
+    Navigation.Key
+    -> Dict String ViewedPattern
+    -> Msg
+    -> Model
+    -> ( Model, Cmd Msg, Maybe (Dict String ViewedPattern) )
+update key cache msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none, Nothing )
+
         DownloadPatternPressed patternSlug ->
-            Cmd.none
+            ( model
+            , Cmd.none
+            , Nothing
+            )
 
         OpenPatternPressed patternSlug ->
-            Navigation.pushUrl key ("/pattern/" ++ patternSlug)
+            ( model
+            , Navigation.pushUrl key ("/pattern/" ++ patternSlug)
+            , Nothing
+            )
 
         DeletePatternPressed patternSlug ->
-            Cmd.none
+            ( model
+            , Cmd.none
+            , Nothing
+            )
+
+        AddProjectClicked ->
+            ( { model | dialog = CreateProject "" }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            , Nothing
+            )
+
+        NewProjectNameChanged newName ->
+            case model.dialog of
+                NoDialog ->
+                    ( model, Cmd.none, Nothing )
+
+                CreateProject _ ->
+                    ( { model | dialog = CreateProject newName }
+                    , Cmd.none
+                    , Nothing
+                    )
+
+        NewProjectCreateClicked ->
+            case model.dialog of
+                NoDialog ->
+                    ( model, Cmd.none, Nothing )
+
+                CreateProject name ->
+                    if Dict.member name cache then
+                        ( model
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else
+                        ( { model | dialog = NoDialog }
+                        , Cmd.none
+                        , Just (Dict.insert name Page.Pattern.defaultViewedPattern cache)
+                        )
+
+        NewProjectCancelClicked ->
+            ( { model | dialog = NoDialog }
+            , Cmd.none
+            , Nothing
+            )
 
 
-view : List ( String, Pattern ) -> Html Msg
-view namedPatterns =
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.dialog of
+        NoDialog ->
+            Sub.none
+
+        _ ->
+            Browser.Events.onKeyDown
+                (Decode.field "key" Decode.string
+                    |> Decode.andThen
+                        (\key ->
+                            case key of
+                                "Escape" ->
+                                    Decode.succeed NewProjectCancelClicked
+
+                                _ ->
+                                    Decode.fail "not handling that key here"
+                        )
+                )
+
+
+view : List ( String, Pattern ) -> Model -> Html Msg
+view namedPatterns model =
     Element.layoutWith
         { options =
             [ Element.focusStyle
@@ -62,6 +174,7 @@ view namedPatterns =
                 , Element.padding Design.large
                 , Design.backgroundColor Darkest
                 , Design.fontColor Darkest
+                , Element.below (viewDialog model.dialog)
                 , Element.inFront <|
                     Element.el
                         [ Element.alignBottom
@@ -82,7 +195,7 @@ view namedPatterns =
                                 , Design.fontColor Bright
                                 ]
                             ]
-                            { onPress = Nothing
+                            { onPress = Just AddProjectClicked
                             , label =
                                 Element.el
                                     [ Element.centerX
@@ -106,6 +219,7 @@ view namedPatterns =
                 (Element.row
                     [ Element.width Element.fill
                     , Element.padding Design.large
+                    , Element.spacing Design.normal
                     ]
                     (List.map viewPattern namedPatterns)
                 )
@@ -126,6 +240,56 @@ view namedPatterns =
                 ]
             ]
         )
+
+
+viewDialog : Dialog -> Element Msg
+viewDialog dialog =
+    case dialog of
+        NoDialog ->
+            Element.none
+
+        CreateProject name ->
+            Element.column
+                [ Element.centerX
+                , Element.width (Element.px 350)
+                , Element.padding Design.small
+                , Element.spacing Design.small
+                , Design.backgroundColor Darkest
+                , Design.fontColor Darkest
+                ]
+                [ Element.text "Create a new project"
+                , Input.text
+                    [ Element.width Element.fill
+                    , Element.padding 5
+                    , Font.size 16
+                    , Design.fontColor Darkish
+                    , Design.backgroundColor Darkish
+                    , Border.width 1
+                    , Border.color (Design.toColor Brightish)
+                    , Element.htmlAttribute <|
+                        Html.Attributes.id "name-input"
+                    ]
+                    { onChange = NewProjectNameChanged
+                    , text = name
+                    , placeholder = Nothing
+                    , label =
+                        Input.labelAbove
+                            [ Font.size 12
+                            , Font.variant Font.smallCaps
+                            , Design.fontColor Darkest
+                            ]
+                            (Element.text "choose a name")
+                    }
+                , Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.el
+                        [ Element.alignLeft ]
+                        (button "Create" NewProjectCreateClicked)
+                    , Element.el
+                        [ Element.alignRight ]
+                        (button "Cancel" NewProjectCancelClicked)
+                    ]
+                ]
 
 
 viewPattern : ( String, Pattern ) -> Element Msg

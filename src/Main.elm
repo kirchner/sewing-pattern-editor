@@ -64,7 +64,7 @@ encodeCache cache =
 type Page
     = NotFound
       -- PAGES
-    | Home
+    | Home Home.Model
     | Pattern String Pattern.Model
 
 
@@ -99,7 +99,7 @@ init value url key =
                         Just newRoute ->
                             case newRoute of
                                 Route.Home ->
-                                    Home
+                                    Home Home.init
 
                                 Route.Pattern patternSlug ->
                                     Pattern "first-pattern" Pattern.init
@@ -129,7 +129,7 @@ init value url key =
                         Just newRoute ->
                             case newRoute of
                                 Route.Home ->
-                                    Home
+                                    Home Home.init
 
                                 Route.Pattern patternSlug ->
                                     case Dict.get patternSlug cache of
@@ -166,7 +166,7 @@ view model =
             , body = [ Html.text "We are sorry, this page does not exist." ]
             }
 
-        Home ->
+        Home homeModel ->
             let
                 namedPatterns =
                     model.cache
@@ -177,7 +177,7 @@ view model =
                             )
             in
             { title = "Sewing pattern editor"
-            , body = [ Html.map HomeMsg (Home.view namedPatterns) ]
+            , body = [ Html.map HomeMsg (Home.view namedPatterns homeModel) ]
             }
 
         Pattern patternSlug patternModel ->
@@ -250,10 +250,24 @@ update msg model =
         ( _, NotFound ) ->
             ( model, Cmd.none )
 
-        ( HomeMsg homeMsg, Home ) ->
-            ( model
-            , Home.update model.key homeMsg
-            )
+        ( HomeMsg homeMsg, Home homeModel ) ->
+            let
+                ( newHomeModel, homeCmd, maybeNewCache ) =
+                    Home.update model.key model.cache homeMsg homeModel
+            in
+            case maybeNewCache of
+                Nothing ->
+                    ( { model | page = Home newHomeModel }
+                    , Cmd.map HomeMsg homeCmd
+                    )
+
+                Just newCache ->
+                    ( { model | page = Home newHomeModel }
+                    , Cmd.batch
+                        [ Cmd.map HomeMsg homeCmd
+                        , Port.safeCache (encodeCache newCache)
+                        ]
+                    )
 
         ( PatternMsg patternMsg, Pattern patternSlug patternModel ) ->
             case Dict.get patternSlug model.cache of
@@ -301,7 +315,7 @@ changeRouteTo maybeRoute model =
                 Just newRoute ->
                     case newRoute of
                         Route.Home ->
-                            Home
+                            Home Home.init
 
                         Route.Pattern patternSlug ->
                             case Dict.get patternSlug model.cache of
@@ -325,8 +339,8 @@ subscriptions model =
                 Sub.none
 
             -- PAGES
-            Home ->
-                Sub.none
+            Home homeModel ->
+                Sub.map HomeMsg (Home.subscriptions homeModel)
 
             Pattern _ patternModel ->
                 Sub.map PatternMsg (Pattern.subscriptions patternModel)
