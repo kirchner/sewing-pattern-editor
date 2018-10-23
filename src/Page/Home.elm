@@ -20,8 +20,8 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
 import Json.Decode as Decode
-import Page.Pattern exposing (ViewedPattern)
 import Pattern exposing (Pattern)
+import StoredPattern exposing (StoredPattern)
 import Task
 import View.Icon
 
@@ -53,10 +53,10 @@ type Msg
 
 update :
     Navigation.Key
-    -> Dict String ViewedPattern
+    -> Dict String StoredPattern
     -> Msg
     -> Model
-    -> ( Model, Cmd Msg, Maybe (Dict String ViewedPattern) )
+    -> ( Model, Cmd Msg, Maybe (Dict String StoredPattern) )
 update key cache msg model =
     case msg of
         NoOp ->
@@ -113,7 +113,7 @@ update key cache msg model =
                     else
                         ( { model | dialog = NoDialog }
                         , Cmd.none
-                        , Just (Dict.insert name Page.Pattern.defaultViewedPattern cache)
+                        , Just (Dict.insert name (StoredPattern.init name name) cache)
                         )
 
         NewProjectCancelClicked ->

@@ -8,10 +8,11 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Home as Home
-import Page.Pattern as Pattern exposing (ViewedPattern)
+import Page.Pattern as Pattern
 import Pattern exposing (Pattern)
 import Port
 import Route exposing (Route)
+import StoredPattern exposing (StoredPattern)
 import Url exposing (Url)
 
 
@@ -37,7 +38,7 @@ type alias Model =
     , page : Page
     , windowWidth : Int
     , windowHeight : Int
-    , cache : Dict String ViewedPattern
+    , cache : Dict String StoredPattern
     }
 
 
@@ -47,14 +48,14 @@ type alias Position =
     }
 
 
-cacheDecoder : Decoder (Dict String ViewedPattern)
+cacheDecoder : Decoder (Dict String StoredPattern)
 cacheDecoder =
-    Decode.dict Pattern.viewedPatternDecoder
+    Decode.dict StoredPattern.decoder
 
 
-encodeCache : Dict String ViewedPattern -> Value
+encodeCache : Dict String StoredPattern -> Value
 encodeCache cache =
-    Encode.dict identity Pattern.encodeViewedPattern cache
+    Encode.dict identity StoredPattern.encode cache
 
 
 
@@ -71,7 +72,7 @@ type Page
 type alias Flags =
     { windowWidth : Int
     , windowHeight : Int
-    , maybeCache : Maybe (Dict String ViewedPattern)
+    , maybeCache : Maybe (Dict String StoredPattern)
     }
 
 
@@ -89,7 +90,8 @@ init value url key =
         Err _ ->
             let
                 initialCache =
-                    Dict.singleton "first-pattern" Pattern.defaultViewedPattern
+                    Dict.singleton "first-pattern"
+                        (StoredPattern.init "first-pattern" "First pattern")
 
                 page =
                     case Route.fromUrl url of
@@ -118,7 +120,9 @@ init value url key =
             let
                 cache =
                     Maybe.withDefault
-                        (Dict.singleton "first-pattern" Pattern.defaultViewedPattern)
+                        (Dict.singleton "first-pattern"
+                            (StoredPattern.init "first-pattern" "First pattern")
+                        )
                         flags.maybeCache
 
                 page =

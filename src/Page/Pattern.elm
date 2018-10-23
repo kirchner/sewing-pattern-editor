@@ -1,14 +1,10 @@
 module Page.Pattern exposing
     ( Model
     , Msg
-    , ViewedPattern
-    , defaultViewedPattern
-    , encodeViewedPattern
     , init
     , subscriptions
     , update
     , view
-    , viewedPatternDecoder
     )
 
 {-
@@ -62,6 +58,7 @@ import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
 import Store exposing (Entry)
+import StoredPattern exposing (StoredPattern)
 import Styled.Listbox as Listbox exposing (Listbox)
 import Styled.Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Svg exposing (Svg)
@@ -690,62 +687,15 @@ init =
     }
 
 
-type alias ViewedPattern =
-    { pattern : Pattern
-    , zoom : Float
-    , center : Position
-    }
-
-
-defaultViewedPattern =
-    { pattern =
-        Pattern.empty
-            |> Pattern.insertPoint
-                (Just "origin")
-                (Pattern.origin { x = 0, y = 0 })
-    , zoom = 1
-    , center = Position 0 0
-    }
-
-
-viewedPatternDecoder : Decoder ViewedPattern
-viewedPatternDecoder =
-    Decode.succeed ViewedPattern
-        |> Decode.required "pattern" Pattern.decoder
-        |> Decode.required "zoom" Decode.float
-        |> Decode.required "center"
-            (Decode.succeed Position
-                |> Decode.required "x" Decode.float
-                |> Decode.required "y" Decode.float
-            )
-
-
-encodePosition : Position -> Value
-encodePosition { x, y } =
-    Encode.object
-        [ ( "x", Encode.float x )
-        , ( "y", Encode.float y )
-        ]
-
-
-encodeViewedPattern : ViewedPattern -> Value
-encodeViewedPattern viewedPattern =
-    Encode.object
-        [ ( "pattern", Pattern.encode viewedPattern.pattern )
-        , ( "zoom", Encode.float viewedPattern.zoom )
-        , ( "center", encodePosition viewedPattern.center )
-        ]
-
-
 
 ---- VIEW
 
 
-view : String -> Int -> Int -> String -> ViewedPattern -> Model -> Document Msg
-view prefix windowWidth windowHeight patternSlug viewedPattern model =
+view : String -> Int -> Int -> String -> StoredPattern -> Model -> Document Msg
+view prefix windowWidth windowHeight patternSlug storedPattern model =
     let
         { pattern, zoom, center } =
-            viewedPattern
+            storedPattern
     in
     { title = "Sewing Pattern Editor"
     , body =
@@ -773,17 +723,17 @@ view prefix windowWidth windowHeight patternSlug viewedPattern model =
                 , Element.height Element.fill
                 , Element.inFront (viewOverlay prefix patternSlug pattern model)
                 ]
-                (viewWorkspace windowWidth windowHeight viewedPattern model)
+                (viewWorkspace windowWidth windowHeight storedPattern model)
             )
         ]
     }
 
 
-viewWorkspace : Int -> Int -> ViewedPattern -> Model -> Element Msg
-viewWorkspace windowWidth windowHeight viewedPattern model =
+viewWorkspace : Int -> Int -> StoredPattern -> Model -> Element Msg
+viewWorkspace windowWidth windowHeight storedPattern model =
     let
         { pattern, zoom } =
-            viewedPattern
+            storedPattern
 
         maybeTool =
             case model.dialog of
@@ -837,7 +787,7 @@ viewWorkspace windowWidth windowHeight viewedPattern model =
                     selectedLines
                     selectedLineSegments
                     selectedDetails
-                    viewedPattern
+                    storedPattern
                 ]
         )
 
@@ -2519,7 +2469,7 @@ drawPattern :
     -> Those Line
     -> Those LineSegment
     -> Those Detail
-    -> ViewedPattern
+    -> StoredPattern
     -> Svg Msg
 drawPattern windowWidth windowHeight model hoveredPoint selectedPoints selectedLines selectedLineSegments selectedDetails { pattern, center, zoom } =
     let
@@ -2923,11 +2873,11 @@ type Msg
 
 update :
     Navigation.Key
-    -> ViewedPattern
+    -> StoredPattern
     -> Msg
     -> Model
-    -> ( Model, Cmd Msg, Maybe ViewedPattern )
-update key ({ pattern, zoom, center } as viewedPattern) msg model =
+    -> ( Model, Cmd Msg, Maybe StoredPattern )
+update key ({ pattern, zoom, center } as storedPattern) msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none, Nothing )
@@ -2935,13 +2885,13 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
         ZoomPlusClicked ->
             ( model
             , Cmd.none
-            , Just { viewedPattern | zoom = zoom / 1.1 }
+            , Just { storedPattern | zoom = zoom / 1.1 }
             )
 
         ZoomMinusClicked ->
             ( model
             , Cmd.none
-            , Just { viewedPattern | zoom = zoom * 1.1 }
+            , Just { storedPattern | zoom = zoom * 1.1 }
             )
 
         MouseDown position ->
@@ -2981,7 +2931,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
             in
             ( { model | maybeDrag = Nothing }
             , Cmd.none
-            , Just { viewedPattern | center = newCenter }
+            , Just { storedPattern | center = newCenter }
             )
 
         -- POINTS
@@ -3794,7 +3744,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                         Just thatAnchor ->
                             constructor pattern thatAnchor data.distance
-                                |> Maybe.map (insertPoint name viewedPattern model)
+                                |> Maybe.map (insertPoint name storedPattern model)
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
             in
             case model.dialog of
@@ -3822,7 +3772,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchor
                                         data.angle
                                         data.distance
-                                        |> Maybe.map (insertPoint name viewedPattern model)
+                                        |> Maybe.map (insertPoint name storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         BetweenRatio data ->
@@ -3832,7 +3782,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.ratio
-                                        |> Maybe.map (insertPoint name viewedPattern model)
+                                        |> Maybe.map (insertPoint name storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatAnchorA
@@ -3846,7 +3796,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.length
-                                        |> Maybe.map (insertPoint name viewedPattern model)
+                                        |> Maybe.map (insertPoint name storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatAnchorA
@@ -3866,7 +3816,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                             thatCircleA
                                             thatCircleB
                                     )
-                                        |> Maybe.map (insertPoint name viewedPattern model)
+                                        |> Maybe.map (insertPoint name storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatCircleA
@@ -3883,7 +3833,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                         Just thatAnchor ->
                             Pattern.centeredAt pattern thatAnchor data.radius
-                                |> Maybe.map (insertCircle data.name viewedPattern model)
+                                |> Maybe.map (insertCircle data.name storedPattern model)
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                 Tool (ThroughTwoPoints data) ->
@@ -3908,7 +3858,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
-                            , Just { viewedPattern | pattern = newPattern }
+                            , Just { storedPattern | pattern = newPattern }
                             )
 
                         _ ->
@@ -3936,7 +3886,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
-                            , Just { viewedPattern | pattern = newPattern }
+                            , Just { storedPattern | pattern = newPattern }
                             )
 
                         _ ->
@@ -3954,7 +3904,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
-                            , Just { viewedPattern | pattern = newPattern }
+                            , Just { storedPattern | pattern = newPattern }
                             )
 
                         _ ->
@@ -3972,7 +3922,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
-                            , Just { viewedPattern | pattern = newPattern }
+                            , Just { storedPattern | pattern = newPattern }
                             )
 
                         _ ->
@@ -3989,7 +3939,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                     in
                     ( { model | dialog = NoDialog }
                     , Cmd.none
-                    , Just { viewedPattern | pattern = newPattern }
+                    , Just { storedPattern | pattern = newPattern }
                     )
 
                 CreateVariable { name, value } ->
@@ -3999,7 +3949,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                     in
                     ( { model | dialog = NoDialog }
                     , Cmd.none
-                    , Just { viewedPattern | pattern = newPattern }
+                    , Just { storedPattern | pattern = newPattern }
                     )
 
                 NoDialog ->
@@ -4016,7 +3966,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                                 Just thatAnchor ->
                                     Pattern.leftOf pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         RightOf data ->
@@ -4026,7 +3976,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                                 Just thatAnchor ->
                                     Pattern.rightOf pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         Above data ->
@@ -4036,7 +3986,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                                 Just thatAnchor ->
                                     Pattern.above pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         Below data ->
@@ -4046,7 +3996,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
 
                                 Just thatAnchor ->
                                     Pattern.below pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         AtAngle data ->
@@ -4059,7 +4009,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchor
                                         data.angle
                                         data.distance
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                         BetweenRatio data ->
@@ -4069,7 +4019,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.ratio
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatAnchorA
@@ -4083,7 +4033,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.length
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatAnchorA
@@ -4103,7 +4053,7 @@ update key ({ pattern, zoom, center } as viewedPattern) msg model =
                                             thatCircleA
                                             thatCircleB
                                     )
-                                        |> Maybe.map (updatePoint thatPoint viewedPattern model)
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
                                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                 )
                                 data.maybeThatCircleA
