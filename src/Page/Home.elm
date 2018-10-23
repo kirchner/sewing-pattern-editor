@@ -19,7 +19,9 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
+import Html.Events
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Pattern exposing (Pattern)
 import StoredPattern exposing (StoredPattern)
 import Task
@@ -43,7 +45,6 @@ init =
 type Msg
     = NoOp
     | DownloadPatternPressed String
-    | OpenPatternPressed String
     | DeletePatternPressed String
     | AddProjectClicked
     | NewProjectNameChanged String
@@ -65,12 +66,6 @@ update key cache msg model =
         DownloadPatternPressed patternSlug ->
             ( model
             , Cmd.none
-            , Nothing
-            )
-
-        OpenPatternPressed patternSlug ->
-            ( model
-            , Navigation.pushUrl key ("/pattern/" ++ patternSlug)
             , Nothing
             )
 
@@ -144,8 +139,8 @@ subscriptions model =
                 )
 
 
-view : List ( String, Pattern ) -> Model -> Html Msg
-view namedPatterns model =
+view : List StoredPattern -> Model -> Html Msg
+view storedPatterns model =
     Element.layoutWith
         { options =
             [ Element.focusStyle
@@ -221,7 +216,7 @@ view namedPatterns model =
                     , Element.padding Design.large
                     , Element.spacing Design.normal
                     ]
-                    (List.map viewPattern namedPatterns)
+                    (List.map viewPattern storedPatterns)
                 )
             , Element.row
                 [ Element.width Element.fill
@@ -233,6 +228,9 @@ view namedPatterns model =
                 [ Element.newTabLink
                     [ Element.alignRight
                     , Element.padding 5
+                    , Font.size Design.small
+                    , Element.mouseOver
+                        [ Font.color (Design.toColor Darkish) ]
                     ]
                     { url = "https://github.com/kirchner/sewing-pattern-editor"
                     , label = View.Icon.dev "github-plain"
@@ -292,15 +290,15 @@ viewDialog dialog =
                 ]
 
 
-viewPattern : ( String, Pattern ) -> Element Msg
-viewPattern ( patternSlug, pattern ) =
+viewPattern : StoredPattern -> Element Msg
+viewPattern storedPattern =
     Element.column
         [ Element.width (Element.px 300)
         , Element.height (Element.px 400)
         , Border.color (Design.toColor Bright)
         , Border.width 1
         ]
-        [ Element.el
+        [ Element.row
             [ Element.width Element.fill
             , Element.padding Design.small
             , Design.backgroundColor Darkest
@@ -313,9 +311,31 @@ viewPattern ( patternSlug, pattern ) =
                 , bottom = 1
                 }
             ]
-            (Element.el [ Element.centerX ]
-                (Element.text patternSlug)
-            )
+            [ Element.link [ Element.centerX ]
+                { url = "/pattern/" ++ storedPattern.slug
+                , label =
+                    Element.el
+                        [ Font.size Design.small
+                        , Font.underline
+                        , Element.mouseOver
+                            [ Font.color (Design.toColor Darkish) ]
+                        ]
+                        (Element.text storedPattern.name)
+                }
+            , Element.downloadAs [ Element.alignLeft ]
+                { url =
+                    "data:text/plain;charset=utf-8,"
+                        ++ Encode.encode 0 (StoredPattern.encode storedPattern)
+                , label =
+                    Element.el
+                        [ Font.size Design.small
+                        , Element.mouseOver
+                            [ Font.color (Design.toColor Darkish) ]
+                        ]
+                        (View.Icon.fa "download")
+                , filename = storedPattern.slug ++ ".json"
+                }
+            ]
         , Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
@@ -336,12 +356,8 @@ viewPattern ( patternSlug, pattern ) =
                 , bottom = 0
                 }
             ]
-            [ Element.el [ Element.alignLeft ] <|
-                button "Export" (DownloadPatternPressed patternSlug)
-            , Element.el [ Element.alignRight ] <|
-                button "Open" (OpenPatternPressed patternSlug)
-            , Element.el [ Element.alignRight ] <|
-                button "Delete" (DeletePatternPressed patternSlug)
+            [ Element.el [ Element.alignRight ] <|
+                button "Delete" (DeletePatternPressed storedPattern.slug)
             ]
         ]
 

@@ -171,17 +171,8 @@ view model =
             }
 
         Home homeModel ->
-            let
-                namedPatterns =
-                    model.cache
-                        |> Dict.toList
-                        |> List.map
-                            (\( patternSlug, { pattern } ) ->
-                                ( patternSlug, pattern )
-                            )
-            in
             { title = "Sewing pattern editor"
-            , body = [ Html.map HomeMsg (Home.view namedPatterns homeModel) ]
+            , body = [ Html.map HomeMsg (Home.view (Dict.values model.cache) homeModel) ]
             }
 
         Pattern patternSlug patternModel ->
@@ -230,7 +221,9 @@ update msg model =
         ( UrlRequested urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    changeRouteTo (Route.fromUrl url) model
+                    ( model
+                    , Navigation.pushUrl model.key url.path
+                    )
 
                 Browser.External externalUrl ->
                     ( model

@@ -810,12 +810,16 @@ viewOverlay prefix patternSlug pattern model =
                 Html.Attributes.style "pointer-events" "auto"
             , Element.below (viewDialog pattern model.dialog)
             ]
-            [ Input.button
-                [ Element.mouseOver
-                    [ Font.color (Design.toColor Brightish) ]
-                ]
-                { onPress = Just PatternsClicked
-                , label = Element.text "Patterns"
+            [ Element.link []
+                { url = "/"
+                , label =
+                    Element.el
+                        [ Font.size Design.small
+                        , Font.underline
+                        , Element.mouseOver
+                            [ Font.color (Design.toColor Darkish) ]
+                        ]
+                        (Element.text "Patterns")
                 }
             , Element.el []
                 (View.Icon.fa "angle-right")
@@ -858,6 +862,9 @@ viewOverlay prefix patternSlug pattern model =
                 [ Element.alignRight
                 , Element.padding 5
                 , Font.color white
+                , Font.size Design.small
+                , Element.mouseOver
+                    [ Font.color (Design.toColor Darkish) ]
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
                 , label = View.Icon.dev "github-plain"
@@ -2867,8 +2874,6 @@ type Msg
     | VariableNameChanged String
     | VariableValueChanged String
     | PointsRulerClicked
-      -- TOP BAR
-    | PatternsClicked
 
 
 update :
@@ -4114,12 +4119,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         PointsRulerClicked ->
             ( { model | pointsVisible = not model.pointsVisible }
             , Cmd.none
-            , Nothing
-            )
-
-        PatternsClicked ->
-            ( model
-            , Navigation.pushUrl key "/"
             , Nothing
             )
 
