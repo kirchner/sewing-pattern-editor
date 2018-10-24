@@ -322,8 +322,8 @@ viewPattern ({ pattern } as storedPattern) =
             String.join " "
                 [ String.fromFloat (BoundingBox2d.minX boundingBox)
                 , String.fromFloat (BoundingBox2d.minY boundingBox)
-                , String.fromFloat width
-                , String.fromFloat height
+                , String.fromFloat (max width height)
+                , String.fromFloat (max width height)
                 ]
 
         ( width, height ) =

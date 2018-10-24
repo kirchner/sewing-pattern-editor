@@ -49,7 +49,7 @@ draw selected zoom hoveredPoint pattern =
                         ]
                     ]
               ]
-            , List.map (drawDetail selected.details) geometry.details
+            , List.map (drawDetail zoom selected.details) geometry.details
             , List.map (drawLine zoom selected.lines) geometry.lines
             , List.map (drawLineSegment selected.lineSegments) geometry.lineSegments
             , List.map (drawCircle zoom) geometry.circles
@@ -125,8 +125,7 @@ drawPoint zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point
                             [ Svg.Attributes.stroke "blue"
                             , Svg.Attributes.strokeDasharray <|
                                 String.fromFloat (4 * zoom)
-                            , Svg.Attributes.strokeWidth <|
-                                String.fromFloat (2 * zoom)
+                            , normalStroke zoom
                             ]
                             (LineSegment2d.fromEndpoints
                                 ( point2dA, point2dB )
@@ -229,8 +228,7 @@ drawPoint zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point
             Svg.circle2d
                 [ Svg.Attributes.stroke "blue"
                 , Svg.Attributes.fill "none"
-                , Svg.Attributes.strokeWidth <|
-                    String.fromFloat (2 * zoom)
+                , normalStroke zoom
                 ]
                 (Circle2d.withRadius (10 * zoom) point2d)
 
@@ -274,8 +272,7 @@ drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
 
             else
                 "grey"
-        , Svg.Attributes.strokeWidth <|
-            String.fromFloat (2 * zoom)
+        , normalStroke zoom
         ]
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -10000
@@ -308,15 +305,14 @@ drawCircle : Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
 drawCircle zoom ( thatCircle, maybeName, circle2d ) =
     Svg.circle2d
         [ Svg.Attributes.stroke "grey"
-        , Svg.Attributes.strokeWidth <|
-            String.fromFloat (2 * zoom)
+        , normalStroke zoom
         , Svg.Attributes.fill "transparent"
         ]
         circle2d
 
 
-drawDetail : Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
-drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
+drawDetail : Float -> Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
+drawDetail zoom selectedDetails ( thatDetail, maybeName, polygon2d ) =
     let
         selected =
             Those.member thatDetail selectedDetails
@@ -329,6 +325,15 @@ drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
 
             else
                 "black"
-        , Svg.Attributes.strokeWidth "1"
+        , normalStroke zoom
         ]
         polygon2d
+
+
+
+---- HELPER
+
+
+normalStroke zoom =
+    Svg.Attributes.strokeWidth <|
+        String.fromFloat (1.5 * zoom)
