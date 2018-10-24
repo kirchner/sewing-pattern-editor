@@ -26,7 +26,7 @@ parse reservedWords string =
 
 
 evaluate :
-    (String -> List String -> Maybe Expr)
+    (String -> List String -> Maybe Float)
     -> Dict String Expr
     -> Expr
     -> Maybe Float
@@ -41,7 +41,6 @@ evaluate functions variables e =
 
         Function name args ->
             functions name args
-                |> Maybe.andThen (evaluate functions variables)
 
         Sum exprA exprB ->
             Maybe.map2 (\a b -> a + b)
@@ -83,7 +82,7 @@ var : List String -> Parser Expr
 var reservedWords =
     map Variable <|
         variable
-            { start = Char.isLower
+            { start = Char.isAlpha
             , inner = \c -> Char.isAlphaNum c || c == '_'
             , reserved = Set.fromList reservedWords
             }
@@ -100,7 +99,7 @@ function reservedWords =
         |. symbol "("
         |. spaces
         |= (variable
-                { start = Char.isLower
+                { start = Char.isAlpha
                 , inner = \c -> Char.isAlphaNum c || c == '_'
                 , reserved = Set.fromList reservedWords
                 }
@@ -121,7 +120,7 @@ argsHelp reservedWords revArgs =
                 |. symbol ","
                 |. spaces
                 |= variable
-                    { start = Char.isLower
+                    { start = Char.isAlpha
                     , inner = \c -> Char.isAlphaNum c || c == '_'
                     , reserved = Set.fromList reservedWords
                     }

@@ -52,7 +52,7 @@ draw selected zoom hoveredPoint pattern =
             , List.map (drawDetail selected.details) geometry.details
             , List.map (drawLine selected.lines) geometry.lines
             , List.map (drawLineSegment selected.lineSegments) geometry.lineSegments
-            , List.map drawCircle geometry.circles
+            , List.map (drawCircle zoom) geometry.circles
             , List.map (drawPoint zoom pattern hoveredPoint selected.points) geometry.points
             ]
 
@@ -302,11 +302,12 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
         lineSegment2d
 
 
-drawCircle : ( That Circle, Maybe String, Circle2d ) -> Svg msg
-drawCircle ( thatCircle, maybeName, circle2d ) =
+drawCircle : Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
+drawCircle zoom ( thatCircle, maybeName, circle2d ) =
     Svg.circle2d
         [ Svg.Attributes.stroke "grey"
-        , Svg.Attributes.strokeWidth "1px"
+        , Svg.Attributes.strokeWidth <|
+            String.fromFloat (2 * zoom)
         , Svg.Attributes.fill "transparent"
         ]
         circle2d

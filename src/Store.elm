@@ -5,6 +5,7 @@ module Store exposing
     , empty
     , encode
     , get
+    , getByName
     , insert
     , member
     , toList
@@ -72,6 +73,14 @@ insert name value (Store store) =
 get : Store a -> Int -> Maybe (Entry a)
 get (Store { entries }) id =
     Dict.get id entries
+
+
+getByName : Store a -> String -> Maybe ( Int, Entry a )
+getByName (Store { entries }) name =
+    entries
+        |> Dict.toList
+        |> List.filter (\( _, entry ) -> entry.name == Just name)
+        |> List.head
 
 
 updateValue : Int -> a -> Store a -> Store a

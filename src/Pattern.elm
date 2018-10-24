@@ -326,18 +326,41 @@ addTransformationToDetail p transformationId transformation ( previousThat, entr
 ---- EXPRESSIONS
 
 
+reservedWords : List String
+reservedWords =
+    [ "distance" ]
+
+
 compute : Pattern -> Expr -> Result DoesNotCompute Float
-compute (Pattern pattern) expr =
+compute ((Pattern data) as pattern) expr =
     let
         functions name args =
-            Nothing
+            case name of
+                "distance" ->
+                    case args of
+                        namePointA :: namePointB :: [] ->
+                            Maybe.map2 Point2d.distanceFrom
+                                (namePointA
+                                    |> thatPointByName pattern
+                                    |> Maybe.andThen (point2d pattern)
+                                )
+                                (namePointB
+                                    |> thatPointByName pattern
+                                    |> Maybe.andThen (point2d pattern)
+                                )
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Nothing
 
         parsedVars =
-            pattern.variables
+            data.variables
                 |> Dict.toList
                 |> List.filterMap
                     (\( name, string ) ->
-                        case Expr.parse [] string of
+                        case Expr.parse reservedWords string of
                             Err _ ->
                                 Nothing
 
@@ -577,7 +600,7 @@ point2d : Pattern -> That Point -> Maybe Point2d
 point2d pattern thatPoint =
     let
         simpleDistance anchor rawLength toDirection =
-            case Expr.parse [] rawLength of
+            case Expr.parse reservedWords rawLength of
                 Err _ ->
                     Nothing
 
@@ -624,8 +647,8 @@ point2d pattern thatPoint =
 
             Just (AtAngle anchor rawAngle rawDistance) ->
                 Maybe.map2 Tuple.pair
-                    (Result.toMaybe (Expr.parse [] rawAngle))
-                    (Result.toMaybe (Expr.parse [] rawDistance))
+                    (Result.toMaybe (Expr.parse reservedWords rawAngle))
+                    (Result.toMaybe (Expr.parse reservedWords rawDistance))
                     |> Maybe.andThen
                         (\( exprAngle, exprDistance ) ->
                             Maybe.map2 Tuple.pair
@@ -655,7 +678,7 @@ point2d pattern thatPoint =
                     (point2d pattern thatAnchorA)
                     (point2d pattern thatAnchorB)
                     (rawRatio
-                        |> Expr.parse []
+                        |> Expr.parse reservedWords
                         |> Result.toMaybe
                         |> Maybe.andThen (compute pattern >> Result.toMaybe)
                     )
@@ -670,7 +693,7 @@ point2d pattern thatPoint =
                         case Direction2d.from anchorA anchorB of
                             Just direction ->
                                 (rawLength
-                                    |> Expr.parse []
+                                    |> Expr.parse reservedWords
                                     |> Result.toMaybe
                                     |> Maybe.andThen (compute pattern >> Result.toMaybe)
                                 )
@@ -731,7 +754,7 @@ circle2d pattern thatCircle =
         Just (CenteredAt thatCenter rawRadius) ->
             Maybe.map2 Circle2d.withRadius
                 (rawRadius
-                    |> Expr.parse []
+                    |> Expr.parse reservedWords
                     |> Result.toMaybe
                     |> Maybe.andThen (compute pattern >> Result.toMaybe)
                 )
@@ -909,7 +932,7 @@ variables ((Pattern data) as pattern) =
         |> List.filterMap
             (\( name, value ) ->
                 value
-                    |> Expr.parse []
+                    |> Expr.parse reservedWords
                     |> Result.toMaybe
                     |> Maybe.andThen (compute pattern >> Result.toMaybe)
                     |> Maybe.map
@@ -924,7 +947,7 @@ variables ((Pattern data) as pattern) =
 
 insertVariable : String -> String -> Pattern -> Pattern
 insertVariable name value ((Pattern data) as pattern) =
-    case Expr.parse [] value of
+    case Expr.parse reservedWords value of
         Err _ ->
             pattern
 
@@ -949,7 +972,7 @@ origin { x, y } =
 
 leftOf : Pattern -> That Point -> String -> Maybe Point
 leftOf (Pattern pattern) thatPoint rawLength =
-    case Expr.parse [] rawLength of
+    case Expr.parse reservedWords rawLength of
         Err _ ->
             Nothing
 
@@ -963,7 +986,7 @@ leftOf (Pattern pattern) thatPoint rawLength =
 
 rightOf : Pattern -> That Point -> String -> Maybe Point
 rightOf (Pattern pattern) thatPoint rawLength =
-    case Expr.parse [] rawLength of
+    case Expr.parse reservedWords rawLength of
         Err _ ->
             Nothing
 
@@ -977,7 +1000,7 @@ rightOf (Pattern pattern) thatPoint rawLength =
 
 above : Pattern -> That Point -> String -> Maybe Point
 above (Pattern pattern) thatPoint rawLength =
-    case Expr.parse [] rawLength of
+    case Expr.parse reservedWords rawLength of
         Err _ ->
             Nothing
 
@@ -991,7 +1014,7 @@ above (Pattern pattern) thatPoint rawLength =
 
 below : Pattern -> That Point -> String -> Maybe Point
 below (Pattern pattern) thatPoint rawLength =
-    case Expr.parse [] rawLength of
+    case Expr.parse reservedWords rawLength of
         Err _ ->
             Nothing
 
@@ -1005,7 +1028,7 @@ below (Pattern pattern) thatPoint rawLength =
 
 atAngle : Pattern -> That Point -> String -> String -> Maybe Point
 atAngle (Pattern pattern) thatPoint rawAngle rawDistance =
-    case ( Expr.parse [] rawAngle, Expr.parse [] rawDistance ) of
+    case ( Expr.parse reservedWords rawAngle, Expr.parse reservedWords rawDistance ) of
         ( Ok _, Ok _ ) ->
             if Store.member pattern.points (That.objectId thatPoint) then
                 Just (AtAngle thatPoint rawAngle rawDistance)
@@ -1019,7 +1042,7 @@ atAngle (Pattern pattern) thatPoint rawAngle rawDistance =
 
 betweenRatio : Pattern -> That Point -> That Point -> String -> Maybe Point
 betweenRatio (Pattern pattern) thatAnchorA thatAnchorB rawRatio =
-    case Expr.parse [] rawRatio of
+    case Expr.parse reservedWords rawRatio of
         Ok _ ->
             if
                 Store.member pattern.points (That.objectId thatAnchorA)
@@ -1036,7 +1059,7 @@ betweenRatio (Pattern pattern) thatAnchorA thatAnchorB rawRatio =
 
 betweenLength : Pattern -> That Point -> That Point -> String -> Maybe Point
 betweenLength (Pattern pattern) thatAnchorA thatAnchorB rawLength =
-    case Expr.parse [] rawLength of
+    case Expr.parse reservedWords rawLength of
         Ok _ ->
             if
                 Store.member pattern.points (That.objectId thatAnchorA)
@@ -1077,7 +1100,7 @@ secondCircleCircle (Pattern pattern) thatCircleA thatCircleB =
 
 centeredAt : Pattern -> That Point -> String -> Maybe Circle
 centeredAt (Pattern pattern) thatCenter rawRadius =
-    case Expr.parse [] rawRadius of
+    case Expr.parse reservedWords rawRadius of
         Ok _ ->
             if Store.member pattern.points (That.objectId thatCenter) then
                 Just (CenteredAt thatCenter rawRadius)
@@ -1101,6 +1124,12 @@ points =
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
 getPoint (Pattern pattern) =
     Store.get pattern.points << That.objectId
+
+
+thatPointByName : Pattern -> String -> Maybe (That Point)
+thatPointByName (Pattern pattern) name =
+    Store.getByName pattern.points name
+        |> Maybe.map (Tuple.first >> That.that [])
 
 
 updatePoint : That Point -> Point -> Pattern -> Pattern

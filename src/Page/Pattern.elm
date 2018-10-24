@@ -1001,16 +1001,16 @@ viewBox : Int -> Int -> Float -> String
 viewBox windowWidth windowHeight zoom =
     let
         width =
-            toFloat windowWidth * zoom
+            floor (toFloat windowWidth * zoom)
 
         height =
-            toFloat windowHeight * zoom
+            floor (toFloat windowHeight * zoom)
     in
     String.join " "
-        [ String.fromFloat (-1 * width / 2)
-        , String.fromFloat (-1 * height / 2)
-        , String.fromFloat width
-        , String.fromFloat height
+        [ String.fromInt (floor (-1 * toFloat width / 2))
+        , String.fromInt (floor (-1 * toFloat height / 2))
+        , String.fromInt width
+        , String.fromInt height
         ]
 
 
