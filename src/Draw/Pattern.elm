@@ -271,7 +271,13 @@ drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
                 "blue"
 
             else
-                "grey"
+                "black"
+        , Svg.Attributes.opacity <|
+            if selected then
+                "1"
+
+            else
+                "0.1"
         , normalStroke zoom
         ]
         (LineSegment2d.fromEndpoints
@@ -296,7 +302,13 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
                 "blue"
 
             else
-                "grey"
+                "black"
+        , Svg.Attributes.opacity <|
+            if selected then
+                "1"
+
+            else
+                "0.1"
         ]
         lineSegment2d
 
@@ -304,7 +316,8 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
 drawCircle : Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
 drawCircle zoom ( thatCircle, maybeName, circle2d ) =
     Svg.circle2d
-        [ Svg.Attributes.stroke "grey"
+        [ Svg.Attributes.stroke "black"
+        , Svg.Attributes.opacity "0.1"
         , normalStroke zoom
         , Svg.Attributes.fill "transparent"
         ]

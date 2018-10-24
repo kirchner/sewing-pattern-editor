@@ -125,33 +125,49 @@ init value url key =
                         )
                         flags.maybeCache
 
-                page =
+                ( page, computedCache ) =
                     case Route.fromUrl url of
                         Nothing ->
-                            NotFound
+                            ( NotFound, cache )
 
                         Just newRoute ->
                             case newRoute of
                                 Route.Home ->
-                                    Home Home.init
+                                    ( Home Home.init, cache )
 
                                 Route.Pattern patternSlug ->
                                     case Dict.get patternSlug cache of
                                         Nothing ->
-                                            NotFound
+                                            ( NotFound, cache )
 
                                         Just viewedPattern ->
-                                            Pattern patternSlug Pattern.init
+                                            let
+                                                computedPattern =
+                                                    { viewedPattern
+                                                        | pattern =
+                                                            viewedPattern.pattern
+                                                                |> Pattern.computeGeometry
+                                                                |> Tuple.first
+                                                    }
+
+                                                newCache =
+                                                    Dict.insert patternSlug
+                                                        computedPattern
+                                                        cache
+                                            in
+                                            ( Pattern patternSlug Pattern.init
+                                            , newCache
+                                            )
             in
             ( { prefix = Route.prefixFromUrl url
               , key = key
               , page = page
               , windowWidth = flags.windowWidth
               , windowHeight = flags.windowHeight
-              , cache = cache
+              , cache = computedCache
               }
             , if flags.maybeCache == Nothing then
-                Port.safeCache (encodeCache cache)
+                Port.safeCache (encodeCache computedCache)
 
               else
                 Cmd.none
@@ -233,14 +249,15 @@ update msg model =
             changeRouteTo (Route.fromUrl url) model
 
         ( CacheChanged value, _ ) ->
-            case Decode.decodeValue cacheDecoder value of
-                Err _ ->
-                    ( model, Cmd.none )
-
-                Ok newCache ->
-                    ( { model | cache = newCache }
-                    , Cmd.none
-                    )
+            --case Decode.decodeValue cacheDecoder value of
+            --    Err _ ->
+            --        ( model, Cmd.none )
+            --    Ok newCache ->
+            --        ( { model | cache = newCache }
+            --        , Cmd.none
+            --        )
+            -- FIXME: try simple geometry caching
+            ( model, Cmd.none )
 
         -- PAGES
         ( _, NotFound ) ->
@@ -286,8 +303,16 @@ update msg model =
 
                         Just newViewedPattern ->
                             let
+                                computedPattern =
+                                    { newViewedPattern
+                                        | pattern =
+                                            newViewedPattern.pattern
+                                                |> Pattern.computeGeometry
+                                                |> Tuple.first
+                                    }
+
                                 newCache =
-                                    Dict.insert patternSlug newViewedPattern newModel.cache
+                                    Dict.insert patternSlug computedPattern newModel.cache
                             in
                             ( { newModel | cache = newCache }
                             , Cmd.batch
@@ -303,25 +328,42 @@ update msg model =
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
     let
-        newPage =
+        newModel =
             case maybeRoute of
                 Nothing ->
-                    NotFound
+                    { model | page = NotFound }
 
                 Just newRoute ->
                     case newRoute of
                         Route.Home ->
-                            Home Home.init
+                            { model | page = Home Home.init }
 
                         Route.Pattern patternSlug ->
                             case Dict.get patternSlug model.cache of
                                 Nothing ->
-                                    NotFound
+                                    { model | page = NotFound }
 
                                 Just viewedPattern ->
-                                    Pattern patternSlug Pattern.init
+                                    let
+                                        computedPattern =
+                                            { viewedPattern
+                                                | pattern =
+                                                    viewedPattern.pattern
+                                                        |> Pattern.computeGeometry
+                                                        |> Tuple.first
+                                            }
+
+                                        newCache =
+                                            Dict.insert patternSlug
+                                                computedPattern
+                                                model.cache
+                                    in
+                                    { model
+                                        | page = Pattern patternSlug Pattern.init
+                                        , cache = newCache
+                                    }
     in
-    ( { model | page = newPage }
+    ( newModel
     , Cmd.none
     )
 

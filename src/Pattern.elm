@@ -1,7 +1,7 @@
 module Pattern exposing
     ( Pattern
     , empty
-    , Geometry, geometry, Problems
+    , Geometry, computeGeometry, geometry, Problems
     , getPointGeometries, getPointGeometry
     , point2d
     , variables, insertVariable, removeVariable
@@ -30,7 +30,7 @@ module Pattern exposing
 
 # Geometry
 
-@docs Geometry, geometry, Problems
+@docs Geometry, computeGeometry, geometry, Problems
 
 @docs getPointGeometries, getPointGeometry
 
@@ -147,6 +147,13 @@ type alias PatternData =
     , details : Store Detail
     , variables : Dict String String
     , transformations : Transformations
+
+    -- CACHE
+    , cache :
+        Maybe
+            { geometry : Geometry
+            , problems : Problems
+            }
     }
 
 
@@ -160,6 +167,7 @@ empty =
         , details = Store.empty
         , variables = Dict.empty
         , transformations = noTransformations
+        , cache = Nothing
         }
 
 
@@ -434,61 +442,114 @@ type alias Problems =
     }
 
 
+computeGeometry : Pattern -> ( Pattern, ( Geometry, Problems ) )
+computeGeometry ((Pattern data) as pattern) =
+    case data.cache of
+        Nothing ->
+            let
+                ( newGeometry, newProblems ) =
+                    geometry pattern
+            in
+            ( Pattern
+                { data
+                    | cache =
+                        Just
+                            { geometry = newGeometry
+                            , problems = newProblems
+                            }
+                }
+            , ( newGeometry
+              , newProblems
+              )
+            )
+
+        Just cache ->
+            ( pattern
+            , ( cache.geometry
+              , cache.problems
+              )
+            )
+
+
 geometry : Pattern -> ( Geometry, Problems )
-geometry pattern =
-    let
-        geometryPoint ( thatPoint, { name } ) =
-            point2d pattern thatPoint
-                |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
+geometry ((Pattern data) as pattern) =
+    case data.cache of
+        Nothing ->
+            let
+                geometryPoint ( thatPoint, { name } ) =
+                    point2d pattern thatPoint
+                        |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
 
-        geometryCircle ( thatCircle, { name } ) =
-            circle2d pattern thatCircle
-                |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
+                geometryCircle ( thatCircle, { name } ) =
+                    circle2d pattern thatCircle
+                        |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
 
-        geometryLine ( thatLine, { name } ) =
-            axis2d pattern thatLine
-                |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
+                geometryLine ( thatLine, { name } ) =
+                    axis2d pattern thatLine
+                        |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
 
-        geometryLineSegment ( thatLineSegment, { name } ) =
-            lineSegment2d pattern thatLineSegment
-                |> Maybe.map (\ls2d -> ( thatLineSegment, name, ls2d ))
+                geometryLineSegment ( thatLineSegment, { name } ) =
+                    lineSegment2d pattern thatLineSegment
+                        |> Maybe.map (\ls2d -> ( thatLineSegment, name, ls2d ))
 
-        geometryDetail ( thatDetail, { name } ) =
-            polygon2d pattern thatDetail
-                |> List.map (\p2d -> ( thatDetail, name, p2d ))
-    in
-    ( { points =
-            pattern
-                |> points
-                |> List.filterMap geometryPoint
-      , circles =
-            pattern
-                |> circles
-                |> List.filterMap geometryCircle
-      , lines =
-            pattern
-                |> lines
-                |> List.filterMap geometryLine
-      , lineSegments =
-            pattern
-                |> lineSegments
-                |> List.filterMap geometryLineSegment
-      , details =
-            pattern
-                |> details
-                |> List.map geometryDetail
-                |> List.concat
-      }
-    , { doNotCompute = []
-      , missingPoints = []
-      , missingCircles = []
-      , missingLines = []
-      }
-    )
+                geometryDetail ( thatDetail, { name } ) =
+                    polygon2d pattern thatDetail
+                        |> List.map (\p2d -> ( thatDetail, name, p2d ))
+            in
+            ( { points =
+                    pattern
+                        |> points
+                        |> List.filterMap geometryPoint
+              , circles =
+                    pattern
+                        |> circles
+                        |> List.filterMap geometryCircle
+              , lines =
+                    pattern
+                        |> lines
+                        |> List.filterMap geometryLine
+              , lineSegments =
+                    pattern
+                        |> lineSegments
+                        |> List.filterMap geometryLineSegment
+              , details =
+                    pattern
+                        |> details
+                        |> List.map geometryDetail
+                        |> List.concat
+              }
+            , { doNotCompute = []
+              , missingPoints = []
+              , missingCircles = []
+              , missingLines = []
+              }
+            )
+
+        Just cache ->
+            ( cache.geometry, cache.problems )
 
 
 point2d : Pattern -> That Point -> Maybe Point2d
-point2d pattern thatPoint =
+point2d ((Pattern { cache }) as pattern) thatPoint =
+    case cache of
+        Nothing ->
+            computePoint2d pattern thatPoint
+
+        Just actualCache ->
+            actualCache.geometry.points
+                |> List.filterMap
+                    (\( that, _, p2d ) ->
+                        if that == thatPoint then
+                            Just p2d
+
+                        else
+                            Nothing
+                    )
+                |> List.head
+
+
+computePoint2d : Pattern -> That Point -> Maybe Point2d
+computePoint2d pattern thatPoint =
     let
         simpleDistance anchor rawLength toDirection =
             case Expr.parse reservedWords rawLength of
@@ -896,7 +957,11 @@ insertVariable name value ((Pattern data) as pattern) =
             pattern
 
         Ok _ ->
-            Pattern { data | variables = Dict.insert name value data.variables }
+            Pattern
+                { data
+                    | variables = Dict.insert name value data.variables
+                    , cache = Nothing
+                }
 
 
 removeVariable : String -> Pattern -> Pattern
@@ -1152,6 +1217,7 @@ updatePoint thatPoint point (Pattern pattern) =
         { pattern
             | points =
                 Store.updateValue (That.objectId thatPoint) point pattern.points
+            , cache = Nothing
         }
 
 
@@ -1182,7 +1248,10 @@ getPointGeometriesHelp geometries pattern thatPoint =
 insertPoint : Maybe String -> Point -> Pattern -> Pattern
 insertPoint name point (Pattern pattern) =
     Pattern
-        { pattern | points = Store.insert name point pattern.points }
+        { pattern
+            | points = Store.insert name point pattern.points
+            , cache = Nothing
+        }
 
 
 
@@ -1209,7 +1278,10 @@ getCircle (Pattern pattern) =
 insertCircle : Maybe String -> Circle -> Pattern -> Pattern
 insertCircle name circle (Pattern pattern) =
     Pattern
-        { pattern | circles = Store.insert name circle pattern.circles }
+        { pattern
+            | circles = Store.insert name circle pattern.circles
+            , cache = Nothing
+        }
 
 
 
@@ -1236,7 +1308,10 @@ getLine (Pattern pattern) =
 insertLine : Maybe String -> Line -> Pattern -> Pattern
 insertLine maybeName line (Pattern pattern) =
     Pattern
-        { pattern | lines = Store.insert maybeName line pattern.lines }
+        { pattern
+            | lines = Store.insert maybeName line pattern.lines
+            , cache = Nothing
+        }
 
 
 
@@ -1263,7 +1338,10 @@ getLineSegment (Pattern pattern) =
 insertLineSegment : Maybe String -> LineSegment -> Pattern -> Pattern
 insertLineSegment maybeName lineSegment (Pattern pattern) =
     Pattern
-        { pattern | lineSegments = Store.insert maybeName lineSegment pattern.lineSegments }
+        { pattern
+            | lineSegments = Store.insert maybeName lineSegment pattern.lineSegments
+            , cache = Nothing
+        }
 
 
 
@@ -1273,7 +1351,10 @@ insertLineSegment maybeName lineSegment (Pattern pattern) =
 insertTransformation : Transformation -> Pattern -> Pattern
 insertTransformation transformation (Pattern pattern) =
     Pattern
-        { pattern | transformations = append transformation pattern.transformations }
+        { pattern
+            | transformations = append transformation pattern.transformations
+            , cache = Nothing
+        }
 
 
 
@@ -1288,7 +1369,10 @@ details pattern =
 insertDetail : Detail -> Pattern -> Pattern
 insertDetail detail (Pattern pattern) =
     Pattern
-        { pattern | details = Store.insert Nothing detail pattern.details }
+        { pattern
+            | details = Store.insert Nothing detail pattern.details
+            , cache = Nothing
+        }
 
 
 getDetail : Pattern -> That Detail -> Maybe (Entry Detail)
@@ -1575,6 +1659,7 @@ decoder =
         |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.required "variables" variablesDecoder
         |> Decode.required "transformations" transformationsDecoder
+        |> Decode.hardcoded Nothing
         |> Decode.map Pattern
 
 

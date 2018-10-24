@@ -819,7 +819,7 @@ view prefix windowWidth windowHeight storedPattern model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.inFront (viewOverlay prefix name pattern model)
+                , Element.inFront (viewOverlay windowHeight prefix name pattern model)
                 ]
                 (viewWorkspace windowWidth windowHeight storedPattern model)
             )
@@ -982,7 +982,7 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
 ---- OVERLAY
 
 
-viewOverlay prefix name pattern model =
+viewOverlay windowHeight prefix name pattern model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -1027,7 +1027,7 @@ viewOverlay prefix name pattern model =
                 ]
                 Element.none
             , viewZoom model
-            , viewRightToolbar pattern model
+            , viewRightToolbar windowHeight pattern model
             ]
         , Element.row
             [ Element.width Element.fill
@@ -1131,8 +1131,8 @@ viewBox windowWidth windowHeight zoom =
         ]
 
 
-viewRightToolbar : Pattern -> Model -> Element Msg
-viewRightToolbar pattern model =
+viewRightToolbar : Int -> Pattern -> Model -> Element Msg
+viewRightToolbar windowHeight pattern model =
     Element.row
         [ Element.height Element.fill
         , Element.htmlAttribute <|
@@ -1177,14 +1177,19 @@ viewRightToolbar pattern model =
                     )
             }
         , if model.rightToolbarVisible then
-            Element.column
-                [ Element.width (Element.px 400)
-                , Element.height Element.fill
-                , Background.color gray900
+            Element.el
+                [ Background.color gray900
+                , Element.width (Element.px 400)
+                , Element.height (Element.px (windowHeight - 48 - 44))
                 ]
-                [ viewVariables pattern model
-                , viewPoints pattern model
-                ]
+                (Element.column
+                    [ Element.width Element.fill
+                    , Element.scrollbars
+                    ]
+                    [ viewVariables pattern model
+                    , viewPoints pattern model
+                    ]
+                )
 
           else
             Element.none
