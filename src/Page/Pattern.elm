@@ -27,17 +27,15 @@ module Page.Pattern exposing
 
 import Accessibility.Widget as Widget
 import Array
-import Axis2d exposing (Axis2d)
 import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Navigation
-import Circle2d exposing (Circle2d)
 import Color
 import Css
 import Design exposing (Grey(..))
-import Direction2d
+import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -52,11 +50,9 @@ import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
-import LineSegment2d exposing (LineSegment2d)
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
-import QuadraticSpline2d
 import Store exposing (Entry)
 import StoredPattern exposing (StoredPattern)
 import Styled.Listbox as Listbox exposing (Listbox)
@@ -68,7 +64,6 @@ import Task
 import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
-import Vector2d
 import View.Icon
 import VoronoiDiagram2d
 
@@ -729,11 +724,34 @@ view prefix windowWidth windowHeight patternSlug storedPattern model =
     }
 
 
+
+---- WORKSPACE
+
+
 viewWorkspace : Int -> Int -> StoredPattern -> Model -> Element Msg
 viewWorkspace windowWidth windowHeight storedPattern model =
     let
-        { pattern, zoom } =
+        { pattern, center, zoom } =
             storedPattern
+
+        selections =
+            { points =
+                maybeTool
+                    |> Maybe.map selectedPointsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , lines =
+                maybeTool
+                    |> Maybe.map selectedLinesFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , lineSegments =
+                maybeTool
+                    |> Maybe.map selectedLineSegmentsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , details =
+                maybeTool
+                    |> Maybe.map selectedDetailsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            }
 
         maybeTool =
             case model.dialog of
@@ -743,25 +761,24 @@ viewWorkspace windowWidth windowHeight storedPattern model =
                 _ ->
                     Nothing
 
-        selectedPoints =
-            maybeTool
-                |> Maybe.map selectedPointsFromTool
-                |> Maybe.withDefault (Those.fromList [])
+        translation =
+            String.concat
+                [ "translate("
+                , String.fromFloat (-1 * x)
+                , " "
+                , String.fromFloat (-1 * y)
+                , ")"
+                ]
 
-        selectedLines =
-            maybeTool
-                |> Maybe.map selectedLinesFromTool
-                |> Maybe.withDefault (Those.fromList [])
+        { x, y } =
+            case model.maybeDrag of
+                Nothing ->
+                    center
 
-        selectedLineSegments =
-            maybeTool
-                |> Maybe.map selectedLineSegmentsFromTool
-                |> Maybe.withDefault (Those.fromList [])
-
-        selectedDetails =
-            maybeTool
-                |> Maybe.map selectedDetailsFromTool
-                |> Maybe.withDefault (Those.fromList [])
+                Just drag ->
+                    { x = center.x + (drag.start.x - drag.current.x) * zoom
+                    , y = center.y + (drag.start.y - drag.current.y) * zoom
+                    }
     in
     Element.el
         [ Element.width Element.fill
@@ -778,18 +795,74 @@ viewWorkspace windowWidth windowHeight storedPattern model =
                             (Decode.field "screenX" Decode.float)
                             (Decode.field "screenY" Decode.float)
                 ]
-                [ drawPattern
-                    windowWidth
-                    windowHeight
-                    model
-                    model.hoveredPoint
-                    selectedPoints
-                    selectedLines
-                    selectedLineSegments
-                    selectedDetails
-                    storedPattern
+                [ Svg.g [ Svg.Attributes.transform translation ]
+                    [ Pattern.draw selections model.hoveredPoint pattern
+                    , drawHoverPolygons windowWidth windowHeight model storedPattern
+                    ]
                 ]
         )
+
+
+drawHoverPolygons : Int -> Int -> Model -> StoredPattern -> Svg Msg
+drawHoverPolygons windowWidth windowHeight model { pattern, center, zoom } =
+    let
+        ( geometry, _ ) =
+            Pattern.geometry pattern
+
+        { x, y } =
+            case model.maybeDrag of
+                Nothing ->
+                    center
+
+                Just drag ->
+                    { x =
+                        center.x
+                            + (drag.start.x - drag.current.x)
+                            * zoom
+                    , y =
+                        center.y
+                            + (drag.start.y - drag.current.y)
+                            * zoom
+                    }
+
+        hoverPolygons =
+            VoronoiDiagram2d.fromVerticesBy
+                (\( _, _, p2d ) -> p2d)
+                (Array.fromList geometry.points)
+                |> Result.toMaybe
+                |> Maybe.map (VoronoiDiagram2d.polygons boundingBox2d)
+                |> Maybe.withDefault []
+
+        boundingBox2d =
+            BoundingBox2d.fromExtrema
+                { minX = -1 * width / 2 + x
+                , minY = -1 * height / 2 + y
+                , maxX = (-1 * width / 2) + width + x
+                , maxY = (-1 * height / 2) + height + y
+                }
+
+        width =
+            toFloat windowWidth * zoom
+
+        height =
+            toFloat windowHeight * zoom
+    in
+    Svg.g []
+        (List.map drawHoverPolygon hoverPolygons)
+
+
+drawHoverPolygon : ( ( That Point, Maybe String, Point2d ), Polygon2d ) -> Svg Msg
+drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
+    Svg.polygon2d
+        [ Svg.Attributes.fill "transparent"
+        , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
+        , Svg.Events.onMouseOut (PointHovered Nothing)
+        ]
+        polygon2d
+
+
+
+---- OVERLAY
 
 
 viewOverlay prefix patternSlug pattern model =
@@ -2461,371 +2534,6 @@ listboxViewConfig printOption =
         , empty = Html.text ""
         , focusable = True
         }
-
-
-
----- SVG
-
-
-drawPattern :
-    Int
-    -> Int
-    -> Model
-    -> Maybe (That Point)
-    -> Those Point
-    -> Those Line
-    -> Those LineSegment
-    -> Those Detail
-    -> StoredPattern
-    -> Svg Msg
-drawPattern windowWidth windowHeight model hoveredPoint selectedPoints selectedLines selectedLineSegments selectedDetails { pattern, center, zoom } =
-    let
-        ( geometry, problems ) =
-            Pattern.geometry pattern
-
-        translation =
-            String.concat
-                [ "translate("
-                , String.fromFloat (-1 * x)
-                , " "
-                , String.fromFloat (-1 * y)
-                , ")"
-                ]
-
-        { x, y } =
-            case model.maybeDrag of
-                Nothing ->
-                    center
-
-                Just drag ->
-                    { x =
-                        center.x
-                            + (drag.start.x - drag.current.x)
-                            * zoom
-                    , y =
-                        center.y
-                            + (drag.start.y - drag.current.y)
-                            * zoom
-                    }
-
-        hoverPolygons =
-            VoronoiDiagram2d.fromVerticesBy
-                (\( _, _, p2d ) -> p2d)
-                (Array.fromList geometry.points)
-                |> Result.toMaybe
-                |> Maybe.map (VoronoiDiagram2d.polygons boundingBox2d)
-                |> Maybe.withDefault []
-
-        boundingBox2d =
-            BoundingBox2d.fromExtrema
-                { minX = -1 * width / 2 + x
-                , minY = -1 * height / 2 + y
-                , maxX = (-1 * width / 2) + width + x
-                , maxY = (-1 * height / 2) + height + y
-                }
-
-        width =
-            toFloat windowWidth * zoom
-
-        height =
-            toFloat windowHeight * zoom
-    in
-    Svg.g [ Svg.Attributes.transform translation ] <|
-        List.concat
-            [ [ Svg.defs []
-                    [ Svg.marker
-                        [ Svg.Attributes.id "arrow"
-                        , Svg.Attributes.viewBox "0 0 10 10"
-                        , Svg.Attributes.refX "5"
-                        , Svg.Attributes.refY "5"
-                        , Svg.Attributes.markerWidth "6"
-                        , Svg.Attributes.markerHeight "6"
-                        , Svg.Attributes.orient "auto-start-reverse"
-                        , Svg.Attributes.fill "blue"
-                        ]
-                        [ Svg.path
-                            [ Svg.Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
-                            []
-                        ]
-                    ]
-              ]
-            , List.map (drawDetail selectedDetails) geometry.details
-            , List.map (drawLine selectedLines) geometry.lines
-            , List.map (drawLineSegment selectedLineSegments) geometry.lineSegments
-            , List.map drawCircle geometry.circles
-            , List.map (drawPoint pattern hoveredPoint selectedPoints) geometry.points
-            , List.map drawHoverPolygon hoverPolygons
-            ]
-
-
-drawPoint :
-    Pattern
-    -> Maybe (That Point)
-    -> Those Point
-    -> ( That Point, Maybe String, Point2d )
-    -> Svg Msg
-drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
-    let
-        ( x, y ) =
-            Point2d.coordinates point2d
-
-        hovered =
-            hoveredPoint
-                |> Maybe.map (That.areEqual thatPoint)
-                |> Maybe.withDefault False
-
-        selected =
-            Those.member thatPoint selectedPoints
-
-        helper =
-            if hovered then
-                Svg.g []
-                    [ case
-                        hoveredPoint
-                            |> Maybe.andThen (Pattern.getPoint pattern)
-                            |> Maybe.map .value
-                      of
-                        Just (Pattern.LeftOf thatAnchorPoint _) ->
-                            drawAnchorLine thatAnchorPoint hoveredPoint
-
-                        Just (Pattern.RightOf thatAnchorPoint _) ->
-                            drawAnchorLine thatAnchorPoint hoveredPoint
-
-                        Just (Pattern.Above thatAnchorPoint _) ->
-                            drawAnchorLine thatAnchorPoint hoveredPoint
-
-                        Just (Pattern.Below thatAnchorPoint _) ->
-                            drawAnchorLine thatAnchorPoint hoveredPoint
-
-                        Just (Pattern.AtAngle thatAnchorPoint _ _) ->
-                            drawAnchorLine thatAnchorPoint hoveredPoint
-
-                        _ ->
-                            Svg.text ""
-                    , case
-                        hoveredPoint
-                            |> Maybe.map (Pattern.getPointGeometries pattern)
-                      of
-                        Nothing ->
-                            Svg.text ""
-
-                        Just point2ds ->
-                            drawPointChain point2ds
-                    ]
-
-            else
-                Svg.text ""
-
-        drawAnchorLine thatAnchorPoint maybeHoveredPoint =
-            Maybe.map2
-                (\point2dA point2dB ->
-                    Svg.g
-                        []
-                        [ Svg.lineSegment2d
-                            [ Svg.Attributes.stroke "blue"
-                            , Svg.Attributes.strokeDasharray "4"
-                            , Svg.Attributes.strokeWidth "1"
-                            ]
-                            (LineSegment2d.fromEndpoints
-                                ( point2dA, point2dB )
-                            )
-                        , Svg.circle2d
-                            [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point2dA)
-                        ]
-                )
-                (Maybe.andThen (Pattern.point2d pattern) maybeHoveredPoint)
-                (Pattern.point2d pattern thatAnchorPoint)
-                |> Maybe.withDefault (Svg.text "")
-
-        drawPointChain points =
-            List.foldl drawLink ( Nothing, [] ) points
-                |> Tuple.second
-                |> Svg.g []
-
-        drawLink point ( maybePreviousPoint, links ) =
-            ( Just point
-            , (case maybePreviousPoint of
-                Nothing ->
-                    Svg.g []
-                        [ Svg.circle2d [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point)
-                        ]
-
-                Just previousPoint ->
-                    let
-                        startPoint =
-                            previousPoint
-
-                        midpoint =
-                            LineSegment2d.from previousPoint point
-                                |> LineSegment2d.midpoint
-
-                        controlPoint =
-                            case Direction2d.from previousPoint point of
-                                Nothing ->
-                                    midpoint
-
-                                Just direction ->
-                                    Point2d.along
-                                        (Axis2d.through midpoint (Direction2d.perpendicularTo direction))
-                                        (Point2d.squaredDistanceFrom startPoint endPoint / 1500)
-
-                        endPoint =
-                            point
-
-                        spline =
-                            QuadraticSpline2d.with
-                                { startPoint = startPoint
-                                , controlPoint = controlPoint
-                                , endPoint = endPoint
-                                }
-
-                        id =
-                            midpoint
-                                |> Point2d.coordinates
-                                |> (\( s, t ) ->
-                                        String.join "-"
-                                            [ String.fromFloat s
-                                            , String.fromFloat t
-                                            ]
-                                   )
-                    in
-                    Svg.g []
-                        [ Svg.mask
-                            [ Svg.Attributes.id ("circleMask-" ++ id) ]
-                            [ Svg.boundingBox2d
-                                [ Svg.Attributes.fill "white" ]
-                                (QuadraticSpline2d.boundingBox spline)
-                            , Svg.circle2d
-                                [ Svg.Attributes.fill "black" ]
-                                (Circle2d.withRadius 15 startPoint)
-                            , Svg.circle2d
-                                [ Svg.Attributes.fill "black" ]
-                                (Circle2d.withRadius 15 endPoint)
-                            ]
-                        , Svg.quadraticSpline2d
-                            [ Svg.Attributes.stroke "blue"
-                            , Svg.Attributes.strokeDasharray "4"
-                            , Svg.Attributes.fill "none"
-                            , Svg.Attributes.markerEnd "url(#arrow)"
-                            , Svg.Attributes.mask ("url(#circleMask-" ++ id ++ ")")
-                            ]
-                            spline
-                        , Svg.circle2d [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point)
-                        ]
-              )
-                :: links
-            )
-    in
-    Svg.g []
-        [ Svg.circle2d
-            [ Svg.Attributes.fill "black" ]
-            (Circle2d.withRadius 2 point2d)
-        , if selected then
-            Svg.circle2d
-                [ Svg.Attributes.stroke "blue"
-                , Svg.Attributes.fill "none"
-                ]
-                (Circle2d.withRadius 5 point2d)
-
-          else
-            Svg.g [] []
-        , helper
-        , maybeName
-            |> Maybe.map
-                (\name ->
-                    Svg.text_
-                        [ Svg.Attributes.x (String.fromFloat x)
-                        , Svg.Attributes.y (String.fromFloat y)
-                        , Svg.Attributes.dy "-5"
-                        , Svg.Attributes.style "font: 10px sans-serif;"
-                        , Svg.Attributes.textAnchor "middle"
-                        ]
-                        [ Svg.text name ]
-                )
-            |> Maybe.withDefault (Svg.text "")
-        ]
-
-
-drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
-    Svg.polygon2d
-        [ Svg.Attributes.fill "transparent"
-        , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
-        , Svg.Events.onMouseOut (PointHovered Nothing)
-        ]
-        polygon2d
-
-
-drawLine : Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
-drawLine selectedLines ( thatLine, maybeName, axis2d ) =
-    let
-        selected =
-            Those.member thatLine selectedLines
-    in
-    Svg.lineSegment2d
-        [ Svg.Attributes.stroke <|
-            if selected then
-                "blue"
-
-            else
-                "grey"
-        ]
-        (LineSegment2d.fromEndpoints
-            ( Point2d.along axis2d -10000
-            , Point2d.along axis2d 10000
-            )
-        )
-
-
-drawLineSegment :
-    Those LineSegment
-    -> ( That LineSegment, Maybe String, LineSegment2d )
-    -> Svg msg
-drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
-    let
-        selected =
-            Those.member thatLineSegment selectedLineSegments
-    in
-    Svg.lineSegment2d
-        [ Svg.Attributes.stroke <|
-            if selected then
-                "blue"
-
-            else
-                "grey"
-        ]
-        lineSegment2d
-
-
-drawCircle : ( That Circle, Maybe String, Circle2d ) -> Svg msg
-drawCircle ( thatCircle, maybeName, circle2d ) =
-    Svg.circle2d
-        [ Svg.Attributes.stroke "grey"
-        , Svg.Attributes.strokeWidth "1px"
-        , Svg.Attributes.fill "transparent"
-        ]
-        circle2d
-
-
-drawDetail : Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
-drawDetail selectedDetails ( thatDetail, maybeName, polygon2d ) =
-    let
-        selected =
-            Those.member thatDetail selectedDetails
-    in
-    Svg.polygon2d
-        [ Svg.Attributes.fill "lightGrey"
-        , Svg.Attributes.stroke <|
-            if selected then
-                "blue"
-
-            else
-                "black"
-        , Svg.Attributes.strokeWidth "1"
-        ]
-        polygon2d
 
 
 
