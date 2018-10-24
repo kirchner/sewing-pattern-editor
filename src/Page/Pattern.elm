@@ -117,6 +117,7 @@ type ToolTag
     | BetweenRatioTag
     | BetweenLengthTag
     | CircleCircleTag
+    | LineLineTag
     | CircleLineTag
     | CenteredAtTag
     | ThroughTwoPointsTag
@@ -155,6 +156,9 @@ toolToTag tool =
 
                 CircleCircle _ ->
                     CircleCircleTag
+
+                LineLine _ ->
+                    LineLineTag
 
                 CircleLine _ ->
                     CircleLineTag
@@ -235,6 +239,12 @@ type PointData
         , dropdownCircleB : Dropdown
         , maybeThatCircleB : Maybe (That Circle)
         , first : Bool
+        }
+    | LineLine
+        { dropdownLineA : Dropdown
+        , maybeThatLineA : Maybe (That Line)
+        , dropdownLineB : Dropdown
+        , maybeThatLineB : Maybe (That Line)
         }
     | CircleLine
         { dropdownCircleA : Dropdown
@@ -376,6 +386,15 @@ toolDescription toolTag =
                 , s "."
                 ]
 
+        LineLineTag ->
+            Element.paragraph []
+                [ s "Create a new "
+                , strong "point"
+                , s " at the intersection of two "
+                , strong "lines"
+                , s "."
+                ]
+
         CircleLineTag ->
             Element.paragraph []
                 [ s "Create a new "
@@ -497,6 +516,9 @@ selectedPointsFromTool tool =
                 CircleCircle _ ->
                     empty
 
+                LineLine _ ->
+                    empty
+
                 CircleLine _ ->
                     empty
     in
@@ -560,6 +582,11 @@ selectedLinesFromTool tool =
 
                 CircleCircle _ ->
                     empty
+
+                LineLine { maybeThatLineA, maybeThatLineB } ->
+                    [ maybeThatLineA, maybeThatLineB ]
+                        |> List.filterMap identity
+                        |> Those.fromList
 
                 CircleLine { maybeThatLineA } ->
                     maybeThatLineA
@@ -629,6 +656,9 @@ selectedLineSegmentsFromTool tool =
                 CircleCircle _ ->
                     empty
 
+                LineLine _ ->
+                    empty
+
                 CircleLine _ ->
                     empty
     in
@@ -693,6 +723,9 @@ selectedDetailsFromTool tool =
                     empty
 
                 CircleCircle _ ->
+                    empty
+
+                LineLine _ ->
                     empty
 
                 CircleLine _ ->
@@ -1234,6 +1267,9 @@ viewTool pattern points circles lines lineSegments details tool =
                                 CircleCircle data ->
                                     viewCircleCircle pattern circles data
 
+                                LineLine data ->
+                                    viewLineLine pattern lines data
+
                                 CircleLine data ->
                                     viewCircleLine pattern circles lines data
                            )
@@ -1263,6 +1299,9 @@ viewTool pattern points circles lines lineSegments details tool =
 
                         CircleCircle data ->
                             viewCircleCircle pattern circles data
+
+                        LineLine data ->
+                            viewLineLine pattern lines data
 
                         CircleLine data ->
                             viewCircleLine pattern circles lines data
@@ -1431,6 +1470,28 @@ viewCircleCircle pattern circles data =
                 ]
                 (Element.text "which intersection")
         }
+    ]
+
+
+viewLineLine pattern lines data =
+    [ labeledDropdown "line-line--line-a"
+        { optionToName = lineName pattern
+        , placeholder = ""
+        , lift = DropdownLineAMsg
+        , label = "1st line"
+        , options = lines
+        }
+        data.dropdownLineA
+        data.maybeThatLineA
+    , labeledDropdown "line-line--line-b"
+        { optionToName = lineName pattern
+        , placeholder = ""
+        , lift = DropdownLineBMsg
+        , label = "2st line"
+        , options = lines
+        }
+        data.dropdownLineB
+        data.maybeThatLineB
     ]
 
 
@@ -1748,10 +1809,12 @@ viewToolSelector prefix hoveredTool maybeTool =
               ]
             , [ button prefix hoveredTool AboveTag "above" "Above"
               , button prefix hoveredTool BelowTag "below" "Below"
-              , button prefix hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
               ]
             , [ button prefix hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
               , button prefix hoveredTool BetweenLengthTag "at_angle" "Between at length"
+              ]
+            , [ button prefix hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
+              , button prefix hoveredTool LineLineTag "at_angle" "Line-Line intersection"
               , button prefix hoveredTool CircleLineTag "at_angle" "Circle-Line intersection"
               ]
             ]
@@ -2711,6 +2774,7 @@ type Msg
     | DropdownAnchorAMsg (Dropdown.Msg (That Point))
     | DropdownAnchorBMsg (Dropdown.Msg (That Point))
     | DropdownLineAMsg (Dropdown.Msg (That Line))
+    | DropdownLineBMsg (Dropdown.Msg (That Line))
     | ListboxPointsMsg (Listbox.Msg (That Point))
     | DropdownLineSegmentMsg (Dropdown.Msg (That LineSegment))
     | DropdownDetailMsg (Dropdown.Msg (That Detail))
@@ -2881,6 +2945,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     , dropdownCircleB = Dropdown.init
                                     , maybeThatCircleB = Nothing
                                     , first = True
+                                    }
+
+                        LineLineTag ->
+                            CreatePoint "" <|
+                                LineLine
+                                    { dropdownLineA = Dropdown.init
+                                    , maybeThatLineA = Nothing
+                                    , dropdownLineB = Dropdown.init
+                                    , maybeThatLineB = Nothing
                                     }
 
                         CircleLineTag ->
@@ -3454,11 +3527,28 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (CreatePoint name (CircleLine data)) ->
                     updateDropdownLineA pattern model (CreatePoint name << CircleLine) dropdownMsg data
 
+                Tool (CreatePoint name (LineLine data)) ->
+                    updateDropdownLineA pattern model (CreatePoint name << LineLine) dropdownMsg data
+
                 Tool (EditPoint thatPoint (CircleLine data)) ->
                     updateDropdownLineA pattern model (EditPoint thatPoint << CircleLine) dropdownMsg data
 
+                Tool (EditPoint thatPoint (LineLine data)) ->
+                    updateDropdownLineA pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
+
                 Tool (MirrorAt data) ->
                     updateDropdownLineA pattern model MirrorAt dropdownMsg data
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        DropdownLineBMsg dropdownMsg ->
+            case model.dialog of
+                Tool (CreatePoint name (LineLine data)) ->
+                    updateDropdownLineB pattern model (CreatePoint name << LineLine) dropdownMsg data
+
+                Tool (EditPoint thatPoint (LineLine data)) ->
+                    updateDropdownLineB pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -3745,6 +3835,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatCircleB
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
+                        LineLine data ->
+                            Maybe.map2
+                                (\thatLineA thatLineB ->
+                                    Pattern.lineLine pattern thatLineA thatLineB
+                                        |> Maybe.map (insertPoint name storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                )
+                                data.maybeThatLineA
+                                data.maybeThatLineB
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
                         CircleLine data ->
                             Maybe.map2
                                 (\thatCircle thatLine ->
@@ -3995,6 +4096,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatCircleB
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
+                        LineLine data ->
+                            Maybe.map2
+                                (\thatLineA thatLineB ->
+                                    Pattern.lineLine pattern thatLineA thatLineB
+                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                )
+                                data.maybeThatLineA
+                                data.maybeThatLineB
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
                         CircleLine data ->
                             Maybe.map2
                                 (\thatCircle thatLine ->
@@ -4141,6 +4253,30 @@ updateDropdownLineA pattern model toTool dropdownMsg data =
     in
     ( { model | dialog = Tool newTool }
     , Cmd.map DropdownLineAMsg dropdownCmd
+    , Nothing
+    )
+
+
+updateDropdownLineB pattern model toTool dropdownMsg data =
+    let
+        ( newDropdown, dropdownCmd, newMaybeThatLine ) =
+            Dropdown.update dropdownUpdateConfig
+                (Pattern.lines pattern
+                    |> List.map (Tuple.first >> Listbox.option)
+                )
+                dropdownMsg
+                data.dropdownLineB
+                data.maybeThatLineB
+
+        newTool =
+            toTool
+                { data
+                    | dropdownLineB = newDropdown
+                    , maybeThatLineB = newMaybeThatLine
+                }
+    in
+    ( { model | dialog = Tool newTool }
+    , Cmd.map DropdownLineBMsg dropdownCmd
     , Nothing
     )
 

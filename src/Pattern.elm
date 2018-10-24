@@ -5,7 +5,7 @@ module Pattern exposing
     , leftOf, rightOf, above, below
     , atAngle
     , betweenRatio, betweenLength
-    , firstCircleCircle, secondCircleCircle, firstCircleLine, secondCircleLine
+    , firstCircleCircle, secondCircleCircle, lineLine, firstCircleLine, secondCircleLine
     , Circle(..), circles, insertCircle, getCircle
     , centeredAt
     , Line(..), lines, insertLine, getLine
@@ -36,7 +36,7 @@ module Pattern exposing
 
 @docs betweenRatio, betweenLength
 
-@docs firstCircleCircle, secondCircleCircle, firstCircleLine, secondCircleLine
+@docs firstCircleCircle, secondCircleCircle, lineLine, firstCircleLine, secondCircleLine
 
 
 # Circles
@@ -89,6 +89,7 @@ module Pattern exposing
 -}
 
 import Axis2d exposing (Axis2d)
+import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import Circle2d.Extra as Circle2d exposing (Intersection(..))
 import Dict exposing (Dict)
@@ -744,6 +745,15 @@ point2d pattern thatPoint =
                                     Just point
                         )
 
+            Just (LineLine thatLineA thatLineB) ->
+                Maybe.map2 Tuple.pair
+                    (axis2d pattern thatLineA)
+                    (axis2d pattern thatLineB)
+                    |> Maybe.andThen
+                        (\( axisA, axisB ) ->
+                            Axis2d.intersectionWithAxis axisA axisB
+                        )
+
             Just (FirstCircleLine thatCircle thatLine) ->
                 Maybe.map2 Tuple.pair
                     (circle2d pattern thatCircle)
@@ -1146,6 +1156,18 @@ secondCircleCircle (Pattern pattern) thatCircleA thatCircleB =
         Nothing
 
 
+lineLine : Pattern -> That Line -> That Line -> Maybe Point
+lineLine (Pattern pattern) thatLineA thatLineB =
+    if
+        Store.member pattern.lines (That.objectId thatLineA)
+            && Store.member pattern.lines (That.objectId thatLineB)
+    then
+        Just (LineLine thatLineA thatLineB)
+
+    else
+        Nothing
+
+
 firstCircleLine : Pattern -> That Circle -> That Line -> Maybe Point
 firstCircleLine (Pattern pattern) thatCircle thatLine =
     if
@@ -1539,6 +1561,12 @@ encodePoint point =
                 , ( "circleB", That.encode circleB )
                 ]
 
+        LineLine lineA lineB ->
+            withType "lineLine"
+                [ ( "lineA", That.encode lineA )
+                , ( "lineB", That.encode lineB )
+                ]
+
         FirstCircleLine circle line ->
             withType "firstCircleLine"
                 [ ( "circle", That.encode circle )
@@ -1740,6 +1768,10 @@ pointDecoder =
             Decode.map2 SecondCircleCircle
                 (Decode.field "circleA" That.decoder)
                 (Decode.field "circleB" That.decoder)
+        , typeDecoder "lineLine" <|
+            Decode.map2 LineLine
+                (Decode.field "lineA" That.decoder)
+                (Decode.field "lineB" That.decoder)
         , typeDecoder "firstCircleLine" <|
             Decode.map2 FirstCircleLine
                 (Decode.field "circle" That.decoder)
