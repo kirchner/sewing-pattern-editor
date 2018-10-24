@@ -21,10 +21,11 @@ draw :
     , lineSegments : Those LineSegment
     , details : Those Detail
     }
+    -> Float
     -> Maybe (That Point)
     -> Pattern
     -> Svg msg
-draw selected hoveredPoint pattern =
+draw selected zoom hoveredPoint pattern =
     let
         ( geometry, problems ) =
             Pattern.geometry pattern
@@ -52,17 +53,18 @@ draw selected hoveredPoint pattern =
             , List.map (drawLine selected.lines) geometry.lines
             , List.map (drawLineSegment selected.lineSegments) geometry.lineSegments
             , List.map drawCircle geometry.circles
-            , List.map (drawPoint pattern hoveredPoint selected.points) geometry.points
+            , List.map (drawPoint zoom pattern hoveredPoint selected.points) geometry.points
             ]
 
 
 drawPoint :
-    Pattern
+    Float
+    -> Pattern
     -> Maybe (That Point)
     -> Those Point
     -> ( That Point, Maybe String, Point2d )
     -> Svg msg
-drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
+drawPoint zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
     let
         ( x, y ) =
             Point2d.coordinates point2d
@@ -121,15 +123,17 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                         []
                         [ Svg.lineSegment2d
                             [ Svg.Attributes.stroke "blue"
-                            , Svg.Attributes.strokeDasharray "4"
-                            , Svg.Attributes.strokeWidth "1"
+                            , Svg.Attributes.strokeDasharray <|
+                                String.fromFloat (4 * zoom)
+                            , Svg.Attributes.strokeWidth <|
+                                String.fromFloat (2 * zoom)
                             ]
                             (LineSegment2d.fromEndpoints
                                 ( point2dA, point2dB )
                             )
                         , Svg.circle2d
                             [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point2dA)
+                            (Circle2d.withRadius (2 * zoom) point2dA)
                         ]
                 )
                 (Maybe.andThen (Pattern.point2d pattern) maybeHoveredPoint)
@@ -147,7 +151,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                 Nothing ->
                     Svg.g []
                         [ Svg.circle2d [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point)
+                            (Circle2d.withRadius (2 * zoom) point)
                         ]
 
                 Just previousPoint ->
@@ -211,7 +215,7 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
                             ]
                             spline
                         , Svg.circle2d [ Svg.Attributes.fill "blue" ]
-                            (Circle2d.withRadius 2 point)
+                            (Circle2d.withRadius (4 * zoom) point)
                         ]
               )
                 :: links
@@ -220,13 +224,15 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
     Svg.g []
         [ Svg.circle2d
             [ Svg.Attributes.fill "black" ]
-            (Circle2d.withRadius 2 point2d)
+            (Circle2d.withRadius (4 * zoom) point2d)
         , if selected then
             Svg.circle2d
                 [ Svg.Attributes.stroke "blue"
                 , Svg.Attributes.fill "none"
+                , Svg.Attributes.strokeWidth <|
+                    String.fromFloat (2 * zoom)
                 ]
-                (Circle2d.withRadius 5 point2d)
+                (Circle2d.withRadius (10 * zoom) point2d)
 
           else
             Svg.g [] []
@@ -234,11 +240,19 @@ drawPoint pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) 
         , maybeName
             |> Maybe.map
                 (\name ->
+                    let
+                        fontSize =
+                            Basics.floor (20 * zoom)
+                    in
                     Svg.text_
                         [ Svg.Attributes.x (String.fromFloat x)
                         , Svg.Attributes.y (String.fromFloat y)
-                        , Svg.Attributes.dy "-5"
-                        , Svg.Attributes.style "font: 10px sans-serif;"
+                        , Svg.Attributes.dy <|
+                            String.fromFloat (-10 * zoom)
+                        , Svg.Attributes.style <|
+                            "font: "
+                                ++ String.fromInt fontSize
+                                ++ "px sans-serif;"
                         , Svg.Attributes.textAnchor "middle"
                         ]
                         [ Svg.text name ]

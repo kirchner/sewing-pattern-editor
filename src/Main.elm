@@ -182,15 +182,14 @@ view model =
                     , body = [ Html.text "We are sorry, but something went wrong." ]
                     }
 
-                Just viewedPattern ->
+                Just storedPattern ->
                     let
                         patternDocument =
                             Pattern.view
                                 model.prefix
                                 model.windowWidth
                                 model.windowHeight
-                                patternSlug
-                                viewedPattern
+                                storedPattern
                                 patternModel
                     in
                     { title = patternDocument.title

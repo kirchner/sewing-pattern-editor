@@ -686,10 +686,10 @@ init =
 ---- VIEW
 
 
-view : String -> Int -> Int -> String -> StoredPattern -> Model -> Document Msg
-view prefix windowWidth windowHeight patternSlug storedPattern model =
+view : String -> Int -> Int -> StoredPattern -> Model -> Document Msg
+view prefix windowWidth windowHeight storedPattern model =
     let
-        { pattern, zoom, center } =
+        { name, pattern, zoom, center } =
             storedPattern
     in
     { title = "Sewing Pattern Editor"
@@ -716,7 +716,7 @@ view prefix windowWidth windowHeight patternSlug storedPattern model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.inFront (viewOverlay prefix patternSlug pattern model)
+                , Element.inFront (viewOverlay prefix name pattern model)
                 ]
                 (viewWorkspace windowWidth windowHeight storedPattern model)
             )
@@ -796,7 +796,7 @@ viewWorkspace windowWidth windowHeight storedPattern model =
                             (Decode.field "screenY" Decode.float)
                 ]
                 [ Svg.g [ Svg.Attributes.transform translation ]
-                    [ Pattern.draw selections model.hoveredPoint pattern
+                    [ Pattern.draw selections zoom model.hoveredPoint pattern
                     , drawHoverPolygons windowWidth windowHeight model storedPattern
                     ]
                 ]
@@ -865,7 +865,7 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
 ---- OVERLAY
 
 
-viewOverlay prefix patternSlug pattern model =
+viewOverlay prefix name pattern model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -897,7 +897,7 @@ viewOverlay prefix patternSlug pattern model =
             , Element.el []
                 (View.Icon.fa "angle-right")
             , Element.el []
-                (Element.text patternSlug)
+                (Element.text name)
             ]
         , Element.row
             [ Element.height Element.fill

@@ -39,7 +39,7 @@ type alias Model =
 
 type Dialog
     = NoDialog
-    | CreateProject String
+    | CreatePattern String
 
 
 init : Model
@@ -51,10 +51,10 @@ type Msg
     = NoOp
     | DownloadPatternPressed String
     | DeletePatternPressed String
-    | AddProjectClicked
-    | NewProjectNameChanged String
-    | NewProjectCreateClicked
-    | NewProjectCancelClicked
+    | AddPatternClicked
+    | NewPatternNameChanged String
+    | NewPatternCreateClicked
+    | NewPatternCancelClicked
 
 
 update :
@@ -80,31 +80,44 @@ update key cache msg model =
             , Nothing
             )
 
-        AddProjectClicked ->
-            ( { model | dialog = CreateProject "" }
+        AddPatternClicked ->
+            ( { model | dialog = CreatePattern "" }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             , Nothing
             )
 
-        NewProjectNameChanged newName ->
+        NewPatternNameChanged newName ->
             case model.dialog of
                 NoDialog ->
                     ( model, Cmd.none, Nothing )
 
-                CreateProject _ ->
-                    ( { model | dialog = CreateProject newName }
+                CreatePattern _ ->
+                    ( { model | dialog = CreatePattern newName }
                     , Cmd.none
                     , Nothing
                     )
 
-        NewProjectCreateClicked ->
+        NewPatternCreateClicked ->
             case model.dialog of
                 NoDialog ->
                     ( model, Cmd.none, Nothing )
 
-                CreateProject name ->
-                    if Dict.member name cache then
+                CreatePattern name ->
+                    let
+                        slug =
+                            name
+                                |> String.map replaceNonLetter
+                                |> String.toLower
+
+                        replaceNonLetter c =
+                            if Char.isAlpha c then
+                                c
+
+                            else
+                                '-'
+                    in
+                    if Dict.member slug cache then
                         ( model
                         , Cmd.none
                         , Nothing
@@ -113,10 +126,10 @@ update key cache msg model =
                     else
                         ( { model | dialog = NoDialog }
                         , Cmd.none
-                        , Just (Dict.insert name (StoredPattern.init name name) cache)
+                        , Just (Dict.insert slug (StoredPattern.init slug name) cache)
                         )
 
-        NewProjectCancelClicked ->
+        NewPatternCancelClicked ->
             ( { model | dialog = NoDialog }
             , Cmd.none
             , Nothing
@@ -136,7 +149,7 @@ subscriptions model =
                         (\key ->
                             case key of
                                 "Escape" ->
-                                    Decode.succeed NewProjectCancelClicked
+                                    Decode.succeed NewPatternCancelClicked
 
                                 _ ->
                                     Decode.fail "not handling that key here"
@@ -195,7 +208,7 @@ view storedPatterns model =
                                 , Design.fontColor Bright
                                 ]
                             ]
-                            { onPress = Just AddProjectClicked
+                            { onPress = Just AddPatternClicked
                             , label =
                                 Element.el
                                     [ Element.centerX
@@ -251,7 +264,7 @@ viewDialog dialog =
         NoDialog ->
             Element.none
 
-        CreateProject name ->
+        CreatePattern name ->
             Element.column
                 [ Element.centerX
                 , Element.width (Element.px 350)
@@ -260,7 +273,7 @@ viewDialog dialog =
                 , Design.backgroundColor Darkest
                 , Design.fontColor Darkest
                 ]
-                [ Element.text "Create a new project"
+                [ Element.text "Create a new pattern"
                 , Input.text
                     [ Element.width Element.fill
                     , Element.padding 5
@@ -272,7 +285,7 @@ viewDialog dialog =
                     , Element.htmlAttribute <|
                         Html.Attributes.id "name-input"
                     ]
-                    { onChange = NewProjectNameChanged
+                    { onChange = NewPatternNameChanged
                     , text = name
                     , placeholder = Nothing
                     , label =
@@ -287,10 +300,10 @@ viewDialog dialog =
                     [ Element.width Element.fill ]
                     [ Element.el
                         [ Element.alignLeft ]
-                        (button "Create" NewProjectCreateClicked)
+                        (button "Create" NewPatternCreateClicked)
                     , Element.el
                         [ Element.alignRight ]
-                        (button "Cancel" NewProjectCancelClicked)
+                        (button "Cancel" NewPatternCancelClicked)
                     ]
                 ]
 
@@ -335,7 +348,10 @@ viewPattern ({ pattern } as storedPattern) =
                 centerPoint =
                     BoundingBox2d.centerPoint box
             in
-            BoundingBox2d.scaleAbout centerPoint 1.5 box
+            BoundingBox2d.scaleAbout centerPoint 2 box
+
+        zoom =
+            (max width height) / 300
 
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -370,7 +386,7 @@ viewPattern ({ pattern } as storedPattern) =
                 }
             , Element.downloadAs [ Element.alignLeft ]
                 { url =
-                    "data:text/plain;charset=utf-8,"
+                    "data:application/json;charset=utf-8,"
                         ++ Encode.encode 0 (StoredPattern.encode storedPattern)
                 , label =
                     Element.el
@@ -394,7 +410,7 @@ viewPattern ({ pattern } as storedPattern) =
                     , Html.Events.preventDefaultOn "dragstart" <|
                         Decode.succeed ( NoOp, True )
                     ]
-                    [ Pattern.draw selections Nothing pattern ]
+                    [ Pattern.draw selections zoom Nothing pattern ]
             )
         , Element.row
             [ Element.width Element.fill
