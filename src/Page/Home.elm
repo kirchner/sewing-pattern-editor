@@ -7,11 +7,13 @@ module Page.Home exposing
     , view
     )
 
+import BoundingBox2d
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Navigation
 import Design exposing (Grey(..))
 import Dict exposing (Dict)
+import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -24,7 +26,10 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Pattern exposing (Pattern)
 import StoredPattern exposing (StoredPattern)
+import Svg exposing (Svg)
+import Svg.Attributes
 import Task
+import Those
 import View.Icon
 
 
@@ -291,11 +296,52 @@ viewDialog dialog =
 
 
 viewPattern : StoredPattern -> Element Msg
-viewPattern storedPattern =
+viewPattern ({ pattern } as storedPattern) =
+    let
+        selections =
+            { points = Those.fromList []
+            , lines = Those.fromList []
+            , lineSegments = Those.fromList []
+            , details = Those.fromList []
+            }
+
+        viewBox =
+            String.join " "
+                [ String.fromFloat (BoundingBox2d.minX boundingBox)
+                , String.fromFloat (BoundingBox2d.minY boundingBox)
+                , String.fromFloat width
+                , String.fromFloat height
+                ]
+
+        ( width, height ) =
+            BoundingBox2d.dimensions boundingBox
+
+        boundingBox =
+            geometry.points
+                |> List.map (\( _, _, p2d ) -> p2d)
+                |> BoundingBox2d.containingPoints
+                |> Maybe.map scale
+                |> Maybe.withDefault
+                    (BoundingBox2d.fromExtrema
+                        { minX = 0
+                        , maxX = 300
+                        , minY = 0
+                        , maxY = 300
+                        }
+                    )
+
+        scale box =
+            let
+                centerPoint =
+                    BoundingBox2d.centerPoint box
+            in
+            BoundingBox2d.scaleAbout centerPoint 1.5 box
+
+        ( geometry, _ ) =
+            Pattern.geometry pattern
+    in
     Element.column
-        [ Element.width (Element.px 300)
-        , Element.height (Element.px 400)
-        , Border.color (Design.toColor Bright)
+        [ Border.color (Design.toColor Bright)
         , Border.width 1
         ]
         [ Element.row
@@ -337,11 +383,19 @@ viewPattern storedPattern =
                 }
             ]
         , Element.el
-            [ Element.width Element.fill
-            , Element.height Element.fill
+            [ Element.width (Element.px 300)
+            , Element.height (Element.px 300)
             , Background.color (Element.rgb 255 255 255)
             ]
-            Element.none
+            (Element.html <|
+                Svg.svg
+                    [ Svg.Attributes.viewBox viewBox
+                    , Html.Attributes.style "user-select" "none"
+                    , Html.Events.preventDefaultOn "dragstart" <|
+                        Decode.succeed ( NoOp, True )
+                    ]
+                    [ Pattern.draw selections Nothing pattern ]
+            )
         , Element.row
             [ Element.width Element.fill
             , Element.padding Design.xSmall

@@ -660,6 +660,33 @@ point2d pattern thatPoint =
                         |> Maybe.andThen (compute pattern >> Result.toMaybe)
                     )
 
+            Just (BetweenLength thatAnchorA thatAnchorB rawLength) ->
+                case
+                    ( point2d pattern thatAnchorA
+                    , point2d pattern thatAnchorB
+                    )
+                of
+                    ( Just anchorA, Just anchorB ) ->
+                        case Direction2d.from anchorA anchorB of
+                            Just direction ->
+                                (rawLength
+                                    |> Expr.parse []
+                                    |> Result.toMaybe
+                                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                                )
+                                    |> Maybe.map
+                                        (\length ->
+                                            Point2d.along
+                                                (Axis2d.through anchorA direction)
+                                                length
+                                        )
+
+                            Nothing ->
+                                Nothing
+
+                    _ ->
+                        Nothing
+
             Just (FirstCircleCircle thatCircleA thatCircleB) ->
                 Maybe.map2 Tuple.pair
                     (circle2d pattern thatCircleA)
@@ -1015,7 +1042,7 @@ betweenLength (Pattern pattern) thatAnchorA thatAnchorB rawLength =
                 Store.member pattern.points (That.objectId thatAnchorA)
                     && Store.member pattern.points (That.objectId thatAnchorB)
             then
-                Just (BetweenRatio thatAnchorA thatAnchorB rawLength)
+                Just (BetweenLength thatAnchorA thatAnchorB rawLength)
 
             else
                 Nothing
