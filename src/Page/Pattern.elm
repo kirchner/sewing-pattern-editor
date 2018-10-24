@@ -119,6 +119,7 @@ type ToolTag
     | CircleCircleTag
     | CenteredAtTag
     | ThroughTwoPointsTag
+    | ThroughOnePointTag
     | FromToTag
     | MirrorAtTag
     | CutAlongLineSegmentTag
@@ -166,6 +167,9 @@ toolToTag tool =
 
         ThroughTwoPoints _ ->
             ThroughTwoPointsTag
+
+        ThroughOnePoint _ ->
+            ThroughOnePointTag
 
         FromTo _ ->
             FromToTag
@@ -247,6 +251,12 @@ type Tool
         , maybeThatAnchorA : Maybe (That Point)
         , dropdownAnchorB : Dropdown
         , maybeThatAnchorB : Maybe (That Point)
+        }
+    | ThroughOnePoint
+        { name : String
+        , dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , angle : String
         }
       -- LINE SEGMENTS
     | FromTo
@@ -375,6 +385,17 @@ toolDescription toolTag =
                 , s "."
                 ]
 
+        ThroughOnePointTag ->
+            Element.paragraph []
+                [ s "Create a new "
+                , strong "line"
+                , s " through "
+                , strong "one point"
+                , s " with a given "
+                , strong "angle"
+                , s "."
+                ]
+
         FromToTag ->
             Element.paragraph []
                 [ s "Connect "
@@ -467,6 +488,9 @@ selectedPointsFromTool tool =
         ThroughTwoPoints data ->
             anchorAandB data
 
+        ThroughOnePoint data ->
+            onlyAnchorA data
+
         FromTo data ->
             anchorAandB data
 
@@ -523,6 +547,9 @@ selectedLinesFromTool tool =
             empty
 
         ThroughTwoPoints _ ->
+            empty
+
+        ThroughOnePoint _ ->
             empty
 
         FromTo _ ->
@@ -585,6 +612,9 @@ selectedLineSegmentsFromTool tool =
         ThroughTwoPoints _ ->
             empty
 
+        ThroughOnePoint _ ->
+            empty
+
         FromTo _ ->
             empty
 
@@ -643,6 +673,9 @@ selectedDetailsFromTool tool =
             empty
 
         ThroughTwoPoints _ ->
+            empty
+
+        ThroughOnePoint _ ->
             empty
 
         FromTo _ ->
@@ -1198,6 +1231,9 @@ viewTool pattern points circles lines lineSegments details tool =
                 ThroughTwoPoints data ->
                     viewThroughTwoPoints pattern points data
 
+                ThroughOnePoint data ->
+                    viewThroughOnePoint pattern points data
+
                 FromTo data ->
                     viewFromTo pattern points data
 
@@ -1391,6 +1427,21 @@ viewThroughTwoPoints pattern points data =
         }
         data.dropdownAnchorB
         data.maybeThatAnchorB
+    ]
+
+
+viewThroughOnePoint pattern points data =
+    [ labeledInputText NameChanged "pick a name" data.name
+    , labeledDropdown "through-one-point-anchor-a"
+        { optionToName = pointName pattern
+        , placeholder = ""
+        , lift = DropdownAnchorAMsg
+        , label = "anchor point"
+        , options = points
+        }
+        data.dropdownAnchorA
+        data.maybeThatAnchorA
+    , labeledFormulaInputText AngleChanged "angle" data.angle
     ]
 
 
@@ -1614,6 +1665,7 @@ viewToolSelector prefix hoveredTool maybeTool =
             ]
         , viewGroup "lines"
             [ [ button prefix hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
+              , button prefix hoveredTool ThroughOnePointTag "through_two_points" "Through one point"
               ]
             ]
         , viewGroup "line segments"
@@ -2752,6 +2804,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 , maybeThatAnchorB = Nothing
                                 }
 
+                        ThroughOnePointTag ->
+                            ThroughOnePoint
+                                { name = ""
+                                , dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , angle = ""
+                                }
+
                         FromToTag ->
                             FromTo
                                 { name = ""
@@ -2980,6 +3040,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (ThroughTwoPoints data) ->
                     updateName ThroughTwoPoints data
 
+                Tool (ThroughOnePoint data) ->
+                    updateName ThroughOnePoint data
+
                 Tool (FromTo data) ->
                     updateName FromTo data
 
@@ -3021,6 +3084,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( { model
                         | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
                       }
+                    , Cmd.none
+                    , Nothing
+                    )
+
+                Tool (ThroughOnePoint data) ->
+                    ( { model | dialog = Tool (ThroughOnePoint { data | angle = newAngle }) }
                     , Cmd.none
                     , Nothing
                     )
@@ -3201,6 +3270,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                 Tool (ThroughTwoPoints data) ->
                     updateDropdownAnchorA pattern model ThroughTwoPoints dropdownMsg data
+
+                Tool (ThroughOnePoint data) ->
+                    updateDropdownAnchorA pattern model ThroughOnePoint dropdownMsg data
 
                 Tool (FromTo data) ->
                     updateDropdownAnchorA pattern model FromTo dropdownMsg data
@@ -3550,32 +3622,25 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                 Tool (ThroughTwoPoints data) ->
-                    case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
-                        ( Just thatAnchorA, Just thatAnchorB ) ->
-                            let
-                                newLine =
-                                    Pattern.ThroughTwoPoints
-                                        thatAnchorA
-                                        thatAnchorB
+                    Maybe.map2
+                        (\thatAnchorA thatAnchorB ->
+                            Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
+                                |> Maybe.map (insertLine data.name storedPattern model)
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                        )
+                        data.maybeThatAnchorA
+                        data.maybeThatAnchorB
+                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                                newPattern =
-                                    Pattern.insertLine
-                                        (if data.name == "" then
-                                            Nothing
-
-                                         else
-                                            Just data.name
-                                        )
-                                        newLine
-                                        pattern
-                            in
-                            ( { model | dialog = NoDialog }
-                            , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
-                            )
-
-                        _ ->
-                            ( model, Cmd.none, Nothing )
+                Tool (ThroughOnePoint data) ->
+                    Maybe.map
+                        (\thatAnchorA ->
+                            Pattern.throughOnePoint pattern thatAnchorA data.angle
+                                |> Maybe.map (insertLine data.name storedPattern model)
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                        )
+                        data.maybeThatAnchorA
+                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                 Tool (FromTo data) ->
                     case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
@@ -3920,6 +3985,25 @@ insertCircle name viewedPattern model newCircle =
                     Just name
                 )
                 newCircle
+                viewedPattern.pattern
+    in
+    ( { model | dialog = NoDialog }
+    , Cmd.none
+    , Just { viewedPattern | pattern = newPattern }
+    )
+
+
+insertLine name viewedPattern model newLine =
+    let
+        newPattern =
+            Pattern.insertLine
+                (if name == "" then
+                    Nothing
+
+                 else
+                    Just name
+                )
+                newLine
                 viewedPattern.pattern
     in
     ( { model | dialog = NoDialog }

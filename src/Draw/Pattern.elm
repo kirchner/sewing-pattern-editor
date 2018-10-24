@@ -50,7 +50,7 @@ draw selected zoom hoveredPoint pattern =
                     ]
               ]
             , List.map (drawDetail selected.details) geometry.details
-            , List.map (drawLine selected.lines) geometry.lines
+            , List.map (drawLine zoom selected.lines) geometry.lines
             , List.map (drawLineSegment selected.lineSegments) geometry.lineSegments
             , List.map (drawCircle zoom) geometry.circles
             , List.map (drawPoint zoom pattern hoveredPoint selected.points) geometry.points
@@ -261,8 +261,8 @@ drawPoint zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point
         ]
 
 
-drawLine : Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
-drawLine selectedLines ( thatLine, maybeName, axis2d ) =
+drawLine : Float -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
+drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
     let
         selected =
             Those.member thatLine selectedLines
@@ -274,6 +274,8 @@ drawLine selectedLines ( thatLine, maybeName, axis2d ) =
 
             else
                 "grey"
+        , Svg.Attributes.strokeWidth <|
+            String.fromFloat (2 * zoom)
         ]
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -10000

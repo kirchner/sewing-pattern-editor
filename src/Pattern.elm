@@ -8,13 +8,12 @@ module Pattern exposing
     , firstCircleCircle, secondCircleCircle
     , Circle(..), circles, insertCircle, getCircle
     , centeredAt
+    , Line(..), lines, insertLine, getLine
+    , throughTwoPoints, throughOnePoint
     , variables
-    , lines
-    , getLine
     , geometry, Geometry, Problems
     , insertVariable, removeVariable
-    , insertLine
-    , Detail(..), Length(..), Line(..), LineSegment(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments, origin, point2d
+    , Detail(..), Length(..), LineSegment(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments, origin, point2d
     )
 
 {-|
@@ -47,13 +46,16 @@ module Pattern exposing
 @docs centeredAt
 
 
+# Lines
+
+@docs Line, lines, insertLine, getLine
+
+@docs throughTwoPoints, throughOnePoint
+
+
 # Read
 
 @docs variables
-
-@docs lines
-
-@docs getLine
 
 @docs geometry, Geometry, Problems
 
@@ -65,8 +67,6 @@ module Pattern exposing
 @docs replacePoint, removePoint
 
 @docs replaceCircle, removeCircle
-
-@docs insertLine, replaceLine, removeLine
 
 -}
 
@@ -180,7 +180,7 @@ type Constraint
 
 
 type Line
-    = ThroughOnePoint (That Point) Angle
+    = ThroughOnePoint (That Point) String
     | ThroughTwoPoints (That Point) (That Point)
 
 
@@ -776,7 +776,17 @@ axis2d ((Pattern pattern) as p) thatLine =
                 _ ->
                     Nothing
 
-        _ ->
+        Just (ThroughOnePoint thatPoint rawAngle) ->
+            Maybe.map2 Axis2d.through
+                (point2d p thatPoint)
+                (rawAngle
+                    |> Expr.parse reservedWords
+                    |> Result.toMaybe
+                    |> Maybe.andThen (compute p >> Result.toMaybe)
+                    |> Maybe.map (degrees >> Direction2d.fromAngle)
+                )
+
+        Nothing ->
             Nothing
 
 
@@ -1104,6 +1114,32 @@ centeredAt (Pattern pattern) thatCenter rawRadius =
         Ok _ ->
             if Store.member pattern.points (That.objectId thatCenter) then
                 Just (CenteredAt thatCenter rawRadius)
+
+            else
+                Nothing
+
+        Err _ ->
+            Nothing
+
+
+throughTwoPoints : Pattern -> That Point -> That Point -> Maybe Line
+throughTwoPoints (Pattern pattern) thatPointA thatPointB =
+    if
+        Store.member pattern.points (That.objectId thatPointA)
+            && Store.member pattern.points (That.objectId thatPointB)
+    then
+        Just (ThroughTwoPoints thatPointA thatPointB)
+
+    else
+        Nothing
+
+
+throughOnePoint : Pattern -> That Point -> String -> Maybe Line
+throughOnePoint (Pattern pattern) thatPoint rawAngle =
+    case Expr.parse reservedWords rawAngle of
+        Ok _ ->
+            if Store.member pattern.points (That.objectId thatPoint) then
+                Just (ThroughOnePoint thatPoint rawAngle)
 
             else
                 Nothing
@@ -1460,8 +1496,11 @@ encodeLine line =
                 , ( "anchorB", That.encode anchorB )
                 ]
 
-        _ ->
-            Encode.null
+        ThroughOnePoint anchor angle ->
+            withType "throughOnePoint"
+                [ ( "anchor", That.encode anchor )
+                , ( "angle", Encode.string angle )
+                ]
 
 
 encodeLineSegment : LineSegment -> Value
@@ -1643,6 +1682,10 @@ lineDecoder =
             Decode.map2 ThroughTwoPoints
                 (Decode.field "anchorA" That.decoder)
                 (Decode.field "anchorB" That.decoder)
+        , typeDecoder "throughOnePoint" <|
+            Decode.map2 ThroughOnePoint
+                (Decode.field "anchor" That.decoder)
+                (Decode.field "angle" Decode.string)
         ]
 
 
