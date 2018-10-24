@@ -8,6 +8,7 @@ import Axis2d exposing (Axis2d)
 import Circle2d exposing (Circle2d)
 import Direction2d
 import Point2d exposing (Point2d)
+import Vector2d
 
 
 type Intersection
@@ -30,11 +31,18 @@ intersectionAxis circle axis =
         ( a, b ) =
             axis
                 |> Axis2d.direction
-                |> Direction2d.perpendicularTo
+                |> Direction2d.rotateCounterclockwise
                 |> Direction2d.components
 
+        ( xOrigin, yOrigin ) =
+            axis
+                |> Axis2d.originPoint
+                |> Point2d.coordinates
+
         c =
-            1
+            Vector2d.dotProduct
+                (Vector2d.fromComponents ( a, b ))
+                (Vector2d.fromComponents ( xOrigin, yOrigin ))
 
         cPrim =
             c - a * x - b * y
