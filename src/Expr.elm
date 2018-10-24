@@ -18,11 +18,12 @@ type Expr
     | Difference Expr Expr
     | Product Expr Expr
     | Quotient Expr Expr
+    | Max Expr Expr
 
 
 parse : List String -> String -> Result (List DeadEnd) Expr
 parse reservedWords string =
-    Parser.run (expr reservedWords) string
+    Parser.run (expr ("max" :: reservedWords)) string
 
 
 evaluate :
@@ -59,6 +60,11 @@ evaluate functions variables e =
 
         Quotient exprA exprB ->
             Maybe.map2 (\a b -> a / b)
+                (evaluate functions variables exprA)
+                (evaluate functions variables exprB)
+
+        Max exprA exprB ->
+            Maybe.map2 Basics.max
                 (evaluate functions variables exprA)
                 (evaluate functions variables exprB)
 
@@ -111,6 +117,21 @@ function reservedWords =
         |. symbol ")"
 
 
+max : List String -> Parser Expr
+max reservedWords =
+    succeed Max
+        |. keyword "max"
+        |. symbol "("
+        |. spaces
+        |= lazy (\_ -> expr reservedWords)
+        |. spaces
+        |. symbol ","
+        |. spaces
+        |= lazy (\_ -> expr reservedWords)
+        |. spaces
+        |. symbol ")"
+
+
 argsHelp : List String -> List String -> Parser (List String)
 argsHelp reservedWords revArgs =
     succeed identity
@@ -133,6 +154,7 @@ term : List String -> Parser Expr
 term reservedWords =
     oneOf
         [ digits
+        , max reservedWords
         , backtrackable (function reservedWords)
         , var reservedWords
         , succeed identity

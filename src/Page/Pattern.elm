@@ -45,6 +45,7 @@ import Element.Input as Input
 import Geometry.Svg as Svg
 import Html.Attributes
 import Html.Events as Events
+import Html.Lazy
 import Html.Styled as Html
 import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode exposing (Decoder)
@@ -835,6 +836,26 @@ viewWorkspace windowWidth windowHeight storedPattern model =
     let
         { pattern, center, zoom } =
             storedPattern
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        (Element.html <|
+            Html.Lazy.lazy6 viewPattern
+                windowWidth
+                windowHeight
+                model.maybeDrag
+                storedPattern
+                model.hoveredPoint
+                model.dialog
+        )
+
+
+viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog =
+    let
+        { pattern, center, zoom } =
+            storedPattern
 
         selections =
             { points =
@@ -856,7 +877,7 @@ viewWorkspace windowWidth windowHeight storedPattern model =
             }
 
         maybeTool =
-            case model.dialog of
+            case dialog of
                 Tool tool ->
                     Just tool
 
@@ -873,7 +894,7 @@ viewWorkspace windowWidth windowHeight storedPattern model =
                 ]
 
         { x, y } =
-            case model.maybeDrag of
+            case maybeDrag of
                 Nothing ->
                     center
 
@@ -882,37 +903,31 @@ viewWorkspace windowWidth windowHeight storedPattern model =
                     , y = center.y + (drag.start.y - drag.current.y) * zoom
                     }
     in
-    Element.el
-        [ Element.width Element.fill
-        , Element.height Element.fill
+    Svg.svg
+        [ Svg.Attributes.viewBox (viewBox windowWidth windowHeight zoom)
+        , Html.Attributes.style "user-select" "none"
+        , Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+        , Events.on "mousedown" <|
+            Decode.map MouseDown <|
+                Decode.map2 Position
+                    (Decode.field "screenX" Decode.float)
+                    (Decode.field "screenY" Decode.float)
         ]
-        (Element.html <|
-            Svg.svg
-                [ Svg.Attributes.viewBox (viewBox windowWidth windowHeight zoom)
-                , Html.Attributes.style "user-select" "none"
-                , Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-                , Events.on "mousedown" <|
-                    Decode.map MouseDown <|
-                        Decode.map2 Position
-                            (Decode.field "screenX" Decode.float)
-                            (Decode.field "screenY" Decode.float)
-                ]
-                [ Svg.g [ Svg.Attributes.transform translation ]
-                    [ Pattern.draw selections zoom model.hoveredPoint pattern
-                    , drawHoverPolygons windowWidth windowHeight model storedPattern
-                    ]
-                ]
-        )
+        [ Svg.g [ Svg.Attributes.transform translation ]
+            [ Pattern.draw selections zoom hoveredPoint pattern
+            , drawHoverPolygons windowWidth windowHeight maybeDrag storedPattern
+            ]
+        ]
 
 
-drawHoverPolygons : Int -> Int -> Model -> StoredPattern -> Svg Msg
-drawHoverPolygons windowWidth windowHeight model { pattern, center, zoom } =
+drawHoverPolygons : Int -> Int -> Maybe Drag -> StoredPattern -> Svg Msg
+drawHoverPolygons windowWidth windowHeight maybeDrag { pattern, center, zoom } =
     let
         ( geometry, _ ) =
             Pattern.geometry pattern
 
         { x, y } =
-            case model.maybeDrag of
+            case maybeDrag of
                 Nothing ->
                     center
 
