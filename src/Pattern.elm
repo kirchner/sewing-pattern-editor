@@ -1,7 +1,12 @@
 module Pattern exposing
     ( Pattern
     , empty
+    , Geometry, geometry, Problems
+    , getPointGeometries, getPointGeometry
+    , point2d
+    , variables, insertVariable, removeVariable
     , Point(..), points, insertPoint, getPoint, updatePoint
+    , origin
     , leftOf, rightOf, above, below
     , atAngle
     , betweenRatio, betweenLength
@@ -10,10 +15,10 @@ module Pattern exposing
     , centeredAt
     , Line(..), lines, insertLine, getLine
     , throughTwoPoints, throughOnePoint
-    , variables
-    , geometry, Geometry, Problems
-    , insertVariable, removeVariable
-    , Detail(..), Length(..), LineSegment(..), Transformation(..), computeLength, decoder, details, encode, exprFromFloat, getDetail, getLineSegment, getPointGeometries, getPointGeometry, insertDetail, insertLineSegment, insertTransformation, lastState, lineSegments, origin, point2d
+    , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
+    , Detail(..), details, insertDetail, getDetail
+    , Transformation(..), insertTransformation
+    , decoder, encode
     )
 
 {-|
@@ -23,12 +28,28 @@ module Pattern exposing
 @docs empty
 
 
-## Objects
+# Geometry
+
+@docs Geometry, geometry, Problems
+
+@docs getPointGeometries, getPointGeometry
+
+@docs point2d
 
 
-# Points
+# Variables
 
-@docs Point, points, insertPoint, getPoint, updatePoint
+@docs Variable, variables, insertVariable, removeVariable, renameVariable
+
+
+# Objects
+
+
+## Points
+
+@docs Point, points, insertPoint, getPoint, updatePoint, replacePoint, removePoint
+
+@docs origin
 
 @docs leftOf, rightOf, above, below
 
@@ -39,34 +60,38 @@ module Pattern exposing
 @docs firstCircleCircle, secondCircleCircle, lineLine, firstCircleLine, secondCircleLine
 
 
-# Circles
+## Circles
 
-@docs Circle, circles, insertCircle, getCircle
+@docs Circle, circles, insertCircle, getCircle, replaceCircle, removeCircle
 
 @docs centeredAt
 
 
-# Lines
+## Lines
 
 @docs Line, lines, insertLine, getLine
 
 @docs throughTwoPoints, throughOnePoint
 
 
-# Read
+## Line Segments
 
-@docs variables
-
-@docs geometry, Geometry, Problems
+@docs LineSegment, lineSegments, insertLineSegment, getLineSegment
 
 
-# Modify
+## Details
 
-@docs insertVariable, removeVariable, renameVariable
+@docs Detail, details, insertDetail, getDetail
 
-@docs replacePoint, removePoint
 
-@docs replaceCircle, removeCircle
+# Transformations
+
+@docs Transformation, transformations, insertTransformation
+
+
+# JSON
+
+@docs decoder, encode
 
 -}
 
@@ -152,15 +177,15 @@ type Point
     | BetweenRatio (That Point) (That Point) String
     | BetweenLength (That Point) (That Point) String
       -- ON OBJECT
-    | OnLineThatX (That Line) Coordinate
-    | OnLineThatY (That Line) Coordinate
-    | OnCurve (That Curve) Constraint
+    | OnLineThatX (That Line) String
+    | OnLineThatY (That Line) String
+    | OnCurve (That Curve) String
     | OnLineSegment (That LineSegment) Constraint
     | OnCircle (That Circle) Constraint
     | OnCircleFirstTangent (That Circle) (That Point)
     | OnCircleSecondTangent (That Circle) (That Point)
-    | OnCircleFirstChord (That Circle) Angle
-    | OnCircleSecondChord (That Circle) Angle
+    | OnCircleFirstChord (That Circle) String
+    | OnCircleSecondChord (That Circle) String
       -- BY INTERSECTION
     | FirstCircleCircle (That Circle) (That Circle)
     | SecondCircleCircle (That Circle) (That Circle)
@@ -172,8 +197,8 @@ type Point
 
 
 type Constraint
-    = X Coordinate
-    | Y Coordinate
+    = X String
+    | Y String
     | MinX
     | MaxX
     | MinY
@@ -384,143 +409,8 @@ type DoesNotCompute
     | RecursiveExpression (List String)
 
 
-exprFromFloat : Float -> Expr
-exprFromFloat f =
-    Number f
-
-
-
-----
-
-
 type Angle
     = Angle Expr
-
-
-type Coordinate
-    = Coordinate Expr
-
-
-type Length
-    = Length Expr
-
-
-computeLength : Pattern -> Length -> Maybe Float
-computeLength pattern (Length expr) =
-    compute pattern expr
-        |> Result.toMaybe
-
-
-type Ratio
-    = Ratio Expr
-
-
-
----- TRANSFORMATIONS
-
-
-type alias Transformations =
-    { entries : List ( Int, Transformation )
-    , nextId : Int
-    }
-
-
-noTransformations : Transformations
-noTransformations =
-    { entries = []
-    , nextId = 0
-    }
-
-
-type State
-    = State Int
-
-
-start : State
-start =
-    State -1
-
-
-append : Transformation -> Transformations -> Transformations
-append newTransformation ts =
-    { ts
-        | entries = ( ts.nextId, newTransformation ) :: ts.entries
-        , nextId = ts.nextId + 1
-    }
-
-
-lastState : Pattern -> State
-lastState (Pattern { transformations }) =
-    transformations.entries
-        |> List.head
-        |> Maybe.map (Tuple.first >> State)
-        |> Maybe.withDefault start
-
-
-last : Transformations -> Maybe ( State, Transformation )
-last { entries } =
-    entries
-        |> List.head
-        |> Maybe.map (Tuple.mapFirst State)
-
-
-allUntil : State -> Transformations -> List ( State, Transformation )
-allUntil (State id) { entries } =
-    if id == -1 then
-        []
-
-    else
-        allUntilHelp [] False id entries
-
-
-allUntilHelp :
-    List ( State, Transformation )
-    -> Bool
-    -> Int
-    -> List ( Int, Transformation )
-    -> List ( State, Transformation )
-allUntilHelp sum found id entries =
-    case entries of
-        [] ->
-            if found then
-                sum
-
-            else
-                []
-
-        ( nextId, entry ) :: rest ->
-            if nextId == id then
-                ( State nextId, entry ) :: sum
-
-            else
-                allUntilHelp (( State nextId, entry ) :: sum) found id rest
-
-
-firstToLast : Transformations -> List ( State, Transformation )
-firstToLast { entries } =
-    List.foldl
-        (\( id, entry ) sum -> ( State id, entry ) :: sum)
-        []
-        entries
-
-
-lastToFirst : Transformations -> List ( State, Transformation )
-lastToFirst { entries } =
-    List.map (Tuple.mapFirst State) entries
-
-
-getTransformation : Pattern -> Int -> Maybe Transformation
-getTransformation (Pattern pattern) id =
-    pattern.transformations.entries
-        |> List.filterMap
-            (\( nextId, transformation ) ->
-                if nextId == id then
-                    Just transformation
-
-                else
-                    Nothing
-            )
-        |> List.head
 
 
 
@@ -1655,15 +1545,6 @@ encodeAngle (Angle expr) =
         ]
 
 
-encodeLength : Length -> Value
-encodeLength (Length expr) =
-    Encode.object
-        [ ( "length"
-          , encodeExpr expr
-          )
-        ]
-
-
 encodeExpr : Expr -> Value
 encodeExpr expr =
     case expr of
@@ -1840,12 +1721,6 @@ transformationDecoder =
         ]
 
 
-lengthDecoder : Decoder Length
-lengthDecoder =
-    Decode.map Length <|
-        Decode.field "length" exprDecoder
-
-
 angleDecoder : Decoder Angle
 angleDecoder =
     Decode.map Angle <|
@@ -1871,3 +1746,111 @@ typeDecoder type_ dataDecoder =
                 else
                     Decode.fail "not a valid type"
             )
+
+
+
+---- TRANSFORMATIONS
+
+
+type alias Transformations =
+    { entries : List ( Int, Transformation )
+    , nextId : Int
+    }
+
+
+noTransformations : Transformations
+noTransformations =
+    { entries = []
+    , nextId = 0
+    }
+
+
+type State
+    = State Int
+
+
+start : State
+start =
+    State -1
+
+
+append : Transformation -> Transformations -> Transformations
+append newTransformation ts =
+    { ts
+        | entries = ( ts.nextId, newTransformation ) :: ts.entries
+        , nextId = ts.nextId + 1
+    }
+
+
+lastState : Pattern -> State
+lastState (Pattern { transformations }) =
+    transformations.entries
+        |> List.head
+        |> Maybe.map (Tuple.first >> State)
+        |> Maybe.withDefault start
+
+
+last : Transformations -> Maybe ( State, Transformation )
+last { entries } =
+    entries
+        |> List.head
+        |> Maybe.map (Tuple.mapFirst State)
+
+
+allUntil : State -> Transformations -> List ( State, Transformation )
+allUntil (State id) { entries } =
+    if id == -1 then
+        []
+
+    else
+        allUntilHelp [] False id entries
+
+
+allUntilHelp :
+    List ( State, Transformation )
+    -> Bool
+    -> Int
+    -> List ( Int, Transformation )
+    -> List ( State, Transformation )
+allUntilHelp sum found id entries =
+    case entries of
+        [] ->
+            if found then
+                sum
+
+            else
+                []
+
+        ( nextId, entry ) :: rest ->
+            if nextId == id then
+                ( State nextId, entry ) :: sum
+
+            else
+                allUntilHelp (( State nextId, entry ) :: sum) found id rest
+
+
+firstToLast : Transformations -> List ( State, Transformation )
+firstToLast { entries } =
+    List.foldl
+        (\( id, entry ) sum -> ( State id, entry ) :: sum)
+        []
+        entries
+
+
+lastToFirst : Transformations -> List ( State, Transformation )
+lastToFirst { entries } =
+    List.map (Tuple.mapFirst State) entries
+
+
+getTransformation : Pattern -> Int -> Maybe Transformation
+getTransformation (Pattern pattern) id =
+    pattern.transformations.entries
+        |> List.filterMap
+            (\( nextId, transformation ) ->
+                if nextId == id then
+                    Just transformation
+
+                else
+                    Nothing
+            )
+        |> List.head
