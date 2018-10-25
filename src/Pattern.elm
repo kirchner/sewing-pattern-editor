@@ -131,7 +131,6 @@ import Polygon2d exposing (Polygon2d)
 import Set exposing (Set)
 import Store exposing (Entry, Store)
 import That exposing (That, that)
-import Those exposing (Those)
 import Vector2d
 
 
@@ -145,8 +144,8 @@ type alias PatternData =
     , lines : Store Line
     , lineSegments : Store LineSegment
     , details : Store Detail
+    , transformations : Store Transformation
     , variables : Dict String String
-    , transformations : Transformations
 
     -- CACHE
     , cache :
@@ -166,7 +165,7 @@ empty =
         , lineSegments = Store.empty
         , details = Store.empty
         , variables = Dict.empty
-        , transformations = noTransformations
+        , transformations = Store.empty
         , cache = Nothing
         }
 
@@ -182,14 +181,12 @@ type Point
     | Above (That Point) String
     | Below (That Point) String
     | AtAngle (That Point) String String
+      -- BETWEEN
     | BetweenRatio (That Point) (That Point) String
     | BetweenLength (That Point) (That Point) String
       -- ON OBJECT
-    | OnLineThatX (That Line) String
-    | OnLineThatY (That Line) String
-    | OnCurve (That Curve) String
-    | OnLineSegment (That LineSegment) Constraint
-    | OnCircle (That Circle) Constraint
+    | OnCurveRatio (That Curve) String
+    | OnCurveLength (That Curve) String
     | OnCircleFirstTangent (That Circle) (That Point)
     | OnCircleSecondTangent (That Circle) (That Point)
     | OnCircleFirstChord (That Circle) String
@@ -201,16 +198,7 @@ type Point
     | FirstCircleLine (That Circle) (That Line)
     | SecondCircleLine (That Circle) (That Line)
       -- BY TRANSFORMATION
-    | Transformed (That Point) Transformation
-
-
-type Constraint
-    = X String
-    | Y String
-    | MinX
-    | MaxX
-    | MinY
-    | MaxY
+    | TransformBy (That Transformation) (That Point)
 
 
 type Line
@@ -243,117 +231,8 @@ type Detail
 
 
 type Transformation
-    = MirrorAt (That Line) (Those Point)
-    | RotateAround (That Point) Angle (Those Point)
-    | CutAlong (That Line) (That Detail)
-    | CutAlongLineSegment (That LineSegment) (That Detail)
-    | CutCurve (That Curve) (That Detail)
-
-
-applyTransformationToPoint2d : Pattern -> Transformation -> Point2d -> Point2d
-applyTransformationToPoint2d pattern transformation previousPoint2d =
-    case transformation of
-        MirrorAt thatLine _ ->
-            case axis2d pattern thatLine of
-                Just axis ->
-                    previousPoint2d
-                        |> Point2d.mirrorAcross axis
-
-                Nothing ->
-                    previousPoint2d
-
-        _ ->
-            previousPoint2d
-
-
-addTransformationToPoint :
-    Pattern
-    -> Int
-    -> Transformation
-    -> ( That Point, Entry Point )
-    -> List ( That Point, Entry Point )
-addTransformationToPoint p transformationId transformation ( previousThat, entry ) =
-    case transformation of
-        MirrorAt thatLine thosePoints ->
-            if Those.member previousThat thosePoints then
-                [ addChange transformationId Nothing previousThat entry ]
-
-            else
-                [ ( previousThat, entry ) ]
-
-        CutAlongLineSegment thatLineSegment _ ->
-            case getLineSegment p thatLineSegment of
-                Nothing ->
-                    [ ( previousThat, entry ) ]
-
-                Just lineSegment ->
-                    let
-                        thatPointA =
-                            case lineSegment.value of
-                                FromTo from _ ->
-                                    from
-
-                        thatPointB =
-                            case lineSegment.value of
-                                FromTo _ to ->
-                                    to
-                    in
-                    if That.areEqual previousThat thatPointA then
-                        [ addChange transformationId (Just 0) previousThat entry ]
-
-                    else if That.areEqual previousThat thatPointB then
-                        [ addChange transformationId (Just 1) previousThat entry ]
-
-                    else
-                        [ ( previousThat, entry ) ]
-
-        _ ->
-            [ ( previousThat, entry ) ]
-
-
-addTransformationToDetail :
-    Pattern
-    -> Int
-    -> Transformation
-    -> ( That Detail, Entry Detail )
-    -> List ( That Detail, Entry Detail )
-addTransformationToDetail p transformationId transformation ( previousThat, entry ) =
-    case transformation of
-        CutAlongLineSegment thatLineSegment thatDetail ->
-            case ( getDetail p thatDetail, getLineSegment p thatLineSegment ) of
-                ( Just detail, Just lineSegment ) ->
-                    let
-                        thatPointA =
-                            case lineSegment.value of
-                                FromTo from _ ->
-                                    from
-
-                        thatPointB =
-                            case lineSegment.value of
-                                FromTo _ to ->
-                                    to
-
-                        targets =
-                            case detail.value of
-                                CounterClockwise thatPoints ->
-                                    Those.fromList thatPoints
-                    in
-                    if
-                        Those.member thatPointA targets
-                            && Those.member thatPointB targets
-                    then
-                        [ addChange transformationId (Just 0) previousThat entry
-                        , addChange transformationId (Just 1) previousThat entry
-                        ]
-
-                    else
-                        [ ( previousThat, entry ) ]
-
-                _ ->
-                    [ ( previousThat, entry ) ]
-
-        _ ->
-            [ ( previousThat, entry ) ]
+    = MirrorAt (That Line)
+    | RotateAround (That Point) String
 
 
 
@@ -415,10 +294,6 @@ type DoesNotCompute
     = TODO
     | MissingVariable String
     | RecursiveExpression (List String)
-
-
-type Angle
-    = Angle Expr
 
 
 
@@ -571,10 +446,21 @@ computePoint2d pattern thatPoint =
                                 |> Maybe.map (Point2d.translateBy v)
 
         applyTransformations point =
-            thatPoint
-                |> That.changes
-                |> List.filterMap (.transformationId >> getTransformation pattern)
-                |> List.foldr (applyTransformationToPoint2d pattern) point
+            point
+
+        applyTransformation point transformation =
+            case transformation of
+                MirrorAt thatLine ->
+                    case axis2d pattern thatLine of
+                        Just axis ->
+                            point
+                                |> Point2d.mirrorAcross axis
+
+                        Nothing ->
+                            point
+
+                _ ->
+                    point
     in
     Maybe.map applyTransformations <|
         case Maybe.map .value (getPoint pattern thatPoint) of
@@ -800,130 +686,9 @@ lineSegment2d ((Pattern pattern) as p) thatLineSegment =
             Nothing
 
 
-type Location
-    = InDetail
-    | OutsideDetail
-    | Unknown (List (That Point))
-
-
 polygon2d : Pattern -> That Detail -> List Polygon2d
 polygon2d ((Pattern pattern) as p) thatDetail =
-    let
-        transformations =
-            List.filterMap
-                (\{ transformationId, branch } ->
-                    Maybe.map2 Tuple.pair
-                        (getTransformation p transformationId)
-                        branch
-                )
-                (That.changes thatDetail)
-
-        applyTransformations detail =
-            case detail of
-                Just (CounterClockwise targets) ->
-                    List.foldr applyTransformation [ targets ] transformations
-
-                _ ->
-                    []
-
-        applyTransformation ( transformation, branch ) targetsList =
-            case transformation of
-                CutAlongLineSegment thatLineSegment _ ->
-                    case getLineSegment p thatLineSegment of
-                        Nothing ->
-                            targetsList
-
-                        Just lineSegment ->
-                            let
-                                maybePoints =
-                                    if branch == 0 then
-                                        Just
-                                            ( case lineSegment.value of
-                                                FromTo from _ ->
-                                                    from
-                                            , case lineSegment.value of
-                                                FromTo _ to ->
-                                                    to
-                                            )
-
-                                    else if branch == 1 then
-                                        Just
-                                            ( case lineSegment.value of
-                                                FromTo _ to ->
-                                                    to
-                                            , case lineSegment.value of
-                                                FromTo from _ ->
-                                                    from
-                                            )
-
-                                    else
-                                        Nothing
-                            in
-                            case maybePoints of
-                                Nothing ->
-                                    targetsList
-
-                                Just ( startPoint, endPoint ) ->
-                                    targetsList
-                                        |> List.map
-                                            (List.foldl
-                                                (\target ( targetsDetail, location ) ->
-                                                    case location of
-                                                        Unknown targetsUnknown ->
-                                                            if That.areEqual target startPoint then
-                                                                ( target :: targetsUnknown
-                                                                , InDetail
-                                                                )
-
-                                                            else if That.areEqual target endPoint then
-                                                                ( targetsUnknown ++ [ target ]
-                                                                , OutsideDetail
-                                                                )
-
-                                                            else
-                                                                ( []
-                                                                , Unknown (target :: targetsUnknown)
-                                                                )
-
-                                                        InDetail ->
-                                                            if That.areEqual target endPoint then
-                                                                ( target :: targetsDetail
-                                                                , OutsideDetail
-                                                                )
-
-                                                            else
-                                                                ( target :: targetsDetail
-                                                                , InDetail
-                                                                )
-
-                                                        OutsideDetail ->
-                                                            if That.areEqual target startPoint then
-                                                                ( target :: targetsDetail
-                                                                , InDetail
-                                                                )
-
-                                                            else
-                                                                ( targetsDetail
-                                                                , OutsideDetail
-                                                                )
-                                                )
-                                                ( [], Unknown [] )
-                                                >> Tuple.first
-                                            )
-
-                _ ->
-                    targetsList
-    in
-    thatDetail
-        |> getDetail p
-        |> Maybe.map .value
-        |> applyTransformations
-        |> List.map
-            (\targets ->
-                targets
-                    |> List.filterMap (point2d p)
-                    |> Polygon2d.singleLoop
-            )
+    []
 
 
 
@@ -1197,7 +962,7 @@ throughOnePoint (Pattern pattern) thatPoint rawAngle =
 
 points : Pattern -> List ( That Point, Entry Point )
 points =
-    objects .points addTransformationToPoint
+    objects .points
 
 
 getPoint : Pattern -> That Point -> Maybe (Entry Point)
@@ -1208,7 +973,7 @@ getPoint (Pattern pattern) =
 thatPointByName : Pattern -> String -> Maybe (That Point)
 thatPointByName (Pattern pattern) name =
     Store.getByName pattern.points name
-        |> Maybe.map (Tuple.first >> That.that [])
+        |> Maybe.map (Tuple.first >> That.that)
 
 
 updatePoint : That Point -> Point -> Pattern -> Pattern
@@ -1233,16 +998,8 @@ getPointGeometries pattern thatPoint =
 
 getPointGeometriesHelp : List (Maybe Point2d) -> Pattern -> That Point -> List Point2d
 getPointGeometriesHelp geometries pattern thatPoint =
-    if List.isEmpty (That.changes thatPoint) then
-        point2d pattern thatPoint
-            :: geometries
-            |> List.filterMap identity
-
-    else
-        getPointGeometriesHelp
-            (point2d pattern thatPoint :: geometries)
-            pattern
-            (That.dropChanges 1 thatPoint)
+    List.filterMap identity
+        (point2d pattern thatPoint :: geometries)
 
 
 insertPoint : Maybe String -> Point -> Pattern -> Pattern
@@ -1267,7 +1024,7 @@ circles ((Pattern pattern) as p) =
 
 thatCircleFromId : Pattern -> Int -> That Circle
 thatCircleFromId (Pattern pattern) id =
-    that [] id
+    that id
 
 
 getCircle : Pattern -> That Circle -> Maybe (Entry Circle)
@@ -1297,7 +1054,7 @@ lines ((Pattern pattern) as p) =
 
 thatLineFromId : Pattern -> Int -> That Line
 thatLineFromId (Pattern pattern) id =
-    that [] id
+    that id
 
 
 getLine : Pattern -> That Line -> Maybe (Entry Line)
@@ -1327,7 +1084,7 @@ lineSegments ((Pattern pattern) as p) =
 
 thatLineSegmentFromId : Pattern -> Int -> That LineSegment
 thatLineSegmentFromId (Pattern pattern) id =
-    that [] id
+    that id
 
 
 getLineSegment : Pattern -> That LineSegment -> Maybe (Entry LineSegment)
@@ -1348,13 +1105,15 @@ insertLineSegment maybeName lineSegment (Pattern pattern) =
 ---- TRANSFORMATIONS
 
 
-insertTransformation : Transformation -> Pattern -> Pattern
+insertTransformation : Transformation -> Pattern -> ( Pattern, That Transformation )
 insertTransformation transformation (Pattern pattern) =
-    Pattern
+    ( Pattern
         { pattern
-            | transformations = append transformation pattern.transformations
+            | transformations = Store.insert Nothing transformation pattern.transformations
             , cache = Nothing
         }
+    , that (Debug.todo "implement")
+    )
 
 
 
@@ -1363,7 +1122,7 @@ insertTransformation transformation (Pattern pattern) =
 
 details : Pattern -> List ( That Detail, Entry Detail )
 details pattern =
-    objects .details addTransformationToDetail pattern
+    objects .details pattern
 
 
 insertDetail : Detail -> Pattern -> Pattern
@@ -1384,42 +1143,12 @@ getDetail (Pattern pattern) =
 ---- OBJECTS
 
 
-objects :
-    (PatternData -> Store a)
-    -> (Pattern -> Int -> Transformation -> ( That a, Entry a ) -> List ( That a, Entry a ))
-    -> Pattern
-    -> List ( That a, Entry a )
-objects objectsAccessor addTransformationToObject ((Pattern pattern) as p) =
-    let
-        apply transformations thats =
-            case transformations of
-                [] ->
-                    thats
-
-                ( transformationId, transformation ) :: rest ->
-                    thats
-                        |> List.map (addTransformationToObject p transformationId transformation)
-                        |> List.concat
-                        |> apply rest
-    in
+objects : (PatternData -> Store a) -> Pattern -> List ( That a, Entry a )
+objects objectsAccessor ((Pattern pattern) as p) =
     pattern
         |> objectsAccessor
         |> Store.toList
-        |> List.map (Tuple.mapFirst (that []))
-        |> apply pattern.transformations.entries
-
-
-addChange : Int -> Maybe Int -> That a -> Entry a -> ( That a, Entry a )
-addChange transformationId branch previousThat entry =
-    ( that
-        ({ transformationId = transformationId
-         , branch = branch
-         }
-            :: That.changes previousThat
-        )
-        (That.objectId previousThat)
-    , entry
-    )
+        |> List.map (Tuple.mapFirst that)
 
 
 
@@ -1434,26 +1163,23 @@ encode (Pattern pattern) =
         , ( "lines", Store.encode encodeLine pattern.lines )
         , ( "lineSegments", Store.encode encodeLineSegment pattern.lineSegments )
         , ( "details", Store.encode encodeDetail pattern.details )
-        , ( "transformations", encodeTransformations pattern.transformations )
         , ( "variables", encodeVariables pattern.variables )
+        , ( "transformations", Store.encode encodeTransformation pattern.transformations )
         ]
 
 
-encodeTransformations : Transformations -> Value
-encodeTransformations { entries, nextId } =
-    let
-        encodeEntry ( id, transformation ) =
-            Encode.object
-                [ ( "id", Encode.int id )
-                , ( "transformation", encodeTransformation transformation )
+encodeTransformation : Transformation -> Value
+encodeTransformation transformation =
+    case transformation of
+        MirrorAt line ->
+            withType "mirrorAt"
+                [ ( "line", That.encode line ) ]
+
+        RotateAround point angle ->
+            withType "rotateAround"
+                [ ( "point", That.encode point )
+                , ( "angle", Encode.string angle )
                 ]
-    in
-    Encode.object
-        [ ( "entries"
-          , Encode.list encodeEntry entries
-          )
-        , ( "nextId", Encode.int nextId )
-        ]
 
 
 encodeVariables : Dict String String -> Value
@@ -1601,34 +1327,6 @@ encodeDetail detail =
                 [ ( "points", Encode.list That.encode thatPoints ) ]
 
 
-encodeTransformation : Transformation -> Value
-encodeTransformation transformation =
-    case transformation of
-        MirrorAt line targets ->
-            withType "mirrorAt"
-                [ ( "line", That.encode line )
-                , ( "targets", Those.encode targets )
-                ]
-
-        CutAlongLineSegment lineSegment detail ->
-            withType "cutAlongLineSegment"
-                [ ( "lineSegment", That.encode lineSegment )
-                , ( "detail", That.encode detail )
-                ]
-
-        _ ->
-            Encode.null
-
-
-encodeAngle : Angle -> Value
-encodeAngle (Angle expr) =
-    Encode.object
-        [ ( "angle"
-          , encodeExpr expr
-          )
-        ]
-
-
 encodeExpr : Expr -> Value
 encodeExpr expr =
     case expr of
@@ -1657,23 +1355,10 @@ decoder =
         |> Decode.required "lines" (Store.decoder lineDecoder)
         |> Decode.required "lineSegments" (Store.decoder lineSegmentDecoder)
         |> Decode.required "details" (Store.decoder detailDecoder)
+        |> Decode.required "transformations" (Store.decoder transformationDecoder)
         |> Decode.required "variables" variablesDecoder
-        |> Decode.required "transformations" transformationsDecoder
         |> Decode.hardcoded Nothing
         |> Decode.map Pattern
-
-
-transformationsDecoder : Decoder Transformations
-transformationsDecoder =
-    let
-        entryDecoder =
-            Decode.succeed Tuple.pair
-                |> Decode.required "id" Decode.int
-                |> Decode.required "transformation" transformationDecoder
-    in
-    Decode.succeed Transformations
-        |> Decode.required "entries" (Decode.list entryDecoder)
-        |> Decode.required "nextId" Decode.int
 
 
 variablesDecoder : Decoder (Dict String String)
@@ -1796,27 +1481,12 @@ transformationDecoder : Decoder Transformation
 transformationDecoder =
     Decode.oneOf
         [ typeDecoder "mirrorAt" <|
-            Decode.map2 MirrorAt
+            Decode.map MirrorAt
                 (Decode.field "line" That.decoder)
-                (Decode.field "targets" Those.decoder)
-        , typeDecoder "cutAlongLineSegment" <|
-            Decode.map2 CutAlongLineSegment
-                (Decode.field "lineSegment" That.decoder)
-                (Decode.field "detail" That.decoder)
-        ]
-
-
-angleDecoder : Decoder Angle
-angleDecoder =
-    Decode.map Angle <|
-        Decode.field "angle" exprDecoder
-
-
-exprDecoder : Decoder Expr
-exprDecoder =
-    Decode.oneOf
-        [ typeDecoder "number" <|
-            Decode.map Number (Decode.field "value" Decode.float)
+        , typeDecoder "rotateAround" <|
+            Decode.map2 RotateAround
+                (Decode.field "point" That.decoder)
+                (Decode.field "angle" Decode.string)
         ]
 
 
@@ -1831,111 +1501,3 @@ typeDecoder type_ dataDecoder =
                 else
                     Decode.fail "not a valid type"
             )
-
-
-
----- TRANSFORMATIONS
-
-
-type alias Transformations =
-    { entries : List ( Int, Transformation )
-    , nextId : Int
-    }
-
-
-noTransformations : Transformations
-noTransformations =
-    { entries = []
-    , nextId = 0
-    }
-
-
-type State
-    = State Int
-
-
-start : State
-start =
-    State -1
-
-
-append : Transformation -> Transformations -> Transformations
-append newTransformation ts =
-    { ts
-        | entries = ( ts.nextId, newTransformation ) :: ts.entries
-        , nextId = ts.nextId + 1
-    }
-
-
-lastState : Pattern -> State
-lastState (Pattern { transformations }) =
-    transformations.entries
-        |> List.head
-        |> Maybe.map (Tuple.first >> State)
-        |> Maybe.withDefault start
-
-
-last : Transformations -> Maybe ( State, Transformation )
-last { entries } =
-    entries
-        |> List.head
-        |> Maybe.map (Tuple.mapFirst State)
-
-
-allUntil : State -> Transformations -> List ( State, Transformation )
-allUntil (State id) { entries } =
-    if id == -1 then
-        []
-
-    else
-        allUntilHelp [] False id entries
-
-
-allUntilHelp :
-    List ( State, Transformation )
-    -> Bool
-    -> Int
-    -> List ( Int, Transformation )
-    -> List ( State, Transformation )
-allUntilHelp sum found id entries =
-    case entries of
-        [] ->
-            if found then
-                sum
-
-            else
-                []
-
-        ( nextId, entry ) :: rest ->
-            if nextId == id then
-                ( State nextId, entry ) :: sum
-
-            else
-                allUntilHelp (( State nextId, entry ) :: sum) found id rest
-
-
-firstToLast : Transformations -> List ( State, Transformation )
-firstToLast { entries } =
-    List.foldl
-        (\( id, entry ) sum -> ( State id, entry ) :: sum)
-        []
-        entries
-
-
-lastToFirst : Transformations -> List ( State, Transformation )
-lastToFirst { entries } =
-    List.map (Tuple.mapFirst State) entries
-
-
-getTransformation : Pattern -> Int -> Maybe Transformation
-getTransformation (Pattern pattern) id =
-    pattern.transformations.entries
-        |> List.filterMap
-            (\( nextId, transformation ) ->
-                if nextId == id then
-                    Just transformation
-
-                else
-                    Nothing
-            )
-        |> List.head

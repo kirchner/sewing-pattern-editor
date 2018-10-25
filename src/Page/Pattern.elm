@@ -125,7 +125,6 @@ type ToolTag
     | ThroughOnePointTag
     | FromToTag
     | MirrorAtTag
-    | CutAlongLineSegmentTag
     | CounterClockwiseTag
 
 
@@ -185,9 +184,6 @@ toolToTag tool =
 
         MirrorAt _ ->
             MirrorAtTag
-
-        CutAlongLineSegment _ ->
-            CutAlongLineSegmentTag
 
         CounterClockwise _ ->
             CounterClockwiseTag
@@ -294,12 +290,6 @@ type Tool
         , maybeThatLineA : Maybe (That Line)
         , listbox : Listbox
         , thosePoints : Those Point
-        }
-    | CutAlongLineSegment
-        { dropdownLineSegment : Dropdown
-        , thatLineSegment : Maybe (That LineSegment)
-        , dropdownDetail : Dropdown
-        , thatDetail : Maybe (That Detail)
         }
       -- DETAILS
     | CounterClockwise (List (That Point))
@@ -456,15 +446,6 @@ toolDescription toolTag =
                 , s "."
                 ]
 
-        CutAlongLineSegmentTag ->
-            Element.paragraph []
-                [ s "Cut a "
-                , strong "detail"
-                , s " into two along a "
-                , strong "line segment"
-                , s "."
-                ]
-
         CounterClockwiseTag ->
             Element.paragraph []
                 [ s "Create a new "
@@ -545,9 +526,6 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
-        CutAlongLineSegment _ ->
-            empty
-
         CounterClockwise targets ->
             Those.fromList targets
 
@@ -618,9 +596,6 @@ selectedLinesFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
-        CutAlongLineSegment _ ->
-            empty
-
         CounterClockwise _ ->
             empty
 
@@ -685,11 +660,6 @@ selectedLineSegmentsFromTool tool =
         MirrorAt _ ->
             empty
 
-        CutAlongLineSegment { thatLineSegment } ->
-            thatLineSegment
-                |> maybeToList
-                |> Those.fromList
-
         CounterClockwise _ ->
             empty
 
@@ -753,11 +723,6 @@ selectedDetailsFromTool tool =
 
         MirrorAt _ ->
             empty
-
-        CutAlongLineSegment { thatDetail } ->
-            thatDetail
-                |> maybeToList
-                |> Those.fromList
 
         CounterClockwise _ ->
             empty
@@ -1341,9 +1306,6 @@ viewTool pattern points circles lines lineSegments details tool =
                 MirrorAt data ->
                     viewMirrorAt pattern points lines data
 
-                CutAlongLineSegment data ->
-                    viewCutAlongLineSegment pattern lineSegments details data
-
                 CounterClockwise targets ->
                     viewCounterClockwise pattern points targets
             )
@@ -1665,28 +1627,6 @@ viewMirrorAt pattern points lines data =
     ]
 
 
-viewCutAlongLineSegment pattern lineSegments details data =
-    [ labeledDropdown "cut-along-line-segment--line-segment"
-        { optionToName = lineSegmentName pattern
-        , placeholder = ""
-        , lift = DropdownLineSegmentMsg
-        , label = "line segment"
-        , options = lineSegments
-        }
-        data.dropdownLineSegment
-        data.thatLineSegment
-    , labeledDropdown "cut-along-line-segment--detail"
-        { optionToName = detailName pattern
-        , placeholder = ""
-        , lift = DropdownDetailMsg
-        , label = "detail"
-        , options = details
-        }
-        data.dropdownDetail
-        data.thatDetail
-    ]
-
-
 viewCounterClockwise pattern points targets =
     let
         pointButton ( thatPoint, { name } ) =
@@ -1853,7 +1793,6 @@ viewToolSelector prefix hoveredTool maybeTool =
             ]
         , viewGroup "transformations"
             [ [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror at"
-              , button prefix hoveredTool CutAlongLineSegmentTag "cut_along_line_segment" "Cut along line segment"
               ]
             ]
         , viewGroup "details"
@@ -2796,8 +2735,6 @@ type Msg
     | DropdownLineAMsg (Dropdown.Msg (That Line))
     | DropdownLineBMsg (Dropdown.Msg (That Line))
     | ListboxPointsMsg (Listbox.Msg (That Point))
-    | DropdownLineSegmentMsg (Dropdown.Msg (That LineSegment))
-    | DropdownDetailMsg (Dropdown.Msg (That Detail))
     | DropdownCircleAMsg (Dropdown.Msg (That Circle))
     | DropdownCircleBMsg (Dropdown.Msg (That Circle))
     | FirstChanged Bool
@@ -3028,23 +2965,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 , thosePoints = Those.none
                                 }
 
-                        CutAlongLineSegmentTag ->
-                            CutAlongLineSegment
-                                { dropdownLineSegment = Dropdown.init
-                                , thatLineSegment = Nothing
-                                , dropdownDetail = Dropdown.init
-                                , thatDetail = Nothing
-                                }
-
                         CounterClockwiseTag ->
                             CounterClockwise []
             in
             ( { model | dialog = Tool tool }
             , case toolTag of
-                CutAlongLineSegmentTag ->
-                    Dropdown.focus "cut-along-line-segment--line-segment"
-                        |> Task.attempt (\_ -> NoOp)
-
                 CounterClockwiseTag ->
                     Cmd.none
 
@@ -3280,9 +3205,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateName FromTo data
 
                 Tool (MirrorAt _) ->
-                    ( model, Cmd.none, Nothing )
-
-                Tool (CutAlongLineSegment _) ->
                     ( model, Cmd.none, Nothing )
 
                 Tool (CounterClockwise _) ->
@@ -3602,64 +3524,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 _ ->
                     ( model, Cmd.none, Nothing )
 
-        DropdownLineSegmentMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CutAlongLineSegment data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newLineSegment ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.lineSegments pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownLineSegment
-                                data.thatLineSegment
-                    in
-                    ( { model
-                        | dialog =
-                            Tool <|
-                                CutAlongLineSegment
-                                    { data
-                                        | dropdownLineSegment = newDropdown
-                                        , thatLineSegment = newLineSegment
-                                    }
-                      }
-                    , Cmd.map DropdownLineSegmentMsg dropdownCmd
-                    , Nothing
-                    )
-
-                _ ->
-                    ( model, Cmd.none, Nothing )
-
-        DropdownDetailMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CutAlongLineSegment data) ->
-                    let
-                        ( newDropdown, dropdownCmd, newDetail ) =
-                            Dropdown.update dropdownUpdateConfig
-                                (Pattern.details pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
-                                dropdownMsg
-                                data.dropdownDetail
-                                data.thatDetail
-                    in
-                    ( { model
-                        | dialog =
-                            Tool <|
-                                CutAlongLineSegment
-                                    { data
-                                        | dropdownDetail = newDropdown
-                                        , thatDetail = newDetail
-                                    }
-                      }
-                    , Cmd.map DropdownDetailMsg dropdownCmd
-                    , Nothing
-                    )
-
-                _ ->
-                    ( model, Cmd.none, Nothing )
-
         DropdownCircleAMsg dropdownMsg ->
             let
                 updateCircleA toTool data =
@@ -3953,32 +3817,26 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         Just thatLine ->
                             let
                                 newTransformation =
-                                    Pattern.MirrorAt thatLine thosePoints
+                                    Pattern.MirrorAt thatLine
 
-                                newPattern =
+                                newPoints =
+                                    thosePoints
+                                        |> Those.toList
+                                        |> List.map
+                                            (Pattern.TransformBy thatTransformation)
+
+                                ( newPattern, thatTransformation ) =
                                     Pattern.insertTransformation newTransformation pattern
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
-                            )
-
-                        _ ->
-                            ( model, Cmd.none, Nothing )
-
-                Tool (CutAlongLineSegment { thatLineSegment, thatDetail }) ->
-                    case ( thatLineSegment, thatDetail ) of
-                        ( Just lineSegment, Just detail ) ->
-                            let
-                                newTransformation =
-                                    Pattern.CutAlongLineSegment lineSegment detail
-
-                                newPattern =
-                                    Pattern.insertTransformation newTransformation pattern
-                            in
-                            ( { model | dialog = NoDialog }
-                            , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
+                            , Just
+                                { storedPattern
+                                    | pattern =
+                                        List.foldl (Pattern.insertPoint Nothing)
+                                            newPattern
+                                            newPoints
+                                }
                             )
 
                         _ ->
