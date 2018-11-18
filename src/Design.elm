@@ -1,6 +1,7 @@
 module Design exposing
     ( Grey(..)
     , backgroundColor
+    , borderColor
     , fontColor
     , large
     , normal
@@ -15,6 +16,7 @@ module Design exposing
 import Color
 import Element exposing (Attr)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 
 
@@ -136,6 +138,30 @@ fontColor grey =
                     white
 
 
+borderColor : Grey -> Attr decorative msg
+borderColor grey =
+    Border.color <|
+        color <|
+            case grey of
+                Brightest ->
+                    brightest
+
+                Bright ->
+                    bright
+
+                Brightish ->
+                    brightish
+
+                Darkish ->
+                    darkish
+
+                Dark ->
+                    dark
+
+                Darkest ->
+                    darkest
+
+
 color =
     Element.fromRgb << Color.toRgba
 
@@ -169,12 +195,12 @@ brightish =
 
 
 darkish =
-    Color.rgb255 97 97 97
-
-
-dark =
     Color.rgb255 66 66 66
 
 
-darkest =
+dark =
     Color.rgb255 33 33 33
+
+
+darkest =
+    Color.rgb255 5 5 5

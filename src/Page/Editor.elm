@@ -744,9 +744,9 @@ init =
     , hoveredPoint = Nothing
     , hoveredTool = Nothing
     , dialog = NoDialog
-    , rightToolbarVisible = False
+    , rightToolbarVisible = True
     , variablesVisible = True
-    , pointsVisible = False
+    , pointsVisible = True
     }
 
 
@@ -958,8 +958,15 @@ viewOverlay windowHeight prefix name pattern model =
             [ Element.width Element.fill
             , Element.padding Design.small
             , Element.spacing Design.xSmall
-            , Design.backgroundColor Darkest
+            , Border.widthEach
+                { top = 0
+                , bottom = 1
+                , left = 0
+                , right = 0
+                }
+            , Design.backgroundColor Dark
             , Design.fontColor Darkest
+            , Design.borderColor Darkest
             , Font.size Design.small
             , Element.htmlAttribute <|
                 Html.Attributes.style "pointer-events" "auto"
@@ -998,7 +1005,14 @@ viewOverlay windowHeight prefix name pattern model =
             [ Element.width Element.fill
             , Element.paddingXY 10 5
             , Element.spacing 5
-            , Background.color gray950
+            , Border.widthEach
+                { top = 1
+                , bottom = 0
+                , left = 0
+                , right = 0
+                }
+            , Design.backgroundColor Dark
+            , Design.borderColor Darkest
             , Element.htmlAttribute <|
                 Html.Attributes.style "pointer-events" "auto"
             ]
@@ -1031,7 +1045,7 @@ viewOverlay windowHeight prefix name pattern model =
 viewLeftToolbar prefix model =
     Element.column
         [ Element.height Element.fill
-        , Background.color gray900
+        , Design.backgroundColor Dark
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
         ]
@@ -1143,7 +1157,7 @@ viewRightToolbar windowHeight pattern model =
             }
         , if model.rightToolbarVisible then
             Element.el
-                [ Background.color gray900
+                [ Design.backgroundColor Dark
                 , Element.width (Element.px 400)
                 , Element.height (Element.px (windowHeight - 48 - 44))
                 ]
@@ -1175,7 +1189,7 @@ viewDialog pattern dialog =
                 [ Element.alignLeft
                 , Element.moveRight 400
                 , Element.width (Element.px 300)
-                , Background.color gray900
+                , Design.backgroundColor Dark
                 ]
                 (viewTool pattern
                     (Pattern.points pattern)
@@ -1191,7 +1205,7 @@ viewDialog pattern dialog =
                 [ Element.centerX
                 , Element.moveRight 150
                 , Element.width (Element.px 350)
-                , Background.color gray900
+                , Design.backgroundColor Dark
                 ]
                 (viewVariable name value)
 
@@ -1801,19 +1815,17 @@ viewVariables pattern model =
                 )
     in
     Element.column
-        [ Element.width Element.fill
-        , Element.padding 10
-        , Element.spacing 10
-        ]
+        [ Element.width Element.fill ]
         [ accordionToggle VariablesRulerClicked "variables" model.variablesVisible
         , if model.variablesVisible then
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing 15
-                , Element.padding 5
+                , Element.padding Design.small
+                , Element.spacing Design.small
+                , Design.backgroundColor Darkest
                 ]
                 [ Element.table
-                    [ Element.spacing 7 ]
+                    [ Element.spacing Design.xSmall ]
                     { data = List.sortBy .name (Pattern.variables pattern)
                     , columns =
                         [ { header =
@@ -1952,19 +1964,17 @@ viewPoints pattern model =
                 )
     in
     Element.column
-        [ Element.width Element.fill
-        , Element.padding 10
-        , Element.spacing 10
-        ]
+        [ Element.width Element.fill ]
         [ accordionToggle PointsRulerClicked "points" model.pointsVisible
         , if model.pointsVisible then
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing 15
-                , Element.padding 5
+                , Element.padding Design.small
+                , Element.spacing Design.small
+                , Design.backgroundColor Darkest
                 ]
                 [ Element.table
-                    [ Element.spacing 7 ]
+                    [ Element.spacing Design.xSmall ]
                     { data =
                         List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
                             (Pattern.points pattern)
@@ -2056,7 +2066,7 @@ viewPoints pattern model =
 accordionToggle msg name visible =
     Input.button
         [ Element.width Element.fill
-        , Element.padding 5
+        , Element.padding Design.xSmall
         , Border.color gray900
         , Border.width 1
         , Element.mouseOver
