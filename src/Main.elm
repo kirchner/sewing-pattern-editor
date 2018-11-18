@@ -8,7 +8,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Home as Home
-import Page.Pattern as Pattern
+import Page.Editor as Editor
 import Pattern exposing (Pattern)
 import Port
 import Route exposing (Route)
@@ -66,7 +66,7 @@ type Page
     = NotFound
       -- PAGES
     | Home Home.Model
-    | Pattern String Pattern.Model
+    | Editor String Editor.Model
 
 
 type alias Flags =
@@ -103,8 +103,8 @@ init value url key =
                                 Route.Home ->
                                     Home Home.init
 
-                                Route.Pattern patternSlug ->
-                                    Pattern "first-pattern" Pattern.init
+                                Route.Editor patternSlug ->
+                                    Editor "first-pattern" Editor.init
             in
             ( { prefix = Route.prefixFromUrl url
               , key = key
@@ -135,7 +135,7 @@ init value url key =
                                 Route.Home ->
                                     ( Home Home.init, cache )
 
-                                Route.Pattern patternSlug ->
+                                Route.Editor patternSlug ->
                                     case Dict.get patternSlug cache of
                                         Nothing ->
                                             ( NotFound, cache )
@@ -155,7 +155,7 @@ init value url key =
                                                         computedPattern
                                                         cache
                                             in
-                                            ( Pattern patternSlug Pattern.init
+                                            ( Editor patternSlug Editor.init
                                             , newCache
                                             )
             in
@@ -191,7 +191,7 @@ view model =
             , body = [ Html.map HomeMsg (Home.view (Dict.values model.cache) homeModel) ]
             }
 
-        Pattern patternSlug patternModel ->
+        Editor patternSlug editorModel ->
             case Dict.get patternSlug model.cache of
                 Nothing ->
                     { title = "Sewing pattern editor"
@@ -201,15 +201,15 @@ view model =
                 Just storedPattern ->
                     let
                         patternDocument =
-                            Pattern.view
+                            Editor.view
                                 model.prefix
                                 model.windowWidth
                                 model.windowHeight
                                 storedPattern
-                                patternModel
+                                editorModel
                     in
                     { title = patternDocument.title
-                    , body = List.map (Html.map PatternMsg) patternDocument.body
+                    , body = List.map (Html.map EditorMsg) patternDocument.body
                     }
 
 
@@ -224,7 +224,7 @@ type Msg
     | CacheChanged Value
       -- PAGES
     | HomeMsg Home.Msg
-    | PatternMsg Pattern.Msg
+    | EditorMsg Editor.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -282,23 +282,23 @@ update msg model =
                         ]
                     )
 
-        ( PatternMsg patternMsg, Pattern patternSlug patternModel ) ->
+        ( EditorMsg patternMsg, Editor patternSlug editorModel ) ->
             case Dict.get patternSlug model.cache of
                 Nothing ->
                     ( model, Cmd.none )
 
                 Just viewedPattern ->
                     let
-                        ( newPatternModel, patternCmd, maybeNewViewedPattern ) =
-                            Pattern.update model.key viewedPattern patternMsg patternModel
+                        ( newEditorModel, patternCmd, maybeNewViewedPattern ) =
+                            Editor.update model.key viewedPattern patternMsg editorModel
 
                         newModel =
-                            { model | page = Pattern patternSlug newPatternModel }
+                            { model | page = Editor patternSlug newEditorModel }
                     in
                     case maybeNewViewedPattern of
                         Nothing ->
                             ( newModel
-                            , Cmd.map PatternMsg patternCmd
+                            , Cmd.map EditorMsg patternCmd
                             )
 
                         Just newViewedPattern ->
@@ -316,7 +316,7 @@ update msg model =
                             in
                             ( { newModel | cache = newCache }
                             , Cmd.batch
-                                [ Cmd.map PatternMsg patternCmd
+                                [ Cmd.map EditorMsg patternCmd
                                 , Port.safeCache (encodeCache newCache)
                                 ]
                             )
@@ -338,7 +338,7 @@ changeRouteTo maybeRoute model =
                         Route.Home ->
                             { model | page = Home Home.init }
 
-                        Route.Pattern patternSlug ->
+                        Route.Editor patternSlug ->
                             case Dict.get patternSlug model.cache of
                                 Nothing ->
                                     { model | page = NotFound }
@@ -359,7 +359,7 @@ changeRouteTo maybeRoute model =
                                                 model.cache
                                     in
                                     { model
-                                        | page = Pattern patternSlug Pattern.init
+                                        | page = Editor patternSlug Editor.init
                                         , cache = newCache
                                     }
     in
@@ -380,6 +380,6 @@ subscriptions model =
             Home homeModel ->
                 Sub.map HomeMsg (Home.subscriptions homeModel)
 
-            Pattern _ patternModel ->
-                Sub.map PatternMsg (Pattern.subscriptions patternModel)
+            Editor _ editorModel ->
+                Sub.map EditorMsg (Editor.subscriptions editorModel)
         ]

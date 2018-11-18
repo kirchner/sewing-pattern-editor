@@ -6,7 +6,7 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
 
 type Route
     = Home
-    | Pattern String
+    | Editor String
 
 
 parser : Parser (Route -> a) a
@@ -14,11 +14,11 @@ parser =
     oneOf
         [ oneOf
             [ Parser.map Home Parser.top
-            , Parser.map Pattern (s "pattern" </> string)
+            , Parser.map Editor (s "pattern" </> string)
             ]
         , oneOf
             [ Parser.map Home (s "sewing-pattern-editor")
-            , Parser.map Pattern (s "sewing-pattern-editor" </> s "pattern" </> string)
+            , Parser.map Editor (s "sewing-pattern-editor" </> s "pattern" </> string)
             ]
         ]
 
