@@ -1173,7 +1173,7 @@ viewDialog pattern dialog =
         Tool tool ->
             Element.el
                 [ Element.alignLeft
-                , Element.moveRight 300
+                , Element.moveRight 400
                 , Element.width (Element.px 300)
                 , Background.color gray900
                 ]
@@ -1726,9 +1726,9 @@ viewVariable name value =
 
 viewToolSelector prefix hoveredTool maybeTool =
     let
-        viewGroup name rows =
+        viewGroup name buttons =
             Element.column
-                [ Element.spacing 5
+                [ Element.spacing Design.xSmall
                 , Element.width Element.fill
                 ]
                 [ Element.el
@@ -1738,16 +1738,11 @@ viewToolSelector prefix hoveredTool maybeTool =
                     ]
                     (Element.text name)
                 , Element.column
-                    [ Element.spacing 5 ]
-                    (List.map viewRow rows)
+                    [ Element.spacing Design.xxSmall
+                    , Element.width Element.fill
+                    ]
+                    buttons
                 ]
-
-        viewRow buttons =
-            Element.row
-                [ Element.spacing 5
-                , Element.width Element.fill
-                ]
-                buttons
 
         is toolTag =
             case maybeTool of
@@ -1758,46 +1753,34 @@ viewToolSelector prefix hoveredTool maybeTool =
                     toolToTag tool == toolTag
     in
     Element.column
-        [ Element.padding 10
-        , Element.spacing 10
+        [ Element.padding Design.small
+        , Element.spacing Design.small
         , Element.width Element.fill
         ]
-        [ viewGroup "points"
-            [ [ button prefix hoveredTool LeftOfTag "left_of" "Left of"
-              , button prefix hoveredTool RightOfTag "right_of" "Right of"
-              , button prefix hoveredTool AtAngleTag "at_angle" "At angle"
-              ]
-            , [ button prefix hoveredTool AboveTag "above" "Above"
-              , button prefix hoveredTool BelowTag "below" "Below"
-              ]
-            , [ button prefix hoveredTool BetweenRatioTag "at_angle" "Between at ratio"
-              , button prefix hoveredTool BetweenLengthTag "at_angle" "Between at length"
-              ]
-            , [ button prefix hoveredTool CircleCircleTag "at_angle" "Circle-Circle intersection"
-              , button prefix hoveredTool LineLineTag "at_angle" "Line-Line intersection"
-              , button prefix hoveredTool CircleLineTag "at_angle" "Circle-Line intersection"
-              ]
+        [ viewGroup "create a point"
+            [ button prefix hoveredTool LeftOfTag "left_of" "Left of a point"
+            , button prefix hoveredTool RightOfTag "right_of" "Right of a point"
+            , button prefix hoveredTool AboveTag "above" "Above a point"
+            , button prefix hoveredTool BelowTag "below" "Below a point"
+            , button prefix hoveredTool AtAngleTag "at_angle" "Relative to a point by angle and distance"
+            , button prefix hoveredTool BetweenRatioTag "at_angle" "Between two points at ratio"
+            , button prefix hoveredTool BetweenLengthTag "at_angle" "Between two points at length"
+            , button prefix hoveredTool CircleCircleTag "at_angle" "At intersection of two circles"
+            , button prefix hoveredTool LineLineTag "at_angle" "At intersection of two lines"
+            , button prefix hoveredTool CircleLineTag "at_angle" "At intersection of a circle and a line"
             ]
-        , viewGroup "circles"
-            [ [ button prefix hoveredTool CenteredAtTag "through_two_points" "Centered at"
-              ]
+        , viewGroup "create a circle"
+            [ button prefix hoveredTool CenteredAtTag "through_two_points" "Centered at a point"
             ]
-        , viewGroup "lines"
-            [ [ button prefix hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
-              , button prefix hoveredTool ThroughOnePointTag "through_two_points" "Through one point"
-              ]
+        , viewGroup "create a line"
+            [ button prefix hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
+            , button prefix hoveredTool ThroughOnePointTag "through_two_points" "Through one point"
             ]
-        , viewGroup "line segments"
-            [ [ button prefix hoveredTool FromToTag "from_to" "From to"
-              ]
+        , viewGroup "create a line segment"
+            [ button prefix hoveredTool FromToTag "from_to" "Between two points"
             ]
-        , viewGroup "transformations"
-            [ [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror at"
-              ]
-            ]
-        , viewGroup "details"
-            [ [ button prefix hoveredTool CounterClockwiseTag "counter_clockwise" "Counter clockwise"
-              ]
+        , viewGroup "create a transformation"
+            [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror points at a line"
             ]
         ]
 
@@ -2119,15 +2102,18 @@ button prefix maybeHoveredTool toolTag iconSrc label =
             Just toolTag == maybeHoveredTool
     in
     Input.button
-        [ Element.padding 5
+        [ Element.paddingXY 8 7
+        , Element.width Element.fill
+        , Font.size 14
+        , Border.color gray800
+        , Border.width 1
         , Background.color <|
             if selected then
                 gray700
 
             else
                 gray800
-        , Border.color gray900
-        , Border.width 1
+        , Font.color white
         , Element.Events.onMouseEnter (SelectToolHovered toolTag)
         , Element.Events.onMouseLeave SelectToolUnhovered
         , Element.mouseOver
@@ -2141,13 +2127,7 @@ button prefix maybeHoveredTool toolTag iconSrc label =
         ]
         { onPress = Just (SelectToolClicked toolTag)
         , label =
-            Element.image
-                [ Element.width (Element.px 48)
-                , Element.height (Element.px 48)
-                ]
-                { src = prefix ++ "/assets/icons/" ++ iconSrc ++ ".svg"
-                , description = label
-                }
+            Element.text label
         }
 
 
