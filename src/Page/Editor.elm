@@ -3783,7 +3783,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
 
-                                newPattern =
+                                ( newPattern, _ ) =
                                     Pattern.insertLineSegment
                                         (if data.name == "" then
                                             Nothing
@@ -3817,15 +3817,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                                 ( newPattern, thatTransformation ) =
                                     Pattern.insertTransformation newTransformation pattern
+
+                                insertPointHelp nextPattern point =
+                                    Pattern.insertPoint Nothing nextPattern point
+                                        |> Tuple.first
                             in
                             ( { model | dialog = NoDialog }
                             , Cmd.none
                             , Just
                                 { storedPattern
                                     | pattern =
-                                        List.foldl (Pattern.insertPoint Nothing)
-                                            newPattern
-                                            newPoints
+                                        List.foldl insertPointHelp newPattern newPoints
                                 }
                             )
 
@@ -3838,7 +3840,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             targets
                                 |> Pattern.CounterClockwise
 
-                        newPattern =
+                        ( newPattern, _ ) =
                             Pattern.insertDetail newDetail pattern
                     in
                     ( { model | dialog = NoDialog }
@@ -4151,7 +4153,7 @@ updateDropdownLineB pattern model toTool dropdownMsg data =
 
 insertPoint name viewedPattern model newPoint =
     let
-        newPattern =
+        ( newPattern, _ ) =
             Pattern.insertPoint
                 (if name == "" then
                     Nothing
@@ -4181,7 +4183,7 @@ updatePoint thatPoint viewedPattern model newPoint =
 
 insertCircle name viewedPattern model newCircle =
     let
-        newPattern =
+        ( newPattern, _ ) =
             Pattern.insertCircle
                 (if name == "" then
                     Nothing
@@ -4200,7 +4202,7 @@ insertCircle name viewedPattern model newCircle =
 
 insertLine name viewedPattern model newLine =
     let
-        newPattern =
+        ( newPattern, _ ) =
             Pattern.insertLine
                 (if name == "" then
                     Nothing

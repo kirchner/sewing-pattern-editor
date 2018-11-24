@@ -61,13 +61,19 @@ empty =
         }
 
 
-insert : Maybe String -> a -> Store a -> Store a
+insert : Maybe String -> a -> Store a -> ( Store a, Int )
 insert name value (Store store) =
-    Store
+    let
+        id =
+            store.nextId + 1
+    in
+    ( Store
         { store
             | entries = Dict.insert store.nextId (Entry name value) store.entries
-            , nextId = store.nextId + 1
+            , nextId = id
         }
+    , id
+    )
 
 
 get : Store a -> Int -> Maybe (Entry a)

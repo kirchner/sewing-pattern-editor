@@ -27,6 +27,7 @@ type alias Position =
     }
 
 
+init : String -> String -> StoredPattern
 init slug name =
     { slug = slug
     , name = name
@@ -35,6 +36,7 @@ init slug name =
             |> Pattern.insertPoint
                 (Just "origin")
                 (Pattern.origin { x = 0, y = 0 })
+            |> Tuple.first
     , zoom = 1
     , center = Position 0 0
     }

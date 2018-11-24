@@ -1002,13 +1002,19 @@ getPointGeometriesHelp geometries pattern thatPoint =
         (point2d pattern thatPoint :: geometries)
 
 
-insertPoint : Maybe String -> Point -> Pattern -> Pattern
+insertPoint : Maybe String -> Point -> Pattern -> ( Pattern, That Point )
 insertPoint name point (Pattern pattern) =
-    Pattern
+    let
+        ( newPoints, id ) =
+            Store.insert name point pattern.points
+    in
+    ( Pattern
         { pattern
-            | points = Store.insert name point pattern.points
+            | points = newPoints
             , cache = Nothing
         }
+    , that id
+    )
 
 
 
@@ -1032,13 +1038,19 @@ getCircle (Pattern pattern) =
     Store.get pattern.circles << That.objectId
 
 
-insertCircle : Maybe String -> Circle -> Pattern -> Pattern
+insertCircle : Maybe String -> Circle -> Pattern -> ( Pattern, That Circle )
 insertCircle name circle (Pattern pattern) =
-    Pattern
+    let
+        ( newCircles, id ) =
+            Store.insert name circle pattern.circles
+    in
+    ( Pattern
         { pattern
-            | circles = Store.insert name circle pattern.circles
+            | circles = newCircles
             , cache = Nothing
         }
+    , that id
+    )
 
 
 
@@ -1062,13 +1074,19 @@ getLine (Pattern pattern) =
     Store.get pattern.lines << That.objectId
 
 
-insertLine : Maybe String -> Line -> Pattern -> Pattern
+insertLine : Maybe String -> Line -> Pattern -> ( Pattern, That Line )
 insertLine maybeName line (Pattern pattern) =
-    Pattern
+    let
+        ( newLines, id ) =
+            Store.insert maybeName line pattern.lines
+    in
+    ( Pattern
         { pattern
-            | lines = Store.insert maybeName line pattern.lines
+            | lines = newLines
             , cache = Nothing
         }
+    , that id
+    )
 
 
 
@@ -1092,13 +1110,19 @@ getLineSegment (Pattern pattern) =
     Store.get pattern.lineSegments << That.objectId
 
 
-insertLineSegment : Maybe String -> LineSegment -> Pattern -> Pattern
+insertLineSegment : Maybe String -> LineSegment -> Pattern -> ( Pattern, That LineSegment )
 insertLineSegment maybeName lineSegment (Pattern pattern) =
-    Pattern
+    let
+        ( newLineSegments, id ) =
+            Store.insert maybeName lineSegment pattern.lineSegments
+    in
+    ( Pattern
         { pattern
-            | lineSegments = Store.insert maybeName lineSegment pattern.lineSegments
+            | lineSegments = newLineSegments
             , cache = Nothing
         }
+    , that id
+    )
 
 
 
@@ -1107,12 +1131,16 @@ insertLineSegment maybeName lineSegment (Pattern pattern) =
 
 insertTransformation : Transformation -> Pattern -> ( Pattern, That Transformation )
 insertTransformation transformation (Pattern pattern) =
+    let
+        ( newTransformations, id ) =
+            Store.insert Nothing transformation pattern.transformations
+    in
     ( Pattern
         { pattern
-            | transformations = Store.insert Nothing transformation pattern.transformations
+            | transformations = newTransformations
             , cache = Nothing
         }
-    , that (Debug.todo "implement")
+    , that id
     )
 
 
@@ -1125,13 +1153,19 @@ details pattern =
     objects .details pattern
 
 
-insertDetail : Detail -> Pattern -> Pattern
+insertDetail : Detail -> Pattern -> ( Pattern, That Detail )
 insertDetail detail (Pattern pattern) =
-    Pattern
+    let
+        ( newDetails, id ) =
+            Store.insert Nothing detail pattern.details
+    in
+    ( Pattern
         { pattern
-            | details = Store.insert Nothing detail pattern.details
+            | details = newDetails
             , cache = Nothing
         }
+    , that id
+    )
 
 
 getDetail : Pattern -> That Detail -> Maybe (Entry Detail)
