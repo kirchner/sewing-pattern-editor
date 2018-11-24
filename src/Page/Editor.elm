@@ -2198,12 +2198,10 @@ buttonDismiss label msg =
         [ Element.paddingXY 8 7
         , Element.alignRight
         , Font.size 14
-        , Background.color gray800
-        , Border.color gray800
-        , Border.width 1
         , Font.color white
+        , Font.underline
         , Element.mouseOver
-            [ Background.color gray700 ]
+            [ Font.color (Design.toColor Brightish) ]
         ]
         { onPress = Just msg
         , label = Element.text label

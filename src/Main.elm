@@ -7,8 +7,8 @@ import Html
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
-import Page.Home as Home
 import Page.Editor as Editor
+import Page.Home as Home
 import Pattern exposing (Pattern)
 import Port
 import Route exposing (Route)
@@ -103,7 +103,7 @@ init value url key =
                                 Route.Home ->
                                     Home Home.init
 
-                                Route.Editor patternSlug ->
+                                Route.Editor patternSlug maybePoint ->
                                     Editor "first-pattern" Editor.init
             in
             ( { prefix = Route.prefixFromUrl url
@@ -135,7 +135,7 @@ init value url key =
                                 Route.Home ->
                                     ( Home Home.init, cache )
 
-                                Route.Editor patternSlug ->
+                                Route.Editor patternSlug maybePoint ->
                                     case Dict.get patternSlug cache of
                                         Nothing ->
                                             ( NotFound, cache )
@@ -188,7 +188,13 @@ view model =
 
         Home homeModel ->
             { title = "Sewing pattern editor"
-            , body = [ Html.map HomeMsg (Home.view (Dict.values model.cache) homeModel) ]
+            , body =
+                [ Html.map HomeMsg
+                    (Home.view model.prefix
+                        (Dict.values model.cache)
+                        homeModel
+                    )
+                ]
             }
 
         Editor patternSlug editorModel ->
@@ -338,7 +344,7 @@ changeRouteTo maybeRoute model =
                         Route.Home ->
                             { model | page = Home Home.init }
 
-                        Route.Editor patternSlug ->
+                        Route.Editor patternSlug maybePoint ->
                             case Dict.get patternSlug model.cache of
                                 Nothing ->
                                     { model | page = NotFound }

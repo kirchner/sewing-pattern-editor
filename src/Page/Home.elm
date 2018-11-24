@@ -25,6 +25,7 @@ import Html.Events
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Pattern exposing (Pattern)
+import Route
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -157,8 +158,8 @@ subscriptions model =
                 )
 
 
-view : List StoredPattern -> Model -> Html Msg
-view storedPatterns model =
+view : String -> List StoredPattern -> Model -> Html Msg
+view prefix storedPatterns model =
     Element.layoutWith
         { options =
             [ Element.focusStyle
@@ -234,7 +235,7 @@ view storedPatterns model =
                     , Element.padding Design.large
                     , Element.spacing Design.normal
                     ]
-                    (List.map viewPattern storedPatterns)
+                    (List.map (viewPattern prefix) storedPatterns)
                 )
             , Element.row
                 [ Element.width Element.fill
@@ -308,8 +309,8 @@ viewDialog dialog =
                 ]
 
 
-viewPattern : StoredPattern -> Element Msg
-viewPattern ({ pattern } as storedPattern) =
+viewPattern : String -> StoredPattern -> Element Msg
+viewPattern prefix ({ pattern } as storedPattern) =
     let
         selections =
             { points = Those.fromList []
@@ -374,7 +375,7 @@ viewPattern ({ pattern } as storedPattern) =
                 }
             ]
             [ Element.link [ Element.centerX ]
-                { url = "/pattern/" ++ storedPattern.slug
+                { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
                 , label =
                     Element.el
                         [ Font.size Design.small
