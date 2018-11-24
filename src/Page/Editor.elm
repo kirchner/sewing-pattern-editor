@@ -43,6 +43,7 @@ import Element.Events
 import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
+import Html as CoreHtml exposing (Html)
 import Html.Attributes
 import Html.Events as Events
 import Html.Lazy
@@ -126,6 +127,58 @@ type ToolTag
     | FromToTag
     | MirrorAtTag
     | CounterClockwiseTag
+
+
+toolTagToId : ToolTag -> String
+toolTagToId toolTag =
+    case toolTag of
+        LeftOfTag ->
+            "left-of"
+
+        RightOfTag ->
+            "right-of"
+
+        AboveTag ->
+            "above"
+
+        BelowTag ->
+            "below"
+
+        AtAngleTag ->
+            "at-angle"
+
+        BetweenRatioTag ->
+            "between-ratio"
+
+        BetweenLengthTag ->
+            "between-length"
+
+        CircleCircleTag ->
+            "circle-circle"
+
+        LineLineTag ->
+            "line-line"
+
+        CircleLineTag ->
+            "circle-line"
+
+        CenteredAtTag ->
+            "centered-at"
+
+        ThroughTwoPointsTag ->
+            "through-two-points"
+
+        ThroughOnePointTag ->
+            "through-one-point"
+
+        FromToTag ->
+            "from-to"
+
+        MirrorAtTag ->
+            "mirror-at"
+
+        CounterClockwiseTag ->
+            "counter-clockwise"
 
 
 toolToTag : Tool -> ToolTag
@@ -817,6 +870,14 @@ viewWorkspace windowWidth windowHeight storedPattern model =
         )
 
 
+viewPattern :
+    Int
+    -> Int
+    -> Maybe Drag
+    -> StoredPattern
+    -> Maybe (That Point)
+    -> Dialog
+    -> Html Msg
 viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog =
     let
         { pattern, center, zoom } =
@@ -947,6 +1008,7 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
 ---- OVERLAY
 
 
+viewOverlay : Int -> String -> String -> Pattern -> Model -> Element Msg
 viewOverlay windowHeight prefix name pattern model =
     Element.column
         [ Element.width Element.fill
@@ -970,7 +1032,6 @@ viewOverlay windowHeight prefix name pattern model =
             , Font.size Design.small
             , Element.htmlAttribute <|
                 Html.Attributes.style "pointer-events" "auto"
-            , Element.below (viewDialog pattern model.dialog)
             ]
             [ Element.link []
                 { url = "/"
@@ -992,7 +1053,7 @@ viewOverlay windowHeight prefix name pattern model =
             [ Element.height Element.fill
             , Element.width Element.fill
             ]
-            [ viewLeftToolbar prefix model
+            [ viewLeftToolbar prefix pattern model
             , Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -1042,24 +1103,26 @@ viewOverlay windowHeight prefix name pattern model =
         ]
 
 
-viewLeftToolbar prefix model =
+viewLeftToolbar : String -> Pattern -> Model -> Element Msg
+viewLeftToolbar prefix pattern model =
     Element.column
         [ Element.height Element.fill
+        , Element.width (Element.minimum 330 Element.shrink)
         , Design.backgroundColor Dark
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
         ]
-        [ viewToolSelector prefix model.hoveredTool <|
-            case model.dialog of
-                Tool tool ->
-                    Just tool
+        [ case model.dialog of
+            Tool tool ->
+                viewTool pattern tool
 
-                _ ->
-                    Nothing
+            _ ->
+                viewToolSelector prefix model.hoveredTool
         , Element.el [ Element.height Element.fill ] Element.none
         ]
 
 
+viewZoom : Model -> Element Msg
 viewZoom model =
     Element.column
         [ Element.height Element.fill ]
@@ -1165,9 +1228,15 @@ viewRightToolbar windowHeight pattern model =
                     [ Element.width Element.fill
                     , Element.scrollbars
                     ]
-                    [ viewVariables pattern model
-                    , viewPoints pattern model
-                    ]
+                    (case model.dialog of
+                        CreateVariable { name, value } ->
+                            [ viewVariable name value ]
+
+                        _ ->
+                            [ viewVariables pattern model
+                            , viewPoints pattern model
+                            ]
+                    )
                 )
 
           else
@@ -1176,54 +1245,27 @@ viewRightToolbar windowHeight pattern model =
 
 
 
--- DIALOG
-
-
-viewDialog pattern dialog =
-    case dialog of
-        NoDialog ->
-            Element.none
-
-        Tool tool ->
-            Element.el
-                [ Element.alignLeft
-                , Element.moveRight 400
-                , Element.width (Element.px 300)
-                , Design.backgroundColor Dark
-                ]
-                (viewTool pattern
-                    (Pattern.points pattern)
-                    (Pattern.circles pattern)
-                    (Pattern.lines pattern)
-                    (Pattern.lineSegments pattern)
-                    (Pattern.details pattern)
-                    tool
-                )
-
-        CreateVariable { name, value } ->
-            Element.el
-                [ Element.centerX
-                , Element.moveRight 150
-                , Element.width (Element.px 350)
-                , Design.backgroundColor Dark
-                ]
-                (viewVariable name value)
-
-
-
 -- TOOL
 
 
-viewTool :
-    Pattern
-    -> List ( That Point, Entry Point )
-    -> List ( That Circle, Entry Circle )
-    -> List ( That Line, Entry Line )
-    -> List ( That LineSegment, Entry LineSegment )
-    -> List ( That Detail, Entry Detail )
-    -> Tool
-    -> Element Msg
-viewTool pattern points circles lines lineSegments details tool =
+viewTool : Pattern -> Tool -> Element Msg
+viewTool pattern tool =
+    let
+        points =
+            Pattern.points pattern
+
+        circles =
+            Pattern.circles pattern
+
+        lines =
+            Pattern.lines pattern
+
+        lineSegments =
+            Pattern.lineSegments pattern
+
+        details =
+            Pattern.details pattern
+    in
     Element.column
         [ Element.width Element.fill
         , Element.padding 15
@@ -1641,6 +1683,11 @@ viewMirrorAt pattern points lines data =
     ]
 
 
+viewCounterClockwise :
+    Pattern
+    -> List ( That Point, { r | name : Maybe String } )
+    -> List (That Point)
+    -> List (Element Msg)
 viewCounterClockwise pattern points targets =
     let
         pointButton ( thatPoint, { name } ) =
@@ -1668,30 +1715,35 @@ viewCounterClockwise pattern points targets =
     ]
 
 
+pointName : Pattern -> That Point -> String
 pointName pattern =
     Pattern.getPoint pattern
         >> Maybe.andThen .name
         >> Maybe.withDefault "<unnamed>"
 
 
+circleName : Pattern -> That Circle -> String
 circleName pattern =
     Pattern.getCircle pattern
         >> Maybe.andThen .name
         >> Maybe.withDefault "<unnamed>"
 
 
+lineName : Pattern -> That Line -> String
 lineName pattern =
     Pattern.getLine pattern
         >> Maybe.andThen .name
         >> Maybe.withDefault "<unnamed>"
 
 
+lineSegmentName : Pattern -> That LineSegment -> String
 lineSegmentName pattern =
     Pattern.getLineSegment pattern
         >> Maybe.andThen .name
         >> Maybe.withDefault "<unnamed>"
 
 
+detailName : Pattern -> That Detail -> String
 detailName pattern =
     Pattern.getDetail pattern
         >> Maybe.andThen .name
@@ -1702,6 +1754,7 @@ detailName pattern =
 -- VARIABLE
 
 
+viewVariable : String -> String -> Element Msg
 viewVariable name value =
     Element.column
         [ Element.width Element.fill
@@ -1738,11 +1791,12 @@ viewVariable name value =
 -- TOOL SELECTOR
 
 
-viewToolSelector prefix hoveredTool maybeTool =
+viewToolSelector : String -> Maybe ToolTag -> Element Msg
+viewToolSelector prefix hoveredTool =
     let
         viewGroup name buttons =
             Element.column
-                [ Element.spacing Design.xSmall
+                [ Element.spacing Design.small
                 , Element.width Element.fill
                 ]
                 [ Element.el
@@ -1757,14 +1811,6 @@ viewToolSelector prefix hoveredTool maybeTool =
                     ]
                     buttons
                 ]
-
-        is toolTag =
-            case maybeTool of
-                Nothing ->
-                    False
-
-                Just tool ->
-                    toolToTag tool == toolTag
     in
     Element.column
         [ Element.padding Design.small
@@ -1803,6 +1849,7 @@ viewToolSelector prefix hoveredTool maybeTool =
 -- VARIABLES
 
 
+viewVariables : Pattern -> Model -> Element Msg
 viewVariables pattern model =
     let
         viewFloatValue value =
@@ -1927,6 +1974,7 @@ viewVariables pattern model =
         ]
 
 
+viewPoints : Pattern -> Model -> Element Msg
 viewPoints pattern model =
     let
         viewHeader name =
@@ -2063,6 +2111,7 @@ viewPoints pattern model =
 ---- REUSABLE ELEMENTS
 
 
+accordionToggle : msg -> String -> Bool -> Element msg
 accordionToggle msg name visible =
     Input.button
         [ Element.width Element.fill
@@ -2112,7 +2161,9 @@ button prefix maybeHoveredTool toolTag iconSrc label =
             Just toolTag == maybeHoveredTool
     in
     Input.button
-        [ Element.paddingXY 8 7
+        [ Element.htmlAttribute <|
+            Html.Attributes.id (toolTagToId toolTag ++ "-button")
+        , Element.paddingXY 8 7
         , Element.width Element.fill
         , Font.size 14
         , Border.color gray800
@@ -3617,7 +3668,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         --
         CancelClicked ->
             ( { model | dialog = NoDialog }
-            , Cmd.none
+            , case model.dialog of
+                Tool tool ->
+                    tool
+                        |> toolToTag
+                        |> toolTagToId
+                        |> (\tag -> tag ++ "-button")
+                        |> Browser.Dom.focus
+                        |> Task.attempt (\_ -> NoOp)
+
+                _ ->
+                    Cmd.none
             , Nothing
             )
 
