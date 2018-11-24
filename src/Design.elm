@@ -11,6 +11,7 @@ module Design exposing
     , xLarge
     , xSmall
     , xxSmall
+    , xxxSmall
     )
 
 import Color
@@ -22,6 +23,11 @@ import Element.Font as Font
 
 
 ---- SPACING
+
+
+xxxSmall : Int
+xxxSmall =
+    2
 
 
 xxSmall : Int

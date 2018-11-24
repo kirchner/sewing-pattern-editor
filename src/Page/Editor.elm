@@ -39,19 +39,20 @@ import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Geometry.Svg as Svg
 import Html as CoreHtml exposing (Html)
 import Html.Attributes
-import Html.Events as Events
+import Html.Events
 import Html.Lazy
 import Html.Styled as Html
 import Html.Styled.Attributes as Attributes
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import List.Extra as List
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
@@ -81,6 +82,9 @@ type alias Model =
     , hoveredPoint : Maybe (That Point)
     , hoveredTool : Maybe ToolTag
     , dialog : Dialog
+
+    -- LEFT TOOLBAR
+    , preventActionMenuClose : Bool
 
     -- RIGHT TOOLBAR
     , rightToolbarVisible : Bool
@@ -126,6 +130,7 @@ type ToolTag
     | ThroughOnePointTag
     | FromToTag
     | MirrorAtTag
+    | DetailTag
 
 
 toolTagToId : ToolTag -> String
@@ -175,6 +180,9 @@ toolTagToId toolTag =
 
         MirrorAtTag ->
             "mirror-at"
+
+        DetailTag ->
+            "detail"
 
 
 toolToTag : Tool -> ToolTag
@@ -233,6 +241,9 @@ toolToTag tool =
 
         MirrorAt _ ->
             MirrorAtTag
+
+        Detail _ ->
+            DetailTag
 
 
 type PointData
@@ -337,6 +348,45 @@ type Tool
         , listbox : Listbox
         , thosePoints : Those Point
         }
+    | Detail DetailData
+
+
+type DetailData
+    = DetailOnePoint
+        { firstPointDropdown : Dropdown
+        , firstPointMaybeThat : Maybe (That Point)
+        }
+    | DetailManyPoints
+        { firstPointDropdown : Dropdown
+        , firstPointMaybeThat : Maybe (That Point)
+        , firstPointActionMenu : ActionMenu
+        , secondPointDropdown : Dropdown
+        , secondPointMaybeThat : Maybe (That Point)
+        , secondPointActionMenu : ActionMenu
+        , connectionFirstSecond : Connection
+        , otherPoints :
+            List
+                { dropdown : Dropdown
+                , maybeThat : Maybe (That Point)
+                , actionMenu : ActionMenu
+                , connectionPrevious : Connection
+                }
+        , connectionLastFirst : Connection
+        }
+
+
+type ActionMenu
+    = Closed
+    | MoveUp
+    | MoveDown
+    | InsertPointBefore
+    | InsertPointAfter
+    | Remove
+
+
+type Connection
+    = ConnectionStraight
+    | ConnectionCubic
 
 
 toolDescription : ToolTag -> Element msg
@@ -490,6 +540,13 @@ toolDescription toolTag =
                 , s "."
                 ]
 
+        DetailTag ->
+            Element.paragraph []
+                [ s "Create a "
+                , strong "detail"
+                , s "."
+                ]
+
 
 selectedPointsFromTool : Tool -> Those Point
 selectedPointsFromTool tool =
@@ -561,6 +618,9 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
+        Detail _ ->
+            empty
+
 
 selectedLinesFromTool : Tool -> Those Line
 selectedLinesFromTool tool =
@@ -628,6 +688,9 @@ selectedLinesFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
+        Detail _ ->
+            empty
+
 
 selectedLineSegmentsFromTool : Tool -> Those LineSegment
 selectedLineSegmentsFromTool tool =
@@ -687,6 +750,9 @@ selectedLineSegmentsFromTool tool =
             empty
 
         MirrorAt _ ->
+            empty
+
+        Detail _ ->
             empty
 
 
@@ -750,6 +816,9 @@ selectedDetailsFromTool tool =
         MirrorAt _ ->
             empty
 
+        Detail _ ->
+            empty
+
 
 maybeToList : Maybe a -> List a
 maybeToList maybeA =
@@ -767,6 +836,7 @@ init =
     , hoveredPoint = Nothing
     , hoveredTool = Nothing
     , dialog = NoDialog
+    , preventActionMenuClose = False
     , rightToolbarVisible = True
     , variablesVisible = True
     , pointsVisible = True
@@ -902,8 +972,8 @@ viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog
     Svg.svg
         [ Svg.Attributes.viewBox (viewBox windowWidth windowHeight zoom)
         , Html.Attributes.style "user-select" "none"
-        , Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-        , Events.on "mousedown" <|
+        , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+        , Html.Events.on "mousedown" <|
             Decode.map MouseDown <|
                 Decode.map2 Position
                     (Decode.field "screenX" Decode.float)
@@ -1023,7 +1093,7 @@ viewOverlay windowHeight prefix name pattern model =
             [ Element.height Element.fill
             , Element.width Element.fill
             ]
-            [ viewLeftToolbar prefix pattern model
+            [ viewLeftToolbar prefix windowHeight pattern model
             , Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -1073,11 +1143,13 @@ viewOverlay windowHeight prefix name pattern model =
         ]
 
 
-viewLeftToolbar : String -> Pattern -> Model -> Element Msg
-viewLeftToolbar prefix pattern model =
+viewLeftToolbar : String -> Int -> Pattern -> Model -> Element Msg
+viewLeftToolbar prefix windowHeight pattern model =
     Element.column
-        [ Element.height Element.fill
-        , Element.width (Element.minimum 330 Element.shrink)
+        [ Element.width (Element.minimum 330 Element.shrink)
+        , Element.height (Element.px (windowHeight - 48 - 44))
+
+        --, Element.scrollbars
         , Design.backgroundColor Dark
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
@@ -1238,8 +1310,8 @@ viewTool pattern tool =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.padding 15
-        , Element.spacing 20
+        , Element.padding Design.small
+        , Element.spacing Design.normal
         ]
         [ Element.el
             [ Font.size 12
@@ -1248,7 +1320,7 @@ viewTool pattern tool =
             (toolDescription (toolToTag tool))
         , Element.column
             [ Element.width Element.fill
-            , Element.spacing 10
+            , Element.spacing Design.small
             ]
             (case tool of
                 CreatePoint name pointData ->
@@ -1331,6 +1403,9 @@ viewTool pattern tool =
 
                 MirrorAt data ->
                     viewMirrorAt pattern points lines data
+
+                Detail data ->
+                    viewDetail pattern points data
             )
         , Element.row
             [ Element.width Element.fill
@@ -1650,6 +1725,269 @@ viewMirrorAt pattern points lines data =
     ]
 
 
+viewDetail pattern points data =
+    let
+        buttonAddPointAtEnd =
+            Input.button
+                [ Element.paddingXY 8 7
+                , Font.size 14
+                , Border.color gray800
+                , Border.width 1
+                , Font.color white
+                , Background.color gray800
+                , Element.mouseOver
+                    [ Background.color gray700 ]
+                ]
+                { onPress = Just DetailAddPointAtEnd
+                , label = Element.text "Add point"
+                }
+
+        viewDropdownPoint id index maybeActionMenu lift label dropdown maybeThatPoint =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing Design.xxSmall
+                ]
+                [ Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.el
+                        [ Element.paddingXY 0 Design.xxSmall
+                        , Font.size 12
+                        , Font.color (color (Color.rgb255 229 223 197))
+                        , Font.variant Font.smallCaps
+                        , Element.htmlAttribute <|
+                            Html.Attributes.id (id ++ "-label")
+                        ]
+                        (Element.text label)
+                    , case maybeActionMenu of
+                        Nothing ->
+                            Element.none
+
+                        Just actionMenu ->
+                            viewActionMenu index actionMenu
+                    ]
+                , Element.el [ Element.width Element.fill ] <|
+                    Element.html <|
+                        Html.toUnstyled <|
+                            Html.map lift <|
+                                Dropdown.view
+                                    (dropdownViewConfig (pointName pattern) "")
+                                    { id = id
+                                    , labelledBy = id ++ "-label"
+                                    }
+                                    (List.map (Tuple.first >> Listbox.option) points)
+                                    dropdown
+                                    maybeThatPoint
+                ]
+
+        viewActionMenu index actionMenu =
+            Element.row
+                (if actionMenu == Closed then
+                    [ Element.spacing Design.xxSmall
+                    , Element.alignRight
+                    ]
+
+                 else
+                    [ Element.spacing Design.xxSmall
+                    , Element.alignRight
+                    , Element.htmlAttribute <|
+                        Html.Attributes.style "z-index" "1"
+                    ]
+                )
+                [ Input.button
+                    [ Element.padding Design.xxSmall
+                    , Font.size 10
+                    , Background.color gray800
+                    , Font.color white
+                    , Element.mouseOver
+                        [ Background.color gray700 ]
+                    , Element.below <|
+                        case actionMenu of
+                            Closed ->
+                                Element.none
+
+                            _ ->
+                                Element.column
+                                    [ Events.onMouseDown (ActionMenuMouseDown index)
+                                    , Events.onMouseUp (ActionMenuMouseUp index)
+                                    ]
+                                    [ Element.el
+                                        [ Element.paddingXY 8 7
+                                        , Element.width Element.fill
+                                        , Font.size 14
+                                        , Background.color gray800
+                                        , Font.color white
+                                        , Element.mouseOver
+                                            [ Background.color gray700 ]
+                                        , Element.htmlAttribute <|
+                                            Html.Attributes.tabindex -1
+                                        ]
+                                        (Element.text "Move down")
+                                    , Element.el
+                                        [ Element.paddingXY 8 7
+                                        , Element.width Element.fill
+                                        , Font.size 14
+                                        , Background.color gray800
+                                        , Font.color white
+                                        , Element.mouseOver
+                                            [ Background.color gray700 ]
+                                        , Element.htmlAttribute <|
+                                            Html.Attributes.tabindex -1
+                                        ]
+                                        (Element.text "Move up")
+                                    , Element.el
+                                        [ Element.paddingXY 8 7
+                                        , Element.width Element.fill
+                                        , Font.size 14
+                                        , Background.color gray800
+                                        , Font.color white
+                                        , Element.mouseOver
+                                            [ Background.color gray700 ]
+                                        , Element.htmlAttribute <|
+                                            Html.Attributes.tabindex -1
+                                        ]
+                                        (Element.text "Insert point before")
+                                    , Element.el
+                                        [ Element.paddingXY 8 7
+                                        , Element.width Element.fill
+                                        , Font.size 14
+                                        , Background.color gray800
+                                        , Font.color white
+                                        , Element.mouseOver
+                                            [ Background.color gray700 ]
+                                        , Element.htmlAttribute <|
+                                            Html.Attributes.tabindex -1
+                                        ]
+                                        (Element.text "Insert point after")
+                                    , Element.el
+                                        [ Element.paddingXY 8 7
+                                        , Element.width Element.fill
+                                        , Font.size 14
+                                        , Background.color gray800
+                                        , Font.color white
+                                        , Element.mouseOver
+                                            [ Background.color gray700 ]
+                                        , Element.htmlAttribute <|
+                                            Html.Attributes.tabindex -1
+                                        , Element.htmlAttribute <|
+                                            Html.Events.stopPropagationOn "click" <|
+                                                Decode.succeed
+                                                    ( DetailRemovePointClicked index, True )
+                                        ]
+                                        (Element.text "Remove")
+                                    ]
+                    , Events.onLoseFocus (ActionMenuLostFocus index)
+                    ]
+                    { onPress = Just (ActionMenuClicked index)
+                    , label =
+                        Element.row
+                            [ Element.spacing Design.xxSmall ]
+                            [ Element.text "Actions"
+                            , View.Icon.fa "angle-down"
+                            ]
+                    }
+                ]
+    in
+    case data of
+        DetailOnePoint detailData ->
+            [ viewDropdownPoint "detail-point--first-point"
+                0
+                Nothing
+                (DropdownPointMsg 0)
+                "point #1"
+                detailData.firstPointDropdown
+                detailData.firstPointMaybeThat
+            , buttonAddPointAtEnd
+            ]
+
+        DetailManyPoints detailData ->
+            let
+                viewPoint index { dropdown, maybeThat, actionMenu, connectionPrevious } =
+                    [ viewConnection index
+                        (ConnectionChanged (index + 1))
+                        connectionPrevious
+                    , viewDropdownPoint
+                        ("detail-point--point-"
+                            ++ String.fromInt (index + 2)
+                        )
+                        (index + 2)
+                        (Just actionMenu)
+                        (DropdownPointMsg (index + 2))
+                        ("point #" ++ String.fromInt (index + 3))
+                        dropdown
+                        maybeThat
+                    ]
+
+                viewConnection index lift connection =
+                    Input.radioRow
+                        [ Element.htmlAttribute <|
+                            Html.Attributes.id
+                                ("detail--connection-to-" ++ String.fromInt index)
+                        , Element.width Element.fill
+                        , Element.paddingXY Design.xxSmall Design.xSmall
+                        , Element.spacing Design.normal
+                        , Font.size 16
+                        , Font.color white
+                        ]
+                        { onChange = lift
+                        , options =
+                            [ Input.option ConnectionStraight <|
+                                Element.el
+                                    [ Border.width 1
+                                    , Border.color gray900
+                                    ]
+                                    (Element.text "straight")
+                            , Input.option ConnectionCubic <|
+                                Element.el
+                                    [ Border.width 1
+                                    , Border.color gray900
+                                    ]
+                                    (Element.text "cubic")
+                            ]
+                        , selected = Just connection
+                        , label =
+                            Input.labelAbove
+                                [ Font.size 12
+                                , Font.variant Font.smallCaps
+                                , Font.color (color (Color.rgb255 229 223 197))
+                                ]
+                                (Element.text
+                                    ("connection from point #"
+                                        ++ String.fromInt (index + 1)
+                                        ++ " to point #"
+                                        ++ String.fromInt (index + 2)
+                                        ++ "?"
+                                    )
+                                )
+                        }
+            in
+            List.concat
+                [ [ viewDropdownPoint "detail-point--point-0"
+                        0
+                        (Just detailData.firstPointActionMenu)
+                        (DropdownPointMsg 0)
+                        "point #1"
+                        detailData.firstPointDropdown
+                        detailData.firstPointMaybeThat
+                  , viewConnection 1
+                        (ConnectionChanged 0)
+                        detailData.connectionFirstSecond
+                  , viewDropdownPoint "detail-point--point-1"
+                        1
+                        (Just detailData.secondPointActionMenu)
+                        (DropdownPointMsg 1)
+                        "point #2"
+                        detailData.secondPointDropdown
+                        detailData.secondPointMaybeThat
+                  ]
+                , List.concat (List.indexedMap viewPoint detailData.otherPoints)
+                , [ buttonAddPointAtEnd
+                  , viewConnection (1 + List.length detailData.otherPoints)
+                        (ConnectionChanged (1 + List.length detailData.otherPoints))
+                        detailData.connectionLastFirst
+                  ]
+                ]
+
+
 pointName : Pattern -> That Point -> String
 pointName pattern =
     Pattern.getPoint pattern
@@ -1731,7 +2069,7 @@ viewToolSelector prefix hoveredTool =
     let
         viewGroup name buttons =
             Element.column
-                [ Element.spacing Design.small
+                [ Element.spacing Design.xSmall
                 , Element.width Element.fill
                 ]
                 [ Element.el
@@ -1777,6 +2115,8 @@ viewToolSelector prefix hoveredTool =
         , viewGroup "create a transformation"
             [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror points at a line"
             ]
+        , viewGroup "create a detail"
+            [ button prefix hoveredTool DetailTag "detail" "Detail" ]
         ]
 
 
@@ -2110,8 +2450,8 @@ button prefix maybeHoveredTool toolTag iconSrc label =
             else
                 gray800
         , Font.color white
-        , Element.Events.onMouseEnter (SelectToolHovered toolTag)
-        , Element.Events.onMouseLeave SelectToolUnhovered
+        , Events.onMouseEnter (SelectToolHovered toolTag)
+        , Events.onMouseLeave SelectToolUnhovered
         , Element.mouseOver
             [ Background.color <|
                 if selected then
@@ -2711,6 +3051,15 @@ type Msg
     | DropdownCircleAMsg (Dropdown.Msg (That Circle))
     | DropdownCircleBMsg (Dropdown.Msg (That Circle))
     | FirstChanged Bool
+      -- DETAIL
+    | DropdownPointMsg Int (Dropdown.Msg (That Point))
+    | ActionMenuClicked Int
+    | ActionMenuLostFocus Int
+    | ActionMenuMouseDown Int
+    | ActionMenuMouseUp Int
+    | DetailRemovePointClicked Int
+    | ConnectionChanged Int Connection
+    | DetailAddPointAtEnd
       -- TOOL ACTIONS
     | CreateClicked
     | UpdateClicked
@@ -2937,6 +3286,13 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 , listbox = Listbox.init
                                 , thosePoints = Those.none
                                 }
+
+                        DetailTag ->
+                            Detail <|
+                                DetailOnePoint
+                                    { firstPointDropdown = Dropdown.init
+                                    , firstPointMaybeThat = Nothing
+                                    }
             in
             ( { model | dialog = Tool tool }
             , Browser.Dom.focus "name-input"
@@ -3170,6 +3526,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateName FromTo data
 
                 Tool (MirrorAt _) ->
+                    ( model, Cmd.none, Nothing )
+
+                Tool (Detail _) ->
                     ( model, Cmd.none, Nothing )
 
                 CreateVariable _ ->
@@ -3575,6 +3934,423 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 _ ->
                     ( model, Cmd.none, Nothing )
 
+        DropdownPointMsg index dropdownMsg ->
+            case model.dialog of
+                Tool (Detail (DetailOnePoint data)) ->
+                    if index /= 0 then
+                        ( model, Cmd.none, Nothing )
+
+                    else
+                        let
+                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                Dropdown.update dropdownUpdateConfig
+                                    (Pattern.points pattern
+                                        |> List.map (Tuple.first >> Listbox.option)
+                                    )
+                                    dropdownMsg
+                                    data.firstPointDropdown
+                                    data.firstPointMaybeThat
+
+                            newData =
+                                { data
+                                    | firstPointDropdown = newDropdown
+                                    , firstPointMaybeThat = newMaybeThatPoint
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                        , Cmd.map (DropdownPointMsg index) dropdownCmd
+                        , Nothing
+                        )
+
+                Tool (Detail (DetailManyPoints data)) ->
+                    if index < 0 || index > 1 + List.length data.otherPoints then
+                        ( model, Cmd.none, Nothing )
+
+                    else if index == 0 then
+                        let
+                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                Dropdown.update dropdownUpdateConfig
+                                    (Pattern.points pattern
+                                        |> List.map (Tuple.first >> Listbox.option)
+                                    )
+                                    dropdownMsg
+                                    data.firstPointDropdown
+                                    data.firstPointMaybeThat
+
+                            newData =
+                                { data
+                                    | firstPointDropdown = newDropdown
+                                    , firstPointMaybeThat = newMaybeThatPoint
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.map (DropdownPointMsg index) dropdownCmd
+                        , Nothing
+                        )
+
+                    else if index == 1 then
+                        let
+                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                Dropdown.update dropdownUpdateConfig
+                                    (Pattern.points pattern
+                                        |> List.map (Tuple.first >> Listbox.option)
+                                    )
+                                    dropdownMsg
+                                    data.secondPointDropdown
+                                    data.secondPointMaybeThat
+
+                            newData =
+                                { data
+                                    | secondPointDropdown = newDropdown
+                                    , secondPointMaybeThat = newMaybeThatPoint
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.map (DropdownPointMsg index) dropdownCmd
+                        , Nothing
+                        )
+
+                    else
+                        case List.head (List.drop (index - 2) data.otherPoints) of
+                            Nothing ->
+                                ( model, Cmd.none, Nothing )
+
+                            Just { dropdown, maybeThat } ->
+                                let
+                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                        Dropdown.update dropdownUpdateConfig
+                                            (Pattern.points pattern
+                                                |> List.map (Tuple.first >> Listbox.option)
+                                            )
+                                            dropdownMsg
+                                            dropdown
+                                            maybeThat
+
+                                    newData =
+                                        { data
+                                            | otherPoints =
+                                                List.updateAt (index - 2)
+                                                    (\stuff ->
+                                                        { stuff
+                                                            | dropdown = newDropdown
+                                                            , maybeThat = newMaybeThatPoint
+                                                        }
+                                                    )
+                                                    data.otherPoints
+                                        }
+                                in
+                                ( { model
+                                    | dialog =
+                                        Tool (Detail (DetailManyPoints newData))
+                                  }
+                                , Cmd.map (DropdownPointMsg index) dropdownCmd
+                                , Nothing
+                                )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        ActionMenuClicked index ->
+            case model.dialog of
+                Tool (Detail (DetailManyPoints data)) ->
+                    if index < 0 || index > 1 + List.length data.otherPoints then
+                        ( model, Cmd.none, Nothing )
+
+                    else if index == 0 then
+                        let
+                            newData =
+                                { data
+                                    | firstPointActionMenu =
+                                        case data.firstPointActionMenu of
+                                            Closed ->
+                                                MoveDown
+
+                                            _ ->
+                                                Closed
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else if index == 1 then
+                        let
+                            newData =
+                                { data
+                                    | secondPointActionMenu =
+                                        case data.secondPointActionMenu of
+                                            Closed ->
+                                                MoveDown
+
+                                            _ ->
+                                                Closed
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else
+                        let
+                            newData =
+                                { data
+                                    | otherPoints =
+                                        List.updateAt (index - 2)
+                                            (\stuff ->
+                                                { stuff
+                                                    | actionMenu =
+                                                        case stuff.actionMenu of
+                                                            Closed ->
+                                                                MoveDown
+
+                                                            _ ->
+                                                                Closed
+                                                }
+                                            )
+                                            data.otherPoints
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        ActionMenuLostFocus index ->
+            case model.dialog of
+                Tool (Detail (DetailManyPoints data)) ->
+                    if index < 0 || index > 1 + List.length data.otherPoints then
+                        ( model, Cmd.none, Nothing )
+
+                    else if index == 0 && not model.preventActionMenuClose then
+                        let
+                            newData =
+                                { data | firstPointActionMenu = Closed }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else if index == 1 && not model.preventActionMenuClose then
+                        let
+                            newData =
+                                { data | secondPointActionMenu = Closed }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else if not model.preventActionMenuClose then
+                        let
+                            newData =
+                                { data
+                                    | otherPoints =
+                                        List.updateAt (index - 2)
+                                            (\stuff -> { stuff | actionMenu = Closed })
+                                            data.otherPoints
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                    else
+                        ( model, Cmd.none, Nothing )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        ActionMenuMouseDown _ ->
+            ( { model | preventActionMenuClose = True }
+            , Cmd.none
+            , Nothing
+            )
+
+        ActionMenuMouseUp _ ->
+            ( { model | preventActionMenuClose = False }
+            , Cmd.none
+            , Nothing
+            )
+
+        DetailRemovePointClicked index ->
+            case model.dialog of
+                Tool (Detail (DetailManyPoints data)) ->
+                    if index == 0 then
+                        case List.head data.otherPoints of
+                            Nothing ->
+                                let
+                                    newData =
+                                        { firstPointDropdown = data.secondPointDropdown
+                                        , firstPointMaybeThat = data.secondPointMaybeThat
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            Just { dropdown, maybeThat, actionMenu } ->
+                                let
+                                    newData =
+                                        { data
+                                            | firstPointDropdown = data.secondPointDropdown
+                                            , firstPointMaybeThat = data.secondPointMaybeThat
+                                            , firstPointActionMenu = data.secondPointActionMenu
+                                            , connectionFirstSecond = ConnectionStraight
+                                            , secondPointDropdown = dropdown
+                                            , secondPointMaybeThat = maybeThat
+                                            , secondPointActionMenu = actionMenu
+                                            , otherPoints =
+                                                List.drop 1 data.otherPoints
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                    else if index == 1 then
+                        case List.head data.otherPoints of
+                            Nothing ->
+                                let
+                                    newData =
+                                        { firstPointDropdown = data.firstPointDropdown
+                                        , firstPointMaybeThat = data.firstPointMaybeThat
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            Just { dropdown, maybeThat, actionMenu } ->
+                                let
+                                    newData =
+                                        { data
+                                            | connectionFirstSecond = ConnectionStraight
+                                            , secondPointDropdown = dropdown
+                                            , secondPointMaybeThat = maybeThat
+                                            , secondPointActionMenu = Closed
+                                            , otherPoints =
+                                                List.drop 1 data.otherPoints
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                    else if index > 1 + List.length data.otherPoints then
+                        ( model, Cmd.none, Nothing )
+
+                    else
+                        let
+                            newData =
+                                { data
+                                    | otherPoints =
+                                        List.removeAt (index - 2) data.otherPoints
+                                }
+                        in
+                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        , Cmd.none
+                        , Nothing
+                        )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        DetailAddPointAtEnd ->
+            case model.dialog of
+                Tool (Detail (DetailOnePoint data)) ->
+                    let
+                        newData =
+                            { firstPointDropdown = data.firstPointDropdown
+                            , firstPointMaybeThat = data.firstPointMaybeThat
+                            , firstPointActionMenu = Closed
+                            , connectionFirstSecond = ConnectionStraight
+                            , secondPointDropdown = Dropdown.init
+                            , secondPointMaybeThat = Nothing
+                            , secondPointActionMenu = Closed
+                            , otherPoints = []
+                            , connectionLastFirst = ConnectionStraight
+                            }
+                    in
+                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    , Browser.Dom.focus "detail--connection-to-0"
+                        |> Task.attempt (\_ -> NoOp)
+                    , Nothing
+                    )
+
+                Tool (Detail (DetailManyPoints data)) ->
+                    let
+                        newData =
+                            { data
+                                | otherPoints =
+                                    data.otherPoints
+                                        ++ [ { dropdown = Dropdown.init
+                                             , maybeThat = Nothing
+                                             , actionMenu = Closed
+                                             , connectionPrevious = ConnectionStraight
+                                             }
+                                           ]
+                            }
+                    in
+                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    , Browser.Dom.focus
+                        ("detail--connection-to-"
+                            ++ String.fromInt (List.length data.otherPoints)
+                        )
+                        |> Task.attempt (\_ -> NoOp)
+                    , Nothing
+                    )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
+        ConnectionChanged index newConnection ->
+            case model.dialog of
+                Tool (Detail (DetailManyPoints data)) ->
+                    let
+                        newData =
+                            if index < 0 || index > pointCount - 1 then
+                                data
+
+                            else if index == 0 then
+                                { data | connectionFirstSecond = newConnection }
+
+                            else if index == pointCount - 1 then
+                                { data | connectionLastFirst = newConnection }
+
+                            else
+                                { data
+                                    | otherPoints =
+                                        List.updateAt (index - 1)
+                                            (\stuff ->
+                                                { stuff
+                                                    | connectionPrevious = newConnection
+                                                }
+                                            )
+                                            data.otherPoints
+                                }
+
+                        pointCount =
+                            2 + List.length data.otherPoints
+                    in
+                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    , Cmd.none
+                    , Nothing
+                    )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
         --
         CancelClicked ->
             ( { model | dialog = NoDialog }
@@ -3804,6 +4580,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         _ ->
                             ( model, Cmd.none, Nothing )
+
+                Tool (Detail _) ->
+                    ( model, Cmd.none, Nothing )
 
                 CreateVariable { name, value } ->
                     let

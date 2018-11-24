@@ -24,17 +24,18 @@ dev name =
 
 
 fa name =
-    Element.html <|
-        Html.toUnstyled <|
-            Html.i
-                [ Attributes.class "fas"
-                , Attributes.class ("fa-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 12)
-                    , Css.color Css.inherit
+    Element.el [] <|
+        Element.html <|
+            Html.toUnstyled <|
+                Html.i
+                    [ Attributes.class "fas"
+                    , Attributes.class ("fa-" ++ name)
+                    , Attributes.css
+                        [ Css.fontSize (Css.px 12)
+                        , Css.color Css.inherit
+                        ]
                     ]
-                ]
-                []
+                    []
 
 
 faLarge name =
