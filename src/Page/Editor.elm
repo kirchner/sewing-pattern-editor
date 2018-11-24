@@ -1902,9 +1902,14 @@ viewDetail pattern points data =
         DetailManyPoints detailData ->
             let
                 viewPoint index { dropdown, maybeThat, actionMenu, connectionPrevious } =
-                    [ viewConnection index
+                    [ viewConnection (index + 1)
                         (ConnectionChanged (index + 1))
                         connectionPrevious
+                        ("connection from point #"
+                            ++ String.fromInt (index + 2)
+                            ++ " to point #"
+                            ++ String.fromInt (index + 3)
+                        )
                     , viewDropdownPoint
                         ("detail-point--point-"
                             ++ String.fromInt (index + 2)
@@ -1917,7 +1922,7 @@ viewDetail pattern points data =
                         maybeThat
                     ]
 
-                viewConnection index lift connection =
+                viewConnection index lift connection label =
                     Input.radioRow
                         [ Element.htmlAttribute <|
                             Html.Attributes.id
@@ -1950,14 +1955,7 @@ viewDetail pattern points data =
                                 , Font.variant Font.smallCaps
                                 , Font.color (color (Color.rgb255 229 223 197))
                                 ]
-                                (Element.text
-                                    ("connection from point #"
-                                        ++ String.fromInt (index + 1)
-                                        ++ " to point #"
-                                        ++ String.fromInt (index + 2)
-                                        ++ "?"
-                                    )
-                                )
+                                (Element.text label)
                         }
             in
             List.concat
@@ -1968,9 +1966,10 @@ viewDetail pattern points data =
                         "point #1"
                         detailData.firstPointDropdown
                         detailData.firstPointMaybeThat
-                  , viewConnection 1
+                  , viewConnection 0
                         (ConnectionChanged 0)
                         detailData.connectionFirstSecond
+                        "connection from point #1 to point #2"
                   , viewDropdownPoint "detail-point--point-1"
                         1
                         (Just detailData.secondPointActionMenu)
@@ -1984,6 +1983,10 @@ viewDetail pattern points data =
                   , viewConnection (1 + List.length detailData.otherPoints)
                         (ConnectionChanged (1 + List.length detailData.otherPoints))
                         detailData.connectionLastFirst
+                        ("connection from point #"
+                            ++ String.fromInt (2 + List.length detailData.otherPoints)
+                            ++ " to point #1"
+                        )
                   ]
                 ]
 
