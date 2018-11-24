@@ -353,11 +353,13 @@ type Tool
 
 type DetailData
     = DetailOnePoint
-        { firstPointDropdown : Dropdown
+        { name : String
+        , firstPointDropdown : Dropdown
         , firstPointMaybeThat : Maybe (That Point)
         }
     | DetailManyPoints
-        { firstPointDropdown : Dropdown
+        { name : String
+        , firstPointDropdown : Dropdown
         , firstPointMaybeThat : Maybe (That Point)
         , firstPointActionMenu : ActionMenu
         , secondPointDropdown : Dropdown
@@ -1889,7 +1891,8 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ viewDropdownPoint "detail-point--first-point"
+            [ labeledInputText NameChanged "pick a name" detailData.name
+            , viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
                 (DropdownPointMsg 0)
@@ -1926,7 +1929,7 @@ viewDetail pattern points data =
                     Input.radioRow
                         [ Element.htmlAttribute <|
                             Html.Attributes.id
-                                ("detail--connection-to-" ++ String.fromInt index)
+                                ("detail--connection-" ++ String.fromInt index)
                         , Element.width Element.fill
                         , Element.paddingXY Design.xxSmall Design.xSmall
                         , Element.spacing Design.normal
@@ -1959,7 +1962,8 @@ viewDetail pattern points data =
                         }
             in
             List.concat
-                [ [ viewDropdownPoint "detail-point--point-0"
+                [ [ labeledInputText NameChanged "pick a name" detailData.name
+                  , viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
                         (DropdownPointMsg 0)
@@ -3293,7 +3297,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         DetailTag ->
                             Detail <|
                                 DetailOnePoint
-                                    { firstPointDropdown = Dropdown.init
+                                    { name = ""
+                                    , firstPointDropdown = Dropdown.init
                                     , firstPointMaybeThat = Nothing
                                     }
             in
@@ -3531,8 +3536,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (MirrorAt _) ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (Detail _) ->
-                    ( model, Cmd.none, Nothing )
+                Tool (Detail (DetailOnePoint data)) ->
+                    updateName (Detail << DetailOnePoint) data
+
+                Tool (Detail (DetailManyPoints data)) ->
+                    updateName (Detail << DetailManyPoints) data
 
                 CreateVariable _ ->
                     ( model, Cmd.none, Nothing )
@@ -4190,7 +4198,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Nothing ->
                                 let
                                     newData =
-                                        { firstPointDropdown = data.secondPointDropdown
+                                        { name = data.name
+                                        , firstPointDropdown = data.secondPointDropdown
                                         , firstPointMaybeThat = data.secondPointMaybeThat
                                         }
                                 in
@@ -4224,7 +4233,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Nothing ->
                                 let
                                     newData =
-                                        { firstPointDropdown = data.firstPointDropdown
+                                        { name = data.name
+                                        , firstPointDropdown = data.firstPointDropdown
                                         , firstPointMaybeThat = data.firstPointMaybeThat
                                         }
                                 in
@@ -4274,7 +4284,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (Detail (DetailOnePoint data)) ->
                     let
                         newData =
-                            { firstPointDropdown = data.firstPointDropdown
+                            { name = data.name
+                            , firstPointDropdown = data.firstPointDropdown
                             , firstPointMaybeThat = data.firstPointMaybeThat
                             , firstPointActionMenu = Closed
                             , connectionFirstSecond = ConnectionStraight
@@ -4286,7 +4297,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             }
                     in
                     ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
-                    , Browser.Dom.focus "detail--connection-to-0"
+                    , Browser.Dom.focus "detail--connection-0"
                         |> Task.attempt (\_ -> NoOp)
                     , Nothing
                     )
@@ -4307,8 +4318,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
                     , Browser.Dom.focus
-                        ("detail--connection-to-"
-                            ++ String.fromInt (List.length data.otherPoints)
+                        ("detail--connection-"
+                            ++ String.fromInt (1 + List.length data.otherPoints)
                         )
                         |> Task.attempt (\_ -> NoOp)
                     , Nothing
