@@ -223,7 +223,16 @@ type Ellipsis
 
 
 type Detail
-    = CounterClockwise (List (That Point))
+    = FromPoints
+        { firstPoint : That Point
+        , segments : List ( That Point, Connection )
+        , lastToFirst : Connection
+        }
+
+
+type Connection
+    = Straight
+    | Cubic (That Point)
 
 
 
@@ -1355,10 +1364,31 @@ encodeLineSegment lineSegment =
 
 encodeDetail : Detail -> Value
 encodeDetail detail =
+    let
+        encodeSegment ( thatPoint, connection ) =
+            Encode.list identity
+                [ That.encode thatPoint
+                , encodeConnection connection
+                ]
+    in
     case detail of
-        CounterClockwise thatPoints ->
-            withType "counterClockwise"
-                [ ( "points", Encode.list That.encode thatPoints ) ]
+        FromPoints { firstPoint, segments, lastToFirst } ->
+            withType "fromPoints"
+                [ ( "firstPoint", That.encode firstPoint )
+                , ( "points", Encode.list encodeSegment segments )
+                , ( "lastToFirst", encodeConnection lastToFirst )
+                ]
+
+
+encodeConnection : Connection -> Value
+encodeConnection connection =
+    case connection of
+        Straight ->
+            withType "straight" []
+
+        Cubic thatPoint ->
+            withType "cubic"
+                [ ( "knot", That.encode thatPoint ) ]
 
 
 encodeExpr : Expr -> Value
@@ -1504,10 +1534,33 @@ lineSegmentDecoder =
 
 detailDecoder : Decoder Detail
 detailDecoder =
+    let
+        segmentDecoder =
+            Decode.map2 Tuple.pair
+                (Decode.index 0 That.decoder)
+                (Decode.index 1 connectionDecoder)
+
+        connectionDecoder =
+            Decode.oneOf
+                [ typeDecoder "straight" (Decode.succeed Straight)
+                , typeDecoder "cubic" <|
+                    Decode.map Cubic
+                        (Decode.field "knot" That.decoder)
+                ]
+    in
     Decode.oneOf
-        [ typeDecoder "counterClockwise" <|
-            Decode.map CounterClockwise
-                (Decode.field "points" (Decode.list That.decoder))
+        [ typeDecoder "fromPoints" <|
+            Decode.map FromPoints <|
+                Decode.map3
+                    (\firstPoint segments lastToFirst ->
+                        { firstPoint = firstPoint
+                        , segments = segments
+                        , lastToFirst = lastToFirst
+                        }
+                    )
+                    (Decode.field "firstPoint" That.decoder)
+                    (Decode.field "segments" (Decode.list segmentDecoder))
+                    (Decode.field "lastToFirst" connectionDecoder)
         ]
 
 
