@@ -126,7 +126,6 @@ type ToolTag
     | ThroughOnePointTag
     | FromToTag
     | MirrorAtTag
-    | CounterClockwiseTag
 
 
 toolTagToId : ToolTag -> String
@@ -176,9 +175,6 @@ toolTagToId toolTag =
 
         MirrorAtTag ->
             "mirror-at"
-
-        CounterClockwiseTag ->
-            "counter-clockwise"
 
 
 toolToTag : Tool -> ToolTag
@@ -237,9 +233,6 @@ toolToTag tool =
 
         MirrorAt _ ->
             MirrorAtTag
-
-        CounterClockwise _ ->
-            CounterClockwiseTag
 
 
 type PointData
@@ -344,8 +337,6 @@ type Tool
         , listbox : Listbox
         , thosePoints : Those Point
         }
-      -- DETAILS
-    | CounterClockwise (List (That Point))
 
 
 toolDescription : ToolTag -> Element msg
@@ -499,15 +490,6 @@ toolDescription toolTag =
                 , s "."
                 ]
 
-        CounterClockwiseTag ->
-            Element.paragraph []
-                [ s "Create a new "
-                , strong "detail"
-                , s " by connecting "
-                , strong "points"
-                , s " counterclockwise."
-                ]
-
 
 selectedPointsFromTool : Tool -> Those Point
 selectedPointsFromTool tool =
@@ -579,9 +561,6 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
-        CounterClockwise targets ->
-            Those.fromList targets
-
 
 selectedLinesFromTool : Tool -> Those Line
 selectedLinesFromTool tool =
@@ -649,9 +628,6 @@ selectedLinesFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
-        CounterClockwise _ ->
-            empty
-
 
 selectedLineSegmentsFromTool : Tool -> Those LineSegment
 selectedLineSegmentsFromTool tool =
@@ -713,9 +689,6 @@ selectedLineSegmentsFromTool tool =
         MirrorAt _ ->
             empty
 
-        CounterClockwise _ ->
-            empty
-
 
 selectedDetailsFromTool : Tool -> Those Detail
 selectedDetailsFromTool tool =
@@ -775,9 +748,6 @@ selectedDetailsFromTool tool =
             empty
 
         MirrorAt _ ->
-            empty
-
-        CounterClockwise _ ->
             empty
 
 
@@ -1361,9 +1331,6 @@ viewTool pattern tool =
 
                 MirrorAt data ->
                     viewMirrorAt pattern points lines data
-
-                CounterClockwise targets ->
-                    viewCounterClockwise pattern points targets
             )
         , Element.row
             [ Element.width Element.fill
@@ -1680,38 +1647,6 @@ viewMirrorAt pattern points lines data =
         }
         data.listbox
         data.thosePoints
-    ]
-
-
-viewCounterClockwise :
-    Pattern
-    -> List ( That Point, { r | name : Maybe String } )
-    -> List (That Point)
-    -> List (Element Msg)
-viewCounterClockwise pattern points targets =
-    let
-        pointButton ( thatPoint, { name } ) =
-            Input.button
-                [ Element.padding 5
-                , Background.color gray800
-                , Border.color gray900
-                , Border.width 1
-                , Element.mouseOver
-                    [ Background.color gray700 ]
-                ]
-                { onPress = Just (PointAdded thatPoint)
-                , label =
-                    Element.text (Maybe.withDefault "<unnamed>" name)
-                }
-    in
-    [ Element.text
-        (targets
-            |> List.filterMap (Pattern.getPoint pattern)
-            |> List.map (.name >> Maybe.withDefault "<unnamed>")
-            |> String.join ", "
-        )
-    , Element.column [] <|
-        List.map pointButton points
     ]
 
 
@@ -2768,7 +2703,6 @@ type Msg
     | RatioChanged String
     | LengthChanged String
     | RadiusChanged String
-    | PointAdded (That Point)
     | DropdownAnchorAMsg (Dropdown.Msg (That Point))
     | DropdownAnchorBMsg (Dropdown.Msg (That Point))
     | DropdownLineAMsg (Dropdown.Msg (That Line))
@@ -3003,18 +2937,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 , listbox = Listbox.init
                                 , thosePoints = Those.none
                                 }
-
-                        CounterClockwiseTag ->
-                            CounterClockwise []
             in
             ( { model | dialog = Tool tool }
-            , case toolTag of
-                CounterClockwiseTag ->
-                    Cmd.none
-
-                _ ->
-                    Browser.Dom.focus "name-input"
-                        |> Task.attempt (\_ -> NoOp)
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
             , Nothing
             )
 
@@ -3246,9 +3172,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (MirrorAt _) ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (CounterClockwise _) ->
-                    ( model, Cmd.none, Nothing )
-
                 CreateVariable _ ->
                     ( model, Cmd.none, Nothing )
 
@@ -3406,17 +3329,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             case model.dialog of
                 Tool (CenteredAt data) ->
                     ( { model | dialog = Tool (CenteredAt { data | radius = newRadius }) }
-                    , Cmd.none
-                    , Nothing
-                    )
-
-                _ ->
-                    ( model, Cmd.none, Nothing )
-
-        PointAdded thatPoint ->
-            case model.dialog of
-                Tool (CounterClockwise targets) ->
-                    ( { model | dialog = Tool (CounterClockwise (thatPoint :: targets)) }
                     , Cmd.none
                     , Nothing
                     )
@@ -3892,20 +3804,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         _ ->
                             ( model, Cmd.none, Nothing )
-
-                Tool (CounterClockwise targets) ->
-                    let
-                        newDetail =
-                            targets
-                                |> Pattern.CounterClockwise
-
-                        ( newPattern, _ ) =
-                            Pattern.insertDetail newDetail pattern
-                    in
-                    ( { model | dialog = NoDialog }
-                    , Cmd.none
-                    , Just { storedPattern | pattern = newPattern }
-                    )
 
                 CreateVariable { name, value } ->
                     let
