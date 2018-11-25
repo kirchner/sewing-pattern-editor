@@ -5,7 +5,7 @@ import Circle2d exposing (Circle2d)
 import Direction2d
 import Geometry.Svg as Svg
 import LineSegment2d exposing (LineSegment2d)
-import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
+import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point, Segment)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
@@ -324,23 +324,29 @@ drawCircle zoom ( thatCircle, maybeName, circle2d ) =
         circle2d
 
 
-drawDetail : Float -> Those Detail -> ( That Detail, Maybe String, Polygon2d ) -> Svg msg
-drawDetail zoom selectedDetails ( thatDetail, maybeName, polygon2d ) =
+drawDetail : Float -> Those Detail -> ( That Detail, Maybe String, List Segment ) -> Svg msg
+drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
     let
         selected =
             Those.member thatDetail selectedDetails
-    in
-    Svg.polygon2d
-        [ Svg.Attributes.fill "lightGrey"
-        , Svg.Attributes.stroke <|
-            if selected then
-                "blue"
 
-            else
-                "black"
-        , normalStroke zoom
-        ]
-        polygon2d
+        drawSegment segment =
+            case segment of
+                Pattern.LineSegment lineSegment2d ->
+                    Svg.lineSegment2d
+                        [ Svg.Attributes.fill "lightGrey"
+                        , Svg.Attributes.stroke <|
+                            if selected then
+                                "blue"
+
+                            else
+                                "black"
+                        , normalStroke zoom
+                        ]
+                        lineSegment2d
+    in
+    Svg.g []
+        (List.map drawSegment segments)
 
 
 

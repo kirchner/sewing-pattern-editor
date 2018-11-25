@@ -1,7 +1,7 @@
 module Pattern exposing
     ( Pattern
     , empty
-    , Geometry, computeGeometry, geometry, Problems
+    , Geometry, Segment(..), computeGeometry, geometry, Problems
     , getPointGeometries, getPointGeometry
     , point2d
     , variables, insertVariable, removeVariable
@@ -16,7 +16,7 @@ module Pattern exposing
     , Line(..), lines, insertLine, getLine
     , throughTwoPoints, throughOnePoint
     , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
-    , Detail(..), details, insertDetail, getDetail
+    , Detail(..), Connection(..), details, insertDetail, getDetail
     , Transformation(..), insertTransformation
     , decoder, encode
     )
@@ -30,7 +30,7 @@ module Pattern exposing
 
 # Geometry
 
-@docs Geometry, computeGeometry, geometry, Problems
+@docs Geometry, Segment, computeGeometry, geometry, Problems
 
 @docs getPointGeometries, getPointGeometry
 
@@ -81,7 +81,7 @@ module Pattern exposing
 
 ## Details
 
-@docs Detail, details, insertDetail, getDetail
+@docs Detail, Connection, details, insertDetail, getDetail
 
 
 # Transformations
@@ -314,8 +314,12 @@ type alias Geometry =
     , circles : List ( That Circle, Maybe String, Circle2d )
     , lines : List ( That Line, Maybe String, Axis2d )
     , lineSegments : List ( That LineSegment, Maybe String, LineSegment2d )
-    , details : List ( That Detail, Maybe String, Polygon2d )
+    , details : List ( That Detail, Maybe String, List Segment )
     }
+
+
+type Segment
+    = LineSegment LineSegment2d
 
 
 type alias Problems =
@@ -378,7 +382,7 @@ geometry ((Pattern data) as pattern) =
 
                 geometryDetail ( thatDetail, { name } ) =
                     polygon2d pattern thatDetail
-                        |> List.map (\p2d -> ( thatDetail, name, p2d ))
+                        |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
             in
             ( { points =
                     pattern
@@ -399,8 +403,7 @@ geometry ((Pattern data) as pattern) =
               , details =
                     pattern
                         |> details
-                        |> List.map geometryDetail
-                        |> List.concat
+                        |> List.filterMap geometryDetail
               }
             , { doNotCompute = []
               , missingPoints = []
@@ -695,9 +698,64 @@ lineSegment2d ((Pattern pattern) as p) thatLineSegment =
             Nothing
 
 
-polygon2d : Pattern -> That Detail -> List Polygon2d
+polygon2d : Pattern -> That Detail -> Maybe (List Segment)
 polygon2d ((Pattern pattern) as p) thatDetail =
-    []
+    case Maybe.map .value (getDetail p thatDetail) of
+        Nothing ->
+            Nothing
+
+        Just (FromPoints { firstPoint, segments, lastToFirst }) ->
+            let
+                computedSegments =
+                    List.foldr
+                        (\( thatPoint, connection ) result ->
+                            case result of
+                                Nothing ->
+                                    Nothing
+
+                                Just sum ->
+                                    case point2d p thatPoint of
+                                        Nothing ->
+                                            Nothing
+
+                                        Just p2d ->
+                                            Just (( p2d, connection ) :: sum)
+                        )
+                        (Just [])
+                        segments
+            in
+            Maybe.map2
+                (\firstPoint2d otherPoints ->
+                    let
+                        lineSegmentHelp connection p2dA p2dB =
+                            case connection of
+                                Straight ->
+                                    LineSegment (LineSegment2d.from p2dA p2dB)
+
+                                Cubic _ ->
+                                    Debug.todo "implement"
+                    in
+                    (case List.head (List.reverse otherPoints) of
+                        Nothing ->
+                            Debug.todo "handle error"
+
+                        Just ( lastPoint2d, _ ) ->
+                            lineSegmentHelp lastToFirst lastPoint2d firstPoint2d
+                    )
+                        :: (Tuple.second <|
+                                List.foldl
+                                    (\( nextPoint2d, connection ) ( previousPoint2d, result ) ->
+                                        ( nextPoint2d
+                                        , lineSegmentHelp connection previousPoint2d nextPoint2d
+                                            :: result
+                                        )
+                                    )
+                                    ( firstPoint2d, [] )
+                                    otherPoints
+                           )
+                )
+                (point2d p firstPoint)
+                computedSegments
 
 
 
@@ -1162,11 +1220,11 @@ details pattern =
     objects .details pattern
 
 
-insertDetail : Detail -> Pattern -> ( Pattern, That Detail )
-insertDetail detail (Pattern pattern) =
+insertDetail : Maybe String -> Detail -> Pattern -> ( Pattern, That Detail )
+insertDetail maybeName detail (Pattern pattern) =
     let
         ( newDetails, id ) =
-            Store.insert Nothing detail pattern.details
+            Store.insert maybeName detail pattern.details
     in
     ( Pattern
         { pattern
@@ -1375,7 +1433,7 @@ encodeDetail detail =
         FromPoints { firstPoint, segments, lastToFirst } ->
             withType "fromPoints"
                 [ ( "firstPoint", That.encode firstPoint )
-                , ( "points", Encode.list encodeSegment segments )
+                , ( "segments", Encode.list encodeSegment segments )
                 , ( "lastToFirst", encodeConnection lastToFirst )
                 ]
 

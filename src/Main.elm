@@ -87,7 +87,7 @@ flagsDecoder =
 init : Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init value url key =
     case Decode.decodeValue flagsDecoder value of
-        Err _ ->
+        Err error ->
             let
                 initialCache =
                     Dict.singleton "first-pattern"

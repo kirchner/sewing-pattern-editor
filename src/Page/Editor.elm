@@ -4595,6 +4595,72 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
 
+                Tool (Detail (DetailManyPoints data)) ->
+                    let
+                        extract otherPoints =
+                            List.foldr
+                                (\{ maybeThat, connectionPrevious } result ->
+                                    case result of
+                                        Just sum ->
+                                            case maybeThat of
+                                                Nothing ->
+                                                    Nothing
+
+                                                Just that ->
+                                                    Just (( that, connectionPrevious ) :: sum)
+
+                                        Nothing ->
+                                            Nothing
+                                )
+                                (Just [])
+                                otherPoints
+                    in
+                    Maybe.map3
+                        (\firstPointThat secondPointThat otherPoints ->
+                            let
+                                newDetail =
+                                    Pattern.FromPoints
+                                        { firstPoint = firstPointThat
+                                        , segments =
+                                            ( secondPointThat
+                                            , connectionHelp data.connectionFirstSecond
+                                            )
+                                                :: List.map
+                                                    (Tuple.mapSecond connectionHelp)
+                                                    otherPoints
+                                        , lastToFirst =
+                                            connectionHelp data.connectionLastFirst
+                                        }
+
+                                connectionHelp connection =
+                                    case connection of
+                                        ConnectionStraight ->
+                                            Pattern.Straight
+
+                                        ConnectionCubic ->
+                                            Debug.todo "implement cubic connection"
+
+                                ( newPattern, _ ) =
+                                    Pattern.insertDetail
+                                        (if data.name == "" then
+                                            Nothing
+
+                                         else
+                                            Just data.name
+                                        )
+                                        newDetail
+                                        pattern
+                            in
+                            ( { model | dialog = NoDialog }
+                            , Cmd.none
+                            , Just { storedPattern | pattern = newPattern }
+                            )
+                        )
+                        data.firstPointMaybeThat
+                        data.secondPointMaybeThat
+                        (extract data.otherPoints)
+                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
                 Tool (Detail _) ->
                     ( model, Cmd.none, Nothing )
 
