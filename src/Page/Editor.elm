@@ -3472,6 +3472,22 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             , Nothing
                             )
 
+                        Pattern.LineLine thatLineA thatLineB ->
+                            ( { model
+                                | dialog =
+                                    Tool <|
+                                        EditPoint thatPoint <|
+                                            LineLine
+                                                { dropdownLineA = Dropdown.init
+                                                , maybeThatLineA = Just thatLineA
+                                                , dropdownLineB = Dropdown.init
+                                                , maybeThatLineB = Just thatLineB
+                                                }
+                              }
+                            , Cmd.none
+                            , Nothing
+                            )
+
                         Pattern.FirstCircleCircle thatCircleA thatCircleB ->
                             ( { model
                                 | dialog =

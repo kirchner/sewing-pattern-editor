@@ -9,52 +9,44 @@ import Vector2d
 intersectionWithAxis : Axis2d -> Axis2d -> Maybe Point2d
 intersectionWithAxis axis1 axis2 =
     let
-        ( a1, b1 ) =
-            axis1
-                |> Axis2d.direction
-                |> Direction2d.rotateCounterclockwise
-                |> Direction2d.components
-
-        ( xOrigin1, yOrigin1 ) =
+        ( x1, y1 ) =
             axis1
                 |> Axis2d.originPoint
                 |> Point2d.coordinates
 
-        c1 =
-            Vector2d.dotProduct
-                (Vector2d.fromComponents ( a1, b1 ))
-                (Vector2d.fromComponents ( xOrigin1, yOrigin1 ))
+        ( x2, y2 ) =
+            Point2d.along axis1 1
+                |> Point2d.coordinates
 
-        ( a2, b2 ) =
-            axis2
-                |> Axis2d.direction
-                |> Direction2d.rotateCounterclockwise
-                |> Direction2d.components
-
-        ( xOrigin2, yOrigin2 ) =
+        ( x3, y3 ) =
             axis2
                 |> Axis2d.originPoint
                 |> Point2d.coordinates
 
-        c2 =
-            Vector2d.dotProduct
-                (Vector2d.fromComponents ( a2, b2 ))
-                (Vector2d.fromComponents ( xOrigin2, yOrigin2 ))
+        ( x4, y4 ) =
+            Point2d.along axis2 1
+                |> Point2d.coordinates
 
-        determinant =
-            a1 * b2 - b1 * a2
+        nominator =
+            det (x1 - x2) (y1 - y2) (x3 - x4) (y3 - y4)
+
+        det a b c d =
+            (a * d) - b * c
     in
-    if determinant == 0 then
+    if nominator == 0 then
         Nothing
 
     else
         let
-            inverseDeterminant =
-                1 / determinant
+            denominatorX =
+                det (det x1 y1 x2 y2) (x1 - x2) (det x3 y3 x4 y4) (x3 - x4)
+
+            denominatorY =
+                det (det x1 y1 x2 y2) (y1 - y2) (det x3 y3 x4 y4) (y3 - y4)
         in
         Just
             (Point2d.fromCoordinates
-                ( inverseDeterminant * (c1 * b2 - c1 * b1)
-                , inverseDeterminant * (c2 * a1 - c2 * a2)
+                ( denominatorX / nominator
+                , denominatorY / nominator
                 )
             )
