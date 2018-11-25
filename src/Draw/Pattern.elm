@@ -329,24 +329,50 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
     let
         selected =
             Those.member thatDetail selectedDetails
-
-        drawSegment segment =
-            case segment of
-                Pattern.LineSegment lineSegment2d ->
-                    Svg.lineSegment2d
-                        [ Svg.Attributes.fill "lightGrey"
-                        , Svg.Attributes.stroke <|
-                            if selected then
-                                "blue"
-
-                            else
-                                "black"
-                        , normalStroke zoom
-                        ]
-                        lineSegment2d
     in
-    Svg.g []
-        (List.map drawSegment segments)
+    Svg.path
+        [ Svg.Attributes.fill "lightGrey"
+        , Svg.Attributes.stroke <|
+            if selected then
+                "blue"
+
+            else
+                "black"
+        , normalStroke zoom
+        , Svg.Attributes.d <|
+            case segments of
+                [] ->
+                    ""
+
+                firstSegment :: rest ->
+                    let
+                        ( startX, startY ) =
+                            case firstSegment of
+                                Pattern.LineSegment lineSegment2d ->
+                                    lineSegment2d
+                                        |> LineSegment2d.startPoint
+                                        |> Point2d.coordinates
+                    in
+                    String.join " L "
+                        [ "M " ++ String.fromFloat startX ++ " " ++ String.fromFloat startY
+                        , String.join " L " <|
+                            List.map
+                                (\segment ->
+                                    case segment of
+                                        Pattern.LineSegment lineSegment2d ->
+                                            let
+                                                ( x, y ) =
+                                                    lineSegment2d
+                                                        |> LineSegment2d.startPoint
+                                                        |> Point2d.coordinates
+                                            in
+                                            String.fromFloat x ++ " " ++ String.fromFloat y
+                                )
+                                segments
+                        , String.fromFloat startX ++ " " ++ String.fromFloat startY
+                        ]
+        ]
+        []
 
 
 
