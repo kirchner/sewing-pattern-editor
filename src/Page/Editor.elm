@@ -1158,8 +1158,7 @@ viewLeftToolbar prefix windowHeight pattern model =
     Element.column
         [ Element.width (Element.minimum 330 Element.shrink)
         , Element.height (Element.px (windowHeight - 48 - 44))
-
-        --, Element.scrollbars
+        , Element.scrollbars
         , Design.backgroundColor Dark
         , Element.htmlAttribute <|
             Html.Attributes.style "pointer-events" "auto"
@@ -4188,7 +4187,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 )
 
                     else
-                        case List.head (List.drop (index - 2) data.otherPoints) of
+                        case List.head (List.drop (index - 1) data.otherPoints) of
                             Nothing ->
                                 ( model, Cmd.none, Nothing )
 
@@ -4211,7 +4210,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             newData =
                                                 { data
                                                     | otherPoints =
-                                                        List.updateAt (index - 2)
+                                                        List.updateAt (index - 1)
                                                             (\stuff ->
                                                                 { stuff
                                                                     | connectionPrevious =
