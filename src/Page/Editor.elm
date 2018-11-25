@@ -386,9 +386,17 @@ type ActionMenu
     | Remove
 
 
+type ConnectionTag
+    = ConnectionStraightTag
+    | ConnectionQuadraticTag
+
+
 type Connection
     = ConnectionStraight
-    | ConnectionCubic
+    | ConnectionQuadratic
+        { dropdown : Dropdown
+        , maybeThat : Maybe (That Point)
+        }
 
 
 toolDescription : ToolTag -> Element msg
@@ -1926,40 +1934,75 @@ viewDetail pattern points data =
                     ]
 
                 viewConnection index lift connection label =
-                    Input.radioRow
-                        [ Element.htmlAttribute <|
-                            Html.Attributes.id
-                                ("detail--connection-" ++ String.fromInt index)
-                        , Element.width Element.fill
-                        , Element.paddingXY Design.xxSmall Design.xSmall
-                        , Element.spacing Design.normal
-                        , Font.size 16
-                        , Font.color white
-                        ]
-                        { onChange = lift
-                        , options =
-                            [ Input.option ConnectionStraight <|
-                                Element.el
-                                    [ Border.width 1
-                                    , Border.color gray900
-                                    ]
-                                    (Element.text "straight")
-                            , Input.option ConnectionCubic <|
-                                Element.el
-                                    [ Border.width 1
-                                    , Border.color gray900
-                                    ]
-                                    (Element.text "cubic")
+                    Element.column
+                        [ Element.width Element.fill ]
+                        [ Input.radioRow
+                            [ Element.htmlAttribute <|
+                                Html.Attributes.id
+                                    ("detail--connection-" ++ String.fromInt index)
+                            , Element.width Element.fill
+                            , Element.paddingXY Design.xxSmall Design.xSmall
+                            , Element.spacing Design.normal
+                            , Font.size 16
+                            , Font.color white
                             ]
-                        , selected = Just connection
-                        , label =
-                            Input.labelAbove
-                                [ Font.size 12
-                                , Font.variant Font.smallCaps
-                                , Font.color (color (Color.rgb255 229 223 197))
+                            { onChange = lift
+                            , options =
+                                [ Input.option ConnectionStraightTag <|
+                                    Element.el
+                                        [ Border.width 1
+                                        , Border.color gray900
+                                        ]
+                                        (Element.text "straight")
+                                , Input.option ConnectionQuadraticTag <|
+                                    Element.el
+                                        [ Border.width 1
+                                        , Border.color gray900
+                                        ]
+                                        (Element.text "quadratic")
                                 ]
-                                (Element.text label)
-                        }
+                            , selected =
+                                Just <|
+                                    case connection of
+                                        ConnectionStraight ->
+                                            ConnectionStraightTag
+
+                                        ConnectionQuadratic _ ->
+                                            ConnectionQuadraticTag
+                            , label =
+                                Input.labelAbove
+                                    [ Font.size 12
+                                    , Font.variant Font.smallCaps
+                                    , Font.color (color (Color.rgb255 229 223 197))
+                                    ]
+                                    (Element.text label)
+                            }
+                        , case connection of
+                            ConnectionStraight ->
+                                Element.none
+
+                            ConnectionQuadratic { dropdown, maybeThat } ->
+                                Element.row
+                                    [ Element.width Element.fill
+                                    , Element.paddingEach
+                                        { top = 0
+                                        , bottom = 0
+                                        , left = Design.small
+                                        , right = 0
+                                        }
+                                    ]
+                                    [ viewDropdownPoint
+                                        ("detail-point--control-point-"
+                                            ++ String.fromInt index
+                                        )
+                                        index
+                                        Nothing
+                                        (DropdownControlPointMsg index)
+                                        "control point"
+                                        dropdown
+                                        maybeThat
+                                    ]
+                        ]
             in
             List.concat
                 [ [ labeledInputText NameChanged "pick a name" detailData.name
@@ -3060,12 +3103,13 @@ type Msg
     | FirstChanged Bool
       -- DETAIL
     | DropdownPointMsg Int (Dropdown.Msg (That Point))
+    | DropdownControlPointMsg Int (Dropdown.Msg (That Point))
     | ActionMenuClicked Int
     | ActionMenuLostFocus Int
     | ActionMenuMouseDown Int
     | ActionMenuMouseUp Int
     | DetailRemovePointClicked Int
-    | ConnectionChanged Int Connection
+    | ConnectionChanged Int ConnectionTag
     | DetailAddPointAtEnd
       -- TOOL ACTIONS
     | CreateClicked
@@ -4061,6 +4105,117 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 _ ->
                     ( model, Cmd.none, Nothing )
 
+        DropdownControlPointMsg index dropdownMsg ->
+            case model.dialog of
+                Tool (Detail (DetailManyPoints data)) ->
+                    if index < 0 || index > 1 + List.length data.otherPoints then
+                        ( model, Cmd.none, Nothing )
+
+                    else if index == 0 then
+                        case data.connectionFirstSecond of
+                            ConnectionStraight ->
+                                ( model, Cmd.none, Nothing )
+
+                            ConnectionQuadratic { dropdown, maybeThat } ->
+                                let
+                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                        Dropdown.update dropdownUpdateConfig
+                                            (Pattern.points pattern
+                                                |> List.map (Tuple.first >> Listbox.option)
+                                            )
+                                            dropdownMsg
+                                            dropdown
+                                            maybeThat
+
+                                    newData =
+                                        { data
+                                            | connectionFirstSecond =
+                                                ConnectionQuadratic
+                                                    { dropdown = newDropdown
+                                                    , maybeThat = newMaybeThatPoint
+                                                    }
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                , Cmd.map (DropdownControlPointMsg index) dropdownCmd
+                                , Nothing
+                                )
+
+                    else if index == 1 + List.length data.otherPoints then
+                        case data.connectionLastFirst of
+                            ConnectionStraight ->
+                                ( model, Cmd.none, Nothing )
+
+                            ConnectionQuadratic { dropdown, maybeThat } ->
+                                let
+                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                        Dropdown.update dropdownUpdateConfig
+                                            (Pattern.points pattern
+                                                |> List.map (Tuple.first >> Listbox.option)
+                                            )
+                                            dropdownMsg
+                                            dropdown
+                                            maybeThat
+
+                                    newData =
+                                        { data
+                                            | connectionLastFirst =
+                                                ConnectionQuadratic
+                                                    { dropdown = newDropdown
+                                                    , maybeThat = newMaybeThatPoint
+                                                    }
+                                        }
+                                in
+                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                , Cmd.map (DropdownControlPointMsg index) dropdownCmd
+                                , Nothing
+                                )
+
+                    else
+                        case List.head (List.drop (index - 2) data.otherPoints) of
+                            Nothing ->
+                                ( model, Cmd.none, Nothing )
+
+                            Just { connectionPrevious } ->
+                                case connectionPrevious of
+                                    ConnectionStraight ->
+                                        ( model, Cmd.none, Nothing )
+
+                                    ConnectionQuadratic { dropdown, maybeThat } ->
+                                        let
+                                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                                Dropdown.update dropdownUpdateConfig
+                                                    (Pattern.points pattern
+                                                        |> List.map (Tuple.first >> Listbox.option)
+                                                    )
+                                                    dropdownMsg
+                                                    dropdown
+                                                    maybeThat
+
+                                            newData =
+                                                { data
+                                                    | otherPoints =
+                                                        List.updateAt (index - 2)
+                                                            (\stuff ->
+                                                                { stuff
+                                                                    | connectionPrevious =
+                                                                        ConnectionQuadratic
+                                                                            { dropdown = newDropdown
+                                                                            , maybeThat = newMaybeThatPoint
+                                                                            }
+                                                                }
+                                                            )
+                                                            data.otherPoints
+                                                }
+                                        in
+                                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                        , Cmd.map (DropdownControlPointMsg index) dropdownCmd
+                                        , Nothing
+                                        )
+
+                _ ->
+                    ( model, Cmd.none, Nothing )
+
         ActionMenuClicked index ->
             case model.dialog of
                 Tool (Detail (DetailManyPoints data)) ->
@@ -4328,7 +4483,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 _ ->
                     ( model, Cmd.none, Nothing )
 
-        ConnectionChanged index newConnection ->
+        ConnectionChanged index newConnectionTag ->
             case model.dialog of
                 Tool (Detail (DetailManyPoints data)) ->
                     let
@@ -4337,10 +4492,32 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data
 
                             else if index == 0 then
-                                { data | connectionFirstSecond = newConnection }
+                                { data
+                                    | connectionFirstSecond =
+                                        case newConnectionTag of
+                                            ConnectionStraightTag ->
+                                                ConnectionStraight
+
+                                            ConnectionQuadraticTag ->
+                                                ConnectionQuadratic
+                                                    { dropdown = Dropdown.init
+                                                    , maybeThat = Nothing
+                                                    }
+                                }
 
                             else if index == pointCount - 1 then
-                                { data | connectionLastFirst = newConnection }
+                                { data
+                                    | connectionLastFirst =
+                                        case newConnectionTag of
+                                            ConnectionStraightTag ->
+                                                ConnectionStraight
+
+                                            ConnectionQuadraticTag ->
+                                                ConnectionQuadratic
+                                                    { dropdown = Dropdown.init
+                                                    , maybeThat = Nothing
+                                                    }
+                                }
 
                             else
                                 { data
@@ -4348,7 +4525,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         List.updateAt (index - 1)
                                             (\stuff ->
                                                 { stuff
-                                                    | connectionPrevious = newConnection
+                                                    | connectionPrevious =
+                                                        case newConnectionTag of
+                                                            ConnectionStraightTag ->
+                                                                ConnectionStraight
+
+                                                            ConnectionQuadraticTag ->
+                                                                ConnectionQuadratic
+                                                                    { dropdown = Dropdown.init
+                                                                    , maybeThat = Nothing
+                                                                    }
                                                 }
                                             )
                                             data.otherPoints
@@ -4607,38 +4793,55 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                     Nothing
 
                                                 Just that ->
-                                                    Just (( that, connectionPrevious ) :: sum)
+                                                    case connectionPrevious of
+                                                        ConnectionStraight ->
+                                                            Just
+                                                                (( that
+                                                                 , Pattern.Straight
+                                                                 )
+                                                                    :: sum
+                                                                )
+
+                                                        ConnectionQuadratic quadraticData ->
+                                                            case quadraticData.maybeThat of
+                                                                Nothing ->
+                                                                    Nothing
+
+                                                                Just controlThat ->
+                                                                    Just
+                                                                        (( that
+                                                                         , Pattern.Quadratic controlThat
+                                                                         )
+                                                                            :: sum
+                                                                        )
 
                                         Nothing ->
                                             Nothing
                                 )
                                 (Just [])
                                 otherPoints
+
+                        connectionHelp connection =
+                            case connection of
+                                ConnectionStraight ->
+                                    Just Pattern.Straight
+
+                                ConnectionQuadratic { dropdown, maybeThat } ->
+                                    Maybe.map Pattern.Quadratic maybeThat
                     in
-                    Maybe.map3
-                        (\firstPointThat secondPointThat otherPoints ->
+                    Maybe.map5
+                        (\firstPointThat secondPointThat connectionFirstSecond otherPoints connectionLastFirst ->
                             let
                                 newDetail =
                                     Pattern.FromPoints
                                         { firstPoint = firstPointThat
                                         , segments =
                                             ( secondPointThat
-                                            , connectionHelp data.connectionFirstSecond
+                                            , connectionFirstSecond
                                             )
-                                                :: List.map
-                                                    (Tuple.mapSecond connectionHelp)
-                                                    otherPoints
-                                        , lastToFirst =
-                                            connectionHelp data.connectionLastFirst
+                                                :: otherPoints
+                                        , lastToFirst = connectionLastFirst
                                         }
-
-                                connectionHelp connection =
-                                    case connection of
-                                        ConnectionStraight ->
-                                            Pattern.Straight
-
-                                        ConnectionCubic ->
-                                            Debug.todo "implement cubic connection"
 
                                 ( newPattern, _ ) =
                                     Pattern.insertDetail
@@ -4658,7 +4861,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         )
                         data.firstPointMaybeThat
                         data.secondPointMaybeThat
+                        (connectionHelp data.connectionFirstSecond)
                         (extract data.otherPoints)
+                        (connectionHelp data.connectionLastFirst)
                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                 Tool (Detail _) ->

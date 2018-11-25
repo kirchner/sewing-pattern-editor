@@ -352,10 +352,15 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
                                     lineSegment2d
                                         |> LineSegment2d.startPoint
                                         |> Point2d.coordinates
+
+                                Pattern.QuadraticSpline quadraticSpline2d ->
+                                    quadraticSpline2d
+                                        |> QuadraticSpline2d.startPoint
+                                        |> Point2d.coordinates
                     in
-                    String.join " L "
+                    String.join " "
                         [ "M " ++ String.fromFloat startX ++ " " ++ String.fromFloat startY
-                        , String.join " L " <|
+                        , String.join " " <|
                             List.map
                                 (\segment ->
                                     case segment of
@@ -363,13 +368,40 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
                                             let
                                                 ( x, y ) =
                                                     lineSegment2d
-                                                        |> LineSegment2d.startPoint
+                                                        |> LineSegment2d.endPoint
                                                         |> Point2d.coordinates
                                             in
-                                            String.fromFloat x ++ " " ++ String.fromFloat y
+                                            String.concat
+                                                [ "L "
+                                                , String.fromFloat x
+                                                , " "
+                                                , String.fromFloat y
+                                                ]
+
+                                        Pattern.QuadraticSpline quadraticSpline2d ->
+                                            let
+                                                ( x, y ) =
+                                                    quadraticSpline2d
+                                                        |> QuadraticSpline2d.endPoint
+                                                        |> Point2d.coordinates
+
+                                                ( controlX, controlY ) =
+                                                    quadraticSpline2d
+                                                        |> QuadraticSpline2d.controlPoint
+                                                        |> Point2d.coordinates
+                                            in
+                                            String.concat
+                                                [ "Q "
+                                                , String.fromFloat controlX
+                                                , " "
+                                                , String.fromFloat controlY
+                                                , ", "
+                                                , String.fromFloat x
+                                                , " "
+                                                , String.fromFloat y
+                                                ]
                                 )
                                 segments
-                        , String.fromFloat startX ++ " " ++ String.fromFloat startY
                         ]
         ]
         []

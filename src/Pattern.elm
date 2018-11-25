@@ -128,6 +128,7 @@ import List.Extra as List
 import Parser
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
+import QuadraticSpline2d exposing (QuadraticSpline2d)
 import Set exposing (Set)
 import Store exposing (Entry, Store)
 import That exposing (That, that)
@@ -232,7 +233,7 @@ type Detail
 
 type Connection
     = Straight
-    | Cubic (That Point)
+    | Quadratic (That Point)
 
 
 
@@ -320,6 +321,7 @@ type alias Geometry =
 
 type Segment
     = LineSegment LineSegment2d
+    | QuadraticSpline QuadraticSpline2d
 
 
 type alias Problems =
@@ -724,38 +726,74 @@ polygon2d ((Pattern pattern) as p) thatDetail =
                         (Just [])
                         segments
             in
-            Maybe.map2
-                (\firstPoint2d otherPoints ->
-                    let
-                        lineSegmentHelp connection p2dA p2dB =
-                            case connection of
-                                Straight ->
-                                    LineSegment (LineSegment2d.from p2dA p2dB)
-
-                                Cubic _ ->
-                                    Debug.todo "implement"
-                    in
-                    (case List.head (List.reverse otherPoints) of
-                        Nothing ->
-                            Debug.todo "handle error"
-
-                        Just ( lastPoint2d, _ ) ->
-                            lineSegmentHelp lastToFirst lastPoint2d firstPoint2d
-                    )
-                        :: (Tuple.second <|
-                                List.foldl
-                                    (\( nextPoint2d, connection ) ( previousPoint2d, result ) ->
-                                        ( nextPoint2d
-                                        , lineSegmentHelp connection previousPoint2d nextPoint2d
-                                            :: result
-                                        )
-                                    )
-                                    ( firstPoint2d, [] )
-                                    otherPoints
-                           )
-                )
+            Maybe.map2 Tuple.pair
                 (point2d p firstPoint)
                 computedSegments
+                |> Maybe.andThen
+                    (\( firstPoint2d, otherPoints ) ->
+                        let
+                            lineSegmentHelp connection p2dA p2dB =
+                                case connection of
+                                    Straight ->
+                                        Just (LineSegment (LineSegment2d.from p2dA p2dB))
+
+                                    Quadratic thatKnot ->
+                                        point2d p thatKnot
+                                            |> Maybe.map
+                                                (\knot2d ->
+                                                    QuadraticSpline <|
+                                                        QuadraticSpline2d.with
+                                                            { startPoint = p2dA
+                                                            , controlPoint = knot2d
+                                                            , endPoint = p2dB
+                                                            }
+                                                )
+
+                            maybeLastSegment =
+                                otherPoints
+                                    |> List.reverse
+                                    |> List.head
+                                    |> Maybe.andThen
+                                        (\( lastPoint2d, _ ) ->
+                                            lineSegmentHelp
+                                                lastToFirst
+                                                lastPoint2d
+                                                firstPoint2d
+                                        )
+
+                            maybeOtherSegments =
+                                otherPoints
+                                    |> List.foldl
+                                        (\( nextPoint2d, connection ) result ->
+                                            case result of
+                                                Nothing ->
+                                                    Nothing
+
+                                                Just ( previousPoint2d, list ) ->
+                                                    case
+                                                        lineSegmentHelp connection
+                                                            previousPoint2d
+                                                            nextPoint2d
+                                                    of
+                                                        Nothing ->
+                                                            Nothing
+
+                                                        Just newSegment ->
+                                                            Just
+                                                                ( nextPoint2d
+                                                                , newSegment :: list
+                                                                )
+                                        )
+                                        (Just ( firstPoint2d, [] ))
+                                    |> Maybe.map (Tuple.second >> List.reverse)
+                        in
+                        Maybe.map2
+                            (\otherSegments lastSegment ->
+                                otherSegments ++ [ lastSegment ]
+                            )
+                            maybeOtherSegments
+                            maybeLastSegment
+                    )
 
 
 
@@ -1444,9 +1482,9 @@ encodeConnection connection =
         Straight ->
             withType "straight" []
 
-        Cubic thatPoint ->
-            withType "cubic"
-                [ ( "knot", That.encode thatPoint ) ]
+        Quadratic thatPoint ->
+            withType "quadratic"
+                [ ( "controlPoint", That.encode thatPoint ) ]
 
 
 encodeExpr : Expr -> Value
@@ -1601,9 +1639,9 @@ detailDecoder =
         connectionDecoder =
             Decode.oneOf
                 [ typeDecoder "straight" (Decode.succeed Straight)
-                , typeDecoder "cubic" <|
-                    Decode.map Cubic
-                        (Decode.field "knot" That.decoder)
+                , typeDecoder "quadratic" <|
+                    Decode.map Quadratic
+                        (Decode.field "controlPoint" That.decoder)
                 ]
     in
     Decode.oneOf
