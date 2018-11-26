@@ -1078,19 +1078,6 @@ viewPattern maybeDimensions maybeDrag storedPattern hoveredPoint dialog =
                 _ ->
                     Nothing
 
-        viewBox =
-            case maybeDimensions of
-                Nothing ->
-                    "-320 320 640 640"
-
-                Just { width, height } ->
-                    String.join " "
-                        [ String.fromFloat (width / -2)
-                        , String.fromFloat (height / -2)
-                        , String.fromFloat width
-                        , String.fromFloat height
-                        ]
-
         localFrame =
             ( x, y )
                 |> Point2d.fromCoordinates
@@ -1106,23 +1093,34 @@ viewPattern maybeDimensions maybeDrag storedPattern hoveredPoint dialog =
                     , y = center.y + (drag.start.y - drag.current.y) / zoom
                     }
     in
-    Svg.svg
-        [ Svg.Attributes.viewBox viewBox
-        , Html.Attributes.style "user-select" "none"
-        , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-        , Html.Events.on "mousedown" <|
-            Decode.map MouseDown <|
-                Decode.map2 Position
-                    (Decode.field "screenX" Decode.float)
-                    (Decode.field "screenY" Decode.float)
-        ]
-        [ Svg.relativeTo localFrame <|
-            Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
-                Svg.g []
-                    [ Pattern.draw selections True zoom hoveredPoint pattern
-                    , Svg.Lazy.lazy drawHoverPolygons storedPattern
-                    ]
-        ]
+    case maybeDimensions of
+        Nothing ->
+            CoreHtml.text ""
+
+        Just { width, height } ->
+            Svg.svg
+                [ Svg.Attributes.viewBox <|
+                    String.join " "
+                        [ String.fromFloat (width / -2)
+                        , String.fromFloat (height / -2)
+                        , String.fromFloat width
+                        , String.fromFloat height
+                        ]
+                , Html.Attributes.style "user-select" "none"
+                , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                , Html.Events.on "mousedown" <|
+                    Decode.map MouseDown <|
+                        Decode.map2 Position
+                            (Decode.field "screenX" Decode.float)
+                            (Decode.field "screenY" Decode.float)
+                ]
+                [ Svg.relativeTo localFrame <|
+                    Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
+                        Svg.g []
+                            [ Pattern.draw selections True zoom hoveredPoint pattern
+                            , Svg.Lazy.lazy drawHoverPolygons storedPattern
+                            ]
+                ]
 
 
 drawHoverPolygons : StoredPattern -> Svg Msg
@@ -5044,8 +5042,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
         ToolbarToggleClicked ->
-            ( { model | rightToolbarVisible = not model.rightToolbarVisible }
-            , Cmd.none
+            ( { model
+                | rightToolbarVisible = not model.rightToolbarVisible
+                , patternContainerDimensions = Nothing
+              }
+            , Browser.Dom.getViewportOf "pattern-container"
+                |> Task.attempt PatternContainerViewportReceived
             , Nothing
             )
 
