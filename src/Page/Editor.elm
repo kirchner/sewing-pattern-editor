@@ -42,6 +42,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Frame2d
 import Geometry.Svg as Svg
 import Html as CoreHtml exposing (Html)
 import Html.Attributes
@@ -56,6 +57,7 @@ import List.Extra as List
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
+import Process
 import Store exposing (Entry)
 import StoredPattern exposing (StoredPattern)
 import Styled.Listbox as Listbox exposing (Listbox)
@@ -63,6 +65,7 @@ import Styled.Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events
+import Svg.Lazy
 import Task
 import That exposing (That)
 import Those exposing (Those)
@@ -77,6 +80,7 @@ import VoronoiDiagram2d
 
 type alias Model =
     { maybeDrag : Maybe Drag
+    , patternContainerDimensions : Maybe Dimensions
 
     -- PATTERN
     , hoveredPoint : Maybe (That Point)
@@ -90,6 +94,12 @@ type alias Model =
     , rightToolbarVisible : Bool
     , variablesVisible : Bool
     , pointsVisible : Bool
+    }
+
+
+type alias Dimensions =
+    { width : Float
+    , height : Float
     }
 
 
@@ -840,29 +850,28 @@ maybeToList maybeA =
             [ a ]
 
 
-init : Model
+init : ( Model, Cmd Msg )
 init =
-    { maybeDrag = Nothing
-    , hoveredPoint = Nothing
-    , hoveredTool = Nothing
-    , dialog = NoDialog
-    , preventActionMenuClose = False
-    , rightToolbarVisible = True
-    , variablesVisible = True
-    , pointsVisible = True
-    }
+    ( { maybeDrag = Nothing
+      , patternContainerDimensions = Nothing
+      , hoveredPoint = Nothing
+      , hoveredTool = Nothing
+      , dialog = NoDialog
+      , preventActionMenuClose = False
+      , rightToolbarVisible = True
+      , variablesVisible = True
+      , pointsVisible = True
+      }
+    , Cmd.none
+    )
 
 
 
 ---- VIEW
 
 
-view : String -> Int -> Int -> StoredPattern -> Model -> Document Msg
-view prefix windowWidth windowHeight storedPattern model =
-    let
-        { name, pattern, zoom, center } =
-            storedPattern
-    in
+view : String -> StoredPattern -> Model -> Document Msg
+view prefix storedPattern model =
     { title = "Sewing Pattern Editor"
     , body =
         [ Element.layoutWith
@@ -884,35 +893,145 @@ view prefix windowWidth windowHeight storedPattern model =
                 , Font.sansSerif
                 ]
             ]
-            (Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.inFront (viewOverlay windowHeight prefix name pattern model)
-                ]
-                (viewWorkspace windowWidth windowHeight storedPattern model)
-            )
+            (viewEditor prefix storedPattern model)
         ]
     }
+
+
+viewEditor : String -> StoredPattern -> Model -> Element Msg
+viewEditor prefix storedPattern model =
+    let
+        { pattern, name } =
+            storedPattern
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.padding Design.small
+            , Element.spacing Design.xSmall
+            , Border.widthEach
+                { top = 0
+                , bottom = 1
+                , left = 0
+                , right = 0
+                }
+            , Design.backgroundColor Dark
+            , Design.fontColor Darkest
+            , Design.borderColor Darkest
+            , Font.size Design.small
+            ]
+            [ Element.link []
+                { url = "/"
+                , label =
+                    Element.el
+                        [ Font.size Design.small
+                        , Font.underline
+                        , Element.mouseOver
+                            [ Font.color (Design.toColor Darkish) ]
+                        ]
+                        (Element.text "Patterns")
+                }
+            , Element.el [] (View.Icon.fa "angle-right")
+            , Element.el [] (Element.text name)
+            ]
+        , Element.row
+            [ Element.height Element.fill
+            , Element.width Element.fill
+
+            -- FIXME this seems to be a bug, c.f.
+            -- https://github.com/mdgriffith/elm-ui/issues/12
+            , Element.clip
+            , Element.htmlAttribute <|
+                Html.Attributes.style "flex-shrink" "1"
+            ]
+            [ viewLeftToolbar prefix pattern model
+            , Element.el
+                [ Element.htmlAttribute <|
+                    Html.Attributes.id "pattern-container"
+                , Element.width Element.fill
+                , Element.height Element.fill
+                , Element.inFront <|
+                    Element.el
+                        [ Element.alignRight
+                        , Element.alignBottom
+                        ]
+                        (viewZoom model)
+                ]
+                (viewWorkspace storedPattern model)
+            , viewRightToolbar pattern model
+            ]
+        , Element.row
+            [ Element.width Element.fill
+            , Element.paddingXY 10 5
+            , Element.spacing 5
+            , Border.widthEach
+                { top = 1
+                , bottom = 0
+                , left = 0
+                , right = 0
+                }
+            , Design.backgroundColor Dark
+            , Design.borderColor Darkest
+            ]
+            [ case model.hoveredTool of
+                Nothing ->
+                    Element.none
+
+                Just toolTag ->
+                    Element.el
+                        [ Font.size 12
+                        , Font.color white
+                        , Element.width Element.fill
+                        ]
+                        (toolDescription toolTag)
+            , Element.newTabLink
+                [ Element.alignRight
+                , Element.padding 5
+                , Font.color white
+                , Font.size Design.small
+                , Element.mouseOver
+                    [ Font.color (Design.toColor Darkish) ]
+                ]
+                { url = "https://github.com/kirchner/sewing-pattern-editor"
+                , label = View.Icon.dev "github-plain"
+                }
+            ]
+        ]
+
+
+viewLeftToolbar : String -> Pattern -> Model -> Element Msg
+viewLeftToolbar prefix pattern model =
+    Element.column
+        [ Element.width (Element.minimum 330 Element.shrink)
+        , Element.height Element.fill
+        , Element.scrollbarY
+        , Design.backgroundColor Dark
+        ]
+        [ case model.dialog of
+            Tool tool ->
+                viewTool pattern tool
+
+            _ ->
+                viewToolSelector prefix model.hoveredTool
+        ]
 
 
 
 ---- WORKSPACE
 
 
-viewWorkspace : Int -> Int -> StoredPattern -> Model -> Element Msg
-viewWorkspace windowWidth windowHeight storedPattern model =
-    let
-        { pattern, center, zoom } =
-            storedPattern
-    in
+viewWorkspace : StoredPattern -> Model -> Element Msg
+viewWorkspace storedPattern model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
         (Element.html <|
-            Html.Lazy.lazy6 viewPattern
-                windowWidth
-                windowHeight
+            viewPattern
+                model.patternContainerDimensions
                 model.maybeDrag
                 storedPattern
                 model.hoveredPoint
@@ -921,14 +1040,13 @@ viewWorkspace windowWidth windowHeight storedPattern model =
 
 
 viewPattern :
-    Int
-    -> Int
+    Maybe Dimensions
     -> Maybe Drag
     -> StoredPattern
     -> Maybe (That Point)
     -> Dialog
     -> Html Msg
-viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog =
+viewPattern maybeDimensions maybeDrag storedPattern hoveredPoint dialog =
     let
         { pattern, center, zoom } =
             storedPattern
@@ -960,14 +1078,23 @@ viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog
                 _ ->
                     Nothing
 
-        translation =
-            String.concat
-                [ "translate("
-                , String.fromFloat (-1 * x)
-                , " "
-                , String.fromFloat (-1 * y)
-                , ")"
-                ]
+        viewBox =
+            case maybeDimensions of
+                Nothing ->
+                    "-320 320 640 640"
+
+                Just { width, height } ->
+                    String.join " "
+                        [ String.fromFloat (width / -2)
+                        , String.fromFloat (height / -2)
+                        , String.fromFloat width
+                        , String.fromFloat height
+                        ]
+
+        localFrame =
+            ( x, y )
+                |> Point2d.fromCoordinates
+                |> Frame2d.atPoint
 
         { x, y } =
             case maybeDrag of
@@ -975,12 +1102,12 @@ viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog
                     center
 
                 Just drag ->
-                    { x = center.x + (drag.start.x - drag.current.x) * zoom
-                    , y = center.y + (drag.start.y - drag.current.y) * zoom
+                    { x = center.x + (drag.start.x - drag.current.x) / zoom
+                    , y = center.y + (drag.start.y - drag.current.y) / zoom
                     }
     in
     Svg.svg
-        [ Svg.Attributes.viewBox (viewBox windowWidth windowHeight zoom)
+        [ Svg.Attributes.viewBox viewBox
         , Html.Attributes.style "user-select" "none"
         , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
         , Html.Events.on "mousedown" <|
@@ -989,34 +1116,20 @@ viewPattern windowWidth windowHeight maybeDrag storedPattern hoveredPoint dialog
                     (Decode.field "screenX" Decode.float)
                     (Decode.field "screenY" Decode.float)
         ]
-        [ Svg.g [ Svg.Attributes.transform translation ]
-            [ Pattern.draw selections zoom hoveredPoint pattern
-            , drawHoverPolygons windowWidth windowHeight maybeDrag storedPattern
-            ]
+        [ Svg.relativeTo localFrame <|
+            Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
+                Svg.g []
+                    [ Pattern.draw selections True zoom hoveredPoint pattern
+                    , Svg.Lazy.lazy drawHoverPolygons storedPattern
+                    ]
         ]
 
 
-drawHoverPolygons : Int -> Int -> Maybe Drag -> StoredPattern -> Svg Msg
-drawHoverPolygons windowWidth windowHeight maybeDrag { pattern, center, zoom } =
+drawHoverPolygons : StoredPattern -> Svg Msg
+drawHoverPolygons { pattern, center, zoom } =
     let
         ( geometry, _ ) =
             Pattern.geometry pattern
-
-        { x, y } =
-            case maybeDrag of
-                Nothing ->
-                    center
-
-                Just drag ->
-                    { x =
-                        center.x
-                            + (drag.start.x - drag.current.x)
-                            * zoom
-                    , y =
-                        center.y
-                            + (drag.start.y - drag.current.y)
-                            * zoom
-                    }
 
         hoverPolygons =
             VoronoiDiagram2d.fromVerticesBy
@@ -1027,18 +1140,20 @@ drawHoverPolygons windowWidth windowHeight maybeDrag { pattern, center, zoom } =
                 |> Maybe.withDefault []
 
         boundingBox2d =
-            BoundingBox2d.fromExtrema
-                { minX = -1 * width / 2 + x
-                , minY = -1 * height / 2 + y
-                , maxX = (-1 * width / 2) + width + x
-                , maxY = (-1 * height / 2) + height + y
-                }
-
-        width =
-            toFloat windowWidth * zoom
-
-        height =
-            toFloat windowHeight * zoom
+            geometry.points
+                |> List.map (\( _, _, p2d ) -> p2d)
+                |> BoundingBox2d.containingPoints
+                |> Maybe.withDefault
+                    (BoundingBox2d.fromExtrema
+                        { minX = -320
+                        , maxX = 320
+                        , minY = -320
+                        , maxY = 320
+                        }
+                    )
+                |> BoundingBox2d.scaleAbout
+                    (Point2d.fromCoordinates ( center.x, center.y ))
+                    3
     in
     Svg.g []
         (List.map drawHoverPolygon hoverPolygons)
@@ -1055,190 +1170,44 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
 
 
 
----- OVERLAY
-
-
-viewOverlay : Int -> String -> String -> Pattern -> Model -> Element Msg
-viewOverlay windowHeight prefix name pattern model =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.htmlAttribute <|
-            Html.Attributes.style "pointer-events" "none"
-        ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.padding Design.small
-            , Element.spacing Design.xSmall
-            , Border.widthEach
-                { top = 0
-                , bottom = 1
-                , left = 0
-                , right = 0
-                }
-            , Design.backgroundColor Dark
-            , Design.fontColor Darkest
-            , Design.borderColor Darkest
-            , Font.size Design.small
-            , Element.htmlAttribute <|
-                Html.Attributes.style "pointer-events" "auto"
-            ]
-            [ Element.link []
-                { url = "/"
-                , label =
-                    Element.el
-                        [ Font.size Design.small
-                        , Font.underline
-                        , Element.mouseOver
-                            [ Font.color (Design.toColor Darkish) ]
-                        ]
-                        (Element.text "Patterns")
-                }
-            , Element.el []
-                (View.Icon.fa "angle-right")
-            , Element.el []
-                (Element.text name)
-            ]
-        , Element.row
-            [ Element.height Element.fill
-            , Element.width Element.fill
-            ]
-            [ viewLeftToolbar prefix windowHeight pattern model
-            , Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                ]
-                Element.none
-            , viewZoom model
-            , viewRightToolbar windowHeight pattern model
-            ]
-        , Element.row
-            [ Element.width Element.fill
-            , Element.paddingXY 10 5
-            , Element.spacing 5
-            , Border.widthEach
-                { top = 1
-                , bottom = 0
-                , left = 0
-                , right = 0
-                }
-            , Design.backgroundColor Dark
-            , Design.borderColor Darkest
-            , Element.htmlAttribute <|
-                Html.Attributes.style "pointer-events" "auto"
-            ]
-            [ case model.hoveredTool of
-                Nothing ->
-                    Element.none
-
-                Just toolTag ->
-                    Element.el
-                        [ Font.size 12
-                        , Font.color white
-                        , Element.width Element.fill
-                        ]
-                        (toolDescription toolTag)
-            , Element.newTabLink
-                [ Element.alignRight
-                , Element.padding 5
-                , Font.color white
-                , Font.size Design.small
-                , Element.mouseOver
-                    [ Font.color (Design.toColor Darkish) ]
-                ]
-                { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = View.Icon.dev "github-plain"
-                }
-            ]
-        ]
-
-
-viewLeftToolbar : String -> Int -> Pattern -> Model -> Element Msg
-viewLeftToolbar prefix windowHeight pattern model =
-    Element.column
-        [ Element.width (Element.minimum 330 Element.shrink)
-        , Element.height (Element.px (windowHeight - 48 - 44))
-        , Element.scrollbars
-        , Design.backgroundColor Dark
-        , Element.htmlAttribute <|
-            Html.Attributes.style "pointer-events" "auto"
-        ]
-        [ case model.dialog of
-            Tool tool ->
-                viewTool pattern tool
-
-            _ ->
-                viewToolSelector prefix model.hoveredTool
-        , Element.el [ Element.height Element.fill ] Element.none
-        ]
+---- ZOOM
 
 
 viewZoom : Model -> Element Msg
 viewZoom model =
-    Element.column
-        [ Element.height Element.fill ]
-        [ Element.el [ Element.height Element.fill ] Element.none
-        , Element.row
-            [ Element.width Element.fill
-            , Element.padding 20
-            , Element.spacing 10
-            ]
-            [ Input.button
-                [ Element.mouseOver
-                    [ Font.color gray700 ]
-                , Element.htmlAttribute <|
-                    Html.Attributes.style "pointer-events" "auto"
-                ]
-                { onPress = Just ZoomPlusClicked
-                , label =
-                    View.Icon.faLarge "search-plus"
-                }
-            , Input.button
-                [ Element.mouseOver
-                    [ Font.color gray700 ]
-                , Element.htmlAttribute <|
-                    Html.Attributes.style "pointer-events" "auto"
-                ]
-                { onPress = Just ZoomMinusClicked
-                , label =
-                    View.Icon.faLarge "search-minus"
-                }
-            ]
-        ]
-
-
-viewBox : Int -> Int -> Float -> String
-viewBox windowWidth windowHeight zoom =
-    let
-        width =
-            floor (toFloat windowWidth * zoom)
-
-        height =
-            floor (toFloat windowHeight * zoom)
-    in
-    String.join " "
-        [ String.fromInt (floor (-1 * toFloat width / 2))
-        , String.fromInt (floor (-1 * toFloat height / 2))
-        , String.fromInt width
-        , String.fromInt height
-        ]
-
-
-viewRightToolbar : Int -> Pattern -> Model -> Element Msg
-viewRightToolbar windowHeight pattern model =
     Element.row
-        [ Element.height Element.fill
-        , Element.htmlAttribute <|
-            Html.Attributes.style "pointer-events" "auto"
+        [ Element.padding 20
+        , Element.spacing 10
         ]
+        [ Input.button
+            [ Element.mouseOver
+                [ Font.color gray700 ]
+            ]
+            { onPress = Just ZoomPlusClicked
+            , label =
+                View.Icon.faLarge "search-plus"
+            }
+        , Input.button
+            [ Element.mouseOver
+                [ Font.color gray700 ]
+            ]
+            { onPress = Just ZoomMinusClicked
+            , label =
+                View.Icon.faLarge "search-minus"
+            }
+        ]
+
+
+viewRightToolbar : Pattern -> Model -> Element Msg
+viewRightToolbar pattern model =
+    Element.row
+        [ Element.height Element.fill ]
         [ Input.button
             [ Element.height Element.fill
             , Element.padding 5
             , Background.color gray900
             , Element.mouseOver
                 [ Background.color gray800 ]
-            , Element.htmlAttribute <|
-                Html.Attributes.style "z-index" "1"
             ]
             { onPress = Just ToolbarToggleClicked
             , label =
@@ -1270,24 +1239,20 @@ viewRightToolbar windowHeight pattern model =
                     )
             }
         , if model.rightToolbarVisible then
-            Element.el
+            Element.column
                 [ Design.backgroundColor Dark
                 , Element.width (Element.px 400)
-                , Element.height (Element.px (windowHeight - 48 - 44))
+                , Element.height Element.fill
+                , Element.scrollbarY
                 ]
-                (Element.column
-                    [ Element.width Element.fill
-                    , Element.scrollbars
-                    ]
-                    (case model.dialog of
-                        CreateVariable { name, value } ->
-                            [ viewVariable name value ]
+                (case model.dialog of
+                    CreateVariable { name, value } ->
+                        [ viewVariable name value ]
 
-                        _ ->
-                            [ viewVariables pattern model
-                            , viewPoints pattern model
-                            ]
-                    )
+                    _ ->
+                        [ viewVariables pattern model
+                        , viewPoints pattern model
+                        ]
                 )
 
           else
@@ -3075,6 +3040,9 @@ listboxViewConfig printOption =
 
 type Msg
     = NoOp
+    | WindowResized
+    | PatternContainerViewportRequested
+    | PatternContainerViewportReceived (Result Browser.Dom.Error Browser.Dom.Viewport)
     | ZoomPlusClicked
     | ZoomMinusClicked
     | MouseDown Position
@@ -3136,16 +3104,48 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         NoOp ->
             ( model, Cmd.none, Nothing )
 
+        WindowResized ->
+            ( model
+            , Browser.Dom.getViewportOf "pattern-container"
+                |> Task.attempt PatternContainerViewportReceived
+            , Nothing
+            )
+
+        PatternContainerViewportRequested ->
+            ( model
+            , Process.sleep 500
+                |> Task.andThen (\_ -> Browser.Dom.getViewportOf "pattern-container")
+                |> Task.attempt PatternContainerViewportReceived
+            , Nothing
+            )
+
+        PatternContainerViewportReceived result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none, Nothing )
+
+                Ok viewport ->
+                    ( { model
+                        | patternContainerDimensions =
+                            Just
+                                { width = viewport.viewport.width
+                                , height = viewport.viewport.height
+                                }
+                      }
+                    , Cmd.none
+                    , Nothing
+                    )
+
         ZoomPlusClicked ->
             ( model
             , Cmd.none
-            , Just { storedPattern | zoom = zoom / 1.1 }
+            , Just { storedPattern | zoom = zoom * 1.1 }
             )
 
         ZoomMinusClicked ->
             ( model
             , Cmd.none
-            , Just { storedPattern | zoom = zoom * 1.1 }
+            , Just { storedPattern | zoom = zoom / 1.1 }
             )
 
         MouseDown position ->
@@ -3179,8 +3179,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             center
 
                         Just drag ->
-                            { x = center.x + (drag.start.x - position.x) * zoom
-                            , y = center.y + (drag.start.y - position.y) * zoom
+                            { x = center.x + (drag.start.x - position.x) / zoom
+                            , y = center.y + (drag.start.y - position.y) / zoom
                             }
             in
             ( { model | maybeDrag = Nothing }
@@ -5258,7 +5258,16 @@ insertLine name viewedPattern model newLine =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ case model.maybeDrag of
+        [ case model.patternContainerDimensions of
+            Just _ ->
+                Sub.none
+
+            Nothing ->
+                Browser.Events.onAnimationFrame
+                    (\_ -> PatternContainerViewportRequested)
+        , Browser.Events.onResize
+            (\_ _ -> WindowResized)
+        , case model.maybeDrag of
             Nothing ->
                 Sub.none
 

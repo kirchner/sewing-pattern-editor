@@ -36,8 +36,6 @@ type alias Model =
     { prefix : String
     , key : Navigation.Key
     , page : Page
-    , windowWidth : Int
-    , windowHeight : Int
     , cache : Dict String StoredPattern
     }
 
@@ -93,24 +91,32 @@ init value url key =
                     Dict.singleton "first-pattern"
                         (StoredPattern.init "first-pattern" "First pattern")
 
-                page =
+                ( page, cmd ) =
                     case Route.fromUrl url of
                         Nothing ->
-                            NotFound
+                            ( NotFound
+                            , Cmd.none
+                            )
 
                         Just newRoute ->
                             case newRoute of
                                 Route.Home ->
-                                    Home Home.init
+                                    ( Home Home.init
+                                    , Cmd.none
+                                    )
 
                                 Route.Editor patternSlug maybePoint ->
-                                    Editor "first-pattern" Editor.init
+                                    let
+                                        ( editor, editorCmd ) =
+                                            Editor.init
+                                    in
+                                    ( Editor "first-pattern" editor
+                                    , Cmd.map EditorMsg editorCmd
+                                    )
             in
             ( { prefix = Route.prefixFromUrl url
               , key = key
               , page = page
-              , windowWidth = 1280
-              , windowHeight = 640
               , cache = initialCache
               }
             , Port.safeCache (encodeCache initialCache)
@@ -125,20 +131,20 @@ init value url key =
                         )
                         flags.maybeCache
 
-                ( page, computedCache ) =
+                ( page, cmd, computedCache ) =
                     case Route.fromUrl url of
                         Nothing ->
-                            ( NotFound, cache )
+                            ( NotFound, Cmd.none, cache )
 
                         Just newRoute ->
                             case newRoute of
                                 Route.Home ->
-                                    ( Home Home.init, cache )
+                                    ( Home Home.init, Cmd.none, cache )
 
                                 Route.Editor patternSlug maybePoint ->
                                     case Dict.get patternSlug cache of
                                         Nothing ->
-                                            ( NotFound, cache )
+                                            ( NotFound, Cmd.none, cache )
 
                                         Just viewedPattern ->
                                             let
@@ -150,20 +156,22 @@ init value url key =
                                                                 |> Tuple.first
                                                     }
 
+                                                ( editor, editorCmd ) =
+                                                    Editor.init
+
                                                 newCache =
                                                     Dict.insert patternSlug
                                                         computedPattern
                                                         cache
                                             in
-                                            ( Editor patternSlug Editor.init
+                                            ( Editor patternSlug editor
+                                            , Cmd.map EditorMsg editorCmd
                                             , newCache
                                             )
             in
             ( { prefix = Route.prefixFromUrl url
               , key = key
               , page = page
-              , windowWidth = flags.windowWidth
-              , windowHeight = flags.windowHeight
               , cache = computedCache
               }
             , if flags.maybeCache == Nothing then
@@ -209,8 +217,6 @@ view model =
                         patternDocument =
                             Editor.view
                                 model.prefix
-                                model.windowWidth
-                                model.windowHeight
                                 storedPattern
                                 editorModel
                     in
@@ -334,20 +340,26 @@ update msg model =
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
     let
-        newModel =
+        ( newModel, cmd ) =
             case maybeRoute of
                 Nothing ->
-                    { model | page = NotFound }
+                    ( { model | page = NotFound }
+                    , Cmd.none
+                    )
 
                 Just newRoute ->
                     case newRoute of
                         Route.Home ->
-                            { model | page = Home Home.init }
+                            ( { model | page = Home Home.init }
+                            , Cmd.none
+                            )
 
                         Route.Editor patternSlug maybePoint ->
                             case Dict.get patternSlug model.cache of
                                 Nothing ->
-                                    { model | page = NotFound }
+                                    ( { model | page = NotFound }
+                                    , Cmd.none
+                                    )
 
                                 Just viewedPattern ->
                                     let
@@ -359,18 +371,23 @@ changeRouteTo maybeRoute model =
                                                         |> Tuple.first
                                             }
 
+                                        ( editor, editorCmd ) =
+                                            Editor.init
+
                                         newCache =
                                             Dict.insert patternSlug
                                                 computedPattern
                                                 model.cache
                                     in
-                                    { model
-                                        | page = Editor patternSlug Editor.init
+                                    ( { model
+                                        | page = Editor patternSlug editor
                                         , cache = newCache
-                                    }
+                                      }
+                                    , Cmd.map EditorMsg editorCmd
+                                    )
     in
     ( newModel
-    , Cmd.none
+    , cmd
     )
 
 

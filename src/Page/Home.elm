@@ -19,6 +19,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Frame2d
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -349,10 +350,10 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 centerPoint =
                     BoundingBox2d.centerPoint box
             in
-            BoundingBox2d.scaleAbout centerPoint 2 box
+            BoundingBox2d.scaleAbout centerPoint 1.5 box
 
         zoom =
-            max width height / 300
+            max width height / 100
 
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -411,7 +412,7 @@ viewPattern prefix ({ pattern } as storedPattern) =
                     , Html.Events.preventDefaultOn "dragstart" <|
                         Decode.succeed ( NoOp, True )
                     ]
-                    [ Pattern.draw selections zoom Nothing pattern ]
+                    [ Pattern.draw selections False zoom Nothing pattern ]
             )
         , Element.row
             [ Element.width Element.fill
