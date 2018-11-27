@@ -638,8 +638,32 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
-        Detail _ ->
-            empty
+        Detail (DetailOnePoint detailData) ->
+            detailData.firstPointMaybeThat
+                |> maybeToList
+                |> Those.fromList
+
+        Detail (DetailManyPoints detailData) ->
+            Those.fromList <|
+                List.filterMap identity <|
+                    List.concat
+                        [ [ detailData.firstPointMaybeThat
+                          , detailData.secondPointMaybeThat
+                          ]
+                        , List.concat <|
+                            List.map
+                                (\{ maybeThat, connectionPrevious } ->
+                                    maybeThat
+                                        :: (case connectionPrevious of
+                                                ConnectionStraight ->
+                                                    []
+
+                                                ConnectionQuadratic quadraticData ->
+                                                    [ quadraticData.maybeThat ]
+                                           )
+                                )
+                                detailData.otherPoints
+                        ]
 
 
 selectedLinesFromTool : Tool -> Those Line
