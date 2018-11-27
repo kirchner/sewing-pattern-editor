@@ -52,7 +52,7 @@ draw selected preview zoom hoveredPoint pattern =
               ]
             , List.map (drawDetail zoom selected.details) geometry.details
             , List.map (drawLine zoom selected.lines) geometry.lines
-            , List.map (drawLineSegment selected.lineSegments) geometry.lineSegments
+            , List.map (drawLineSegment zoom selected.lineSegments) geometry.lineSegments
             , List.map (drawCircle zoom) geometry.circles
             , List.map (drawPoint preview zoom pattern selected.points) geometry.points
             , [ Maybe.map (drawHoveredPoint pattern zoom) hoveredPoint
@@ -247,20 +247,24 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
     in
     Svg.g []
         [ if selected then
-            Svg.circle2d
-                [ stroke Blue
-                , Svg.Attributes.fill "none"
-                , strokeWidthNormal zoom
+            Svg.g
+                []
+                [ Svg.circle2d
+                    [ stroke Green
+                    , Svg.Attributes.fill "none"
+                    , strokeWidthBold zoom
+                    ]
+                    (Circle2d.withRadius (10 / zoom) point2d)
                 ]
-                (Circle2d.withRadius (10 / zoom) point2d)
 
           else
-            Svg.circle2d
-                [ Svg.Attributes.fill "none"
-                , stroke Black
-                , strokeWidthNormal zoom
-                ]
-                (Circle2d.withRadius (5 / zoom) point2d)
+            Svg.text ""
+        , Svg.circle2d
+            [ Svg.Attributes.fill "none"
+            , stroke Black
+            , strokeWidthNormal zoom
+            ]
+            (Circle2d.withRadius (5 / zoom) point2d)
         , maybeName
             |> Maybe.map drawName
             |> Maybe.withDefault (Svg.text "")
@@ -270,18 +274,18 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
 drawLine : Float -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
 drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
     Svg.lineSegment2d
-        (strokeWidthNormal zoom
-            :: (if Those.member thatLine selectedLines then
-                    [ stroke Blue
-                    , Svg.Attributes.opacity "1"
-                    ]
+        (if Those.member thatLine selectedLines then
+            [ stroke Green
+            , Svg.Attributes.opacity "1"
+            , strokeWidthBold zoom
+            ]
 
-                else
-                    [ stroke Black
-                    , Svg.Attributes.opacity "0.1"
-                    , dashArrayNormal zoom
-                    ]
-               )
+         else
+            [ stroke Black
+            , Svg.Attributes.opacity "0.1"
+            , dashArrayNormal zoom
+            , strokeWidthNormal zoom
+            ]
         )
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -10000
@@ -291,23 +295,26 @@ drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
 
 
 drawLineSegment :
-    Those LineSegment
+    Float
+    -> Those LineSegment
     -> ( That LineSegment, Maybe String, LineSegment2d )
     -> Svg msg
-drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
+drawLineSegment zoom selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
     let
         selected =
             Those.member thatLineSegment selectedLineSegments
     in
     Svg.lineSegment2d
         (if selected then
-            [ stroke Blue
+            [ stroke Green
             , Svg.Attributes.opacity "1"
+            , strokeWidthBold zoom
             ]
 
          else
             [ stroke Black
             , Svg.Attributes.opacity "0.1"
+            , strokeWidthNormal zoom
             ]
         )
         lineSegment2d
@@ -415,6 +422,7 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
 type Color
     = Blue
     | Black
+    | Green
 
 
 stroke color =
@@ -426,10 +434,18 @@ stroke color =
             Black ->
                 "black"
 
+            Green ->
+                "green"
+
 
 strokeWidthNormal zoom =
     Svg.Attributes.strokeWidth <|
-        String.fromFloat (1.5 / zoom)
+        String.fromFloat (1 / zoom)
+
+
+strokeWidthBold zoom =
+    Svg.Attributes.strokeWidth <|
+        String.fromFloat (2 / zoom)
 
 
 dashArrayShort zoom =
