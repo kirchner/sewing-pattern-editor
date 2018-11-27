@@ -3,7 +3,7 @@ module Pattern exposing
     , empty
     , Geometry, Segment(..), computeGeometry, geometry, Problems
     , getPointGeometries, getPointGeometry
-    , point2d
+    , point2d, circle2d, axis2d
     , variables, insertVariable, removeVariable
     , Point(..), points, insertPoint, getPoint, updatePoint
     , origin
@@ -34,7 +34,7 @@ module Pattern exposing
 
 @docs getPointGeometries, getPointGeometry
 
-@docs point2d
+@docs point2d, circle2d, axis2d
 
 
 # Variables
