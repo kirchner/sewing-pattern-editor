@@ -66,8 +66,11 @@ drawPoint :
     -> Those Point
     -> ( That Point, Maybe String, Point2d )
     -> Svg msg
-drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeName, point2d ) =
+drawPoint preview zoom pattern hoveredPoint selectedPoints data =
     let
+        ( thatPoint, maybeName, point2d ) =
+            data
+
         pointRadius =
             if preview then
                 3
@@ -131,9 +134,9 @@ drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeNam
                     Svg.g
                         []
                         [ Svg.lineSegment2d
-                            [ Svg.Attributes.stroke "blue"
-                            , normalDashArray zoom
-                            , normalStroke zoom
+                            [ stroke Blue
+                            , dashArrayShort zoom
+                            , strokeWidthNormal zoom
                             ]
                             (LineSegment2d.fromEndpoints ( point2dA, point2dB ))
                         , Svg.circle2d
@@ -212,8 +215,8 @@ drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeNam
                                 (Circle2d.withRadius (15 / zoom) endPoint)
                             ]
                         , Svg.quadraticSpline2d
-                            [ Svg.Attributes.stroke "blue"
-                            , normalDashArray zoom
+                            [ stroke Blue
+                            , dashArrayNormal zoom
                             , Svg.Attributes.fill "none"
                             , Svg.Attributes.markerEnd "url(#arrow)"
                             , Svg.Attributes.mask ("url(#circleMask-" ++ id ++ ")")
@@ -227,19 +230,21 @@ drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeNam
             )
     in
     Svg.g []
-        [ Svg.circle2d
-            [ Svg.Attributes.fill "black" ]
-            (Circle2d.withRadius (pointRadius / zoom) point2d)
-        , if selected then
+        [ if selected then
             Svg.circle2d
-                [ Svg.Attributes.stroke "blue"
+                [ stroke Blue
                 , Svg.Attributes.fill "none"
-                , normalStroke zoom
+                , strokeWidthNormal zoom
                 ]
                 (Circle2d.withRadius (10 / zoom) point2d)
 
           else
-            Svg.g [] []
+            Svg.circle2d
+                [ Svg.Attributes.fill "none"
+                , stroke Black
+                , strokeWidthNormal zoom
+                ]
+                (Circle2d.withRadius (5 / zoom) point2d)
         , helper
         , maybeName
             |> Maybe.map
@@ -248,10 +253,9 @@ drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeNam
                         Svg.text_
                             [ Svg.Attributes.x (String.fromFloat x)
                             , Svg.Attributes.y (String.fromFloat y)
-                            , Svg.Attributes.dy <|
-                                String.fromFloat (-10 / zoom)
-                            , normalFont zoom
+                            , Svg.Attributes.dy (String.fromFloat (-10 / zoom))
                             , Svg.Attributes.textAnchor "middle"
+                            , fontNormal zoom
                             ]
                             [ Svg.text name ]
 
@@ -264,25 +268,20 @@ drawPoint preview zoom pattern hoveredPoint selectedPoints ( thatPoint, maybeNam
 
 drawLine : Float -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
 drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
-    let
-        selected =
-            Those.member thatLine selectedLines
-    in
     Svg.lineSegment2d
-        [ Svg.Attributes.stroke <|
-            if selected then
-                "blue"
+        (strokeWidthNormal zoom
+            :: (if Those.member thatLine selectedLines then
+                    [ stroke Blue
+                    , Svg.Attributes.opacity "1"
+                    ]
 
-            else
-                "black"
-        , Svg.Attributes.opacity <|
-            if selected then
-                "1"
-
-            else
-                "0.1"
-        , normalStroke zoom
-        ]
+                else
+                    [ stroke Black
+                    , Svg.Attributes.opacity "0.1"
+                    , dashArrayNormal zoom
+                    ]
+               )
+        )
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -10000
             , Point2d.along axis2d 10000
@@ -319,9 +318,10 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
 drawCircle : Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
 drawCircle zoom ( thatCircle, maybeName, circle2d ) =
     Svg.circle2d
-        [ Svg.Attributes.stroke "black"
+        [ stroke Black
         , Svg.Attributes.opacity "0.1"
-        , normalStroke zoom
+        , dashArrayNormal zoom
+        , strokeWidthNormal zoom
         , Svg.Attributes.fill "transparent"
         ]
         circle2d
@@ -334,14 +334,14 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
             Those.member thatDetail selectedDetails
     in
     Svg.path
-        [ Svg.Attributes.fill "lightGrey"
-        , Svg.Attributes.stroke <|
+        [ Svg.Attributes.fill "#EFEFEF"
+        , strokeWidthNormal zoom
+        , stroke <|
             if selected then
-                "blue"
+                Blue
 
             else
-                "black"
-        , normalStroke zoom
+                Black
         , Svg.Attributes.d <|
             case segments of
                 [] ->
@@ -414,17 +414,41 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
 ---- HELPER
 
 
-normalStroke zoom =
+type Color
+    = Blue
+    | Black
+
+
+stroke color =
+    Svg.Attributes.stroke <|
+        case color of
+            Blue ->
+                "blue"
+
+            Black ->
+                "black"
+
+
+strokeWidthNormal zoom =
     Svg.Attributes.strokeWidth <|
         String.fromFloat (1.5 / zoom)
 
 
-normalDashArray zoom =
+dashArrayShort zoom =
     Svg.Attributes.strokeDasharray <|
-        String.fromFloat (4 / zoom)
+        String.fromFloat (20 / zoom)
+            ++ " "
+            ++ String.fromFloat (10 / zoom)
 
 
-normalFont zoom =
+dashArrayNormal zoom =
+    Svg.Attributes.strokeDasharray <|
+        String.fromFloat (40 / zoom)
+            ++ " "
+            ++ String.fromFloat (20 / zoom)
+
+
+fontNormal zoom =
     Svg.Attributes.style <|
         "font: "
             ++ String.fromInt (Basics.floor (20 / zoom))
