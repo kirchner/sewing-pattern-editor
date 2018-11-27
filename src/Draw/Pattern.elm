@@ -124,6 +124,23 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
     in
     Svg.g []
         [ map drawFullPoint thatHoveredPoint
+        , case Maybe.map Point2d.coordinates (Pattern.point2d pattern thatHoveredPoint) of
+            Nothing ->
+                Svg.text ""
+
+            Just ( x, y ) ->
+                Svg.text_
+                    [ Svg.Attributes.x (String.fromFloat (x - 10 / zoom))
+                    , Svg.Attributes.y (String.fromFloat y)
+                    , Svg.Attributes.dy (String.fromFloat (-10 / zoom))
+                    , Svg.Attributes.textAnchor "middle"
+                    , fontNormal zoom
+                    , Svg.Attributes.fill "blue"
+                    ]
+                    [ Maybe.andThen .name (Pattern.getPoint pattern thatHoveredPoint)
+                        |> Maybe.withDefault ""
+                        |> Svg.text
+                    ]
         , case Maybe.map .value (Pattern.getPoint pattern thatHoveredPoint) of
             Just (Pattern.Origin x y) ->
                 drawPointFilling (Point2d.fromCoordinates ( x, y ))
@@ -220,10 +237,10 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
     let
         pointRadius =
             if preview then
-                3
+                5
 
             else
-                1
+                2
 
         ( x, y ) =
             Point2d.coordinates point2d
@@ -239,6 +256,12 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
                     , Svg.Attributes.dy (String.fromFloat (-10 / zoom))
                     , Svg.Attributes.textAnchor "middle"
                     , fontNormal zoom
+                    , Svg.Attributes.fill <|
+                        if selected then
+                            "green"
+
+                        else
+                            "black"
                     ]
                     [ Svg.text name ]
 
@@ -264,7 +287,7 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
             , stroke Black
             , strokeWidthNormal zoom
             ]
-            (Circle2d.withRadius (5 / zoom) point2d)
+            (Circle2d.withRadius (pointRadius / zoom) point2d)
         , maybeName
             |> Maybe.map drawName
             |> Maybe.withDefault (Svg.text "")
@@ -464,6 +487,6 @@ dashArrayNormal zoom =
 
 fontNormal zoom =
     Svg.Attributes.style <|
-        "font: "
-            ++ String.fromInt (Basics.floor (20 / zoom))
-            ++ "px sans-serif; font-family: \"Roboto\";"
+        "font-size: "
+            ++ String.fromFloat (12 / zoom)
+            ++ "px; font-family: \"Roboto\";"
