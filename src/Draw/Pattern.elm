@@ -240,7 +240,7 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
                 5
 
             else
-                2
+                3
 
         ( x, y ) =
             Point2d.coordinates point2d
@@ -362,7 +362,7 @@ drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
             Those.member thatDetail selectedDetails
     in
     Svg.path
-        [ Svg.Attributes.fill "#EFEFEF"
+        [ Svg.Attributes.fill "hsla(240, 2%, 80%, 0.5)"
         , strokeWidthNormal zoom
         , stroke <|
             if selected then

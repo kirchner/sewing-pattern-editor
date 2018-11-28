@@ -54,6 +54,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import List.Extra as List
+import Listbox as HtmlListbox
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
@@ -355,7 +356,7 @@ type Tool
     | MirrorAt
         { dropdownLineA : Dropdown
         , maybeThatLineA : Maybe (That Line)
-        , listbox : Listbox
+        , listbox : HtmlListbox.Listbox
         , thosePoints : Those Point
         }
     | Detail DetailData
@@ -2743,11 +2744,11 @@ labeledListbox :
     String
     ->
         { optionToName : That object -> String
-        , lift : Listbox.Msg (That object) -> Msg
+        , lift : HtmlListbox.Msg (That object) -> Msg
         , label : String
         , options : List ( That object, Entry object )
         }
-    -> Listbox
+    -> HtmlListbox.Listbox
     -> Those object
     -> Element Msg
 labeledListbox id { optionToName, lift, label, options } listbox selection =
@@ -2763,16 +2764,15 @@ labeledListbox id { optionToName, lift, label, options } listbox selection =
             ]
             (Element.text label)
         , Element.el [ Element.width Element.fill ] <|
-            Element.html <|
-                Html.toUnstyled <|
-                    Listbox.view (listboxViewConfig optionToName)
-                        { id = id
-                        , labelledBy = id ++ "-label"
-                        , lift = lift
-                        }
-                        (List.map (Tuple.first >> Listbox.option) options)
-                        listbox
-                        (Those.toList selection)
+            HtmlListbox.customView elementFunctions
+                (listboxViewConfig optionToName)
+                { id = id
+                , labelledBy = id ++ "-label"
+                , lift = lift
+                }
+                (List.map (Tuple.first >> HtmlListbox.option) options)
+                listbox
+                (Those.toList selection)
         ]
 
 
@@ -2823,10 +2823,6 @@ color =
 
 white =
     color (Color.rgb255 229 223 197)
-
-
-green900 =
-    color (Color.rgb255 27 94 32)
 
 
 gray700 =
@@ -2973,86 +2969,106 @@ dropdownViewConfig printOption placeholder =
 
 
 listboxUpdateConfig =
-    Listbox.updateConfig That.hash
+    HtmlListbox.updateConfig That.hash
         { jumpAtEnds = True
         , separateFocus = True
         , selectionFollowsFocus = False
         , handleHomeAndEnd = True
-        , typeAhead = Listbox.noTypeAhead
+        , typeAhead = HtmlListbox.noTypeAhead
         , minimalGap = 0
         , initialGap = 0
         }
 
 
+elementFunctions =
+    let
+        attribute name value =
+            Element.htmlAttribute (Html.Attributes.attribute name value)
+    in
+    { ul = Element.column
+    , li = Element.row
+    , on =
+        \event decoder ->
+            Element.htmlAttribute (Html.Events.on event decoder)
+    , preventDefaultOn =
+        \event decoder ->
+            Element.htmlAttribute (Html.Events.preventDefaultOn event decoder)
+    , tabindex = Element.htmlAttribute << Html.Attributes.tabindex
+    , id = Element.htmlAttribute << Html.Attributes.id
+    , listBox = attribute "role" "listbox"
+    , labelledBy = attribute "labelled-by"
+    , multiSelectable = attribute "multi-selectable" << stringFromBool
+    , option = attribute "option" "true"
+    , selected = attribute "selected" << stringFromBool
+    , activeDescendant = attribute "active-descendant"
+    , attributeFromNever = \_ _ -> identity
+    , htmlFromNever = \_ _ -> identity
+    }
+
+
+stringFromBool : Bool -> String
+stringFromBool bool =
+    case bool of
+        True ->
+            "true"
+
+        False ->
+            "false"
+
+
 listboxViewConfig printOption =
-    Listbox.viewConfig That.hash
+    HtmlListbox.customViewConfig That.hash
         { ul =
-            [ Attributes.css
-                [ Css.top (Css.pct 100)
-                , Css.width (Css.pct 100)
-                , Css.maxHeight (Css.rem 10)
-                , Css.overflowY Css.auto
-                , Css.padding Css.zero
-                , Css.margin Css.zero
-                , Css.backgroundColor (Css.rgb 66 66 66)
-                , Css.boxSizing Css.borderBox
-                , Css.borderWidth (Css.px 1)
-                , Css.borderStyle Css.solid
-                , Css.borderColor (Css.rgb 66 66 66)
-                , Css.borderRadius (Css.px 3)
-                , Css.color (Css.rgb 229 223 197)
-                , Css.focus
-                    [ Css.borderColor (Css.rgb 229 223 197) ]
-                ]
+            [ Element.width Element.fill
+            , Element.height (Element.px 400)
+            , Element.scrollbarY
+            , Font.color white
+            , Background.color gray800
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color gray800
+            , Element.focused
+                [ Border.color white ]
             ]
         , liOption =
             \{ selected, focused, hovered } thatPoint ->
                 let
                     defaultAttrs =
-                        [ Attributes.css
-                            [ Css.display Css.block
-                            , Css.cursor Css.pointer
-                            , Css.lineHeight (Css.rem 1)
-                            , Css.padding (Css.px 10)
-                            , Css.fontSize (Css.px 16)
-                            ]
+                        [ Element.pointer
+                        , Element.paddingEach
+                            { left = 0
+                            , right = 10
+                            , top = 10
+                            , bottom = 10
+                            }
+                        , Font.size 16
+                        , Element.width Element.fill
                         ]
                 in
                 { attributes =
                     if focused then
-                        [ Attributes.css
-                            [ Css.backgroundColor (Css.rgb 97 97 97) ]
-                        ]
-                            ++ defaultAttrs
+                        [ Background.color gray700 ] ++ defaultAttrs
 
                     else if hovered then
-                        [ Attributes.css
-                            [ Css.backgroundColor (Css.rgb 82 82 82) ]
-                        ]
-                            ++ defaultAttrs
+                        [ Background.color gray750 ] ++ defaultAttrs
 
                     else
                         defaultAttrs
                 , children =
-                    [ Html.i
-                        [ Attributes.class "fas"
-                        , Attributes.class "fa-check"
-                        , Attributes.css
-                            [ Css.fontSize (Css.px 12)
-                            , Css.paddingRight (Css.px 5)
-                            , if selected then
-                                Css.color Css.inherit
+                    [ Element.el
+                        [ Element.width (Element.px 30) ]
+                        (if selected then
+                            Element.el [ Element.centerX ]
+                                (View.Icon.fa "check")
 
-                              else
-                                Css.color Css.transparent
-                            ]
-                        ]
-                        []
-                    , Html.text (printOption thatPoint)
+                         else
+                            Element.none
+                        )
+                    , Element.text (printOption thatPoint)
                     ]
                 }
-        , liDivider = Listbox.noDivider
-        , empty = Html.text ""
+        , liDivider = \_ -> { attributes = [], children = [] }
+        , empty = Element.text ""
         , focusable = True
         }
 
@@ -3087,7 +3103,7 @@ type Msg
     | DropdownAnchorBMsg (Dropdown.Msg (That Point))
     | DropdownLineAMsg (Dropdown.Msg (That Line))
     | DropdownLineBMsg (Dropdown.Msg (That Line))
-    | ListboxPointsMsg (Listbox.Msg (That Point))
+    | ListboxPointsMsg (HtmlListbox.Msg (That Point))
     | DropdownCircleAMsg (Dropdown.Msg (That Circle))
     | DropdownCircleBMsg (Dropdown.Msg (That Circle))
     | FirstChanged Bool
@@ -3356,7 +3372,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             MirrorAt
                                 { dropdownLineA = Dropdown.init
                                 , maybeThatLineA = Nothing
-                                , listbox = Listbox.init
+                                , listbox = HtmlListbox.init
                                 , thosePoints = Those.none
                                 }
 
@@ -3903,9 +3919,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Tool (MirrorAt data) ->
                     let
                         ( newListbox, listboxCmd, newPoints ) =
-                            Listbox.update listboxUpdateConfig
+                            HtmlListbox.update listboxUpdateConfig
                                 (Pattern.points pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
+                                    |> List.map (Tuple.first >> HtmlListbox.option)
                                 )
                                 listboxMsg
                                 data.listbox

@@ -11,14 +11,17 @@ import BoundingBox2d
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Navigation
+import Color
 import Design exposing (Grey(..))
 import Dict exposing (Dict)
 import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Region as Region
 import Frame2d
 import Html exposing (Html)
 import Html.Attributes
@@ -51,6 +54,8 @@ init =
 
 type Msg
     = NoOp
+    | PatternCardClicked String
+    | PatternCardMenuClicked String
     | DownloadPatternPressed String
     | DeletePatternPressed String
     | AddPatternClicked
@@ -60,15 +65,29 @@ type Msg
 
 
 update :
-    Navigation.Key
+    String
+    -> Navigation.Key
     -> Dict String StoredPattern
     -> Msg
     -> Model
     -> ( Model, Cmd Msg, Maybe (Dict String StoredPattern) )
-update key cache msg model =
+update prefix key cache msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none, Nothing )
+
+        PatternCardClicked slug ->
+            ( model
+            , Navigation.pushUrl key <|
+                Route.toString prefix (Route.Editor slug Nothing)
+            , Nothing
+            )
+
+        PatternCardMenuClicked slug ->
+            ( model
+            , Cmd.none
+            , Nothing
+            )
 
         DownloadPatternPressed patternSlug ->
             ( model
@@ -186,44 +205,42 @@ view prefix storedPatterns model =
             ]
             [ Element.row
                 [ Element.width Element.fill
-                , Element.padding Design.large
+                , Element.paddingXY Design.xLarge Design.normal
                 , Design.backgroundColor Darkest
                 , Design.fontColor Darkest
                 , Element.below (viewDialog model.dialog)
-                , Element.inFront <|
-                    Element.el
-                        [ Element.alignBottom
-                        , Element.alignRight
-                        , Element.htmlAttribute <|
-                            Html.Attributes.style "z-index" "1000"
-                        ]
-                        (Input.button
-                            [ Design.backgroundColor Brightish
-                            , Design.fontColor Brightish
-                            , Element.moveDown 30
-                            , Element.moveLeft (toFloat Design.large)
-                            , Element.width (Element.px 60)
-                            , Element.height (Element.px 60)
-                            , Border.rounded 30
-                            , Element.mouseOver
-                                [ Design.backgroundColor Bright
-                                , Design.fontColor Bright
-                                ]
-                            ]
-                            { onPress = Just AddPatternClicked
-                            , label =
-                                Element.el
-                                    [ Element.centerX
-                                    , Element.centerY
-                                    ]
-                                    (View.Icon.faLarge "plus")
-                            }
-                        )
                 ]
                 [ Element.el
                     [ Font.size Design.normal
+                    , Element.alignLeft
                     ]
-                    (Element.text "Patterns")
+                    (Element.text "Your patterns")
+                , Element.row
+                    [ Element.spacing Design.xxxSmall
+                    , Element.alignRight
+                    ]
+                    [ Input.button
+                        [ Element.paddingXY Design.small Design.xSmall
+                        , Font.size 18
+                        , Background.color gray800
+                        , Font.color white
+                        , Element.mouseOver
+                            [ Background.color gray700 ]
+                        ]
+                        { onPress = Just AddPatternClicked
+                        , label = Element.text "Create new pattern"
+                        }
+                    , Input.button
+                        [ Element.padding Design.xSmall
+                        , Background.color gray800
+                        , Font.color white
+                        , Element.mouseOver
+                            [ Background.color gray700 ]
+                        ]
+                        { onPress = Nothing
+                        , label = View.Icon.faMedium "ellipsis-h"
+                        }
+                    ]
                 ]
             , Element.el
                 [ Element.width Element.fill
@@ -231,9 +248,9 @@ view prefix storedPatterns model =
                 , Design.backgroundColor Brightest
                 , Design.fontColor Brightest
                 ]
-                (Element.row
+                (Element.wrappedRow
                     [ Element.width Element.fill
-                    , Element.padding Design.large
+                    , Element.paddingXY Design.xLarge Design.large
                     , Element.spacing Design.normal
                     ]
                     (List.map (viewPattern prefix) storedPatterns)
@@ -322,8 +339,14 @@ viewPattern prefix ({ pattern } as storedPattern) =
 
         viewBox =
             String.join " "
-                [ String.fromFloat (BoundingBox2d.minX boundingBox)
-                , String.fromFloat (BoundingBox2d.minY boundingBox)
+                [ String.fromFloat
+                    (BoundingBox2d.minX boundingBox
+                        - max 0 ((max width height - width) / 2)
+                    )
+                , String.fromFloat
+                    (BoundingBox2d.minY boundingBox
+                        - max 0 ((max width height - height) / 2)
+                    )
                 , String.fromFloat (max width height)
                 , String.fromFloat (max width height)
                 ]
@@ -350,60 +373,112 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 centerPoint =
                     BoundingBox2d.centerPoint box
             in
-            BoundingBox2d.scaleAbout centerPoint 1.5 box
+            BoundingBox2d.scaleAbout centerPoint 1.1 box
 
         zoom =
-            max width height / 100
+            max width height / 40
 
         ( geometry, _ ) =
             Pattern.geometry pattern
     in
+    --Element.column
+    --    [ Border.color (Design.toColor Bright)
+    --    , Border.width 1
+    --    ]
+    --    [ Element.row
+    --        [ Element.width Element.fill
+    --        , Element.padding Design.small
+    --        , Design.backgroundColor Darkest
+    --        , Design.fontColor Darkest
+    --        , Border.color (Design.toColor Darkest)
+    --        , Border.widthEach
+    --            { left = 0
+    --            , right = 0
+    --            , top = 0
+    --            , bottom = 1
+    --            }
+    --        ]
+    --        [ Element.link [ Element.centerX ]
+    --            { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
+    --            , label =
+    --                Element.el
+    --                    [ Font.size Design.small
+    --                    , Font.underline
+    --                    , Element.mouseOver
+    --                        [ Font.color (Design.toColor Darkish) ]
+    --                    ]
+    --                    (Element.text storedPattern.name)
+    --            }
+    --        , Element.downloadAs [ Element.alignLeft ]
+    --            { url =
+    --                "data:application/json;charset=utf-8,"
+    --                    ++ Encode.encode 0 (StoredPattern.encode storedPattern)
+    --            , label =
+    --                Element.el
+    --                    [ Font.size Design.small
+    --                    , Element.mouseOver
+    --                        [ Font.color (Design.toColor Darkish) ]
+    --                    ]
+    --                    (View.Icon.fa "download")
+    --            , filename = storedPattern.slug ++ ".json"
+    --            }
+    --        ]
+    --    , Element.el
+    --        [ Element.width (Element.px 300)
+    --        , Element.height (Element.px 300)
+    --        , Background.color (Element.rgb 255 255 255)
+    --        ]
+    --        (Element.html <|
+    --            Svg.svg
+    --                [ Svg.Attributes.viewBox viewBox
+    --                , Html.Attributes.style "user-select" "none"
+    --                , Html.Events.preventDefaultOn "dragstart" <|
+    --                    Decode.succeed ( NoOp, True )
+    --                ]
+    --                [ Pattern.draw selections False zoom Nothing pattern ]
+    --        )
+    --    , Element.row
+    --        [ Element.width Element.fill
+    --        , Element.padding Design.xSmall
+    --        , Element.spacing Design.xSmall
+    --        , Design.backgroundColor Darkest
+    --        , Design.fontColor Darkest
+    --        , Border.color (Design.toColor Bright)
+    --        , Border.widthEach
+    --            { left = 0
+    --            , right = 0
+    --            , top = 1
+    --            , bottom = 0
+    --            }
+    --        ]
+    --        [ Element.el [ Element.alignRight ] <|
+    --            button "Delete" (DeletePatternPressed storedPattern.slug)
+    --        ]
+    --    ]
     Element.column
-        [ Border.color (Design.toColor Bright)
+        [ Design.fontColor Dark
         , Border.width 1
+        , Design.borderColor Dark
+        , Element.htmlAttribute <|
+            Html.Attributes.class "pattern-card"
+        , Element.pointer
+        , Border.shadow
+            { offset = ( 2, 2 )
+            , size = 0
+            , blur = 0
+            , color = Element.fromRgb (Color.toRgba (Color.hsla 240 0.07 0.5 0.25))
+            }
+        , Background.color <|
+            Element.fromRgb (Color.toRgba (Color.hsla 240 0.07 0.9 1))
+        , Element.mouseOver
+            [ Background.color <|
+                Element.fromRgb (Color.toRgba (Color.hsla 240 0.07 0.99 1))
+            ]
+        , Events.onClick (PatternCardClicked storedPattern.slug)
         ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.padding Design.small
-            , Design.backgroundColor Darkest
-            , Design.fontColor Darkest
-            , Border.color (Design.toColor Darkest)
-            , Border.widthEach
-                { left = 0
-                , right = 0
-                , top = 0
-                , bottom = 1
-                }
-            ]
-            [ Element.link [ Element.centerX ]
-                { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
-                , label =
-                    Element.el
-                        [ Font.size Design.small
-                        , Font.underline
-                        , Element.mouseOver
-                            [ Font.color (Design.toColor Darkish) ]
-                        ]
-                        (Element.text storedPattern.name)
-                }
-            , Element.downloadAs [ Element.alignLeft ]
-                { url =
-                    "data:application/json;charset=utf-8,"
-                        ++ Encode.encode 0 (StoredPattern.encode storedPattern)
-                , label =
-                    Element.el
-                        [ Font.size Design.small
-                        , Element.mouseOver
-                            [ Font.color (Design.toColor Darkish) ]
-                        ]
-                        (View.Icon.fa "download")
-                , filename = storedPattern.slug ++ ".json"
-                }
-            ]
-        , Element.el
+        [ Element.el
             [ Element.width (Element.px 300)
             , Element.height (Element.px 300)
-            , Background.color (Element.rgb 255 255 255)
             ]
             (Element.html <|
                 Svg.svg
@@ -417,19 +492,38 @@ viewPattern prefix ({ pattern } as storedPattern) =
         , Element.row
             [ Element.width Element.fill
             , Element.padding Design.xSmall
-            , Element.spacing Design.xSmall
-            , Design.backgroundColor Darkest
-            , Design.fontColor Darkest
-            , Border.color (Design.toColor Bright)
-            , Border.widthEach
-                { left = 0
-                , right = 0
-                , top = 1
-                , bottom = 0
-                }
+            , Design.backgroundColor Dark
             ]
-            [ Element.el [ Element.alignRight ] <|
-                button "Delete" (DeletePatternPressed storedPattern.slug)
+            [ Element.el
+                [ Region.heading 2
+                , Element.alignLeft
+                ]
+                (Element.link []
+                    { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
+                    , label =
+                        Element.el
+                            [ Font.size 20
+                            , Element.padding Design.small
+                            ]
+                            (Element.text storedPattern.name)
+                    }
+                )
+            , Input.button
+                [ Element.alignRight
+                , Element.padding Design.small
+                , Font.color white
+                , Border.width 1
+                , Border.color gray900
+                , Border.rounded 4
+                , Element.mouseOver
+                    [ Background.color gray700 ]
+                , Element.htmlAttribute <|
+                    Html.Events.stopPropagationOn "click" <|
+                        Decode.succeed ( PatternCardMenuClicked storedPattern.slug, True )
+                ]
+                { onPress = Nothing
+                , label = View.Icon.faLarge "ellipsis-h"
+                }
             ]
         ]
 
@@ -452,3 +546,35 @@ button label msg =
                 [ Font.size Design.small ]
                 (Element.text label)
         }
+
+
+color =
+    Element.fromRgb << Color.toRgba
+
+
+white =
+    color (Color.rgb255 229 223 197)
+
+
+green900 =
+    color (Color.rgb255 27 94 32)
+
+
+gray700 =
+    color (Color.rgb255 97 97 97)
+
+
+gray750 =
+    color (Color.rgb255 82 82 82)
+
+
+gray800 =
+    color (Color.rgb255 66 66 66)
+
+
+gray900 =
+    color (Color.rgb255 33 33 33)
+
+
+gray950 =
+    color (Color.rgb255 22 22 22)

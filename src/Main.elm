@@ -278,7 +278,7 @@ update msg model =
         ( HomeMsg homeMsg, Home homeModel ) ->
             let
                 ( newHomeModel, homeCmd, maybeNewCache ) =
-                    Home.update model.key model.cache homeMsg homeModel
+                    Home.update model.prefix model.key model.cache homeMsg homeModel
             in
             case maybeNewCache of
                 Nothing ->

@@ -2,6 +2,7 @@ module View.Icon exposing
     ( dev
     , fa
     , faLarge
+    , faMedium
     )
 
 import Css
@@ -36,6 +37,20 @@ fa name =
                         ]
                     ]
                     []
+
+
+faMedium name =
+    Element.html <|
+        Html.toUnstyled <|
+            Html.i
+                [ Attributes.class "fas"
+                , Attributes.class ("fa-" ++ name)
+                , Attributes.css
+                    [ Css.fontSize (Css.px 18)
+                    , Css.color Css.inherit
+                    ]
+                ]
+                []
 
 
 faLarge name =

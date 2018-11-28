@@ -2,6 +2,7 @@ module Design exposing
     ( Grey(..)
     , backgroundColor
     , borderColor
+    , color
     , fontColor
     , large
     , normal
