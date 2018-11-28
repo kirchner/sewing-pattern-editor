@@ -1320,7 +1320,7 @@ viewTool pattern tool =
             ]
             (case tool of
                 CreatePoint name pointData ->
-                    labeledInputText NameChanged "pick a name" name
+                    labeledInputText NameChanged "Pick a name" name
                         :: (case pointData of
                                 LeftOf data ->
                                     viewSimpleDistanceTool pattern points "leftof" data
@@ -1426,7 +1426,7 @@ viewSimpleDistanceTool pattern points toolId data =
         { optionToName = pointName pattern
         , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "start point"
+        , label = "Start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1440,7 +1440,7 @@ viewAngle pattern points data =
         { optionToName = pointName pattern
         , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "start point"
+        , label = "Start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1541,7 +1541,6 @@ viewCircleCircle pattern circles data =
         , label =
             Input.labelAbove
                 [ Font.size 12
-                , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.text "which intersection")
@@ -1576,7 +1575,7 @@ viewCircleLine pattern circles lines data =
         { optionToName = circleName pattern
         , placeholder = ""
         , lift = DropdownCircleAMsg
-        , label = "circle"
+        , label = "Circle"
         , options = circles
         }
         data.dropdownCircleA
@@ -1585,7 +1584,7 @@ viewCircleLine pattern circles lines data =
         { optionToName = lineName pattern
         , placeholder = ""
         , lift = DropdownLineAMsg
-        , label = "line"
+        , label = "Line"
         , options = lines
         }
         data.dropdownLineA
@@ -1616,7 +1615,6 @@ viewCircleLine pattern circles lines data =
         , label =
             Input.labelAbove
                 [ Font.size 12
-                , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.text "which intersection")
@@ -1625,12 +1623,12 @@ viewCircleLine pattern circles lines data =
 
 
 viewCenteredAt pattern points data =
-    [ labeledInputText NameChanged "pick a name" data.name
+    [ labeledInputText NameChanged "Pick a name" data.name
     , labeledDropdown "centered-at-anchor"
         { optionToName = pointName pattern
         , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "center point"
+        , label = "Center point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1640,7 +1638,7 @@ viewCenteredAt pattern points data =
 
 
 viewThroughTwoPoints pattern points data =
-    [ labeledInputText NameChanged "pick a name" data.name
+    [ labeledInputText NameChanged "Pick a name" data.name
     , labeledDropdown "through-two-points-anchor-a"
         { optionToName = pointName pattern
         , placeholder = ""
@@ -1663,12 +1661,12 @@ viewThroughTwoPoints pattern points data =
 
 
 viewThroughOnePoint pattern points data =
-    [ labeledInputText NameChanged "pick a name" data.name
+    [ labeledInputText NameChanged "Pick a name" data.name
     , labeledDropdown "through-one-point-anchor-a"
         { optionToName = pointName pattern
         , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "anchor point"
+        , label = "Anchor point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1678,12 +1676,12 @@ viewThroughOnePoint pattern points data =
 
 
 viewFromTo pattern points data =
-    [ labeledInputText NameChanged "pick a name" data.name
+    [ labeledInputText NameChanged "Pick a name" data.name
     , labeledDropdown "from-to-anchor-a"
         { optionToName = pointName pattern
         , placeholder = ""
         , lift = DropdownAnchorAMsg
-        , label = "start point"
+        , label = "Start point"
         , options = points
         }
         data.dropdownAnchorA
@@ -1692,7 +1690,7 @@ viewFromTo pattern points data =
         { optionToName = pointName pattern
         , placeholder = "Select a point.."
         , lift = DropdownAnchorBMsg
-        , label = "end point"
+        , label = "End point"
         , options = points
         }
         data.dropdownAnchorB
@@ -1705,7 +1703,7 @@ viewMirrorAt pattern points lines data =
         { optionToName = lineName pattern
         , placeholder = ""
         , lift = DropdownLineAMsg
-        , label = "mirror line"
+        , label = "Mirror line"
         , options = lines
         }
         data.dropdownLineA
@@ -1749,7 +1747,6 @@ viewDetail pattern points data =
                         [ Element.paddingXY 0 Design.xxSmall
                         , Font.size 12
                         , Font.color (color (Color.rgb255 229 223 197))
-                        , Font.variant Font.smallCaps
                         , Element.htmlAttribute <|
                             Html.Attributes.id (id ++ "-label")
                         ]
@@ -1885,12 +1882,12 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ labeledInputText NameChanged "pick a name" detailData.name
+            [ labeledInputText NameChanged "Pick a name" detailData.name
             , viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
                 (DropdownPointMsg 0)
-                "point #1"
+                "Point #1"
                 detailData.firstPointDropdown
                 detailData.firstPointMaybeThat
             , buttonAddPointAtEnd
@@ -1914,7 +1911,7 @@ viewDetail pattern points data =
                         (index + 2)
                         (Just actionMenu)
                         (DropdownPointMsg (index + 2))
-                        ("point #" ++ String.fromInt (index + 3))
+                        ("Point #" ++ String.fromInt (index + 3))
                         dropdown
                         maybeThat
                     ]
@@ -1958,7 +1955,6 @@ viewDetail pattern points data =
                             , label =
                                 Input.labelAbove
                                     [ Font.size 12
-                                    , Font.variant Font.smallCaps
                                     , Font.color (color (Color.rgb255 229 223 197))
                                     ]
                                     (Element.text label)
@@ -1984,30 +1980,30 @@ viewDetail pattern points data =
                                         index
                                         Nothing
                                         (DropdownControlPointMsg index)
-                                        "control point"
+                                        "Control point"
                                         dropdown
                                         maybeThat
                                     ]
                         ]
             in
             List.concat
-                [ [ labeledInputText NameChanged "pick a name" detailData.name
+                [ [ labeledInputText NameChanged "Pick a name" detailData.name
                   , viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
                         (DropdownPointMsg 0)
-                        "point #1"
+                        "Point #1"
                         detailData.firstPointDropdown
                         detailData.firstPointMaybeThat
                   , viewConnection 0
                         (ConnectionChanged 0)
                         detailData.connectionFirstSecond
-                        "connection from point #1 to point #2"
+                        "Connection from point #1 to point #2"
                   , viewDropdownPoint "detail-point--point-1"
                         1
                         (Just detailData.secondPointActionMenu)
                         (DropdownPointMsg 1)
-                        "point #2"
+                        "Point #2"
                         detailData.secondPointDropdown
                         detailData.secondPointMaybeThat
                   ]
@@ -2016,7 +2012,7 @@ viewDetail pattern points data =
                   , viewConnection (1 + List.length detailData.otherPoints)
                         (ConnectionChanged (1 + List.length detailData.otherPoints))
                         detailData.connectionLastFirst
-                        ("connection from point #"
+                        ("Connection from point #"
                             ++ String.fromInt (2 + List.length detailData.otherPoints)
                             ++ " to point #1"
                         )
@@ -2083,8 +2079,8 @@ viewVariable name value =
             [ Element.width Element.fill
             , Element.spacing 10
             ]
-            [ labeledInputText VariableNameChanged "pick a name" name
-            , labeledFormulaInputText VariableValueChanged "value" value
+            [ labeledInputText VariableNameChanged "Pick a name" name
+            , labeledFormulaInputText VariableValueChanged "Value" value
             ]
         , Element.row
             [ Element.alignRight
@@ -2110,7 +2106,6 @@ viewToolSelector prefix hoveredTool =
                 ]
                 [ Element.el
                     [ Font.size 12
-                    , Font.variant Font.smallCaps
                     , Font.color (color (Color.rgb255 229 223 197))
                     ]
                     (Element.text name)
@@ -2189,7 +2184,6 @@ viewVariables pattern model =
                         [ { header =
                                 Element.el
                                     [ Font.size 12
-                                    , Font.variant Font.smallCaps
                                     , Font.color (color (Color.rgb255 229 223 197))
                                     ]
                                     (Element.text "name")
@@ -2205,7 +2199,6 @@ viewVariables pattern model =
                         , { header =
                                 Element.el
                                     [ Font.size 12
-                                    , Font.variant Font.smallCaps
                                     , Font.color (color (Color.rgb255 229 223 197))
                                     ]
                                     (Element.text "value")
@@ -2291,7 +2284,6 @@ viewPoints pattern model =
         viewHeader name =
             Element.el
                 [ Font.size 12
-                , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.text name)
@@ -2306,7 +2298,6 @@ viewPoints pattern model =
         viewFloatHeader name =
             Element.el
                 [ Font.size 12
-                , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.el [ Element.alignRight ]
@@ -2440,7 +2431,6 @@ accordionToggle msg name visible =
                 [ Element.el
                     [ Element.width Element.fill
                     , Font.size 16
-                    , Font.variant Font.smallCaps
                     , Font.color (color (Color.rgb255 229 223 197))
                     ]
                     (Element.text name)
@@ -2574,7 +2564,6 @@ labeledInputText onChange label name =
         , label =
             Input.labelAbove
                 [ Font.size 12
-                , Font.variant Font.smallCaps
                 , Font.color (color (Color.rgb255 229 223 197))
                 ]
                 (Element.text label)
@@ -2678,9 +2667,6 @@ labeledFormulaInputText onChange label text =
             Input.labelAbove
                 [ Font.size 12
                 , Font.color (color (Color.rgb255 229 223 197))
-                , Font.variant Font.smallCaps
-                , Element.htmlAttribute <|
-                    Html.Attributes.style "font-variant" "small-caps"
                 , Font.family
                     [ Font.external
                         { name = "Roboto"
@@ -2717,7 +2703,6 @@ labeledDropdown id customization dropdown selection =
         [ Element.el
             [ Font.size 12
             , Font.color (color (Color.rgb255 229 223 197))
-            , Font.variant Font.smallCaps
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
@@ -2756,7 +2741,6 @@ labeledListbox id { optionToName, lift, label, options } listbox selection =
         [ Element.el
             [ Font.size 12
             , Font.color (color (Color.rgb255 229 223 197))
-            , Font.variant Font.smallCaps
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
