@@ -1029,7 +1029,7 @@ viewEditor prefix storedPattern model =
 viewLeftToolbar : String -> Pattern -> Model -> Element Msg
 viewLeftToolbar prefix pattern model =
     Element.column
-        [ Element.width (Element.minimum 330 Element.shrink)
+        [ Element.width (Element.maximum 330 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
         , Design.backgroundColor Dark
@@ -1787,12 +1787,28 @@ viewDetail pattern points data =
                     ]
                 )
                 [ Input.button
-                    [ Element.padding Design.xxSmall
+                    [ Element.paddingEach
+                        { left = Design.xxSmall
+                        , right = Design.xxSmall
+                        , top = Design.xxSmall
+                        , bottom = Design.xxSmall - 2
+                        }
                     , Font.size 10
                     , Background.color gray800
                     , Font.color white
+                    , Border.widthEach
+                        { left = 0
+                        , right = 0
+                        , top = 0
+                        , bottom = 2
+                        }
+                    , Border.color gray800
                     , Element.mouseOver
-                        [ Background.color gray700 ]
+                        [ Background.color gray700
+                        , Border.color white
+                        ]
+                    , Element.focused
+                        [ Border.color white ]
                     , Element.below <|
                         case actionMenu of
                             Closed ->
@@ -1802,6 +1818,7 @@ viewDetail pattern points data =
                                 Element.column
                                     [ Events.onMouseDown (ActionMenuMouseDown index)
                                     , Events.onMouseUp (ActionMenuMouseUp index)
+                                    , Element.moveDown 2
                                     ]
                                     [ Element.el
                                         [ Element.paddingXY 8 7
