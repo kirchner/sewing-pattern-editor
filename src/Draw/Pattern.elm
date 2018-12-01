@@ -194,13 +194,13 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
             Just (Pattern.FirstCircleCircle thatCircleA thatCircleB) ->
                 Svg.g []
                     [ mapCircle drawCircleHighlight thatCircleA
-                    , mapCircle drawCircleHighlight thatCircleA
+                    , mapCircle drawCircleHighlight thatCircleB
                     ]
 
             Just (Pattern.SecondCircleCircle thatCircleA thatCircleB) ->
                 Svg.g []
                     [ mapCircle drawCircleHighlight thatCircleA
-                    , mapCircle drawCircleHighlight thatCircleA
+                    , mapCircle drawCircleHighlight thatCircleB
                     ]
 
             Just (Pattern.LineLine thatLineA thatLineB) ->
