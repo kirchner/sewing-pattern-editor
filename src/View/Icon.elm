@@ -5,63 +5,52 @@ module View.Icon exposing
     , faMedium
     )
 
-import Css
 import Element
-import Html.Styled as Html
-import Html.Styled.Attributes as Attributes
+import Html
+import Html.Attributes as Attributes
 
 
 dev name =
     Element.html <|
-        Html.toUnstyled <|
-            Html.i
-                [ Attributes.class ("devicon-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 24)
-                    , Css.color Css.inherit
-                    ]
-                ]
-                []
+        Html.i
+            [ Attributes.class ("devicon-" ++ name)
+            , Attributes.style "font-size" "24px"
+            , Attributes.style "color" "inherit"
+            ]
+            []
 
 
 fa name =
     Element.el [] <|
         Element.html <|
-            Html.toUnstyled <|
-                Html.i
-                    [ Attributes.class "fas"
-                    , Attributes.class ("fa-" ++ name)
-                    , Attributes.css
-                        [ Css.fontSize (Css.px 12)
-                        , Css.color Css.inherit
-                        ]
-                    ]
-                    []
-
-
-faMedium name =
-    Element.html <|
-        Html.toUnstyled <|
             Html.i
                 [ Attributes.class "fas"
                 , Attributes.class ("fa-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 18)
-                    , Css.color Css.inherit
-                    ]
+                , Attributes.style "font-size" "12px"
+                , Attributes.style "color" "inherit"
+                ]
+                []
+
+
+faMedium name =
+    Element.el [] <|
+        Element.html <|
+            Html.i
+                [ Attributes.class "fas"
+                , Attributes.class ("fa-" ++ name)
+                , Attributes.style "font-size" "18px"
+                , Attributes.style "color" "inherit"
                 ]
                 []
 
 
 faLarge name =
-    Element.html <|
-        Html.toUnstyled <|
+    Element.el [] <|
+        Element.html <|
             Html.i
                 [ Attributes.class "fas"
                 , Attributes.class ("fa-" ++ name)
-                , Attributes.css
-                    [ Css.fontSize (Css.px 24)
-                    , Css.color Css.inherit
-                    ]
+                , Attributes.style "font-size" "24px"
+                , Attributes.style "color" "inherit"
                 ]
                 []
