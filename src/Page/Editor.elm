@@ -2901,13 +2901,18 @@ dropdownViewConfig printOption placeholder =
 
                             Just that ->
                                 printOption that
+                    , Element.el
+                        [ Element.alignRight
+                        , Element.paddingXY Design.xxSmall 0
+                        ]
+                        (View.Icon.fa "chevron-down")
                     ]
                 }
         , ul =
             [ Element.width Element.fill
             , Element.height
                 (Element.fill
-                    |> Element.maximum 400
+                    |> Element.maximum 200
                 )
             , Element.scrollbarY
             , Font.color white
