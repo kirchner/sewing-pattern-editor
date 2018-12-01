@@ -67,7 +67,10 @@ import Task
 import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
+import View.Design
 import View.Icon
+import View.Input
+import View.Navigation
 import VoronoiDiagram2d
 
 
@@ -81,7 +84,6 @@ type alias Model =
 
     -- PATTERN
     , hoveredPoint : Maybe (That Point)
-    , hoveredTool : Maybe ToolTag
     , dialog : Dialog
 
     -- LEFT TOOLBAR
@@ -876,7 +878,6 @@ init =
     ( { maybeDrag = Nothing
       , patternContainerDimensions = Nothing
       , hoveredPoint = Nothing
-      , hoveredTool = Nothing
       , dialog = NoDialog
       , preventActionMenuClose = False
       , rightToolbarVisible = True
@@ -939,24 +940,27 @@ viewEditor prefix storedPattern model =
                 , left = 0
                 , right = 0
                 }
-            , Design.backgroundColor Dark
-            , Design.fontColor Darkest
-            , Design.borderColor Darkest
             , Font.size Design.small
+            , Background.color View.Design.white
+            , Border.color View.Design.black
+            , Font.color View.Design.black
             ]
-            [ Element.link []
+            [ View.Navigation.link
                 { url = "/"
-                , label =
-                    Element.el
-                        [ Font.size Design.small
-                        , Font.underline
-                        , Element.mouseOver
-                            [ Font.color (Design.toColor Darkish) ]
-                        ]
-                        (Element.text "Patterns")
+                , label = "Patterns"
                 }
             , Element.el [] (View.Icon.fa "angle-right")
             , Element.el [] (Element.text name)
+            , Element.newTabLink
+                [ Element.alignRight
+                , Font.color View.Design.black
+                , Font.size Design.small
+                , Element.mouseOver
+                    [ Font.color View.Design.primaryDark ]
+                ]
+                { url = "https://github.com/kirchner/sewing-pattern-editor"
+                , label = View.Icon.dev "github-plain"
+                }
             ]
         , Element.row
             [ Element.height Element.fill
@@ -980,45 +984,10 @@ viewEditor prefix storedPattern model =
                         , Element.alignBottom
                         ]
                         (viewZoom model)
+                , Background.color (Element.rgb 255 255 255)
                 ]
                 (viewWorkspace storedPattern model)
             , viewRightToolbar pattern model
-            ]
-        , Element.row
-            [ Element.width Element.fill
-            , Element.paddingXY 10 5
-            , Element.spacing 5
-            , Border.widthEach
-                { top = 1
-                , bottom = 0
-                , left = 0
-                , right = 0
-                }
-            , Design.backgroundColor Dark
-            , Design.borderColor Darkest
-            ]
-            [ case model.hoveredTool of
-                Nothing ->
-                    Element.none
-
-                Just toolTag ->
-                    Element.el
-                        [ Font.size 12
-                        , Font.color white
-                        , Element.width Element.fill
-                        ]
-                        (toolDescription toolTag)
-            , Element.newTabLink
-                [ Element.alignRight
-                , Element.padding 5
-                , Font.color white
-                , Font.size Design.small
-                , Element.mouseOver
-                    [ Font.color (Design.toColor Darkish) ]
-                ]
-                { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = View.Icon.dev "github-plain"
-                }
             ]
         ]
 
@@ -1029,14 +998,23 @@ viewLeftToolbar prefix pattern model =
         [ Element.width (Element.maximum 330 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
-        , Design.backgroundColor Dark
+
+        --, Design.backgroundColor Dark
+        , Background.color (Element.rgba255 255 255 255 1)
+        , Border.widthEach
+            { left = 0
+            , right = 1
+            , top = 0
+            , bottom = 0
+            }
+        , Border.color View.Design.black
         ]
         [ case model.dialog of
             Tool tool ->
                 viewTool pattern tool
 
             _ ->
-                viewToolSelector prefix model.hoveredTool
+                viewToolSelector prefix
         ]
 
 
@@ -1198,21 +1176,13 @@ viewZoom model =
         [ Element.padding 20
         , Element.spacing 10
         ]
-        [ Input.button
-            [ Element.mouseOver
-                [ Font.color gray700 ]
-            ]
+        [ View.Input.btnIconLarge
             { onPress = Just ZoomPlusClicked
-            , label =
-                View.Icon.faLarge "search-plus"
+            , icon = "search-plus"
             }
-        , Input.button
-            [ Element.mouseOver
-                [ Font.color gray700 ]
-            ]
+        , View.Input.btnIconLarge
             { onPress = Just ZoomMinusClicked
-            , label =
-                View.Icon.faLarge "search-minus"
+            , icon = "search-minus"
             }
         ]
 
@@ -1220,38 +1190,52 @@ viewZoom model =
 viewRightToolbar : Pattern -> Model -> Element Msg
 viewRightToolbar pattern model =
     Element.row
-        [ Element.height Element.fill ]
+        [ Element.height Element.fill
+        , Background.color View.Design.white
+        ]
         [ Input.button
             [ Element.height Element.fill
             , Element.padding 5
-            , Background.color gray900
+            , Font.color View.Design.black
+            , Border.widthEach
+                { left = 1
+                , right = 0
+                , top = 0
+                , bottom = 0
+                }
+            , Border.color View.Design.black
             , Element.mouseOver
-                [ Background.color gray800 ]
+                [ Font.color View.Design.primaryDark
+                , Border.color View.Design.primaryDark
+                ]
             ]
             { onPress = Just ToolbarToggleClicked
             , label =
-                Element.el
+                Element.column
                     [ Element.height Element.fill
                     , Element.width Element.fill
+                    , Element.spacing View.Design.xSmall
                     ]
-                    (Element.el
-                        [ Element.centerY
-                        , Element.centerX
-                        , Font.color (Element.rgb255 229 223 197)
-                        ]
-                        (if model.rightToolbarVisible then
-                            View.Icon.fa "chevron-right"
+                    (List.repeat 3
+                        (Element.el
+                            [ Element.centerY
+                            , Element.centerX
+                            ]
+                            (if model.rightToolbarVisible then
+                                View.Icon.fa "chevron-right"
 
-                         else
-                            View.Icon.fa "chevron-left"
+                             else
+                                View.Icon.fa "chevron-left"
+                            )
                         )
                     )
             }
         , if model.rightToolbarVisible then
             Element.column
-                [ Design.backgroundColor Dark
-                , Element.width (Element.px 400)
+                [ Element.width (Element.px 400)
                 , Element.height Element.fill
+                , Element.padding View.Design.xSmall
+                , Element.spacing View.Design.xSmall
                 , Element.scrollbarY
                 ]
                 (case model.dialog of
@@ -1298,7 +1282,7 @@ viewTool pattern tool =
         ]
         [ Element.el
             [ Font.size 12
-            , Font.color white
+            , Font.color View.Design.black
             ]
             (toolDescription (toolToTag tool))
         , Element.column
@@ -1307,7 +1291,11 @@ viewTool pattern tool =
             ]
             (case tool of
                 CreatePoint name pointData ->
-                    labeledInputText NameChanged "Pick a name" name
+                    View.Input.text "name-input"
+                        { onChange = NameChanged
+                        , text = name
+                        , label = "Pick a name"
+                        }
                         :: (case pointData of
                                 LeftOf data ->
                                     viewSimpleDistanceTool pattern points "leftof" data
@@ -1394,307 +1382,306 @@ viewTool pattern tool =
             [ Element.width Element.fill
             , Element.spacing 5
             ]
-            [ case tool of
-                CreatePoint _ _ ->
-                    buttonCreate "Create" CreateClicked
+            [ Element.el [ Element.alignLeft ] <|
+                case tool of
+                    CreatePoint _ _ ->
+                        View.Input.btnPrimary
+                            { onPress = Just CreateClicked
+                            , label = "Create"
+                            }
 
-                EditPoint _ _ ->
-                    buttonCreate "Update" UpdateClicked
+                    EditPoint _ _ ->
+                        View.Input.btnPrimary
+                            { onPress = Just UpdateClicked
+                            , label = "Update"
+                            }
 
-                _ ->
-                    buttonCreate "Create" CreateClicked
-            , buttonDismiss "Cancel" CancelClicked
+                    _ ->
+                        View.Input.btnPrimary
+                            { onPress = Just CreateClicked
+                            , label = "Create"
+                            }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just CancelClicked
+                    , label = "Cancel"
+                    }
             ]
         ]
 
 
 viewSimpleDistanceTool pattern points toolId data =
-    [ labeledDropdown (toolId ++ "-anchor")
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.dropdown (toolId ++ "--anchor")
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "Start point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledFormulaInputText DistanceChanged "distance" data.distance
+    , View.Input.formula "distance--input"
+        { onChange = DistanceChanged
+        , text = data.distance
+        , label = "Distance"
+        }
     ]
 
 
 viewAngle pattern points data =
-    [ labeledDropdown "at-angle-anchor"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.dropdown "at-angle--anchor"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "Start point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledFormulaInputText AngleChanged "angle" data.angle
-    , labeledFormulaInputText DistanceChanged "distance" data.distance
+    , View.Input.formula "angle--input"
+        { onChange = AngleChanged
+        , text = data.angle
+        , label = "Angle"
+        }
+    , View.Input.formula "distance--input"
+        { onChange = DistanceChanged
+        , text = data.distance
+        , label = "Distance"
+        }
     ]
 
 
 viewBetweenRatio pattern points data =
-    [ labeledDropdown "between-ratio-anchor-a"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.dropdown "between-ratio--anchor-a"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "1st point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledDropdown "between-ratio-anchor-b"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorBMsg
-        , label = "2st point"
+    , View.Input.dropdown "between-ratio--anchor-b"
+        { lift = DropdownAnchorBMsg
+        , entryToString = pointName pattern
+        , label = "2nd point"
         , options = points
+        , dropdown = data.dropdownAnchorB
+        , selection = data.maybeThatAnchorB
         }
-        data.dropdownAnchorB
-        data.maybeThatAnchorB
-    , labeledFormulaInputText RatioChanged "ratio" data.ratio
+    , View.Input.formula "ratio--input"
+        { onChange = RatioChanged
+        , text = data.ratio
+        , label = "Ratio"
+        }
     ]
 
 
 viewBetweenLength pattern points data =
-    [ labeledDropdown "between-length-anchor-a"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.dropdown "between-length--anchor-a"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "1st point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledDropdown "between-length-anchor-b"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorBMsg
-        , label = "2st point"
+    , View.Input.dropdown "between-length--anchor-b"
+        { lift = DropdownAnchorBMsg
+        , entryToString = pointName pattern
+        , label = "2nd point"
         , options = points
+        , dropdown = data.dropdownAnchorB
+        , selection = data.maybeThatAnchorB
         }
-        data.dropdownAnchorB
-        data.maybeThatAnchorB
-    , labeledFormulaInputText LengthChanged "length" data.length
+    , View.Input.formula "length--input"
+        { onChange = LengthChanged
+        , text = data.length
+        , label = "Length"
+        }
     ]
 
 
 viewCircleCircle pattern circles data =
-    [ labeledDropdown "circle-circle--circle-a"
-        { optionToName = circleName pattern
-        , placeholder = ""
-        , lift = DropdownCircleAMsg
+    [ View.Input.dropdown "circle-circle--circle-a"
+        { lift = DropdownCircleAMsg
+        , entryToString = circleName pattern
         , label = "1st circle"
         , options = circles
+        , dropdown = data.dropdownCircleA
+        , selection = data.maybeThatCircleA
         }
-        data.dropdownCircleA
-        data.maybeThatCircleA
-    , labeledDropdown "circle-circle--circle-b"
-        { optionToName = circleName pattern
-        , placeholder = ""
-        , lift = DropdownCircleBMsg
-        , label = "2st circle"
+    , View.Input.dropdown "circle-circle--circle-b"
+        { lift = DropdownCircleBMsg
+        , entryToString = circleName pattern
+        , label = "2nd circle"
         , options = circles
+        , dropdown = data.dropdownCircleB
+        , selection = data.maybeThatCircleB
         }
-        data.dropdownCircleB
-        data.maybeThatCircleB
-    , Input.radioRow
-        [ Element.width Element.fill
-        , Element.padding 5
-        , Element.spacing 10
-        , Font.size 16
-        , Font.color white
-        ]
+    , View.Input.radioRow "circle-circle--intersection"
         { onChange = FirstChanged
         , options =
-            [ Input.option True <|
-                Element.el
-                    [ Border.width 1
-                    , Border.color gray900
-                    ]
-                    (Element.text "first")
-            , Input.option False <|
-                Element.el
-                    [ Border.width 1
-                    , Border.color gray900
-                    ]
-                    (Element.text "second")
+            [ View.Input.option True "first"
+            , View.Input.option False "second"
             ]
         , selected = Just data.first
         , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "which intersection")
+            "Which intersection?"
         }
     ]
 
 
 viewLineLine pattern lines data =
-    [ labeledDropdown "line-line--line-a"
-        { optionToName = lineName pattern
-        , placeholder = ""
-        , lift = DropdownLineAMsg
+    [ View.Input.dropdown "line-line--line-a"
+        { lift = DropdownLineAMsg
+        , entryToString = lineName pattern
         , label = "1st line"
         , options = lines
+        , dropdown = data.dropdownLineA
+        , selection = data.maybeThatLineA
         }
-        data.dropdownLineA
-        data.maybeThatLineA
-    , labeledDropdown "line-line--line-b"
-        { optionToName = lineName pattern
-        , placeholder = ""
-        , lift = DropdownLineBMsg
-        , label = "2st line"
+    , View.Input.dropdown "line-line--line-b"
+        { lift = DropdownLineBMsg
+        , entryToString = lineName pattern
+        , label = "2nd line"
         , options = lines
+        , dropdown = data.dropdownLineB
+        , selection = data.maybeThatLineB
         }
-        data.dropdownLineB
-        data.maybeThatLineB
     ]
 
 
 viewCircleLine pattern circles lines data =
-    [ labeledDropdown "circle-line--circle-a"
-        { optionToName = circleName pattern
-        , placeholder = ""
-        , lift = DropdownCircleAMsg
+    [ View.Input.dropdown "circle-line--circle"
+        { lift = DropdownCircleAMsg
+        , entryToString = circleName pattern
         , label = "Circle"
         , options = circles
+        , dropdown = data.dropdownCircleA
+        , selection = data.maybeThatCircleA
         }
-        data.dropdownCircleA
-        data.maybeThatCircleA
-    , labeledDropdown "circle-line--line-a"
-        { optionToName = lineName pattern
-        , placeholder = ""
-        , lift = DropdownLineAMsg
+    , View.Input.dropdown "circle-line--line"
+        { lift = DropdownLineAMsg
+        , entryToString = lineName pattern
         , label = "Line"
         , options = lines
+        , dropdown = data.dropdownLineA
+        , selection = data.maybeThatLineA
         }
-        data.dropdownLineA
-        data.maybeThatLineA
-    , Input.radioRow
-        [ Element.width Element.fill
-        , Element.padding 5
-        , Element.spacing 10
-        , Font.size 16
-        , Font.color white
-        ]
+    , View.Input.radioRow "circle-line--intersection"
         { onChange = FirstChanged
         , options =
-            [ Input.option True <|
-                Element.el
-                    [ Border.width 1
-                    , Border.color gray900
-                    ]
-                    (Element.text "first")
-            , Input.option False <|
-                Element.el
-                    [ Border.width 1
-                    , Border.color gray900
-                    ]
-                    (Element.text "second")
+            [ View.Input.option True "first"
+            , View.Input.option False "second"
             ]
         , selected = Just data.first
         , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text "which intersection")
+            "Which intersection?"
         }
     ]
 
 
 viewCenteredAt pattern points data =
-    [ labeledInputText NameChanged "Pick a name" data.name
-    , labeledDropdown "centered-at-anchor"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.text "name-input"
+        { onChange = NameChanged
+        , text = data.name
+        , label = "Pick a name"
+        }
+    , View.Input.dropdown "centered-at--anchor"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "Center point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledFormulaInputText RadiusChanged "radius" data.radius
+    , View.Input.formula "radius--input"
+        { onChange = RadiusChanged
+        , text = data.radius
+        , label = "Radius"
+        }
     ]
 
 
 viewThroughTwoPoints pattern points data =
-    [ labeledInputText NameChanged "Pick a name" data.name
-    , labeledDropdown "through-two-points-anchor-a"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.text "name-input"
+        { onChange = NameChanged
+        , text = data.name
+        , label = "Pick a name"
+        }
+    , View.Input.dropdown "through-two-points--anchor-a"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "1st point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledDropdown "through-two-points-anchor-b"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorBMsg
-        , label = "2st point"
+    , View.Input.dropdown "through-two-points--anchor-b"
+        { lift = DropdownAnchorBMsg
+        , entryToString = pointName pattern
+        , label = "2nd point"
         , options = points
+        , dropdown = data.dropdownAnchorB
+        , selection = data.maybeThatAnchorB
         }
-        data.dropdownAnchorB
-        data.maybeThatAnchorB
     ]
 
 
 viewThroughOnePoint pattern points data =
-    [ labeledInputText NameChanged "Pick a name" data.name
-    , labeledDropdown "through-one-point-anchor-a"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
-        , label = "Anchor point"
-        , options = points
+    [ View.Input.text "name-input"
+        { onChange = NameChanged
+        , text = data.name
+        , label = "Pick a name"
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledFormulaInputText AngleChanged "angle" data.angle
+    , View.Input.dropdown "through-two-points--anchor-a"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
+        , label = "Point"
+        , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
+        }
+    , View.Input.formula "angle--input"
+        { onChange = AngleChanged
+        , text = data.angle
+        , label = "Angle"
+        }
     ]
 
 
 viewFromTo pattern points data =
-    [ labeledInputText NameChanged "Pick a name" data.name
-    , labeledDropdown "from-to-anchor-a"
-        { optionToName = pointName pattern
-        , placeholder = ""
-        , lift = DropdownAnchorAMsg
+    [ View.Input.text "name-input"
+        { onChange = NameChanged
+        , text = data.name
+        , label = "Pick a name"
+        }
+    , View.Input.dropdown "from-to--anchor-a"
+        { lift = DropdownAnchorAMsg
+        , entryToString = pointName pattern
         , label = "Start point"
         , options = points
+        , dropdown = data.dropdownAnchorA
+        , selection = data.maybeThatAnchorA
         }
-        data.dropdownAnchorA
-        data.maybeThatAnchorA
-    , labeledDropdown "from-to-anchor-b"
-        { optionToName = pointName pattern
-        , placeholder = "Select a point.."
-        , lift = DropdownAnchorBMsg
+    , View.Input.dropdown "from-to--anchor-b"
+        { lift = DropdownAnchorBMsg
+        , entryToString = pointName pattern
         , label = "End point"
         , options = points
+        , dropdown = data.dropdownAnchorB
+        , selection = data.maybeThatAnchorB
         }
-        data.dropdownAnchorB
-        data.maybeThatAnchorB
     ]
 
 
 viewMirrorAt pattern points lines data =
-    [ labeledDropdown "mirror-at-line"
-        { optionToName = lineName pattern
-        , placeholder = ""
-        , lift = DropdownLineAMsg
+    [ View.Input.dropdown "mirror-at-line--line"
+        { lift = DropdownLineAMsg
+        , entryToString = lineName pattern
         , label = "Mirror line"
         , options = lines
+        , dropdown = data.dropdownLineA
+        , selection = data.maybeThatLineA
         }
-        data.dropdownLineA
-        data.maybeThatLineA
     , labeledListbox "mirror-at-points"
         { optionToName = pointName pattern
         , lift = ListboxPointsMsg
@@ -1709,18 +1696,9 @@ viewMirrorAt pattern points lines data =
 viewDetail pattern points data =
     let
         buttonAddPointAtEnd =
-            Input.button
-                [ Element.paddingXY 8 7
-                , Font.size 14
-                , Border.color gray800
-                , Border.width 1
-                , Font.color white
-                , Background.color gray800
-                , Element.mouseOver
-                    [ Background.color gray700 ]
-                ]
+            View.Input.btnSecondary "detail--add-point--button"
                 { onPress = Just DetailAddPointAtEnd
-                , label = Element.text "Add point"
+                , label = "Add point"
                 }
 
         viewDropdownPoint id index maybeActionMenu lift label dropdown maybeThatPoint =
@@ -1728,32 +1706,22 @@ viewDetail pattern points data =
                 [ Element.width Element.fill
                 , Element.spacing Design.xxSmall
                 ]
-                [ Element.row
-                    [ Element.width Element.fill ]
-                    [ Element.el
-                        [ Element.paddingXY 0 Design.xxSmall
-                        , Font.size 12
-                        , Font.color (color (Color.rgb255 229 223 197))
-                        , Element.htmlAttribute <|
-                            Html.Attributes.id (id ++ "-label")
-                        ]
-                        (Element.text label)
-                    , case maybeActionMenu of
+                [ View.Input.dropdownWithMenu
+                    (case maybeActionMenu of
                         Nothing ->
                             Element.none
 
                         Just actionMenu ->
                             viewActionMenu index actionMenu
-                    ]
-                , Dropdown.customView dropdownElementFunctions
-                    (dropdownViewConfig (pointName pattern) "")
-                    { id = id
-                    , labelledBy = id ++ "-label"
-                    , lift = lift
+                    )
+                    id
+                    { lift = lift
+                    , entryToString = pointName pattern
+                    , label = label
+                    , options = points
+                    , dropdown = dropdown
+                    , selection = maybeThatPoint
                     }
-                    (List.map (Tuple.first >> Listbox.option) points)
-                    dropdown
-                    maybeThatPoint
                 ]
 
         viewActionMenu index actionMenu =
@@ -1778,96 +1746,62 @@ viewDetail pattern points data =
                         , bottom = Design.xxSmall - 2
                         }
                     , Font.size 10
-                    , Background.color gray800
-                    , Font.color white
+                    , Font.color View.Design.black
                     , Border.widthEach
                         { left = 0
                         , right = 0
                         , top = 0
                         , bottom = 2
                         }
-                    , Border.color gray800
+                    , Border.color View.Design.secondary
+                    , Background.color View.Design.secondary
                     , Element.mouseOver
-                        [ Background.color gray700
-                        , Border.color white
+                        [ Background.color View.Design.secondaryDark
+                        , Border.color View.Design.black
                         ]
                     , Element.focused
-                        [ Border.color white ]
+                        [ Border.color View.Design.black ]
+                    , Element.htmlAttribute <|
+                        Html.Attributes.style "transition" <|
+                            String.join "; "
+                                [ "background-color 0.2s ease-in-out 0s"
+                                , "border-color 0.2s ease-in-out 0s"
+                                ]
                     , Element.below <|
                         case actionMenu of
                             Closed ->
                                 Element.none
 
                             _ ->
+                                let
+                                    viewAction msg label =
+                                        Element.el
+                                            [ Element.paddingXY 8 7
+                                            , Element.width Element.fill
+                                            , Background.color View.Design.secondary
+                                            , Element.mouseOver
+                                                [ Background.color View.Design.secondaryDark ]
+                                            , Element.htmlAttribute <|
+                                                Html.Attributes.tabindex -1
+                                            , Element.htmlAttribute <|
+                                                Html.Events.stopPropagationOn "click" <|
+                                                    Decode.succeed
+                                                        ( msg, True )
+                                            ]
+                                            (Element.text label)
+                                in
                                 Element.column
                                     [ Events.onMouseDown (ActionMenuMouseDown index)
                                     , Events.onMouseUp (ActionMenuMouseUp index)
                                     , Element.moveDown 2
+                                    , Font.size 14
+                                    , Font.color View.Design.black
                                     ]
-                                    [ Element.el
-                                        [ Element.paddingXY 8 7
-                                        , Element.width Element.fill
-                                        , Font.size 14
-                                        , Background.color gray800
-                                        , Font.color white
-                                        , Element.mouseOver
-                                            [ Background.color gray700 ]
-                                        , Element.htmlAttribute <|
-                                            Html.Attributes.tabindex -1
-                                        ]
-                                        (Element.text "Move down")
-                                    , Element.el
-                                        [ Element.paddingXY 8 7
-                                        , Element.width Element.fill
-                                        , Font.size 14
-                                        , Background.color gray800
-                                        , Font.color white
-                                        , Element.mouseOver
-                                            [ Background.color gray700 ]
-                                        , Element.htmlAttribute <|
-                                            Html.Attributes.tabindex -1
-                                        ]
-                                        (Element.text "Move up")
-                                    , Element.el
-                                        [ Element.paddingXY 8 7
-                                        , Element.width Element.fill
-                                        , Font.size 14
-                                        , Background.color gray800
-                                        , Font.color white
-                                        , Element.mouseOver
-                                            [ Background.color gray700 ]
-                                        , Element.htmlAttribute <|
-                                            Html.Attributes.tabindex -1
-                                        ]
-                                        (Element.text "Insert point before")
-                                    , Element.el
-                                        [ Element.paddingXY 8 7
-                                        , Element.width Element.fill
-                                        , Font.size 14
-                                        , Background.color gray800
-                                        , Font.color white
-                                        , Element.mouseOver
-                                            [ Background.color gray700 ]
-                                        , Element.htmlAttribute <|
-                                            Html.Attributes.tabindex -1
-                                        ]
-                                        (Element.text "Insert point after")
-                                    , Element.el
-                                        [ Element.paddingXY 8 7
-                                        , Element.width Element.fill
-                                        , Font.size 14
-                                        , Background.color gray800
-                                        , Font.color white
-                                        , Element.mouseOver
-                                            [ Background.color gray700 ]
-                                        , Element.htmlAttribute <|
-                                            Html.Attributes.tabindex -1
-                                        , Element.htmlAttribute <|
-                                            Html.Events.stopPropagationOn "click" <|
-                                                Decode.succeed
-                                                    ( DetailRemovePointClicked index, True )
-                                        ]
-                                        (Element.text "Remove")
+                                    [ viewAction NoOp "Move down"
+                                    , viewAction NoOp "Move up"
+                                    , viewAction NoOp "Insert point before"
+                                    , viewAction NoOp "Insert point after"
+                                    , viewAction (DetailRemovePointClicked index) "Remove"
                                     ]
                     , Events.onLoseFocus (ActionMenuLostFocus index)
                     ]
@@ -1883,7 +1817,11 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ labeledInputText NameChanged "Pick a name" detailData.name
+            [ View.Input.text "name-input"
+                { onChange = NameChanged
+                , text = detailData.name
+                , label = "Pick a name"
+                }
             , viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
@@ -1919,31 +1857,15 @@ viewDetail pattern points data =
 
                 viewConnection index lift connection label =
                     Element.column
-                        [ Element.width Element.fill ]
-                        [ Input.radioRow
-                            [ Element.htmlAttribute <|
-                                Html.Attributes.id
-                                    ("detail--connection-" ++ String.fromInt index)
-                            , Element.width Element.fill
-                            , Element.paddingXY Design.xxSmall Design.xSmall
-                            , Element.spacing Design.normal
-                            , Font.size 16
-                            , Font.color white
-                            ]
+                        [ Element.width Element.fill
+                        , Element.spacing Design.xSmall
+                        ]
+                        [ View.Input.radioRow
+                            ("detail--connection-" ++ String.fromInt index)
                             { onChange = lift
                             , options =
-                                [ Input.option ConnectionStraightTag <|
-                                    Element.el
-                                        [ Border.width 1
-                                        , Border.color gray900
-                                        ]
-                                        (Element.text "straight")
-                                , Input.option ConnectionQuadraticTag <|
-                                    Element.el
-                                        [ Border.width 1
-                                        , Border.color gray900
-                                        ]
-                                        (Element.text "quadratic")
+                                [ View.Input.option ConnectionStraightTag "straight"
+                                , View.Input.option ConnectionQuadraticTag "quadratic"
                                 ]
                             , selected =
                                 Just <|
@@ -1953,12 +1875,7 @@ viewDetail pattern points data =
 
                                         ConnectionQuadratic _ ->
                                             ConnectionQuadraticTag
-                            , label =
-                                Input.labelAbove
-                                    [ Font.size 12
-                                    , Font.color (color (Color.rgb255 229 223 197))
-                                    ]
-                                    (Element.text label)
+                            , label = label
                             }
                         , case connection of
                             ConnectionStraight ->
@@ -1988,7 +1905,11 @@ viewDetail pattern points data =
                         ]
             in
             List.concat
-                [ [ labeledInputText NameChanged "Pick a name" detailData.name
+                [ [ View.Input.text "name-input"
+                        { onChange = NameChanged
+                        , text = detailData.name
+                        , label = "Pick a name"
+                        }
                   , viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
@@ -2069,7 +1990,7 @@ viewVariable name value =
         ]
         [ Element.paragraph
             [ Font.size 12
-            , Font.color white
+            , Font.color View.Design.black
             ]
             [ Element.text "Create a new "
             , Element.el
@@ -2080,15 +2001,31 @@ viewVariable name value =
             [ Element.width Element.fill
             , Element.spacing 10
             ]
-            [ labeledInputText VariableNameChanged "Pick a name" name
-            , labeledFormulaInputText VariableValueChanged "Value" value
+            [ View.Input.text "name-input"
+                { onChange = VariableNameChanged
+                , text = name
+                , label = "Pick a name"
+                }
+            , View.Input.formula "variable-value--input"
+                { onChange = VariableValueChanged
+                , text = value
+                , label = "Value"
+                }
             ]
         , Element.row
-            [ Element.alignRight
+            [ Element.width Element.fill
             , Element.spacing 5
             ]
-            [ buttonCreate "Create" CreateClicked
-            , buttonDismiss "Cancel" CancelClicked
+            [ Element.el [ Element.alignLeft ] <|
+                View.Input.btnPrimary
+                    { onPress = Just CreateClicked
+                    , label = "Create"
+                    }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just CancelClicked
+                    , label = "Cancel"
+                    }
             ]
         ]
 
@@ -2097,8 +2034,8 @@ viewVariable name value =
 -- TOOL SELECTOR
 
 
-viewToolSelector : String -> Maybe ToolTag -> Element Msg
-viewToolSelector prefix hoveredTool =
+viewToolSelector : String -> Element Msg
+viewToolSelector prefix =
     let
         viewGroup name buttons =
             Element.column
@@ -2107,7 +2044,7 @@ viewToolSelector prefix hoveredTool =
                 ]
                 [ Element.el
                     [ Font.size 12
-                    , Font.color (color (Color.rgb255 229 223 197))
+                    , Font.color View.Design.black
                     ]
                     (Element.text name)
                 , Element.column
@@ -2116,39 +2053,45 @@ viewToolSelector prefix hoveredTool =
                     ]
                     buttons
                 ]
+
+        button toolTag label =
+            View.Input.btnSecondaryWide (toolTagToId toolTag ++ "-button")
+                { onPress = Just (SelectToolClicked toolTag)
+                , label = label
+                }
     in
     Element.column
         [ Element.padding Design.small
         , Element.spacing Design.small
         , Element.width Element.fill
         ]
-        [ viewGroup "create a point"
-            [ button prefix hoveredTool LeftOfTag "left_of" "Left of a point"
-            , button prefix hoveredTool RightOfTag "right_of" "Right of a point"
-            , button prefix hoveredTool AboveTag "above" "Above a point"
-            , button prefix hoveredTool BelowTag "below" "Below a point"
-            , button prefix hoveredTool AtAngleTag "at_angle" "Relative to a point by angle and distance"
-            , button prefix hoveredTool BetweenRatioTag "at_angle" "Between two points at ratio"
-            , button prefix hoveredTool BetweenLengthTag "at_angle" "Between two points at length"
-            , button prefix hoveredTool CircleCircleTag "at_angle" "At intersection of two circles"
-            , button prefix hoveredTool LineLineTag "at_angle" "At intersection of two lines"
-            , button prefix hoveredTool CircleLineTag "at_angle" "At intersection of a circle and a line"
+        [ viewGroup "Create a point"
+            [ button LeftOfTag "Left of a point"
+            , button RightOfTag "Right of a point"
+            , button AboveTag "Above a point"
+            , button BelowTag "Below a point"
+            , button AtAngleTag "Relative to a point by angle and distance"
+            , button BetweenRatioTag "Between two points at ratio"
+            , button BetweenLengthTag "Between two points at length"
+            , button CircleCircleTag "At intersection of two circles"
+            , button LineLineTag "At intersection of two lines"
+            , button CircleLineTag "At intersection of a circle and a line"
             ]
-        , viewGroup "create a circle"
-            [ button prefix hoveredTool CenteredAtTag "through_two_points" "Centered at a point"
+        , viewGroup "Create a circle"
+            [ button CenteredAtTag "Centered at a point"
             ]
-        , viewGroup "create a line"
-            [ button prefix hoveredTool ThroughTwoPointsTag "through_two_points" "Through two points"
-            , button prefix hoveredTool ThroughOnePointTag "through_two_points" "Through one point"
+        , viewGroup "Create a line"
+            [ button ThroughTwoPointsTag "Through two points"
+            , button ThroughOnePointTag "Through one point"
             ]
-        , viewGroup "create a line segment"
-            [ button prefix hoveredTool FromToTag "from_to" "Between two points"
+        , viewGroup "Create a line segment"
+            [ button FromToTag "Between two points"
             ]
-        , viewGroup "create a transformation"
-            [ button prefix hoveredTool MirrorAtTag "mirror_at" "Mirror points at a line"
+        , viewGroup "Create a transformation"
+            [ button MirrorAtTag "Mirror points at a line"
             ]
-        , viewGroup "create a detail"
-            [ button prefix hoveredTool DetailTag "detail" "Detail" ]
+        , viewGroup "Create a detail"
+            [ button DetailTag "Detail" ]
         ]
 
 
@@ -2160,49 +2103,35 @@ viewVariables : Pattern -> Model -> Element Msg
 viewVariables pattern model =
     let
         viewFloatValue value =
-            Element.el
-                [ Font.size 14
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.el [ Element.alignRight ]
+            Element.el [ Font.size 14 ] <|
+                Element.el [ Element.alignRight ]
                     (Element.text (String.fromFloat value))
-                )
     in
     Element.column
-        [ Element.width Element.fill ]
+        [ Element.width Element.fill
+        , Element.spacing View.Design.xSmall
+        ]
         [ accordionToggle VariablesRulerClicked "variables" model.variablesVisible
         , if model.variablesVisible then
             Element.column
                 [ Element.width Element.fill
                 , Element.padding Design.small
                 , Element.spacing Design.small
-                , Design.backgroundColor Darkest
+                , Background.color View.Design.white
+                , Font.color View.Design.black
                 ]
                 [ Element.table
                     [ Element.spacing Design.xSmall ]
                     { data = List.sortBy .name (Pattern.variables pattern)
                     , columns =
-                        [ { header =
-                                Element.el
-                                    [ Font.size 12
-                                    , Font.color (color (Color.rgb255 229 223 197))
-                                    ]
-                                    (Element.text "name")
+                        [ { header = Element.el [ Font.size 12 ] (Element.text "name")
                           , width = Element.fill
                           , view =
                                 \{ name } ->
-                                    Element.el
-                                        [ Font.size 14
-                                        , Font.color (color (Color.rgb255 229 223 197))
-                                        ]
-                                        (Element.text name)
+                                    Element.el [ Font.size 14 ] (Element.text name)
                           }
                         , { header =
-                                Element.el
-                                    [ Font.size 12
-                                    , Font.color (color (Color.rgb255 229 223 197))
-                                    ]
-                                    (Element.text "value")
+                                Element.el [ Font.size 12 ] (Element.text "value")
                           , width = Element.shrink
                           , view =
                                 \{ computed } ->
@@ -2221,57 +2150,24 @@ viewVariables pattern model =
                                             }
                                         , Element.spacing 10
                                         ]
-                                        [ Input.button
-                                            [ Font.color white
-                                            , Border.width 1
-                                            , Border.color gray900
-                                            , Element.mouseOver
-                                                [ Font.color gray700 ]
-                                            ]
+                                        [ View.Input.btnIcon
                                             { onPress = Nothing
-                                            , label =
-                                                Element.el
-                                                    [ Element.centerX
-                                                    , Element.centerY
-                                                    ]
-                                                    (View.Icon.fa "edit")
+                                            , icon = "edit"
                                             }
-                                        , Input.button
-                                            [ Font.color white
-                                            , Border.width 1
-                                            , Border.color gray900
-                                            , Element.mouseOver
-                                                [ Font.color gray700 ]
-                                            ]
+                                        , View.Input.btnIcon
                                             { onPress = Nothing
-                                            , label =
-                                                Element.el
-                                                    [ Element.centerX
-                                                    , Element.centerY
-                                                    ]
-                                                    (View.Icon.fa "trash")
+                                            , icon = "trash"
                                             }
                                         ]
                           }
                         ]
                     }
-                , Element.row
-                    [ Element.width Element.fill ]
-                    [ Input.button
-                        [ Element.alignRight
-                        , Element.paddingXY 8 7
-                        , Font.size 14
-                        , Background.color gray800
-                        , Border.color gray800
-                        , Border.width 1
-                        , Font.color white
-                        , Element.mouseOver
-                            [ Background.color gray700 ]
-                        ]
-                        { onPress = Just VariableCreateClicked
-                        , label = Element.text "Create variable"
-                        }
-                    ]
+                , Element.el [ Element.width Element.fill ] <|
+                    Element.el [ Element.alignRight ] <|
+                        View.Input.btnSecondary "create-variable--button"
+                            { onPress = Just VariableCreateClicked
+                            , label = "Create variable"
+                            }
                 ]
 
           else
@@ -2283,46 +2179,34 @@ viewPoints : Pattern -> Model -> Element Msg
 viewPoints pattern model =
     let
         viewHeader name =
-            Element.el
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text name)
+            Element.el [ Font.size 12 ] <|
+                Element.text name
 
         viewValue value =
-            Element.el
-                [ Font.size 14
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text value)
+            Element.el [ Font.size 14 ] <|
+                Element.text value
 
         viewFloatHeader name =
-            Element.el
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.el [ Element.alignRight ]
+            Element.el [ Font.size 12 ] <|
+                Element.el [ Element.alignRight ]
                     (Element.text name)
-                )
 
         viewFloatValue value =
-            Element.el
-                [ Font.size 14
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.el [ Element.alignRight ]
+            Element.el [ Font.size 14 ] <|
+                Element.el [ Element.alignRight ]
                     (Element.text (String.fromInt (round value)))
-                )
     in
     Element.column
-        [ Element.width Element.fill ]
+        [ Element.width Element.fill
+        , Element.spacing View.Design.xSmall
+        ]
         [ accordionToggle PointsRulerClicked "points" model.pointsVisible
         , if model.pointsVisible then
             Element.column
                 [ Element.width Element.fill
                 , Element.padding Design.small
                 , Element.spacing Design.small
-                , Design.backgroundColor Darkest
+                , Background.color View.Design.white
                 ]
                 [ Element.table
                     [ Element.spacing Design.xSmall ]
@@ -2369,35 +2253,13 @@ viewPoints pattern model =
                                             }
                                         , Element.spacing 10
                                         ]
-                                        [ Input.button
-                                            [ Font.color white
-                                            , Border.width 1
-                                            , Border.color gray900
-                                            , Element.mouseOver
-                                                [ Font.color gray700 ]
-                                            ]
+                                        [ View.Input.btnIcon
                                             { onPress = Just (EditPointClicked thatPoint)
-                                            , label =
-                                                Element.el
-                                                    [ Element.centerX
-                                                    , Element.centerY
-                                                    ]
-                                                    (View.Icon.fa "edit")
+                                            , icon = "edit"
                                             }
-                                        , Input.button
-                                            [ Font.color white
-                                            , Border.width 1
-                                            , Border.color gray900
-                                            , Element.mouseOver
-                                                [ Font.color gray700 ]
-                                            ]
+                                        , View.Input.btnIcon
                                             { onPress = Nothing
-                                            , label =
-                                                Element.el
-                                                    [ Element.centerX
-                                                    , Element.centerY
-                                                    ]
-                                                    (View.Icon.fa "trash")
+                                            , icon = "trash"
                                             }
                                         ]
                           }
@@ -2419,26 +2281,31 @@ accordionToggle msg name visible =
     Input.button
         [ Element.width Element.fill
         , Element.padding Design.xSmall
-        , Border.color gray900
-        , Border.width 1
+        , Font.color View.Design.black
+        , Border.widthEach
+            { left = 0
+            , right = 0
+            , top = 0
+            , bottom = 1
+            }
+        , Border.color View.Design.black
         , Element.mouseOver
-            [ Background.color gray800 ]
+            [ Border.color View.Design.primaryDark
+            , Font.color View.Design.primaryDark
+            ]
         ]
         { onPress = Just msg
         , label =
             Element.row
-                [ Element.width Element.fill
-                ]
+                [ Element.width Element.fill ]
                 [ Element.el
                     [ Element.width Element.fill
                     , Font.size 16
-                    , Font.color (color (Color.rgb255 229 223 197))
                     ]
                     (Element.text name)
                 , Element.el
                     [ Element.centerY
                     , Element.centerX
-                    , Font.color (Element.rgb255 229 223 197)
                     ]
                     (if visible then
                         View.Icon.fa "chevron-up"
@@ -2448,310 +2315,6 @@ accordionToggle msg name visible =
                     )
                 ]
         }
-
-
-button : String -> Maybe ToolTag -> ToolTag -> String -> String -> Element Msg
-button prefix maybeHoveredTool toolTag iconSrc label =
-    let
-        selected =
-            Just toolTag == maybeHoveredTool
-    in
-    Input.button
-        [ Element.htmlAttribute <|
-            Html.Attributes.id (toolTagToId toolTag ++ "-button")
-        , Element.paddingXY 8 7
-        , Element.width Element.fill
-        , Font.size 14
-        , Border.color gray800
-        , Border.width 1
-        , Background.color <|
-            if selected then
-                gray700
-
-            else
-                gray800
-        , Font.color white
-        , Events.onMouseEnter (SelectToolHovered toolTag)
-        , Events.onMouseLeave SelectToolUnhovered
-        , Element.mouseOver
-            [ Background.color <|
-                if selected then
-                    gray700
-
-                else
-                    gray700
-            ]
-        ]
-        { onPress = Just (SelectToolClicked toolTag)
-        , label =
-            Element.text label
-        }
-
-
-buttonDismiss : String -> msg -> Element msg
-buttonDismiss label msg =
-    Input.button
-        [ Element.paddingXY 8 7
-        , Element.alignRight
-        , Font.size 14
-        , Font.color white
-        , Font.underline
-        , Element.mouseOver
-            [ Font.color (Design.toColor Brightish) ]
-        ]
-        { onPress = Just msg
-        , label = Element.text label
-        }
-
-
-buttonDanger : String -> msg -> Element msg
-buttonDanger label msg =
-    Input.button
-        [ Element.padding 8
-        , Element.width Element.fill
-        , Font.size 14
-        , Background.color gray800
-        , Border.color gray800
-        , Border.width 1
-        , Font.color white
-        , Element.mouseOver
-            [ Background.color gray700 ]
-        ]
-        { onPress = Just msg
-        , label = Element.el [ Element.centerX ] (Element.text label)
-        }
-
-
-buttonCreate : String -> msg -> Element msg
-buttonCreate label msg =
-    Input.button
-        [ Element.paddingXY 8 7
-        , Element.alignLeft
-        , Background.color gray800
-        , Border.color gray800
-        , Border.width 1
-        , Font.color white
-        , Font.size 14
-        , Element.mouseOver
-            [ Background.color gray700 ]
-        ]
-        { onPress = Just msg
-        , label = Element.text label
-        }
-
-
-labeledInputText : (String -> msg) -> String -> String -> Element msg
-labeledInputText onChange label name =
-    Input.text
-        [ Element.width Element.fill
-        , Element.padding 5
-        , Font.size 16
-        , Font.color white
-        , Background.color gray700
-        , Border.width 1
-        , Border.color (Design.toColor Brightish)
-        , Element.htmlAttribute <|
-            Html.Attributes.id "name-input"
-        ]
-        { onChange = onChange
-        , text = name
-        , placeholder = Nothing
-        , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                ]
-                (Element.text label)
-        }
-
-
-labeledFormulaInputText : (String -> msg) -> String -> String -> Element msg
-labeledFormulaInputText onChange label text =
-    let
-        lineCount =
-            List.length (String.split "\n" text)
-    in
-    Input.multiline
-        [ Element.width Element.fill
-        , Element.paddingEach <|
-            if lineCount == 1 then
-                { left = 5
-                , right = 5
-                , top = 10
-                , bottom = 0
-                }
-
-            else
-                { left =
-                    if lineCount < 10 then
-                        30
-
-                    else
-                        40
-                , right = 5
-                , top = 10
-                , bottom = 0
-                }
-        , Element.inFront <|
-            if lineCount == 1 then
-                Element.none
-
-            else
-                Element.row
-                    [ Element.height Element.fill
-                    , Element.paddingXY 5 0
-                    , Element.spacing 5
-                    ]
-                    [ Element.column
-                        [ Font.size 16
-                        , Font.color white
-                        , Font.family
-                            [ Font.external
-                                { name = "Roboto Mono"
-                                , url = "https://fonts.googleapis.com/css?family=Roboto+Mono"
-                                }
-                            , Font.monospace
-                            ]
-                        , Element.spacing 5
-                        ]
-                        (List.range 1 lineCount
-                            |> List.map
-                                (\lineNumber ->
-                                    Element.el
-                                        [ Element.alignRight ]
-                                        (Element.text (String.fromInt lineNumber))
-                                )
-                        )
-                    , Element.el
-                        [ Element.paddingXY 0 5
-                        , Element.height Element.fill
-                        ]
-                        (Element.el
-                            [ Element.height Element.fill
-                            , Element.width (Element.px 1)
-                            , Background.color white
-                            ]
-                            Element.none
-                        )
-                    ]
-        , Element.spacing 5
-        , Font.size 16
-        , Font.color white
-        , Font.family
-            [ Font.external
-                { name = "Roboto Mono"
-                , url = "https://fonts.googleapis.com/css?family=Roboto+Mono"
-                }
-            , Font.monospace
-            ]
-        , Background.color gray700
-        , Border.width 1
-        , Border.color (Design.toColor Brightish)
-        , Element.htmlAttribute <|
-            Html.Attributes.id (label ++ "-input")
-        , Element.htmlAttribute <|
-            Html.Attributes.rows lineCount
-        , Element.htmlAttribute <|
-            Html.Attributes.style "white-space" "pre"
-        ]
-        { onChange = onChange
-        , text = text
-        , placeholder = Nothing
-        , spellcheck = False
-        , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color (color (Color.rgb255 229 223 197))
-                , Font.family
-                    [ Font.external
-                        { name = "Roboto"
-                        , url = "https://fonts.googleapis.com/css?family=Roboto"
-                        }
-                    , Font.sansSerif
-                    ]
-                ]
-                (Element.text label)
-        }
-
-
-dropdownElementFunctions =
-    let
-        attribute name value =
-            Element.htmlAttribute (Html.Attributes.attribute name value)
-
-        style name value =
-            Element.htmlAttribute (Html.Attributes.style name value)
-
-        on event decoder =
-            Element.htmlAttribute (Html.Events.on event decoder)
-
-        preventDefaultOn event decoder =
-            Element.htmlAttribute (Html.Events.preventDefaultOn event decoder)
-    in
-    { ul = Element.column
-    , li = Element.row
-    , button =
-        \attributes children ->
-            Input.button attributes
-                { onPress = Nothing
-                , label =
-                    Element.row
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        ]
-                        children
-                }
-    , div =
-        \attributes children ->
-            Element.el (Element.below children.ul :: attributes) children.button
-    , style = style
-    , text = Element.text
-    , attribute = attribute
-    , on = on
-    , preventDefaultOn = preventDefaultOn
-    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
-    , htmlMap = \noOp -> Element.map (\_ -> noOp)
-    }
-
-
-labeledDropdown :
-    String
-    ->
-        { lift : Dropdown.Msg (That object) -> Msg
-        , optionToName : That object -> String
-        , placeholder : String
-        , label : String
-        , options : List ( That object, Entry object )
-        }
-    -> Dropdown
-    -> Maybe (That object)
-    -> Element Msg
-labeledDropdown id customization dropdown selection =
-    let
-        { optionToName, placeholder, lift, label, options } =
-            customization
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing 3
-        ]
-        [ Element.el
-            [ Font.size 12
-            , Font.color (color (Color.rgb255 229 223 197))
-            , Element.htmlAttribute <|
-                Html.Attributes.id (id ++ "-label")
-            ]
-            (Element.text label)
-        , Dropdown.customView dropdownElementFunctions
-            (dropdownViewConfig optionToName placeholder)
-            { id = id
-            , labelledBy = id ++ "-label"
-            , lift = lift
-            }
-            (List.map (Tuple.first >> Listbox.option) options)
-            dropdown
-            selection
-        ]
 
 
 labeledListbox :
@@ -2772,7 +2335,7 @@ labeledListbox id { optionToName, lift, label, options } listbox selection =
         ]
         [ Element.el
             [ Font.size 12
-            , Font.color (color (Color.rgb255 229 223 197))
+            , Font.color View.Design.black
             , Element.htmlAttribute <|
                 Html.Attributes.id (id ++ "-label")
             ]
@@ -2787,47 +2350,6 @@ labeledListbox id { optionToName, lift, label, options } listbox selection =
             listbox
             (Those.toList selection)
         ]
-
-
-labeledInputRadio :
-    (That a -> msg)
-    -> String
-    -> Maybe (That a)
-    -> List ( That a, Entry a )
-    -> Element msg
-labeledInputRadio msg label selected options =
-    let
-        option ( that, { name } ) =
-            Input.option that <|
-                Element.el
-                    [ Element.padding 3 ]
-                    (Element.text (Maybe.withDefault "<unnamed>" name))
-    in
-    Input.radio
-        [ Element.paddingXY 8 7
-        , Element.width Element.fill
-        ]
-        { onChange = msg
-        , selected = selected
-        , label =
-            Input.labelLeft
-                [ Element.centerY
-                , Element.paddingXY 5 0
-                , Element.width (Element.px 120)
-                ]
-                (Element.text label)
-        , options = List.map option options
-        }
-
-
-horizontalLine : Element msg
-horizontalLine =
-    Element.el
-        [ Element.height (Element.px 1)
-        , Element.width Element.fill
-        , Background.color (color Color.white)
-        ]
-        Element.none
 
 
 color =
@@ -2872,84 +2394,6 @@ dropdownUpdateConfig =
         , typeAhead = Listbox.noTypeAhead
         , minimalGap = 0
         , initialGap = 0
-        }
-
-
-dropdownViewConfig printOption placeholder =
-    Dropdown.customViewConfig That.hash
-        { container =
-            [ Element.width Element.fill
-            , Element.height (Element.px 30)
-            ]
-        , button =
-            \{ maybeSelection } ->
-                { attributes =
-                    [ Element.height Element.fill
-                    , Element.width Element.fill
-                    , Element.padding 5
-                    , Font.size 16
-                    , Font.color white
-                    , Background.color gray700
-                    , Border.width 1
-                    , Border.color (Design.toColor Brightish)
-                    ]
-                , children =
-                    [ Element.text <|
-                        case maybeSelection of
-                            Nothing ->
-                                placeholder
-
-                            Just that ->
-                                printOption that
-                    , Element.el
-                        [ Element.alignRight
-                        , Element.paddingXY Design.xxSmall 0
-                        ]
-                        (View.Icon.fa "chevron-down")
-                    ]
-                }
-        , ul =
-            [ Element.width Element.fill
-            , Element.height
-                (Element.fill
-                    |> Element.maximum 200
-                )
-            , Element.scrollbarY
-            , Font.color white
-            , Background.color gray800
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color gray800
-            , Element.focused
-                [ Border.color white ]
-            ]
-        , liOption =
-            \{ focused, hovered } thatPoint ->
-                let
-                    defaultAttrs =
-                        [ Element.pointer
-                        , Element.padding Design.xSmall
-                        , Font.size 16
-                        , Element.width Element.fill
-                        ]
-                in
-                { attributes =
-                    if focused then
-                        [ Background.color gray700 ] ++ defaultAttrs
-
-                    else if hovered then
-                        [ Background.color gray750 ] ++ defaultAttrs
-
-                    else
-                        defaultAttrs
-                , children =
-                    [ Element.text (printOption thatPoint) ]
-                }
-        , liDivider =
-            \_ ->
-                { attributes = []
-                , children = []
-                }
         }
 
 
@@ -3005,14 +2449,13 @@ listboxViewConfig printOption =
         { ul =
             [ Element.width Element.fill
             , Element.height (Element.px 400)
+            , Element.padding 1
             , Element.scrollbarY
-            , Font.color white
-            , Background.color gray800
+            , Font.color View.Design.black
+            , Background.color View.Design.white
             , Border.width 1
             , Border.rounded 3
-            , Border.color gray800
-            , Element.focused
-                [ Border.color white ]
+            , Border.color View.Design.black
             ]
         , liOption =
             \{ selected, focused, hovered } thatPoint ->
@@ -3030,11 +2473,11 @@ listboxViewConfig printOption =
                         ]
                 in
                 { attributes =
-                    if focused then
-                        [ Background.color gray700 ] ++ defaultAttrs
+                    if hovered then
+                        [ Background.color View.Design.secondaryDark ] ++ defaultAttrs
 
-                    else if hovered then
-                        [ Background.color gray750 ] ++ defaultAttrs
+                    else if focused then
+                        [ Background.color View.Design.secondary ] ++ defaultAttrs
 
                     else
                         defaultAttrs
@@ -3072,8 +2515,6 @@ type Msg
     | MouseMove Position
     | MouseUp Position
       -- TOOL POINTS
-    | SelectToolHovered ToolTag
-    | SelectToolUnhovered
     | SelectToolClicked ToolTag
     | EditPointClicked (That Point)
       -- TOOL PARAMETERS
@@ -3212,18 +2653,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
         -- POINTS
-        SelectToolHovered toolTag ->
-            ( { model | hoveredTool = Just toolTag }
-            , Cmd.none
-            , Nothing
-            )
-
-        SelectToolUnhovered ->
-            ( { model | hoveredTool = Nothing }
-            , Cmd.none
-            , Nothing
-            )
-
         SelectToolClicked toolTag ->
             let
                 tool =
