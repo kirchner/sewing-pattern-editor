@@ -43,7 +43,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
-import Frame2d
+import Frame2d exposing (Frame2d)
 import Geometry.Svg as Svg
 import Html exposing (Html)
 import Html.Attributes
@@ -70,6 +70,7 @@ import Task
 import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
+import Vector2d
 import View.Design
 import View.Icon
 import View.Input
@@ -1504,13 +1505,17 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                     Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
                         Svg.g []
                             [ Pattern.draw selections True zoom model.hoveredPoint pattern
+                            , Svg.Lazy.lazy4 drawHoverPolygons
+                                width
+                                height
+                                localFrame
+                                storedPattern
                             ]
-                , Svg.Lazy.lazy3 drawHoverPolygons width height storedPattern
                 ]
 
 
-drawHoverPolygons : Float -> Float -> StoredPattern -> Svg Msg
-drawHoverPolygons width height { pattern, center, zoom } =
+drawHoverPolygons : Float -> Float -> Frame2d -> StoredPattern -> Svg Msg
+drawHoverPolygons width height localFrame { pattern, center, zoom } =
     let
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -1531,6 +1536,11 @@ drawHoverPolygons width height { pattern, center, zoom } =
                 , maxY = 1.1 * height
                 }
                 |> BoundingBox2d.scaleAbout Point2d.origin (1 / zoom)
+                |> BoundingBox2d.translateBy
+                    (Vector2d.from
+                        Point2d.origin
+                        (Frame2d.originPoint localFrame)
+                    )
     in
     Svg.g []
         (List.map drawHoverPolygon hoverPolygons)
