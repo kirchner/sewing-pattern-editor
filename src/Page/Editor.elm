@@ -1682,14 +1682,14 @@ viewMirrorAt pattern points lines data =
         , dropdown = data.dropdownLineA
         , selection = data.maybeThatLineA
         }
-    , labeledListbox "mirror-at-points"
-        { optionToName = pointName pattern
-        , lift = ListboxPointsMsg
-        , label = "mirrored points"
+    , View.Input.listbox "mirror-at-points--points"
+        { lift = ListboxPointsMsg
+        , entryToString = pointName pattern
+        , label = "Mirrored points"
         , options = points
+        , listbox = data.listbox
+        , selection = data.thosePoints
         }
-        data.listbox
-        data.thosePoints
     ]
 
 
@@ -2317,41 +2317,6 @@ accordionToggle msg name visible =
         }
 
 
-labeledListbox :
-    String
-    ->
-        { optionToName : That object -> String
-        , lift : Listbox.Msg (That object) -> Msg
-        , label : String
-        , options : List ( That object, Entry object )
-        }
-    -> Listbox
-    -> Those object
-    -> Element Msg
-labeledListbox id { optionToName, lift, label, options } listbox selection =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing 3
-        ]
-        [ Element.el
-            [ Font.size 12
-            , Font.color View.Design.black
-            , Element.htmlAttribute <|
-                Html.Attributes.id (id ++ "-label")
-            ]
-            (Element.text label)
-        , Listbox.customView elementFunctions
-            (listboxViewConfig optionToName)
-            { id = id
-            , labelledBy = id ++ "-label"
-            , lift = lift
-            }
-            (List.map (Tuple.first >> Listbox.option) options)
-            listbox
-            (Those.toList selection)
-        ]
-
-
 color =
     Element.fromRgb << Color.toRgba
 
@@ -2378,126 +2343,6 @@ gray900 =
 
 gray950 =
     color (Color.rgb255 22 22 22)
-
-
-
----- DROPDOWN CONFIG
-
-
-dropdownUpdateConfig =
-    Dropdown.updateConfig That.hash
-        { jumpAtEnds = True
-        , separateFocus = True
-        , selectionFollowsFocus = False
-        , handleHomeAndEnd = True
-        , closeAfterMouseSelection = True
-        , typeAhead = Listbox.noTypeAhead
-        , minimalGap = 0
-        , initialGap = 0
-        }
-
-
-
----- LISTBOX CONFIG
-
-
-listboxUpdateConfig =
-    Listbox.updateConfig That.hash
-        { jumpAtEnds = True
-        , separateFocus = True
-        , selectionFollowsFocus = False
-        , handleHomeAndEnd = True
-        , typeAhead = Listbox.noTypeAhead
-        , minimalGap = 0
-        , initialGap = 0
-        }
-
-
-elementFunctions =
-    let
-        attribute name value =
-            Element.htmlAttribute (Html.Attributes.attribute name value)
-
-        on event decoder =
-            Element.htmlAttribute (Html.Events.on event decoder)
-
-        preventDefaultOn event decoder =
-            Element.htmlAttribute (Html.Events.preventDefaultOn event decoder)
-    in
-    { ul = Element.column
-    , li = Element.row
-    , attribute = attribute
-    , on = on
-    , preventDefaultOn = preventDefaultOn
-    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
-    , htmlMap = \noOp -> Element.map (\_ -> noOp)
-    }
-
-
-stringFromBool : Bool -> String
-stringFromBool bool =
-    case bool of
-        True ->
-            "true"
-
-        False ->
-            "false"
-
-
-listboxViewConfig printOption =
-    Listbox.customViewConfig That.hash
-        { ul =
-            [ Element.width Element.fill
-            , Element.height (Element.px 400)
-            , Element.padding 1
-            , Element.scrollbarY
-            , Font.color View.Design.black
-            , Background.color View.Design.white
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color View.Design.black
-            ]
-        , liOption =
-            \{ selected, focused, hovered } thatPoint ->
-                let
-                    defaultAttrs =
-                        [ Element.pointer
-                        , Element.paddingEach
-                            { left = 0
-                            , right = 10
-                            , top = 10
-                            , bottom = 10
-                            }
-                        , Font.size 16
-                        , Element.width Element.fill
-                        ]
-                in
-                { attributes =
-                    if hovered then
-                        [ Background.color View.Design.secondaryDark ] ++ defaultAttrs
-
-                    else if focused then
-                        [ Background.color View.Design.secondary ] ++ defaultAttrs
-
-                    else
-                        defaultAttrs
-                , children =
-                    [ Element.el
-                        [ Element.width (Element.px 30) ]
-                        (if selected then
-                            Element.el [ Element.centerX ]
-                                (View.Icon.fa "check")
-
-                         else
-                            Element.none
-                        )
-                    , Element.text (printOption thatPoint)
-                    ]
-                }
-        , liDivider = \_ -> { attributes = [], children = [] }
-        , empty = Element.text ""
-        , focusable = True
-        }
 
 
 
@@ -4711,6 +4556,10 @@ insertLine name viewedPattern model newLine =
     )
 
 
+
+---- SUBSCRIPTIONS
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
@@ -4758,3 +4607,36 @@ subscriptions model =
                             )
                     )
         ]
+
+
+
+---- DROPDOWN CONFIG
+
+
+dropdownUpdateConfig =
+    Dropdown.updateConfig That.hash
+        { jumpAtEnds = True
+        , separateFocus = True
+        , selectionFollowsFocus = False
+        , handleHomeAndEnd = True
+        , closeAfterMouseSelection = True
+        , typeAhead = Listbox.noTypeAhead
+        , minimalGap = 0
+        , initialGap = 0
+        }
+
+
+
+---- LISTBOX CONFIG
+
+
+listboxUpdateConfig =
+    Listbox.updateConfig That.hash
+        { jumpAtEnds = True
+        , separateFocus = True
+        , selectionFollowsFocus = False
+        , handleHomeAndEnd = True
+        , typeAhead = Listbox.noTypeAhead
+        , minimalGap = 0
+        , initialGap = 0
+        }

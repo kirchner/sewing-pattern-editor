@@ -8,6 +8,7 @@ module View.Input exposing
     , dropdown
     , dropdownWithMenu
     , formula
+    , listbox
     , option
     , radioRow
     , text
@@ -20,10 +21,11 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes as Attributes
 import Html.Events as Events
-import Listbox
+import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Store exposing (Entry)
 import That exposing (That)
+import Those exposing (Those)
 import View.Design as Design
 import View.Icon
 
@@ -522,6 +524,121 @@ dropdownDomFunctions =
             Element.el (Element.below children.ul :: attributes) children.button
     , style = style
     , text = Element.text
+    , attribute = attribute
+    , on = on
+    , preventDefaultOn = preventDefaultOn
+    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
+    , htmlMap = \noOp -> Element.map (\_ -> noOp)
+    }
+
+
+
+---- LISTBOX
+
+
+listbox :
+    String
+    ->
+        { lift : Listbox.Msg (That object) -> msg
+        , entryToString : That object -> String
+        , label : String
+        , options : List ( That object, Entry object )
+        , listbox : Listbox
+        , selection : Those object
+        }
+    -> Element msg
+listbox id data =
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 3
+        ]
+        [ Element.el
+            [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
+            , Font.size 12
+            , Font.color Design.black
+            ]
+            (Element.text data.label)
+        , Listbox.customView listboxDomFunctions
+            (listboxViewConfig data.entryToString)
+            { id = id
+            , labelledBy = id ++ "-label"
+            , lift = data.lift
+            }
+            (List.map (Tuple.first >> Listbox.option) data.options)
+            data.listbox
+            (Those.toList data.selection)
+        ]
+
+
+listboxViewConfig printOption =
+    Listbox.customViewConfig That.hash
+        { ul =
+            [ Element.width Element.fill
+            , Element.height (Element.px 400)
+            , Element.padding 1
+            , Element.scrollbarY
+            , Font.color Design.black
+            , Background.color Design.white
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color Design.black
+            ]
+        , liOption =
+            \{ selected, focused, hovered } thatPoint ->
+                let
+                    defaultAttrs =
+                        [ Element.pointer
+                        , Element.paddingEach
+                            { left = 0
+                            , right = 10
+                            , top = 10
+                            , bottom = 10
+                            }
+                        , Font.size 16
+                        , Element.width Element.fill
+                        ]
+                in
+                { attributes =
+                    if hovered then
+                        [ Background.color Design.secondaryDark ] ++ defaultAttrs
+
+                    else if focused then
+                        [ Background.color Design.secondary ] ++ defaultAttrs
+
+                    else
+                        defaultAttrs
+                , children =
+                    [ Element.el
+                        [ Element.width (Element.px 30) ]
+                        (if selected then
+                            Element.el [ Element.centerX ]
+                                (View.Icon.fa "check")
+
+                         else
+                            Element.none
+                        )
+                    , Element.text (printOption thatPoint)
+                    ]
+                }
+        , liDivider = \_ -> { attributes = [], children = [] }
+        , empty = Element.text ""
+        , focusable = True
+        }
+
+
+listboxDomFunctions =
+    let
+        attribute name value =
+            Element.htmlAttribute (Attributes.attribute name value)
+
+        on event decoder =
+            Element.htmlAttribute (Events.on event decoder)
+
+        preventDefaultOn event decoder =
+            Element.htmlAttribute (Events.preventDefaultOn event decoder)
+    in
+    { ul = Element.column
+    , li = Element.row
     , attribute = attribute
     , on = on
     , preventDefaultOn = preventDefaultOn
