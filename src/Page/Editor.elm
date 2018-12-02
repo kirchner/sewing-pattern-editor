@@ -2293,7 +2293,7 @@ viewDetail pattern points data =
                     [ viewConnection (index + 1)
                         (ConnectionChanged (index + 1))
                         connectionPrevious
-                        ("connection from point #"
+                        ("Connection from point #"
                             ++ String.fromInt (index + 2)
                             ++ " to point #"
                             ++ String.fromInt (index + 3)
