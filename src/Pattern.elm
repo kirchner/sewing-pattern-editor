@@ -18,7 +18,7 @@ module Pattern exposing
     , Line(..), lines, insertLine, getLine, updateLine
     , throughTwoPoints, throughOnePoint
     , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
-    , Detail(..), Connection(..), details, insertDetail, deleteDetail, getDetail
+    , Detail(..), Connection(..), details, insertDetail, updateDetail, deleteDetail, getDetail
     , Transformation(..), insertTransformation
     , decoder, encode
     )
@@ -87,7 +87,7 @@ module Pattern exposing
 
 ## Details
 
-@docs Detail, Connection, details, insertDetail, deleteDetail, getDetail
+@docs Detail, Connection, details, insertDetail, updateDetail, deleteDetail, getDetail
 
 
 # Transformations
@@ -1307,6 +1307,16 @@ insertDetail maybeName detail (Pattern pattern) =
         }
     , that id
     )
+
+
+updateDetail : That Detail -> Detail -> Pattern -> Pattern
+updateDetail thatDetail detail (Pattern pattern) =
+    Pattern
+        { pattern
+            | details =
+                Store.updateValue (That.objectId thatDetail) detail pattern.details
+            , cache = Nothing
+        }
 
 
 deleteDetail : That Detail -> Pattern -> Pattern

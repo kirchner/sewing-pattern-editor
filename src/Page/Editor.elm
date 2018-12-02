@@ -253,6 +253,14 @@ toolToTag tool =
 
                 ThroughOnePoint _ ->
                     ThroughOnePointTag
+
+        detailDataToTag detailData =
+            case detailData of
+                DetailOnePoint _ ->
+                    DetailTag
+
+                DetailManyPoints _ ->
+                    DetailTag
     in
     case tool of
         CreatePoint _ pointData ->
@@ -279,8 +287,11 @@ toolToTag tool =
         MirrorAt _ ->
             MirrorAtTag
 
-        Detail _ ->
-            DetailTag
+        CreateDetail _ detailData ->
+            detailDataToTag detailData
+
+        EditDetail _ detailData ->
+            detailDataToTag detailData
 
 
 type PointData
@@ -368,6 +379,30 @@ type LineData
         }
 
 
+type DetailData
+    = DetailOnePoint
+        { firstPointDropdown : Dropdown
+        , firstPointMaybeThat : Maybe (That Point)
+        }
+    | DetailManyPoints
+        { firstPointDropdown : Dropdown
+        , firstPointMaybeThat : Maybe (That Point)
+        , firstPointActionMenu : ActionMenu
+        , secondPointDropdown : Dropdown
+        , secondPointMaybeThat : Maybe (That Point)
+        , secondPointActionMenu : ActionMenu
+        , connectionFirstSecond : Connection
+        , otherPoints :
+            List
+                { dropdown : Dropdown
+                , maybeThat : Maybe (That Point)
+                , actionMenu : ActionMenu
+                , connectionPrevious : Connection
+                }
+        , connectionLastFirst : Connection
+        }
+
+
 type Tool
     = CreatePoint (Validatable String) PointData
     | EditPoint (That Point) PointData
@@ -392,7 +427,9 @@ type Tool
         , listbox : Listbox
         , thosePoints : Those Point
         }
-    | Detail DetailData
+      -- DETAILS
+    | CreateDetail (Validatable String) DetailData
+    | EditDetail (That Detail) DetailData
 
 
 type Validatable value
@@ -418,32 +455,6 @@ valueOf validatable =
 
         Invalid v _ ->
             v
-
-
-type DetailData
-    = DetailOnePoint
-        { name : String
-        , firstPointDropdown : Dropdown
-        , firstPointMaybeThat : Maybe (That Point)
-        }
-    | DetailManyPoints
-        { name : String
-        , firstPointDropdown : Dropdown
-        , firstPointMaybeThat : Maybe (That Point)
-        , firstPointActionMenu : ActionMenu
-        , secondPointDropdown : Dropdown
-        , secondPointMaybeThat : Maybe (That Point)
-        , secondPointActionMenu : ActionMenu
-        , connectionFirstSecond : Connection
-        , otherPoints :
-            List
-                { dropdown : Dropdown
-                , maybeThat : Maybe (That Point)
-                , actionMenu : ActionMenu
-                , connectionPrevious : Connection
-                }
-        , connectionLastFirst : Connection
-        }
 
 
 type ActionMenu
@@ -868,6 +879,35 @@ selectedPointsFromTool tool =
 
                 ThroughOnePoint data ->
                     onlyAnchorA data
+
+        selectedPointsFromDetailData detailData =
+            case detailData of
+                DetailOnePoint data ->
+                    data.firstPointMaybeThat
+                        |> maybeToList
+                        |> Those.fromList
+
+                DetailManyPoints data ->
+                    Those.fromList <|
+                        List.filterMap identity <|
+                            List.concat
+                                [ [ data.firstPointMaybeThat
+                                  , data.secondPointMaybeThat
+                                  ]
+                                , List.concat <|
+                                    List.map
+                                        (\{ maybeThat, connectionPrevious } ->
+                                            maybeThat
+                                                :: (case connectionPrevious of
+                                                        ConnectionStraight ->
+                                                            []
+
+                                                        ConnectionQuadratic quadraticData ->
+                                                            [ quadraticData.maybeThat ]
+                                                   )
+                                        )
+                                        data.otherPoints
+                                ]
     in
     case tool of
         CreatePoint _ pointData ->
@@ -894,32 +934,11 @@ selectedPointsFromTool tool =
         MirrorAt { thosePoints } ->
             thosePoints
 
-        Detail (DetailOnePoint detailData) ->
-            detailData.firstPointMaybeThat
-                |> maybeToList
-                |> Those.fromList
+        CreateDetail _ lineData ->
+            selectedPointsFromDetailData lineData
 
-        Detail (DetailManyPoints detailData) ->
-            Those.fromList <|
-                List.filterMap identity <|
-                    List.concat
-                        [ [ detailData.firstPointMaybeThat
-                          , detailData.secondPointMaybeThat
-                          ]
-                        , List.concat <|
-                            List.map
-                                (\{ maybeThat, connectionPrevious } ->
-                                    maybeThat
-                                        :: (case connectionPrevious of
-                                                ConnectionStraight ->
-                                                    []
-
-                                                ConnectionQuadratic quadraticData ->
-                                                    [ quadraticData.maybeThat ]
-                                           )
-                                )
-                                detailData.otherPoints
-                        ]
+        EditDetail _ lineData ->
+            selectedPointsFromDetailData lineData
 
 
 selectedLinesFromTool : Tool -> Those Line
@@ -991,7 +1010,10 @@ selectedLinesFromTool tool =
                 |> maybeToList
                 |> Those.fromList
 
-        Detail _ ->
+        CreateDetail _ _ ->
+            empty
+
+        EditDetail _ _ ->
             empty
 
 
@@ -1058,7 +1080,10 @@ selectedLineSegmentsFromTool tool =
         MirrorAt _ ->
             empty
 
-        Detail _ ->
+        CreateDetail _ _ ->
+            empty
+
+        EditDetail _ _ ->
             empty
 
 
@@ -1125,7 +1150,10 @@ selectedDetailsFromTool tool =
         MirrorAt _ ->
             empty
 
-        Detail _ ->
+        CreateDetail _ _ ->
+            empty
+
+        EditDetail _ _ ->
             empty
 
 
@@ -1755,6 +1783,9 @@ viewTool pattern tool =
                 ThroughOnePoint data ->
                     viewThroughOnePoint pattern points data
 
+        detailDialog detailData =
+            viewDetail pattern points detailData
+
         btnCreate =
             Element.el [ Element.alignLeft ] <|
                 View.Input.btnPrimary
@@ -1823,30 +1854,11 @@ viewTool pattern tool =
                     ]
                 ]
 
-        Detail data ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.padding Design.small
-                , Element.spacing Design.normal
-                ]
-                [ Element.el
-                    [ View.Design.fontNormal
-                    , Font.color View.Design.black
-                    ]
-                    (toolDescription (toolToTag tool))
-                , Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing Design.small
-                    ]
-                    (viewDetail pattern points data)
-                , Element.row
-                    [ Element.width Element.fill
-                    , Element.spacing 5
-                    ]
-                    [ btnCreate
-                    , btnCancel
-                    ]
-                ]
+        CreateDetail name detailData ->
+            createDialog name (detailDialog detailData)
+
+        EditDetail thatDetail detailData ->
+            editDialog (detailName pattern thatDetail) (detailDialog detailData)
 
 
 nameInput name =
@@ -2255,8 +2267,7 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ nameInput (Valid detailData.name)
-            , viewDropdownPoint "detail-point--first-point"
+            [ viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
                 (DropdownPointMsg 0)
@@ -2339,8 +2350,7 @@ viewDetail pattern points data =
                         ]
             in
             List.concat
-                [ [ nameInput (Valid detailData.name)
-                  , viewDropdownPoint "detail-point--point-0"
+                [ [ viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
                         (DropdownPointMsg 0)
@@ -2773,7 +2783,7 @@ viewDetails pattern model =
                                 Maybe.withDefault "<no name>" name
                         }
                     , View.Table.columnActions
-                        { onEditPress = always Nothing
+                        { onEditPress = Just << DetailEditClicked << Tuple.first
                         , onRemovePress =
                             \( thatDetail, _ ) ->
                                 Just (DetailRemoveClicked thatDetail)
@@ -2843,6 +2853,7 @@ type Msg
     | LineEditClicked (That Line)
     | LineSegmentsRulerClicked
     | DetailsRulerClicked
+    | DetailEditClicked (That Detail)
     | DetailRemoveClicked (That Detail)
     | DetailRemoveDialogDeleteClicked
     | DetailRemoveDialogCancelClicked
@@ -3082,9 +3093,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 }
 
                         DetailTag ->
-                            (Detail << DetailOnePoint)
-                                { name = ""
-                                , firstPointDropdown = Dropdown.init
+                            (CreateDetail (Valid "") << DetailOnePoint)
+                                { firstPointDropdown = Dropdown.init
                                 , firstPointMaybeThat = Nothing
                                 }
             in
@@ -3270,11 +3280,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Just (MirrorAt _) ->
                     ( model, Cmd.none, Nothing )
 
-                Just (Detail (DetailOnePoint data)) ->
-                    updateName (Detail << DetailOnePoint) data
+                Just (CreateDetail name toolData) ->
+                    ( { model
+                        | maybeTool =
+                            Just (CreateDetail (updateValue newName name) toolData)
+                      }
+                    , Cmd.none
+                    , Nothing
+                    )
 
-                Just (Detail (DetailManyPoints data)) ->
-                    updateName (Detail << DetailManyPoints) data
+                Just (EditDetail _ _) ->
+                    ( model, Cmd.none, Nothing )
 
         AngleChanged newAngle ->
             let
@@ -3816,6 +3832,33 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
         DropdownPointMsg index dropdownMsg ->
             let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailOnePoint data ->
+                            if index /= 0 then
+                                ( model, Cmd.none, Nothing )
+
+                            else
+                                updateFirstPointWith (toTool << DetailOnePoint) data
+
+                        DetailManyPoints data ->
+                            if index < 0 || index > 1 + List.length data.otherPoints then
+                                ( model, Cmd.none, Nothing )
+
+                            else if index == 0 then
+                                updateFirstPointWith (toTool << DetailManyPoints) data
+
+                            else if index == 1 then
+                                updateSecondPointWith (toTool << DetailManyPoints) data
+
+                            else
+                                case List.head (List.drop (index - 2) data.otherPoints) of
+                                    Nothing ->
+                                        ( model, Cmd.none, Nothing )
+
+                                    Just { dropdown, maybeThat } ->
+                                        updateIndexedPointWith toTool dropdown maybeThat data
+
                 updateFirstPointWith toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
@@ -3856,7 +3899,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     , Nothing
                     )
 
-                updateIndexedPointWith dropdown maybeThat data =
+                updateIndexedPointWith toTool dropdown maybeThat data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
                             Dropdown.update dropdownUpdateConfig
@@ -3880,113 +3923,31 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         data.otherPoints
                             }
                     in
-                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
+                    ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                     , Cmd.map (DropdownPointMsg index) dropdownCmd
                     , Nothing
                     )
             in
             case model.maybeTool of
-                Just (Detail (DetailOnePoint data)) ->
-                    if index /= 0 then
-                        ( model, Cmd.none, Nothing )
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
 
-                    else
-                        updateFirstPointWith (Detail << DetailOnePoint) data
-
-                Just (Detail (DetailManyPoints data)) ->
-                    if index < 0 || index > 1 + List.length data.otherPoints then
-                        ( model, Cmd.none, Nothing )
-
-                    else if index == 0 then
-                        updateFirstPointWith (Detail << DetailManyPoints) data
-
-                    else if index == 1 then
-                        updateSecondPointWith (Detail << DetailManyPoints) data
-
-                    else
-                        case List.head (List.drop (index - 2) data.otherPoints) of
-                            Nothing ->
-                                ( model, Cmd.none, Nothing )
-
-                            Just { dropdown, maybeThat } ->
-                                updateIndexedPointWith dropdown maybeThat data
+                Just (EditDetail name detailData) ->
+                    updateDetailDataWith (EditDetail name) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownControlPointMsg index dropdownMsg ->
-            case model.maybeTool of
-                Just (Detail (DetailManyPoints data)) ->
-                    if index < 0 || index > 1 + List.length data.otherPoints then
-                        ( model, Cmd.none, Nothing )
-
-                    else if index == 0 then
-                        case data.connectionFirstSecond of
-                            ConnectionStraight ->
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailManyPoints data ->
+                            if index < 0 || index > 1 + List.length data.otherPoints then
                                 ( model, Cmd.none, Nothing )
 
-                            ConnectionQuadratic { dropdown, maybeThat } ->
-                                let
-                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                        Dropdown.update dropdownUpdateConfig
-                                            (Pattern.points pattern
-                                                |> List.map (Tuple.first >> Listbox.option)
-                                            )
-                                            dropdownMsg
-                                            dropdown
-                                            maybeThat
-
-                                    newData =
-                                        { data
-                                            | connectionFirstSecond =
-                                                ConnectionQuadratic
-                                                    { dropdown = newDropdown
-                                                    , maybeThat = newMaybeThatPoint
-                                                    }
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                                , Cmd.map (DropdownControlPointMsg index) dropdownCmd
-                                , Nothing
-                                )
-
-                    else if index == 1 + List.length data.otherPoints then
-                        case data.connectionLastFirst of
-                            ConnectionStraight ->
-                                ( model, Cmd.none, Nothing )
-
-                            ConnectionQuadratic { dropdown, maybeThat } ->
-                                let
-                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                        Dropdown.update dropdownUpdateConfig
-                                            (Pattern.points pattern
-                                                |> List.map (Tuple.first >> Listbox.option)
-                                            )
-                                            dropdownMsg
-                                            dropdown
-                                            maybeThat
-
-                                    newData =
-                                        { data
-                                            | connectionLastFirst =
-                                                ConnectionQuadratic
-                                                    { dropdown = newDropdown
-                                                    , maybeThat = newMaybeThatPoint
-                                                    }
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                                , Cmd.map (DropdownControlPointMsg index) dropdownCmd
-                                , Nothing
-                                )
-
-                    else
-                        case List.head (List.drop (index - 1) data.otherPoints) of
-                            Nothing ->
-                                ( model, Cmd.none, Nothing )
-
-                            Just { connectionPrevious } ->
-                                case connectionPrevious of
+                            else if index == 0 then
+                                case data.connectionFirstSecond of
                                     ConnectionStraight ->
                                         ( model, Cmd.none, Nothing )
 
@@ -4003,141 +3964,249 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                                             newData =
                                                 { data
-                                                    | otherPoints =
-                                                        List.updateAt (index - 1)
-                                                            (\stuff ->
-                                                                { stuff
-                                                                    | connectionPrevious =
-                                                                        ConnectionQuadratic
-                                                                            { dropdown = newDropdown
-                                                                            , maybeThat = newMaybeThatPoint
-                                                                            }
-                                                                }
-                                                            )
-                                                            data.otherPoints
+                                                    | connectionFirstSecond =
+                                                        ConnectionQuadratic
+                                                            { dropdown = newDropdown
+                                                            , maybeThat = newMaybeThatPoint
+                                                            }
                                                 }
                                         in
-                                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
+                                        ( { model
+                                            | maybeTool =
+                                                Just (toTool (DetailManyPoints newData))
+                                          }
                                         , Cmd.map (DropdownControlPointMsg index) dropdownCmd
                                         , Nothing
                                         )
+
+                            else if index == 1 + List.length data.otherPoints then
+                                case data.connectionLastFirst of
+                                    ConnectionStraight ->
+                                        ( model, Cmd.none, Nothing )
+
+                                    ConnectionQuadratic { dropdown, maybeThat } ->
+                                        let
+                                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                                Dropdown.update dropdownUpdateConfig
+                                                    (Pattern.points pattern
+                                                        |> List.map (Tuple.first >> Listbox.option)
+                                                    )
+                                                    dropdownMsg
+                                                    dropdown
+                                                    maybeThat
+
+                                            newData =
+                                                { data
+                                                    | connectionLastFirst =
+                                                        ConnectionQuadratic
+                                                            { dropdown = newDropdown
+                                                            , maybeThat = newMaybeThatPoint
+                                                            }
+                                                }
+                                        in
+                                        ( { model
+                                            | maybeTool =
+                                                Just (toTool (DetailManyPoints newData))
+                                          }
+                                        , Cmd.map (DropdownControlPointMsg index) dropdownCmd
+                                        , Nothing
+                                        )
+
+                            else
+                                case List.head (List.drop (index - 1) data.otherPoints) of
+                                    Nothing ->
+                                        ( model, Cmd.none, Nothing )
+
+                                    Just { connectionPrevious } ->
+                                        case connectionPrevious of
+                                            ConnectionStraight ->
+                                                ( model, Cmd.none, Nothing )
+
+                                            ConnectionQuadratic { dropdown, maybeThat } ->
+                                                let
+                                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                                                        Dropdown.update dropdownUpdateConfig
+                                                            (Pattern.points pattern
+                                                                |> List.map (Tuple.first >> Listbox.option)
+                                                            )
+                                                            dropdownMsg
+                                                            dropdown
+                                                            maybeThat
+
+                                                    newData =
+                                                        { data
+                                                            | otherPoints =
+                                                                List.updateAt (index - 1)
+                                                                    (\stuff ->
+                                                                        { stuff
+                                                                            | connectionPrevious =
+                                                                                ConnectionQuadratic
+                                                                                    { dropdown = newDropdown
+                                                                                    , maybeThat = newMaybeThatPoint
+                                                                                    }
+                                                                        }
+                                                                    )
+                                                                    data.otherPoints
+                                                        }
+                                                in
+                                                ( { model
+                                                    | maybeTool =
+                                                        Just (toTool (DetailManyPoints newData))
+                                                  }
+                                                , Cmd.map (DropdownControlPointMsg index) dropdownCmd
+                                                , Nothing
+                                                )
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+            in
+            case model.maybeTool of
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
+
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         ActionMenuClicked index ->
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailManyPoints data ->
+                            if index < 0 || index > 1 + List.length data.otherPoints then
+                                ( model, Cmd.none, Nothing )
+
+                            else if index == 0 then
+                                let
+                                    newData =
+                                        { data
+                                            | firstPointActionMenu =
+                                                case data.firstPointActionMenu of
+                                                    Closed ->
+                                                        MoveDown
+
+                                                    _ ->
+                                                        Closed
+                                        }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else if index == 1 then
+                                let
+                                    newData =
+                                        { data
+                                            | secondPointActionMenu =
+                                                case data.secondPointActionMenu of
+                                                    Closed ->
+                                                        MoveDown
+
+                                                    _ ->
+                                                        Closed
+                                        }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else
+                                let
+                                    newData =
+                                        { data
+                                            | otherPoints =
+                                                List.updateAt (index - 2)
+                                                    (\stuff ->
+                                                        { stuff
+                                                            | actionMenu =
+                                                                case stuff.actionMenu of
+                                                                    Closed ->
+                                                                        MoveDown
+
+                                                                    _ ->
+                                                                        Closed
+                                                        }
+                                                    )
+                                                    data.otherPoints
+                                        }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+            in
             case model.maybeTool of
-                Just (Detail (DetailManyPoints data)) ->
-                    if index < 0 || index > 1 + List.length data.otherPoints then
-                        ( model, Cmd.none, Nothing )
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
 
-                    else if index == 0 then
-                        let
-                            newData =
-                                { data
-                                    | firstPointActionMenu =
-                                        case data.firstPointActionMenu of
-                                            Closed ->
-                                                MoveDown
-
-                                            _ ->
-                                                Closed
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else if index == 1 then
-                        let
-                            newData =
-                                { data
-                                    | secondPointActionMenu =
-                                        case data.secondPointActionMenu of
-                                            Closed ->
-                                                MoveDown
-
-                                            _ ->
-                                                Closed
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else
-                        let
-                            newData =
-                                { data
-                                    | otherPoints =
-                                        List.updateAt (index - 2)
-                                            (\stuff ->
-                                                { stuff
-                                                    | actionMenu =
-                                                        case stuff.actionMenu of
-                                                            Closed ->
-                                                                MoveDown
-
-                                                            _ ->
-                                                                Closed
-                                                }
-                                            )
-                                            data.otherPoints
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         ActionMenuLostFocus index ->
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailManyPoints data ->
+                            if index < 0 || index > 1 + List.length data.otherPoints then
+                                ( model, Cmd.none, Nothing )
+
+                            else if index == 0 && not model.preventActionMenuClose then
+                                let
+                                    newData =
+                                        { data | firstPointActionMenu = Closed }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else if index == 1 && not model.preventActionMenuClose then
+                                let
+                                    newData =
+                                        { data | secondPointActionMenu = Closed }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else if not model.preventActionMenuClose then
+                                let
+                                    newData =
+                                        { data
+                                            | otherPoints =
+                                                List.updateAt (index - 2)
+                                                    (\stuff -> { stuff | actionMenu = Closed })
+                                                    data.otherPoints
+                                        }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else
+                                ( model, Cmd.none, Nothing )
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+            in
             case model.maybeTool of
-                Just (Detail (DetailManyPoints data)) ->
-                    if index < 0 || index > 1 + List.length data.otherPoints then
-                        ( model, Cmd.none, Nothing )
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
 
-                    else if index == 0 && not model.preventActionMenuClose then
-                        let
-                            newData =
-                                { data | firstPointActionMenu = Closed }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else if index == 1 && not model.preventActionMenuClose then
-                        let
-                            newData =
-                                { data | secondPointActionMenu = Closed }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else if not model.preventActionMenuClose then
-                        let
-                            newData =
-                                { data
-                                    | otherPoints =
-                                        List.updateAt (index - 2)
-                                            (\stuff -> { stuff | actionMenu = Closed })
-                                            data.otherPoints
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else
-                        ( model, Cmd.none, Nothing )
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -4155,207 +4224,237 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
         DetailRemovePointClicked index ->
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailManyPoints data ->
+                            if index == 0 then
+                                case List.head data.otherPoints of
+                                    Nothing ->
+                                        let
+                                            newData =
+                                                { firstPointDropdown = data.secondPointDropdown
+                                                , firstPointMaybeThat = data.secondPointMaybeThat
+                                                }
+                                        in
+                                        ( { model | maybeTool = Just (toTool (DetailOnePoint newData)) }
+                                        , Cmd.none
+                                        , Nothing
+                                        )
+
+                                    Just { dropdown, maybeThat, actionMenu } ->
+                                        let
+                                            newData =
+                                                { data
+                                                    | firstPointDropdown = data.secondPointDropdown
+                                                    , firstPointMaybeThat = data.secondPointMaybeThat
+                                                    , firstPointActionMenu = data.secondPointActionMenu
+                                                    , connectionFirstSecond = ConnectionStraight
+                                                    , secondPointDropdown = dropdown
+                                                    , secondPointMaybeThat = maybeThat
+                                                    , secondPointActionMenu = actionMenu
+                                                    , otherPoints =
+                                                        List.drop 1 data.otherPoints
+                                                }
+                                        in
+                                        ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                        , Cmd.none
+                                        , Nothing
+                                        )
+
+                            else if index == 1 then
+                                case List.head data.otherPoints of
+                                    Nothing ->
+                                        let
+                                            newData =
+                                                { firstPointDropdown = data.firstPointDropdown
+                                                , firstPointMaybeThat = data.firstPointMaybeThat
+                                                }
+                                        in
+                                        ( { model | maybeTool = Just (toTool (DetailOnePoint newData)) }
+                                        , Cmd.none
+                                        , Nothing
+                                        )
+
+                                    Just { dropdown, maybeThat, actionMenu } ->
+                                        let
+                                            newData =
+                                                { data
+                                                    | connectionFirstSecond = ConnectionStraight
+                                                    , secondPointDropdown = dropdown
+                                                    , secondPointMaybeThat = maybeThat
+                                                    , secondPointActionMenu = Closed
+                                                    , otherPoints =
+                                                        List.drop 1 data.otherPoints
+                                                }
+                                        in
+                                        ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                        , Cmd.none
+                                        , Nothing
+                                        )
+
+                            else if index > 1 + List.length data.otherPoints then
+                                ( model, Cmd.none, Nothing )
+
+                            else
+                                let
+                                    newData =
+                                        { data
+                                            | otherPoints =
+                                                List.removeAt (index - 2) data.otherPoints
+                                        }
+                                in
+                                ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+            in
             case model.maybeTool of
-                Just (Detail (DetailManyPoints data)) ->
-                    if index == 0 then
-                        case List.head data.otherPoints of
-                            Nothing ->
-                                let
-                                    newData =
-                                        { name = data.name
-                                        , firstPointDropdown = data.secondPointDropdown
-                                        , firstPointMaybeThat = data.secondPointMaybeThat
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
-                                , Cmd.none
-                                , Nothing
-                                )
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
 
-                            Just { dropdown, maybeThat, actionMenu } ->
-                                let
-                                    newData =
-                                        { data
-                                            | firstPointDropdown = data.secondPointDropdown
-                                            , firstPointMaybeThat = data.secondPointMaybeThat
-                                            , firstPointActionMenu = data.secondPointActionMenu
-                                            , connectionFirstSecond = ConnectionStraight
-                                            , secondPointDropdown = dropdown
-                                            , secondPointMaybeThat = maybeThat
-                                            , secondPointActionMenu = actionMenu
-                                            , otherPoints =
-                                                List.drop 1 data.otherPoints
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                                , Cmd.none
-                                , Nothing
-                                )
-
-                    else if index == 1 then
-                        case List.head data.otherPoints of
-                            Nothing ->
-                                let
-                                    newData =
-                                        { name = data.name
-                                        , firstPointDropdown = data.firstPointDropdown
-                                        , firstPointMaybeThat = data.firstPointMaybeThat
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
-                                , Cmd.none
-                                , Nothing
-                                )
-
-                            Just { dropdown, maybeThat, actionMenu } ->
-                                let
-                                    newData =
-                                        { data
-                                            | connectionFirstSecond = ConnectionStraight
-                                            , secondPointDropdown = dropdown
-                                            , secondPointMaybeThat = maybeThat
-                                            , secondPointActionMenu = Closed
-                                            , otherPoints =
-                                                List.drop 1 data.otherPoints
-                                        }
-                                in
-                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                                , Cmd.none
-                                , Nothing
-                                )
-
-                    else if index > 1 + List.length data.otherPoints then
-                        ( model, Cmd.none, Nothing )
-
-                    else
-                        let
-                            newData =
-                                { data
-                                    | otherPoints =
-                                        List.removeAt (index - 2) data.otherPoints
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.none
-                        , Nothing
-                        )
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DetailAddPointAtEnd ->
-            case model.maybeTool of
-                Just (Detail (DetailOnePoint data)) ->
-                    let
-                        newData =
-                            { name = data.name
-                            , firstPointDropdown = data.firstPointDropdown
-                            , firstPointMaybeThat = data.firstPointMaybeThat
-                            , firstPointActionMenu = Closed
-                            , connectionFirstSecond = ConnectionStraight
-                            , secondPointDropdown = Dropdown.init
-                            , secondPointMaybeThat = Nothing
-                            , secondPointActionMenu = Closed
-                            , otherPoints = []
-                            , connectionLastFirst = ConnectionStraight
-                            }
-                    in
-                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                    , Browser.Dom.focus "detail--connection-0"
-                        |> Task.attempt (\_ -> NoOp)
-                    , Nothing
-                    )
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailOnePoint data ->
+                            let
+                                newData =
+                                    { firstPointDropdown = data.firstPointDropdown
+                                    , firstPointMaybeThat = data.firstPointMaybeThat
+                                    , firstPointActionMenu = Closed
+                                    , connectionFirstSecond = ConnectionStraight
+                                    , secondPointDropdown = Dropdown.init
+                                    , secondPointMaybeThat = Nothing
+                                    , secondPointActionMenu = Closed
+                                    , otherPoints = []
+                                    , connectionLastFirst = ConnectionStraight
+                                    }
+                            in
+                            ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                            , Browser.Dom.focus "detail--connection-0"
+                                |> Task.attempt (\_ -> NoOp)
+                            , Nothing
+                            )
 
-                Just (Detail (DetailManyPoints data)) ->
-                    let
-                        newData =
-                            { data
-                                | otherPoints =
-                                    data.otherPoints
-                                        ++ [ { dropdown = Dropdown.init
-                                             , maybeThat = Nothing
-                                             , actionMenu = Closed
-                                             , connectionPrevious = ConnectionStraight
-                                             }
-                                           ]
-                            }
-                    in
-                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                    , Browser.Dom.focus
-                        ("detail--connection-"
-                            ++ String.fromInt (1 + List.length data.otherPoints)
-                        )
-                        |> Task.attempt (\_ -> NoOp)
-                    , Nothing
-                    )
+                        DetailManyPoints data ->
+                            let
+                                newData =
+                                    { data
+                                        | otherPoints =
+                                            data.otherPoints
+                                                ++ [ { dropdown = Dropdown.init
+                                                     , maybeThat = Nothing
+                                                     , actionMenu = Closed
+                                                     , connectionPrevious = ConnectionStraight
+                                                     }
+                                                   ]
+                                    }
+                            in
+                            ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                            , Browser.Dom.focus
+                                ("detail--connection-"
+                                    ++ String.fromInt (1 + List.length data.otherPoints)
+                                )
+                                |> Task.attempt (\_ -> NoOp)
+                            , Nothing
+                            )
+            in
+            case model.maybeTool of
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
+
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         ConnectionChanged index newConnectionTag ->
+            let
+                updateDetailDataWith toTool detailData =
+                    case detailData of
+                        DetailManyPoints data ->
+                            let
+                                newData =
+                                    if index < 0 || index > pointCount - 1 then
+                                        data
+
+                                    else if index == 0 then
+                                        { data
+                                            | connectionFirstSecond =
+                                                case newConnectionTag of
+                                                    ConnectionStraightTag ->
+                                                        ConnectionStraight
+
+                                                    ConnectionQuadraticTag ->
+                                                        ConnectionQuadratic
+                                                            { dropdown = Dropdown.init
+                                                            , maybeThat = Nothing
+                                                            }
+                                        }
+
+                                    else if index == pointCount - 1 then
+                                        { data
+                                            | connectionLastFirst =
+                                                case newConnectionTag of
+                                                    ConnectionStraightTag ->
+                                                        ConnectionStraight
+
+                                                    ConnectionQuadraticTag ->
+                                                        ConnectionQuadratic
+                                                            { dropdown = Dropdown.init
+                                                            , maybeThat = Nothing
+                                                            }
+                                        }
+
+                                    else
+                                        { data
+                                            | otherPoints =
+                                                List.updateAt (index - 1)
+                                                    (\stuff ->
+                                                        { stuff
+                                                            | connectionPrevious =
+                                                                case newConnectionTag of
+                                                                    ConnectionStraightTag ->
+                                                                        ConnectionStraight
+
+                                                                    ConnectionQuadraticTag ->
+                                                                        ConnectionQuadratic
+                                                                            { dropdown = Dropdown.init
+                                                                            , maybeThat = Nothing
+                                                                            }
+                                                        }
+                                                    )
+                                                    data.otherPoints
+                                        }
+
+                                pointCount =
+                                    2 + List.length data.otherPoints
+                            in
+                            ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
+                            , Cmd.none
+                            , Nothing
+                            )
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+            in
             case model.maybeTool of
-                Just (Detail (DetailManyPoints data)) ->
-                    let
-                        newData =
-                            if index < 0 || index > pointCount - 1 then
-                                data
+                Just (CreateDetail name detailData) ->
+                    updateDetailDataWith (CreateDetail name) detailData
 
-                            else if index == 0 then
-                                { data
-                                    | connectionFirstSecond =
-                                        case newConnectionTag of
-                                            ConnectionStraightTag ->
-                                                ConnectionStraight
-
-                                            ConnectionQuadraticTag ->
-                                                ConnectionQuadratic
-                                                    { dropdown = Dropdown.init
-                                                    , maybeThat = Nothing
-                                                    }
-                                }
-
-                            else if index == pointCount - 1 then
-                                { data
-                                    | connectionLastFirst =
-                                        case newConnectionTag of
-                                            ConnectionStraightTag ->
-                                                ConnectionStraight
-
-                                            ConnectionQuadraticTag ->
-                                                ConnectionQuadratic
-                                                    { dropdown = Dropdown.init
-                                                    , maybeThat = Nothing
-                                                    }
-                                }
-
-                            else
-                                { data
-                                    | otherPoints =
-                                        List.updateAt (index - 1)
-                                            (\stuff ->
-                                                { stuff
-                                                    | connectionPrevious =
-                                                        case newConnectionTag of
-                                                            ConnectionStraightTag ->
-                                                                ConnectionStraight
-
-                                                            ConnectionQuadraticTag ->
-                                                                ConnectionQuadratic
-                                                                    { dropdown = Dropdown.init
-                                                                    , maybeThat = Nothing
-                                                                    }
-                                                }
-                                            )
-                                            data.otherPoints
-                                }
-
-                        pointCount =
-                            2 + List.length data.otherPoints
-                    in
-                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                    , Cmd.none
-                    , Nothing
-                    )
+                Just (EditDetail thatDetail detailData) ->
+                    updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -4655,92 +4754,108 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
 
-                Just (Detail (DetailManyPoints data)) ->
-                    let
-                        extract otherPoints =
-                            List.foldr
-                                (\{ maybeThat, connectionPrevious } result ->
-                                    case result of
-                                        Just sum ->
-                                            case maybeThat of
-                                                Nothing ->
-                                                    Nothing
-
-                                                Just that ->
-                                                    case connectionPrevious of
-                                                        ConnectionStraight ->
-                                                            Just
-                                                                (( that
-                                                                 , Pattern.Straight
-                                                                 )
-                                                                    :: sum
-                                                                )
-
-                                                        ConnectionQuadratic quadraticData ->
-                                                            case quadraticData.maybeThat of
-                                                                Nothing ->
-                                                                    Nothing
-
-                                                                Just controlThat ->
-                                                                    Just
-                                                                        (( that
-                                                                         , Pattern.Quadratic controlThat
-                                                                         )
-                                                                            :: sum
-                                                                        )
-
-                                        Nothing ->
-                                            Nothing
-                                )
-                                (Just [])
-                                otherPoints
-
-                        connectionHelp connection =
-                            case connection of
-                                ConnectionStraight ->
-                                    Just Pattern.Straight
-
-                                ConnectionQuadratic { dropdown, maybeThat } ->
-                                    Maybe.map Pattern.Quadratic maybeThat
-                    in
-                    Maybe.map5
-                        (\firstPointThat secondPointThat connectionFirstSecond otherPoints connectionLastFirst ->
-                            let
-                                newDetail =
-                                    Pattern.FromPoints
-                                        { firstPoint = firstPointThat
-                                        , segments =
-                                            ( secondPointThat
-                                            , connectionFirstSecond
-                                            )
-                                                :: otherPoints
-                                        , lastToFirst = connectionLastFirst
-                                        }
-
-                                ( newPattern, _ ) =
-                                    Pattern.insertDetail
-                                        (if data.name == "" then
-                                            Nothing
-
-                                         else
-                                            Just data.name
-                                        )
-                                        newDetail
-                                        pattern
-                            in
-                            ( { model | maybeTool = Nothing }
-                            , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
-                            )
+                Just (CreateDetail name (DetailManyPoints data)) ->
+                    if valueOf name == "" then
+                        let
+                            newName =
+                                Invalid (valueOf name) "Enter a name"
+                        in
+                        ( { model
+                            | maybeTool =
+                                Just (CreateDetail newName (DetailManyPoints data))
+                          }
+                        , Browser.Dom.focus "validation-messages"
+                            |> Task.attempt (\_ -> NoOp)
+                        , Nothing
                         )
-                        data.firstPointMaybeThat
-                        data.secondPointMaybeThat
-                        (connectionHelp data.connectionFirstSecond)
-                        (extract data.otherPoints)
-                        (connectionHelp data.connectionLastFirst)
-                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Just (Detail _) ->
+                    else
+                        let
+                            actualName =
+                                valueOf name
+
+                            extract otherPoints =
+                                List.foldr
+                                    (\{ maybeThat, connectionPrevious } result ->
+                                        case result of
+                                            Just sum ->
+                                                case maybeThat of
+                                                    Nothing ->
+                                                        Nothing
+
+                                                    Just that ->
+                                                        case connectionPrevious of
+                                                            ConnectionStraight ->
+                                                                Just
+                                                                    (( that
+                                                                     , Pattern.Straight
+                                                                     )
+                                                                        :: sum
+                                                                    )
+
+                                                            ConnectionQuadratic quadraticData ->
+                                                                case quadraticData.maybeThat of
+                                                                    Nothing ->
+                                                                        Nothing
+
+                                                                    Just controlThat ->
+                                                                        Just
+                                                                            (( that
+                                                                             , Pattern.Quadratic controlThat
+                                                                             )
+                                                                                :: sum
+                                                                            )
+
+                                            Nothing ->
+                                                Nothing
+                                    )
+                                    (Just [])
+                                    otherPoints
+
+                            connectionHelp connection =
+                                case connection of
+                                    ConnectionStraight ->
+                                        Just Pattern.Straight
+
+                                    ConnectionQuadratic { dropdown, maybeThat } ->
+                                        Maybe.map Pattern.Quadratic maybeThat
+                        in
+                        Maybe.map5
+                            (\firstPointThat secondPointThat connectionFirstSecond otherPoints connectionLastFirst ->
+                                let
+                                    newDetail =
+                                        Pattern.FromPoints
+                                            { firstPoint = firstPointThat
+                                            , segments =
+                                                ( secondPointThat
+                                                , connectionFirstSecond
+                                                )
+                                                    :: otherPoints
+                                            , lastToFirst = connectionLastFirst
+                                            }
+
+                                    ( newPattern, _ ) =
+                                        Pattern.insertDetail
+                                            (Just actualName)
+                                            newDetail
+                                            pattern
+                                in
+                                ( { model | maybeTool = Nothing }
+                                , Cmd.none
+                                , Just { storedPattern | pattern = newPattern }
+                                )
+                            )
+                            data.firstPointMaybeThat
+                            data.secondPointMaybeThat
+                            (connectionHelp data.connectionFirstSecond)
+                            (extract data.otherPoints)
+                            (connectionHelp data.connectionLastFirst)
+                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                Just (CreateDetail _ (DetailOnePoint _)) ->
+                    ( model, Cmd.none, Nothing )
+
+                Just (EditDetail _ _) ->
                     ( model, Cmd.none, Nothing )
 
                 Nothing ->
@@ -4917,6 +5032,86 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatAnchorA
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
+                Just (EditDetail thatDetail (DetailManyPoints data)) ->
+                    let
+                        extract otherPoints =
+                            List.foldr
+                                (\{ maybeThat, connectionPrevious } result ->
+                                    case result of
+                                        Just sum ->
+                                            case maybeThat of
+                                                Nothing ->
+                                                    Nothing
+
+                                                Just that ->
+                                                    case connectionPrevious of
+                                                        ConnectionStraight ->
+                                                            Just
+                                                                (( that
+                                                                 , Pattern.Straight
+                                                                 )
+                                                                    :: sum
+                                                                )
+
+                                                        ConnectionQuadratic quadraticData ->
+                                                            case quadraticData.maybeThat of
+                                                                Nothing ->
+                                                                    Nothing
+
+                                                                Just controlThat ->
+                                                                    Just
+                                                                        (( that
+                                                                         , Pattern.Quadratic controlThat
+                                                                         )
+                                                                            :: sum
+                                                                        )
+
+                                        Nothing ->
+                                            Nothing
+                                )
+                                (Just [])
+                                otherPoints
+
+                        connectionHelp connection =
+                            case connection of
+                                ConnectionStraight ->
+                                    Just Pattern.Straight
+
+                                ConnectionQuadratic { dropdown, maybeThat } ->
+                                    Maybe.map Pattern.Quadratic maybeThat
+                    in
+                    Maybe.map5
+                        (\firstPointThat secondPointThat connectionFirstSecond otherPoints connectionLastFirst ->
+                            let
+                                newDetail =
+                                    Pattern.FromPoints
+                                        { firstPoint = firstPointThat
+                                        , segments =
+                                            ( secondPointThat
+                                            , connectionFirstSecond
+                                            )
+                                                :: otherPoints
+                                        , lastToFirst = connectionLastFirst
+                                        }
+
+                                newPattern =
+                                    Pattern.updateDetail
+                                        thatDetail
+                                        newDetail
+                                        pattern
+                            in
+                            ( { model | maybeTool = Nothing }
+                            , Cmd.none
+                            , Just { storedPattern | pattern = newPattern }
+                            )
+                        )
+                        data.firstPointMaybeThat
+                        data.secondPointMaybeThat
+                        (connectionHelp data.connectionFirstSecond)
+                        (extract data.otherPoints)
+                        (connectionHelp data.connectionLastFirst)
+                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
                 _ ->
                     ( model, Cmd.none, Nothing )
 
@@ -5090,6 +5285,64 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             , Cmd.none
             , Nothing
             )
+
+        DetailEditClicked thatDetail ->
+            case Pattern.getDetail pattern thatDetail of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just { name, value } ->
+                    let
+                        editDetail toDetailData =
+                            Just << EditDetail thatDetail << toDetailData
+
+                        toConnection connection =
+                            case connection of
+                                Pattern.Straight ->
+                                    ConnectionStraight
+
+                                Pattern.Quadratic thatPoint ->
+                                    ConnectionQuadratic
+                                        { dropdown = Dropdown.init
+                                        , maybeThat = Just thatPoint
+                                        }
+
+                        maybeTool =
+                            case value of
+                                Pattern.FromPoints data ->
+                                    case data.segments of
+                                        [] ->
+                                            Nothing
+
+                                        second :: rest ->
+                                            editDetail DetailManyPoints
+                                                { firstPointDropdown = Dropdown.init
+                                                , firstPointMaybeThat = Just data.firstPoint
+                                                , firstPointActionMenu = Closed
+                                                , secondPointDropdown = Dropdown.init
+                                                , secondPointMaybeThat = Just (Tuple.first second)
+                                                , secondPointActionMenu = Closed
+                                                , connectionFirstSecond =
+                                                    toConnection (Tuple.second second)
+                                                , otherPoints =
+                                                    List.map
+                                                        (\segment ->
+                                                            { dropdown = Dropdown.init
+                                                            , maybeThat = Just (Tuple.first segment)
+                                                            , actionMenu = Closed
+                                                            , connectionPrevious =
+                                                                toConnection (Tuple.second second)
+                                                            }
+                                                        )
+                                                        rest
+                                                , connectionLastFirst =
+                                                    toConnection data.lastToFirst
+                                                }
+                    in
+                    ( { model | maybeTool = maybeTool }
+                    , Cmd.none
+                    , Nothing
+                    )
 
         DetailRemoveClicked thatDetail ->
             ( { model | maybeModal = Just (DetailDeleteConfirm thatDetail) }
