@@ -573,6 +573,187 @@ toolDescription toolTag =
                 ]
 
 
+toolDescriptionEdit : String -> ToolTag -> Element msg
+toolDescriptionEdit name toolTag =
+    let
+        simpleDistanceHorizontal kind =
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " to the "
+                , strong kind
+                , s " another point."
+                ]
+
+        simpleDistanceVertical kind =
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , s "point"
+                , s " "
+                , strong kind
+                , s " another point."
+                ]
+
+        s =
+            Element.text
+
+        strong =
+            Element.el [ Font.bold ] << Element.text
+    in
+    case toolTag of
+        LeftOfTag ->
+            simpleDistanceHorizontal "left of"
+
+        RightOfTag ->
+            simpleDistanceHorizontal "right of"
+
+        AboveTag ->
+            simpleDistanceVertical "above"
+
+        BelowTag ->
+            simpleDistanceVertical "below"
+
+        AtAngleTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " relative to another point by providing an "
+                , strong "angle"
+                , s " and a "
+                , strong "distance"
+                , s "."
+                ]
+
+        BetweenRatioTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " between two other points at a certain "
+                , strong "ratio"
+                , s "."
+                ]
+
+        BetweenLengthTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " between two other points at a certain "
+                , strong "length"
+                , s "."
+                ]
+
+        CircleCircleTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " at the intersection of two "
+                , strong "circles"
+                , s "."
+                ]
+
+        LineLineTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " at the intersection of two "
+                , strong "lines"
+                , s "."
+                ]
+
+        CircleLineTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "point"
+                , s " at the intersection of a "
+                , strong "circle"
+                , s " and a "
+                , strong "line"
+                , s "."
+                ]
+
+        CenteredAtTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "circle"
+                , s " constructed by providing its "
+                , strong "center point"
+                , s " and the "
+                , strong "radius"
+                , s "."
+                ]
+
+        ThroughTwoPointsTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "line"
+                , s " through "
+                , strong "two points"
+                , s "."
+                ]
+
+        ThroughOnePointTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "line"
+                , s " through "
+                , strong "one point"
+                , s " with a given "
+                , strong "angle"
+                , s "."
+                ]
+
+        FromToTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "line segment"
+                , s " connecting "
+                , strong "two points"
+                , s "."
+                ]
+
+        MirrorAtTag ->
+            Element.paragraph []
+                [ s "Mirror a "
+                , strong "set of points"
+                , s " along a "
+                , strong "line"
+                , s "."
+                ]
+
+        DetailTag ->
+            Element.paragraph []
+                [ s "Edit «"
+                , strong name
+                , s "» which is a "
+                , strong "detail"
+                , s "."
+                ]
+
+
 selectedPointsFromTool : Tool -> Those Point
 selectedPointsFromTool tool =
     let
@@ -1277,140 +1458,186 @@ viewTool pattern tool =
 
         details =
             Pattern.details pattern
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.padding Design.small
-        , Element.spacing Design.normal
-        ]
-        [ Element.el
-            [ Font.size 12
-            , Font.color View.Design.black
-            ]
-            (toolDescription (toolToTag tool))
-        , Element.column
-            [ Element.width Element.fill
-            , Element.spacing Design.small
-            ]
-            (case tool of
-                CreatePoint name pointData ->
-                    View.Input.text "name-input"
-                        { onChange = NameChanged
-                        , text = name
-                        , label = "Pick a name"
-                        }
-                        :: (case pointData of
-                                LeftOf data ->
-                                    viewSimpleDistanceTool pattern points "leftof" data
 
-                                RightOf data ->
-                                    viewSimpleDistanceTool pattern points "rightof" data
+        createDialog name content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.padding Design.small
+                , Element.spacing Design.normal
+                ]
+                [ Element.el
+                    [ View.Design.fontNormal
+                    , Font.color View.Design.black
+                    ]
+                    (toolDescription (toolToTag tool))
+                , Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Design.small
+                    ]
+                    (nameInput name :: content)
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 5
+                    ]
+                    [ btnCreate
+                    , btnCancel
+                    ]
+                ]
 
-                                Above data ->
-                                    viewSimpleDistanceTool pattern points "above" data
+        editDialog name content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.padding Design.small
+                , Element.spacing Design.normal
+                ]
+                [ Element.el
+                    [ View.Design.fontNormal
+                    , Font.color View.Design.black
+                    ]
+                    (toolDescriptionEdit name (toolToTag tool))
+                , Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Design.small
+                    ]
+                    content
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 5
+                    ]
+                    [ btnUpdate
+                    , btnCancel
+                    ]
+                ]
 
-                                Below data ->
-                                    viewSimpleDistanceTool pattern points "below" data
+        dialog pointData =
+            case pointData of
+                LeftOf data ->
+                    viewSimpleDistanceTool pattern points "leftof" data
 
-                                AtAngle data ->
-                                    viewAngle pattern points data
+                RightOf data ->
+                    viewSimpleDistanceTool pattern points "rightof" data
 
-                                BetweenRatio data ->
-                                    viewBetweenRatio pattern points data
+                Above data ->
+                    viewSimpleDistanceTool pattern points "above" data
 
-                                BetweenLength data ->
-                                    viewBetweenLength pattern points data
+                Below data ->
+                    viewSimpleDistanceTool pattern points "below" data
 
-                                CircleCircle data ->
-                                    viewCircleCircle pattern circles data
+                AtAngle data ->
+                    viewAngle pattern points data
 
-                                LineLine data ->
-                                    viewLineLine pattern lines data
+                BetweenRatio data ->
+                    viewBetweenRatio pattern points data
 
-                                CircleLine data ->
-                                    viewCircleLine pattern circles lines data
-                           )
+                BetweenLength data ->
+                    viewBetweenLength pattern points data
 
-                EditPoint _ pointData ->
-                    case pointData of
-                        LeftOf data ->
-                            viewSimpleDistanceTool pattern points "leftof" data
+                CircleCircle data ->
+                    viewCircleCircle pattern circles data
 
-                        RightOf data ->
-                            viewSimpleDistanceTool pattern points "rightof" data
+                LineLine data ->
+                    viewLineLine pattern lines data
 
-                        Above data ->
-                            viewSimpleDistanceTool pattern points "above" data
+                CircleLine data ->
+                    viewCircleLine pattern circles lines data
 
-                        Below data ->
-                            viewSimpleDistanceTool pattern points "below" data
+        btnCreate =
+            Element.el [ Element.alignLeft ] <|
+                View.Input.btnPrimary
+                    { onPress = Just CreateClicked
+                    , label = "Create"
+                    }
 
-                        AtAngle data ->
-                            viewAngle pattern points data
+        btnUpdate =
+            Element.el [ Element.alignLeft ] <|
+                View.Input.btnPrimary
+                    { onPress = Just UpdateClicked
+                    , label = "Update"
+                    }
 
-                        BetweenRatio data ->
-                            viewBetweenRatio pattern points data
-
-                        BetweenLength data ->
-                            viewBetweenLength pattern points data
-
-                        CircleCircle data ->
-                            viewCircleCircle pattern circles data
-
-                        LineLine data ->
-                            viewLineLine pattern lines data
-
-                        CircleLine data ->
-                            viewCircleLine pattern circles lines data
-
-                CenteredAt data ->
-                    viewCenteredAt pattern points data
-
-                ThroughTwoPoints data ->
-                    viewThroughTwoPoints pattern points data
-
-                ThroughOnePoint data ->
-                    viewThroughOnePoint pattern points data
-
-                FromTo data ->
-                    viewFromTo pattern points data
-
-                MirrorAt data ->
-                    viewMirrorAt pattern points lines data
-
-                Detail data ->
-                    viewDetail pattern points data
-            )
-        , Element.row
-            [ Element.width Element.fill
-            , Element.spacing 5
-            ]
-            [ Element.el [ Element.alignLeft ] <|
-                case tool of
-                    CreatePoint _ _ ->
-                        View.Input.btnPrimary
-                            { onPress = Just CreateClicked
-                            , label = "Create"
-                            }
-
-                    EditPoint _ _ ->
-                        View.Input.btnPrimary
-                            { onPress = Just UpdateClicked
-                            , label = "Update"
-                            }
-
-                    _ ->
-                        View.Input.btnPrimary
-                            { onPress = Just CreateClicked
-                            , label = "Create"
-                            }
-            , Element.el [ Element.alignRight ] <|
+        btnCancel =
+            Element.el [ Element.alignRight ] <|
                 View.Input.btnCancel
                     { onPress = Just ToolDialogCancelClicked
                     , label = "Cancel"
                     }
-            ]
-        ]
+    in
+    case tool of
+        CreatePoint name pointData ->
+            createDialog name (dialog pointData)
+
+        EditPoint thatPoint pointData ->
+            editDialog (pointName pattern thatPoint) (dialog pointData)
+
+        CenteredAt data ->
+            createDialog data.name (viewCenteredAt pattern points data)
+
+        ThroughTwoPoints data ->
+            createDialog data.name (viewThroughTwoPoints pattern points data)
+
+        ThroughOnePoint data ->
+            createDialog data.name (viewThroughOnePoint pattern points data)
+
+        FromTo data ->
+            createDialog data.name (viewFromTo pattern points data)
+
+        MirrorAt data ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.padding Design.small
+                , Element.spacing Design.normal
+                ]
+                [ Element.el
+                    [ View.Design.fontNormal
+                    , Font.color View.Design.black
+                    ]
+                    (toolDescription (toolToTag tool))
+                , Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Design.small
+                    ]
+                    (viewMirrorAt pattern points lines data)
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 5
+                    ]
+                    [ btnCreate
+                    , btnCancel
+                    ]
+                ]
+
+        Detail data ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.padding Design.small
+                , Element.spacing Design.normal
+                ]
+                [ Element.el
+                    [ View.Design.fontNormal
+                    , Font.color View.Design.black
+                    ]
+                    (toolDescription (toolToTag tool))
+                , Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Design.small
+                    ]
+                    (viewDetail pattern points data)
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 5
+                    ]
+                    [ btnCreate
+                    , btnCancel
+                    ]
+                ]
+
+
+nameInput name =
+    View.Input.text "name-input"
+        { onChange = NameChanged
+        , text = name
+        , label = "Pick a name"
+        }
 
 
 viewSimpleDistanceTool pattern points toolId data =
@@ -1583,12 +1810,7 @@ viewCircleLine pattern circles lines data =
 
 
 viewCenteredAt pattern points data =
-    [ View.Input.text "name-input"
-        { onChange = NameChanged
-        , text = data.name
-        , label = "Pick a name"
-        }
-    , View.Input.dropdown "centered-at--anchor"
+    [ View.Input.dropdown "centered-at--anchor"
         { lift = DropdownAnchorAMsg
         , entryToString = pointName pattern
         , label = "Center point"
@@ -1605,12 +1827,7 @@ viewCenteredAt pattern points data =
 
 
 viewThroughTwoPoints pattern points data =
-    [ View.Input.text "name-input"
-        { onChange = NameChanged
-        , text = data.name
-        , label = "Pick a name"
-        }
-    , View.Input.dropdown "through-two-points--anchor-a"
+    [ View.Input.dropdown "through-two-points--anchor-a"
         { lift = DropdownAnchorAMsg
         , entryToString = pointName pattern
         , label = "1st point"
@@ -1630,12 +1847,7 @@ viewThroughTwoPoints pattern points data =
 
 
 viewThroughOnePoint pattern points data =
-    [ View.Input.text "name-input"
-        { onChange = NameChanged
-        , text = data.name
-        , label = "Pick a name"
-        }
-    , View.Input.dropdown "through-two-points--anchor-a"
+    [ View.Input.dropdown "through-two-points--anchor-a"
         { lift = DropdownAnchorAMsg
         , entryToString = pointName pattern
         , label = "Point"
@@ -1652,12 +1864,7 @@ viewThroughOnePoint pattern points data =
 
 
 viewFromTo pattern points data =
-    [ View.Input.text "name-input"
-        { onChange = NameChanged
-        , text = data.name
-        , label = "Pick a name"
-        }
-    , View.Input.dropdown "from-to--anchor-a"
+    [ View.Input.dropdown "from-to--anchor-a"
         { lift = DropdownAnchorAMsg
         , entryToString = pointName pattern
         , label = "Start point"
@@ -1820,11 +2027,7 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ View.Input.text "name-input"
-                { onChange = NameChanged
-                , text = detailData.name
-                , label = "Pick a name"
-                }
+            [ nameInput detailData.name
             , viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
@@ -1908,11 +2111,7 @@ viewDetail pattern points data =
                         ]
             in
             List.concat
-                [ [ View.Input.text "name-input"
-                        { onChange = NameChanged
-                        , text = detailData.name
-                        , label = "Pick a name"
-                        }
+                [ [ nameInput detailData.name
                   , viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
