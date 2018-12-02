@@ -192,12 +192,12 @@ type Point
     | BetweenRatio (That Point) (That Point) String
     | BetweenLength (That Point) (That Point) String
       -- ON OBJECT
-    | OnCurveRatio (That Curve) String
-    | OnCurveLength (That Curve) String
-    | OnCircleFirstTangent (That Circle) (That Point)
-    | OnCircleSecondTangent (That Circle) (That Point)
-    | OnCircleFirstChord (That Circle) String
-    | OnCircleSecondChord (That Circle) String
+      --| OnCurveRatio (That Curve) String
+      --| OnCurveLength (That Curve) String
+      --| OnCircleFirstTangent (That Circle) (That Point)
+      --| OnCircleSecondTangent (That Circle) (That Point)
+      --| OnCircleFirstChord (That Circle) String
+      --| OnCircleSecondChord (That Circle) String
       -- BY INTERSECTION
     | FirstCircleCircle (That Circle) (That Circle)
     | SecondCircleCircle (That Circle) (That Circle)
@@ -1443,8 +1443,11 @@ encodePoint point =
                 , ( "line", That.encode line )
                 ]
 
-        _ ->
-            Encode.null
+        TransformBy transformation target ->
+            withType "transformBy"
+                [ ( "transformation", That.encode transformation )
+                , ( "target", That.encode target )
+                ]
 
 
 encodeCircle : Circle -> Value
@@ -1616,6 +1619,10 @@ pointDecoder =
             Decode.map2 SecondCircleLine
                 (Decode.field "circle" That.decoder)
                 (Decode.field "line" That.decoder)
+        , typeDecoder "transformBy" <|
+            Decode.map2 TransformBy
+                (Decode.field "transformation" That.decoder)
+                (Decode.field "target" That.decoder)
         ]
 
 

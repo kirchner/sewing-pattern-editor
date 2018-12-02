@@ -2,6 +2,7 @@ module View.Design exposing
     ( black
     , danger
     , dangerDark
+    , fontLarge
     , fontNormal
     , fontSmall
     , grayDark
@@ -80,6 +81,10 @@ fontSmall =
 
 fontNormal =
     Font.size 15
+
+
+fontLarge =
+    Font.size 18
 
 
 sansSerif =

@@ -160,7 +160,15 @@ btnIconLarge { onPress, icon } =
 ---- INPUTS
 
 
-text : String -> { onChange : String -> msg, text : String, label : String } -> Element msg
+text :
+    String
+    ->
+        { onChange : String -> msg
+        , text : String
+        , label : String
+        , help : Maybe String
+        }
+    -> Element msg
 text id data =
     Input.text
         [ Element.htmlAttribute <|
@@ -178,11 +186,35 @@ text id data =
         , text = data.text
         , placeholder = Nothing
         , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color Design.black
-                ]
-                (Element.text data.label)
+            Input.labelAbove []
+                (case data.help of
+                    Nothing ->
+                        Element.el
+                            [ Design.fontSmall
+                            , Font.color Design.black
+                            , Font.bold
+                            ]
+                            (Element.text data.label)
+
+                    Just helpText ->
+                        Element.column
+                            [ Element.spacing Design.xxSmall ]
+                            [ Element.el
+                                [ Design.fontSmall
+                                , Font.color Design.black
+                                , Font.bold
+                                ]
+                                (Element.text data.label)
+                            , Element.row
+                                [ Element.spacing Design.xSmall
+                                , Element.paddingXY 0 Design.xxSmall
+                                , Font.color Design.danger
+                                ]
+                                [ View.Icon.fa "exclamation-circle"
+                                , Element.text helpText
+                                ]
+                            ]
+                )
         }
 
 
@@ -240,6 +272,7 @@ formula id data =
             Input.labelAbove
                 [ Font.size 12
                 , Font.color Design.black
+                , Font.bold
                 , Design.sansSerif
                 ]
                 (Element.text data.label)
@@ -305,6 +338,7 @@ radioRow id { onChange, options, selected, label } =
             Input.labelAbove
                 [ Font.size 12
                 , Font.color Design.black
+                , Font.bold
                 ]
                 (Element.text label)
         }
@@ -413,6 +447,7 @@ dropdownWithMenu menu id data =
                 , Element.alignLeft
                 , Font.size 12
                 , Font.color Design.black
+                , Font.bold
                 ]
                 (Element.text data.label)
             , Element.el [ Element.alignRight ]
@@ -575,6 +610,7 @@ listbox id data =
             [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
             , Font.size 12
             , Font.color Design.black
+            , Font.bold
             ]
             (Element.text data.label)
         , Listbox.customView listboxDomFunctions

@@ -42,6 +42,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Region as Region
 import Frame2d
 import Geometry.Svg as Svg
 import Html exposing (Html)
@@ -330,7 +331,7 @@ type PointData
 
 
 type Tool
-    = CreatePoint String PointData
+    = CreatePoint (Validatable String) PointData
     | EditPoint (That Point) PointData
       -- CIRCLES
     | CenteredAt
@@ -369,6 +370,31 @@ type Tool
         , thosePoints : Those Point
         }
     | Detail DetailData
+
+
+type Validatable value
+    = Valid value
+    | Invalid value String
+
+
+updateValue : value -> Validatable value -> Validatable value
+updateValue newValue validatable =
+    case validatable of
+        Valid _ ->
+            Valid newValue
+
+        Invalid _ help ->
+            Invalid newValue help
+
+
+valueOf : Validatable value -> value
+valueOf validatable =
+    case validatable of
+        Valid v ->
+            v
+
+        Invalid v _ ->
+            v
 
 
 type DetailData
@@ -1575,6 +1601,40 @@ viewTool pattern tool =
                     , Font.color View.Design.black
                     ]
                     (toolDescription (toolToTag tool))
+                , case name of
+                    Valid _ ->
+                        Element.none
+
+                    Invalid value help ->
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.padding View.Design.small
+                            , Element.spacing View.Design.small
+                            , Border.width 1
+                            , Border.rounded 4
+                            , Border.color View.Design.danger
+                            , Element.htmlAttribute <|
+                                Html.Attributes.id "validation-messages"
+                            , Element.htmlAttribute <|
+                                Html.Attributes.tabindex -1
+                            ]
+                            [ Element.el
+                                [ Region.heading 2
+                                , View.Design.fontLarge
+                                , Font.bold
+                                ]
+                                (Element.text "There's a problem")
+                            , Input.button
+                                [ View.Design.fontNormal
+                                , Font.color View.Design.danger
+                                , Font.underline
+                                , Element.mouseOver
+                                    [ Font.color View.Design.dangerDark ]
+                                ]
+                                { onPress = Just ValidationNameClicked
+                                , label = Element.text help
+                                }
+                            ]
                 , Element.column
                     [ Element.width Element.fill
                     , Element.spacing Design.small
@@ -1675,16 +1735,16 @@ viewTool pattern tool =
             editDialog (pointName pattern thatPoint) (dialog pointData)
 
         CenteredAt data ->
-            createDialog data.name (viewCenteredAt pattern points data)
+            createDialog (Valid data.name) (viewCenteredAt pattern points data)
 
         ThroughTwoPoints data ->
-            createDialog data.name (viewThroughTwoPoints pattern points data)
+            createDialog (Valid data.name) (viewThroughTwoPoints pattern points data)
 
         ThroughOnePoint data ->
-            createDialog data.name (viewThroughOnePoint pattern points data)
+            createDialog (Valid data.name) (viewThroughOnePoint pattern points data)
 
         FromTo data ->
-            createDialog data.name (viewFromTo pattern points data)
+            createDialog (Valid data.name) (viewFromTo pattern points data)
 
         MirrorAt data ->
             Element.column
@@ -1738,11 +1798,22 @@ viewTool pattern tool =
 
 
 nameInput name =
-    View.Input.text "name-input"
-        { onChange = NameChanged
-        , text = name
-        , label = "Pick a name"
-        }
+    case name of
+        Valid value ->
+            View.Input.text "name-input"
+                { onChange = NameChanged
+                , text = value
+                , label = "Pick a name"
+                , help = Nothing
+                }
+
+        Invalid value help ->
+            View.Input.text "name-input"
+                { onChange = NameChanged
+                , text = value
+                , label = "Pick a name"
+                , help = Just help
+                }
 
 
 viewSimpleDistanceTool pattern points toolId data =
@@ -2132,7 +2203,7 @@ viewDetail pattern points data =
     in
     case data of
         DetailOnePoint detailData ->
-            [ nameInput detailData.name
+            [ nameInput (Valid detailData.name)
             , viewDropdownPoint "detail-point--first-point"
                 0
                 Nothing
@@ -2216,7 +2287,7 @@ viewDetail pattern points data =
                         ]
             in
             List.concat
-                [ [ nameInput detailData.name
+                [ [ nameInput (Valid detailData.name)
                   , viewDropdownPoint "detail-point--point-0"
                         0
                         (Just detailData.firstPointActionMenu)
@@ -2312,6 +2383,7 @@ viewVariable name value =
                 { onChange = VariableNameChanged
                 , text = name
                 , label = "Pick a name"
+                , help = Nothing
                 }
             , View.Input.formula "variable-value--input"
                 { onChange = VariableValueChanged
@@ -2705,6 +2777,7 @@ type Msg
     | CreateClicked
     | UpdateClicked
     | ToolDialogCancelClicked
+    | ValidationNameClicked
       -- PATTERN
     | PointHovered (Maybe (That Point))
       -- RIGHT TOOLBAR
@@ -2824,97 +2897,90 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         -- POINTS
         SelectToolClicked toolTag ->
             let
+                createPoint toPointData =
+                    CreatePoint (Valid "") << toPointData
+
                 tool =
                     case toolTag of
                         LeftOfTag ->
-                            CreatePoint "" <|
-                                LeftOf
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , distance = ""
-                                    }
+                            createPoint LeftOf
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
 
                         RightOfTag ->
-                            CreatePoint "" <|
-                                RightOf
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , distance = ""
-                                    }
+                            createPoint RightOf
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
 
                         AboveTag ->
-                            CreatePoint "" <|
-                                Above
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , distance = ""
-                                    }
+                            createPoint Above
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
 
                         BelowTag ->
-                            CreatePoint "" <|
-                                Below
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , distance = ""
-                                    }
+                            createPoint Below
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , distance = ""
+                                }
 
                         AtAngleTag ->
-                            CreatePoint "" <|
-                                AtAngle
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , angle = ""
-                                    , distance = ""
-                                    }
+                            createPoint AtAngle
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , angle = ""
+                                , distance = ""
+                                }
 
                         BetweenRatioTag ->
-                            CreatePoint "" <|
-                                BetweenRatio
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , dropdownAnchorB = Dropdown.init
-                                    , maybeThatAnchorB = Nothing
-                                    , ratio = ""
-                                    }
+                            createPoint BetweenRatio
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                , ratio = ""
+                                }
 
                         BetweenLengthTag ->
-                            CreatePoint "" <|
-                                BetweenLength
-                                    { dropdownAnchorA = Dropdown.init
-                                    , maybeThatAnchorA = Nothing
-                                    , dropdownAnchorB = Dropdown.init
-                                    , maybeThatAnchorB = Nothing
-                                    , length = ""
-                                    }
+                            createPoint BetweenLength
+                                { dropdownAnchorA = Dropdown.init
+                                , maybeThatAnchorA = Nothing
+                                , dropdownAnchorB = Dropdown.init
+                                , maybeThatAnchorB = Nothing
+                                , length = ""
+                                }
 
                         CircleCircleTag ->
-                            CreatePoint "" <|
-                                CircleCircle
-                                    { dropdownCircleA = Dropdown.init
-                                    , maybeThatCircleA = Nothing
-                                    , dropdownCircleB = Dropdown.init
-                                    , maybeThatCircleB = Nothing
-                                    , first = True
-                                    }
+                            createPoint CircleCircle
+                                { dropdownCircleA = Dropdown.init
+                                , maybeThatCircleA = Nothing
+                                , dropdownCircleB = Dropdown.init
+                                , maybeThatCircleB = Nothing
+                                , first = True
+                                }
 
                         LineLineTag ->
-                            CreatePoint "" <|
-                                LineLine
-                                    { dropdownLineA = Dropdown.init
-                                    , maybeThatLineA = Nothing
-                                    , dropdownLineB = Dropdown.init
-                                    , maybeThatLineB = Nothing
-                                    }
+                            createPoint LineLine
+                                { dropdownLineA = Dropdown.init
+                                , maybeThatLineA = Nothing
+                                , dropdownLineB = Dropdown.init
+                                , maybeThatLineB = Nothing
+                                }
 
                         CircleLineTag ->
-                            CreatePoint "" <|
-                                CircleLine
-                                    { dropdownCircleA = Dropdown.init
-                                    , maybeThatCircleA = Nothing
-                                    , dropdownLineA = Dropdown.init
-                                    , maybeThatLineA = Nothing
-                                    , first = True
-                                    }
+                            createPoint CircleLine
+                                { dropdownCircleA = Dropdown.init
+                                , maybeThatCircleA = Nothing
+                                , dropdownLineA = Dropdown.init
+                                , maybeThatLineA = Nothing
+                                , first = True
+                                }
 
                         CenteredAtTag ->
                             CenteredAt
@@ -2959,12 +3025,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 }
 
                         DetailTag ->
-                            Detail <|
-                                DetailOnePoint
-                                    { name = ""
-                                    , firstPointDropdown = Dropdown.init
-                                    , firstPointMaybeThat = Nothing
-                                    }
+                            (Detail << DetailOnePoint)
+                                { name = ""
+                                , firstPointDropdown = Dropdown.init
+                                , firstPointMaybeThat = Nothing
+                                }
             in
             ( { model | maybeTool = Just tool }
             , Browser.Dom.focus "name-input"
@@ -2978,206 +3043,120 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
                 Just { name, value } ->
-                    case value of
-                        Pattern.Origin _ _ ->
-                            ( model, Cmd.none, Nothing )
+                    let
+                        editPoint toPointData =
+                            Just << EditPoint thatPoint << toPointData
 
-                        Pattern.LeftOf thatAnchor distance ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            LeftOf
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchor
-                                                , distance = distance
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                        maybeTool =
+                            case value of
+                                Pattern.Origin _ _ ->
+                                    Nothing
 
-                        Pattern.RightOf thatAnchor distance ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            RightOf
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchor
-                                                , distance = distance
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.LeftOf thatAnchor distance ->
+                                    editPoint LeftOf
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchor
+                                        , distance = distance
+                                        }
 
-                        Pattern.Above thatAnchor distance ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            Above
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchor
-                                                , distance = distance
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.RightOf thatAnchor distance ->
+                                    editPoint RightOf
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchor
+                                        , distance = distance
+                                        }
 
-                        Pattern.Below thatAnchor distance ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            Below
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchor
-                                                , distance = distance
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.Above thatAnchor distance ->
+                                    editPoint Above
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchor
+                                        , distance = distance
+                                        }
 
-                        Pattern.AtAngle thatAnchor angle distance ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            AtAngle
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchor
-                                                , angle = angle
-                                                , distance = distance
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.Below thatAnchor distance ->
+                                    editPoint Below
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchor
+                                        , distance = distance
+                                        }
 
-                        Pattern.BetweenRatio thatAnchorA thatAnchorB ratio ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            BetweenRatio
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchorA
-                                                , dropdownAnchorB = Dropdown.init
-                                                , maybeThatAnchorB = Just thatAnchorB
-                                                , ratio = ratio
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.AtAngle thatAnchor angle distance ->
+                                    editPoint AtAngle
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchor
+                                        , angle = angle
+                                        , distance = distance
+                                        }
 
-                        Pattern.BetweenLength thatAnchorA thatAnchorB length ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            BetweenLength
-                                                { dropdownAnchorA = Dropdown.init
-                                                , maybeThatAnchorA = Just thatAnchorA
-                                                , dropdownAnchorB = Dropdown.init
-                                                , maybeThatAnchorB = Just thatAnchorB
-                                                , length = length
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.BetweenRatio thatAnchorA thatAnchorB ratio ->
+                                    editPoint BetweenRatio
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchorA
+                                        , dropdownAnchorB = Dropdown.init
+                                        , maybeThatAnchorB = Just thatAnchorB
+                                        , ratio = ratio
+                                        }
 
-                        Pattern.LineLine thatLineA thatLineB ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            LineLine
-                                                { dropdownLineA = Dropdown.init
-                                                , maybeThatLineA = Just thatLineA
-                                                , dropdownLineB = Dropdown.init
-                                                , maybeThatLineB = Just thatLineB
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.BetweenLength thatAnchorA thatAnchorB length ->
+                                    editPoint BetweenLength
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchorA
+                                        , dropdownAnchorB = Dropdown.init
+                                        , maybeThatAnchorB = Just thatAnchorB
+                                        , length = length
+                                        }
 
-                        Pattern.FirstCircleCircle thatCircleA thatCircleB ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            CircleCircle
-                                                { dropdownCircleA = Dropdown.init
-                                                , maybeThatCircleA = Just thatCircleA
-                                                , dropdownCircleB = Dropdown.init
-                                                , maybeThatCircleB = Just thatCircleB
-                                                , first = True
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.LineLine thatLineA thatLineB ->
+                                    editPoint LineLine
+                                        { dropdownLineA = Dropdown.init
+                                        , maybeThatLineA = Just thatLineA
+                                        , dropdownLineB = Dropdown.init
+                                        , maybeThatLineB = Just thatLineB
+                                        }
 
-                        Pattern.SecondCircleCircle thatCircleA thatCircleB ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            CircleCircle
-                                                { dropdownCircleA = Dropdown.init
-                                                , maybeThatCircleA = Just thatCircleA
-                                                , dropdownCircleB = Dropdown.init
-                                                , maybeThatCircleB = Just thatCircleB
-                                                , first = False
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.FirstCircleCircle thatCircleA thatCircleB ->
+                                    editPoint CircleCircle
+                                        { dropdownCircleA = Dropdown.init
+                                        , maybeThatCircleA = Just thatCircleA
+                                        , dropdownCircleB = Dropdown.init
+                                        , maybeThatCircleB = Just thatCircleB
+                                        , first = True
+                                        }
 
-                        Pattern.FirstCircleLine thatCircle thatLine ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            CircleLine
-                                                { dropdownCircleA = Dropdown.init
-                                                , maybeThatCircleA = Just thatCircle
-                                                , dropdownLineA = Dropdown.init
-                                                , maybeThatLineA = Just thatLine
-                                                , first = True
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.SecondCircleCircle thatCircleA thatCircleB ->
+                                    editPoint CircleCircle
+                                        { dropdownCircleA = Dropdown.init
+                                        , maybeThatCircleA = Just thatCircleA
+                                        , dropdownCircleB = Dropdown.init
+                                        , maybeThatCircleB = Just thatCircleB
+                                        , first = False
+                                        }
 
-                        Pattern.SecondCircleLine thatCircle thatLine ->
-                            ( { model
-                                | maybeTool =
-                                    Just <|
-                                        EditPoint thatPoint <|
-                                            CircleLine
-                                                { dropdownCircleA = Dropdown.init
-                                                , maybeThatCircleA = Just thatCircle
-                                                , dropdownLineA = Dropdown.init
-                                                , maybeThatLineA = Just thatLine
-                                                , first = False
-                                                }
-                              }
-                            , Cmd.none
-                            , Nothing
-                            )
+                                Pattern.FirstCircleLine thatCircle thatLine ->
+                                    editPoint CircleLine
+                                        { dropdownCircleA = Dropdown.init
+                                        , maybeThatCircleA = Just thatCircle
+                                        , dropdownLineA = Dropdown.init
+                                        , maybeThatLineA = Just thatLine
+                                        , first = True
+                                        }
 
-                        _ ->
-                            ( model, Cmd.none, Nothing )
+                                Pattern.SecondCircleLine thatCircle thatLine ->
+                                    editPoint CircleLine
+                                        { dropdownCircleA = Dropdown.init
+                                        , maybeThatCircleA = Just thatCircle
+                                        , dropdownLineA = Dropdown.init
+                                        , maybeThatLineA = Just thatLine
+                                        , first = False
+                                        }
+
+                                Pattern.TransformBy _ _ ->
+                                    Nothing
+                    in
+                    ( { model | maybeTool = maybeTool }
+                    , Cmd.none
+                    , Nothing
+                    )
 
         -- TOOL PARAMETERS
         NameChanged newName ->
@@ -3189,13 +3168,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     )
             in
             case model.maybeTool of
-                --CreateVariable _ ->
-                --    ( model, Cmd.none, Nothing )
                 Nothing ->
                     ( model, Cmd.none, Nothing )
 
                 Just (CreatePoint name toolData) ->
-                    ( { model | maybeTool = Just (CreatePoint newName toolData) }
+                    ( { model
+                        | maybeTool =
+                            Just (CreatePoint (updateValue newName name) toolData)
+                      }
                     , Cmd.none
                     , Nothing
                     )
@@ -3226,479 +3206,584 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
         AngleChanged newAngle ->
             let
-                updateAngle toPointData data =
-                    toPointData { data | angle = newAngle }
-
-                updatePointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         AtAngle data ->
-                            updateAngle AtAngle data
+                            updateDataWith (toTool << AtAngle) data
 
                         _ ->
-                            pointData
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    ( { model | maybeTool = Just (toTool { data | angle = newAngle }) }
+                    , Cmd.none
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    ( { model
-                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    ( { model
-                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 Just (ThroughOnePoint data) ->
-                    ( { model | maybeTool = Just (ThroughOnePoint { data | angle = newAngle }) }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updateDataWith ThroughOnePoint data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DistanceChanged newDistance ->
             let
-                updateDistance toPointData data =
-                    toPointData { data | distance = newDistance }
-
-                updatePointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         LeftOf data ->
-                            updateDistance LeftOf data
+                            updateDataWith (toTool << LeftOf) data
 
                         RightOf data ->
-                            updateDistance RightOf data
+                            updateDataWith (toTool << RightOf) data
 
                         Above data ->
-                            updateDistance Above data
+                            updateDataWith (toTool << Above) data
 
                         Below data ->
-                            updateDistance Below data
+                            updateDataWith (toTool << Below) data
 
                         AtAngle data ->
-                            updateDistance AtAngle data
+                            updateDataWith (toTool << AtAngle) data
 
                         _ ->
-                            pointData
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    ( { model
+                        | maybeTool = Just (toTool { data | distance = newDistance })
+                      }
+                    , Cmd.none
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    ( { model
-                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    ( { model
-                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         RatioChanged newRatio ->
             let
-                updateRatio toPointData data =
-                    toPointData { data | ratio = newRatio }
-
-                updatePointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         BetweenRatio data ->
-                            updateRatio BetweenRatio data
+                            updateDataWith (toTool << BetweenRatio) data
 
                         _ ->
-                            pointData
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    ( { model | maybeTool = Just (toTool { data | ratio = newRatio }) }
+                    , Cmd.none
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    ( { model
-                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    ( { model
-                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         LengthChanged newLength ->
             let
-                updateLength toPointData data =
-                    toPointData { data | length = newLength }
-
-                updatePointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         BetweenLength data ->
-                            updateLength BetweenLength data
+                            updateDataWith (toTool << BetweenLength) data
 
                         _ ->
-                            pointData
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    ( { model | maybeTool = Just (toTool { data | length = newLength }) }
+                    , Cmd.none
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    ( { model
-                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    ( { model
-                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
-                      }
-                    , Cmd.none
-                    , Nothing
-                    )
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         RadiusChanged newRadius ->
-            case model.maybeTool of
-                Just (CenteredAt data) ->
-                    ( { model | maybeTool = Just (CenteredAt { data | radius = newRadius }) }
+            let
+                updateDataWith toTool data =
+                    ( { model | maybeTool = Just (toTool { data | radius = newRadius }) }
                     , Cmd.none
                     , Nothing
                     )
+            in
+            case model.maybeTool of
+                Just (CenteredAt data) ->
+                    updateDataWith CenteredAt data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownAnchorAMsg dropdownMsg ->
             let
-                updateDropdown toPointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         LeftOf data ->
-                            updateDropdownAnchorA pattern model (toPointData << LeftOf) dropdownMsg data
+                            updateDataWith (toTool << LeftOf) data
 
                         RightOf data ->
-                            updateDropdownAnchorA pattern model (toPointData << RightOf) dropdownMsg data
+                            updateDataWith (toTool << RightOf) data
 
                         Above data ->
-                            updateDropdownAnchorA pattern model (toPointData << Above) dropdownMsg data
+                            updateDataWith (toTool << Above) data
 
                         Below data ->
-                            updateDropdownAnchorA pattern model (toPointData << Below) dropdownMsg data
+                            updateDataWith (toTool << Below) data
 
                         AtAngle data ->
-                            updateDropdownAnchorA pattern model (toPointData << AtAngle) dropdownMsg data
+                            updateDataWith (toTool << AtAngle) data
 
                         BetweenRatio data ->
-                            updateDropdownAnchorA pattern model (toPointData << BetweenRatio) dropdownMsg data
+                            updateDataWith (toTool << BetweenRatio) data
 
                         BetweenLength data ->
-                            updateDropdownAnchorA pattern model (toPointData << BetweenLength) dropdownMsg data
+                            updateDataWith (toTool << BetweenLength) data
 
                         _ ->
                             ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.points pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                data.dropdownAnchorA
+                                data.maybeThatAnchorA
+
+                        newTool =
+                            toTool
+                                { data
+                                    | dropdownAnchorA = newDropdown
+                                    , maybeThatAnchorA = newMaybeThatAnchor
+                                }
+                    in
+                    ( { model | maybeTool = Just newTool }
+                    , Cmd.map DropdownAnchorAMsg dropdownCmd
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    updateDropdown (CreatePoint name) pointData
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    updateDropdown (EditPoint thatPoint) pointData
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 Just (CenteredAt data) ->
-                    updateDropdownAnchorA pattern model CenteredAt dropdownMsg data
+                    updateDataWith CenteredAt data
 
                 Just (ThroughTwoPoints data) ->
-                    updateDropdownAnchorA pattern model ThroughTwoPoints dropdownMsg data
+                    updateDataWith ThroughTwoPoints data
 
                 Just (ThroughOnePoint data) ->
-                    updateDropdownAnchorA pattern model ThroughOnePoint dropdownMsg data
+                    updateDataWith ThroughOnePoint data
 
                 Just (FromTo data) ->
-                    updateDropdownAnchorA pattern model FromTo dropdownMsg data
+                    updateDataWith FromTo data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownAnchorBMsg dropdownMsg ->
             let
-                updateDropdown toPointData pointData =
+                updatePointDataWith toTool pointData =
                     case pointData of
                         BetweenRatio data ->
-                            updateDropdownAnchorB pattern model (toPointData << BetweenRatio) dropdownMsg data
+                            updateDataWith (toTool << BetweenRatio) data
 
                         BetweenLength data ->
-                            updateDropdownAnchorB pattern model (toPointData << BetweenLength) dropdownMsg data
+                            updateDataWith (toTool << BetweenLength) data
 
                         _ ->
                             ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (optionsWith Pattern.points pattern)
+                                dropdownMsg
+                                data.dropdownAnchorB
+                                data.maybeThatAnchorB
+
+                        newData =
+                            { data
+                                | dropdownAnchorB = newDropdown
+                                , maybeThatAnchorB = newMaybeThatAnchor
+                            }
+                    in
+                    ( { model | maybeTool = Just (toTool newData) }
+                    , Cmd.map DropdownAnchorBMsg dropdownCmd
+                    , Nothing
+                    )
+            in
+            case model.maybeTool of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just tool ->
+                    case tool of
+                        CreatePoint name pointData ->
+                            updatePointDataWith (CreatePoint name) pointData
+
+                        EditPoint thatPoint pointData ->
+                            updatePointDataWith (EditPoint thatPoint) pointData
+
+                        ThroughTwoPoints data ->
+                            updateDataWith ThroughTwoPoints data
+
+                        FromTo data ->
+                            updateDataWith FromTo data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+        DropdownLineAMsg dropdownMsg ->
+            let
+                updatePointDataWith toTool pointData =
+                    case pointData of
+                        CircleLine data ->
+                            updateDataWith (toTool << CircleLine) data
+
+                        LineLine data ->
+                            updateDataWith (toTool << LineLine) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatLine ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (optionsWith Pattern.lines pattern)
+                                dropdownMsg
+                                data.dropdownLineA
+                                data.maybeThatLineA
+
+                        newData =
+                            { data
+                                | dropdownLineA = newDropdown
+                                , maybeThatLineA = newMaybeThatLine
+                            }
+                    in
+                    ( { model | maybeTool = Just (toTool newData) }
+                    , Cmd.map DropdownLineAMsg dropdownCmd
+                    , Nothing
+                    )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    updateDropdown (CreatePoint name) pointData
+                    updatePointDataWith (CreatePoint name) pointData
 
                 Just (EditPoint thatPoint pointData) ->
-                    updateDropdown (EditPoint thatPoint) pointData
-
-                Just (ThroughTwoPoints data) ->
-                    updateDropdownAnchorB pattern model ThroughTwoPoints dropdownMsg data
-
-                Just (FromTo data) ->
-                    updateDropdownAnchorB pattern model FromTo dropdownMsg data
-
-                _ ->
-                    ( model, Cmd.none, Nothing )
-
-        DropdownLineAMsg dropdownMsg ->
-            case model.maybeTool of
-                Just (CreatePoint name (CircleLine data)) ->
-                    updateDropdownLineA pattern model (CreatePoint name << CircleLine) dropdownMsg data
-
-                Just (CreatePoint name (LineLine data)) ->
-                    updateDropdownLineA pattern model (CreatePoint name << LineLine) dropdownMsg data
-
-                Just (EditPoint thatPoint (CircleLine data)) ->
-                    updateDropdownLineA pattern model (EditPoint thatPoint << CircleLine) dropdownMsg data
-
-                Just (EditPoint thatPoint (LineLine data)) ->
-                    updateDropdownLineA pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 Just (MirrorAt data) ->
-                    updateDropdownLineA pattern model MirrorAt dropdownMsg data
+                    updateDataWith MirrorAt data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownLineBMsg dropdownMsg ->
-            case model.maybeTool of
-                Just (CreatePoint name (LineLine data)) ->
-                    updateDropdownLineB pattern model (CreatePoint name << LineLine) dropdownMsg data
+            let
+                updatePointDataWith toTool pointData =
+                    case pointData of
+                        LineLine data ->
+                            updateDataWith (toTool << LineLine) data
 
-                Just (EditPoint thatPoint (LineLine data)) ->
-                    updateDropdownLineB pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatLine ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (optionsWith Pattern.lines pattern)
+                                dropdownMsg
+                                data.dropdownLineB
+                                data.maybeThatLineB
+
+                        newData =
+                            { data
+                                | dropdownLineB = newDropdown
+                                , maybeThatLineB = newMaybeThatLine
+                            }
+                    in
+                    ( { model | maybeTool = Just (toTool newData) }
+                    , Cmd.map DropdownLineBMsg dropdownCmd
+                    , Nothing
+                    )
+            in
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
+                    updatePointDataWith (CreatePoint name) pointData
+
+                Just (EditPoint thatPoint pointData) ->
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         ListboxPointsMsg listboxMsg ->
-            case model.maybeTool of
-                Just (MirrorAt data) ->
+            let
+                updateDataWith toTool data =
                     let
                         ( newListbox, listboxCmd, newPoints ) =
                             Listbox.update listboxUpdateConfig
-                                (Pattern.points pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
+                                (optionsWith Pattern.points pattern)
                                 listboxMsg
                                 data.listbox
                                 (Those.toList data.thosePoints)
+
+                        newData =
+                            { data
+                                | listbox = newListbox
+                                , thosePoints = Those.fromList newPoints
+                            }
                     in
-                    ( { model
-                        | maybeTool =
-                            Just <|
-                                MirrorAt
-                                    { data
-                                        | listbox = newListbox
-                                        , thosePoints = Those.fromList newPoints
-                                    }
-                      }
+                    ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map ListboxPointsMsg listboxCmd
                     , Nothing
                     )
+            in
+            case model.maybeTool of
+                Just (MirrorAt data) ->
+                    updateDataWith MirrorAt data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownCircleAMsg dropdownMsg ->
             let
-                updateCircleA toTool data =
+                updatePointDataWith toTool pointData =
+                    case pointData of
+                        CircleCircle data ->
+                            updateDataWith (toTool << CircleCircle) data
+
+                        CircleLine data ->
+                            updateDataWith (toTool << CircleLine) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
                             Dropdown.update dropdownUpdateConfig
-                                (Pattern.circles pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
+                                (optionsWith Pattern.circles pattern)
                                 dropdownMsg
                                 data.dropdownCircleA
                                 data.maybeThatCircleA
+
+                        newData =
+                            { data
+                                | dropdownCircleA = newDropdown
+                                , maybeThatCircleA = newMaybeThatCircle
+                            }
                     in
                     ( { model
-                        | maybeTool =
-                            toTool
-                                { data
-                                    | dropdownCircleA = newDropdown
-                                    , maybeThatCircleA = newMaybeThatCircle
-                                }
+                        | maybeTool = Just (toTool newData)
                       }
                     , Cmd.map DropdownCircleAMsg dropdownCmd
                     , Nothing
                     )
             in
             case model.maybeTool of
-                Just (CreatePoint name (CircleCircle data)) ->
-                    updateCircleA (Just << CreatePoint name << CircleCircle) data
+                Just (CreatePoint name pointData) ->
+                    updatePointDataWith (CreatePoint name) pointData
 
-                Just (CreatePoint name (CircleLine data)) ->
-                    updateCircleA (Just << CreatePoint name << CircleLine) data
-
-                Just (EditPoint thatPoint (CircleCircle data)) ->
-                    updateCircleA (Just << EditPoint thatPoint << CircleCircle) data
-
-                Just (EditPoint thatPoint (CircleLine data)) ->
-                    updateCircleA (Just << EditPoint thatPoint << CircleLine) data
+                Just (EditPoint thatPoint pointData) ->
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownCircleBMsg dropdownMsg ->
             let
-                updateCircleB toTool data =
+                updatePointDataWith toTool pointData =
+                    case pointData of
+                        CircleCircle data ->
+                            updateDataWith (toTool << CircleCircle) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatCircle ) =
                             Dropdown.update dropdownUpdateConfig
-                                (Pattern.circles pattern
-                                    |> List.map (Tuple.first >> Listbox.option)
-                                )
+                                (optionsWith Pattern.circles pattern)
                                 dropdownMsg
                                 data.dropdownCircleB
                                 data.maybeThatCircleB
+
+                        newData =
+                            { data
+                                | dropdownCircleB = newDropdown
+                                , maybeThatCircleB = newMaybeThatCircle
+                            }
                     in
-                    ( { model
-                        | maybeTool =
-                            toTool
-                                { data
-                                    | dropdownCircleB = newDropdown
-                                    , maybeThatCircleB = newMaybeThatCircle
-                                }
-                      }
+                    ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map DropdownCircleBMsg dropdownCmd
                     , Nothing
                     )
             in
             case model.maybeTool of
-                Just (CreatePoint name (CircleCircle data)) ->
-                    updateCircleB (Just << CreatePoint name << CircleCircle) data
+                Just (CreatePoint name pointData) ->
+                    updatePointDataWith (CreatePoint name) pointData
 
-                Just (EditPoint thatPoint (CircleCircle data)) ->
-                    updateCircleB (Just << EditPoint thatPoint << CircleCircle) data
+                Just (EditPoint thatPoint pointData) ->
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         FirstChanged newFirst ->
             let
-                updateFirst toTool data =
-                    ( { model | maybeTool = toTool { data | first = newFirst } }
+                updatePointDataWith toTool pointData =
+                    case pointData of
+                        CircleCircle data ->
+                            updateDataWith (toTool << CircleCircle) data
+
+                        CircleLine data ->
+                            updateDataWith (toTool << CircleLine) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateDataWith toTool data =
+                    ( { model | maybeTool = Just (toTool { data | first = newFirst }) }
                     , Cmd.none
                     , Nothing
                     )
             in
             case model.maybeTool of
-                Just (CreatePoint name (CircleCircle data)) ->
-                    updateFirst (Just << CreatePoint name << CircleCircle) data
+                Just (CreatePoint name pointData) ->
+                    updatePointDataWith (CreatePoint name) pointData
 
-                Just (CreatePoint name (CircleLine data)) ->
-                    updateFirst (Just << CreatePoint name << CircleLine) data
-
-                Just (EditPoint thatPoint (CircleCircle data)) ->
-                    updateFirst (Just << EditPoint thatPoint << CircleCircle) data
-
-                Just (EditPoint thatPoint (CircleLine data)) ->
-                    updateFirst (Just << EditPoint thatPoint << CircleLine) data
+                Just (EditPoint thatPoint pointData) ->
+                    updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownPointMsg index dropdownMsg ->
+            let
+                updateFirstPointWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (optionsWith Pattern.points pattern)
+                                dropdownMsg
+                                data.firstPointDropdown
+                                data.firstPointMaybeThat
+
+                        newData =
+                            { data
+                                | firstPointDropdown = newDropdown
+                                , firstPointMaybeThat = newMaybeThatPoint
+                            }
+                    in
+                    ( { model | maybeTool = Just (toTool newData) }
+                    , Cmd.map (DropdownPointMsg index) dropdownCmd
+                    , Nothing
+                    )
+
+                updateSecondPointWith toTool data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (optionsWith Pattern.points pattern)
+                                dropdownMsg
+                                data.secondPointDropdown
+                                data.secondPointMaybeThat
+
+                        newData =
+                            { data
+                                | secondPointDropdown = newDropdown
+                                , secondPointMaybeThat = newMaybeThatPoint
+                            }
+                    in
+                    ( { model | maybeTool = Just (toTool newData) }
+                    , Cmd.map (DropdownPointMsg index) dropdownCmd
+                    , Nothing
+                    )
+
+                updateIndexedPointWith dropdown maybeThat data =
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
+                            Dropdown.update dropdownUpdateConfig
+                                (Pattern.points pattern
+                                    |> List.map (Tuple.first >> Listbox.option)
+                                )
+                                dropdownMsg
+                                dropdown
+                                maybeThat
+
+                        newData =
+                            { data
+                                | otherPoints =
+                                    List.updateAt (index - 2)
+                                        (\stuff ->
+                                            { stuff
+                                                | dropdown = newDropdown
+                                                , maybeThat = newMaybeThatPoint
+                                            }
+                                        )
+                                        data.otherPoints
+                            }
+                    in
+                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
+                    , Cmd.map (DropdownPointMsg index) dropdownCmd
+                    , Nothing
+                    )
+            in
             case model.maybeTool of
                 Just (Detail (DetailOnePoint data)) ->
                     if index /= 0 then
                         ( model, Cmd.none, Nothing )
 
                     else
-                        let
-                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                Dropdown.update dropdownUpdateConfig
-                                    (Pattern.points pattern
-                                        |> List.map (Tuple.first >> Listbox.option)
-                                    )
-                                    dropdownMsg
-                                    data.firstPointDropdown
-                                    data.firstPointMaybeThat
-
-                            newData =
-                                { data
-                                    | firstPointDropdown = newDropdown
-                                    , firstPointMaybeThat = newMaybeThatPoint
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
-                        , Cmd.map (DropdownPointMsg index) dropdownCmd
-                        , Nothing
-                        )
+                        updateFirstPointWith (Detail << DetailOnePoint) data
 
                 Just (Detail (DetailManyPoints data)) ->
                     if index < 0 || index > 1 + List.length data.otherPoints then
                         ( model, Cmd.none, Nothing )
 
                     else if index == 0 then
-                        let
-                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                Dropdown.update dropdownUpdateConfig
-                                    (Pattern.points pattern
-                                        |> List.map (Tuple.first >> Listbox.option)
-                                    )
-                                    dropdownMsg
-                                    data.firstPointDropdown
-                                    data.firstPointMaybeThat
-
-                            newData =
-                                { data
-                                    | firstPointDropdown = newDropdown
-                                    , firstPointMaybeThat = newMaybeThatPoint
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.map (DropdownPointMsg index) dropdownCmd
-                        , Nothing
-                        )
+                        updateFirstPointWith (Detail << DetailManyPoints) data
 
                     else if index == 1 then
-                        let
-                            ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                Dropdown.update dropdownUpdateConfig
-                                    (Pattern.points pattern
-                                        |> List.map (Tuple.first >> Listbox.option)
-                                    )
-                                    dropdownMsg
-                                    data.secondPointDropdown
-                                    data.secondPointMaybeThat
-
-                            newData =
-                                { data
-                                    | secondPointDropdown = newDropdown
-                                    , secondPointMaybeThat = newMaybeThatPoint
-                                }
-                        in
-                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
-                        , Cmd.map (DropdownPointMsg index) dropdownCmd
-                        , Nothing
-                        )
+                        updateSecondPointWith (Detail << DetailManyPoints) data
 
                     else
                         case List.head (List.drop (index - 2) data.otherPoints) of
@@ -3706,36 +3791,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 ( model, Cmd.none, Nothing )
 
                             Just { dropdown, maybeThat } ->
-                                let
-                                    ( newDropdown, dropdownCmd, newMaybeThatPoint ) =
-                                        Dropdown.update dropdownUpdateConfig
-                                            (Pattern.points pattern
-                                                |> List.map (Tuple.first >> Listbox.option)
-                                            )
-                                            dropdownMsg
-                                            dropdown
-                                            maybeThat
-
-                                    newData =
-                                        { data
-                                            | otherPoints =
-                                                List.updateAt (index - 2)
-                                                    (\stuff ->
-                                                        { stuff
-                                                            | dropdown = newDropdown
-                                                            , maybeThat = newMaybeThatPoint
-                                                        }
-                                                    )
-                                                    data.otherPoints
-                                        }
-                                in
-                                ( { model
-                                    | maybeTool =
-                                        Just (Detail (DetailManyPoints newData))
-                                  }
-                                , Cmd.map (DropdownPointMsg index) dropdownCmd
-                                , Nothing
-                                )
+                                updateIndexedPointWith dropdown maybeThat data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -4203,6 +4259,13 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             , Nothing
             )
 
+        ValidationNameClicked ->
+            ( model
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            , Nothing
+            )
+
         CreateClicked ->
             let
                 insertSimpleDistance constructor name data =
@@ -4217,110 +4280,126 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
-                    case pointData of
-                        LeftOf data ->
-                            insertSimpleDistance Pattern.leftOf name data
+                    if valueOf name == "" then
+                        let
+                            newName =
+                                Invalid (valueOf name) "Enter a name"
+                        in
+                        ( { model | maybeTool = Just (CreatePoint newName pointData) }
+                        , Browser.Dom.focus "validation-messages"
+                            |> Task.attempt (\_ -> NoOp)
+                        , Nothing
+                        )
 
-                        RightOf data ->
-                            insertSimpleDistance Pattern.rightOf name data
+                    else
+                        let
+                            actualName =
+                                valueOf name
+                        in
+                        case pointData of
+                            LeftOf data ->
+                                insertSimpleDistance Pattern.leftOf actualName data
 
-                        Above data ->
-                            insertSimpleDistance Pattern.above name data
+                            RightOf data ->
+                                insertSimpleDistance Pattern.rightOf actualName data
 
-                        Below data ->
-                            insertSimpleDistance Pattern.below name data
+                            Above data ->
+                                insertSimpleDistance Pattern.above actualName data
 
-                        AtAngle data ->
-                            case data.maybeThatAnchorA of
-                                Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                            Below data ->
+                                insertSimpleDistance Pattern.below actualName data
 
-                                Just thatAnchor ->
-                                    Pattern.atAngle pattern
-                                        thatAnchor
-                                        data.angle
-                                        data.distance
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                            AtAngle data ->
+                                case data.maybeThatAnchorA of
+                                    Nothing ->
+                                        ( model, Cmd.none, Nothing )
 
-                        BetweenRatio data ->
-                            Maybe.map2
-                                (\thatAnchorA thatAnchorB ->
-                                    Pattern.betweenRatio pattern
-                                        thatAnchorA
-                                        thatAnchorB
-                                        data.ratio
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                                )
-                                data.maybeThatAnchorA
-                                data.maybeThatAnchorB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    Just thatAnchor ->
+                                        Pattern.atAngle pattern
+                                            thatAnchor
+                                            data.angle
+                                            data.distance
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                        BetweenLength data ->
-                            Maybe.map2
-                                (\thatAnchorA thatAnchorB ->
-                                    Pattern.betweenLength pattern
-                                        thatAnchorA
-                                        thatAnchorB
-                                        data.length
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                                )
-                                data.maybeThatAnchorA
-                                data.maybeThatAnchorB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
-
-                        CircleCircle data ->
-                            Maybe.map2
-                                (\thatCircleA thatCircleB ->
-                                    (if data.first then
-                                        Pattern.firstCircleCircle pattern
-                                            thatCircleA
-                                            thatCircleB
-
-                                     else
-                                        Pattern.secondCircleCircle pattern
-                                            thatCircleA
-                                            thatCircleB
+                            BetweenRatio data ->
+                                Maybe.map2
+                                    (\thatAnchorA thatAnchorB ->
+                                        Pattern.betweenRatio pattern
+                                            thatAnchorA
+                                            thatAnchorB
+                                            data.ratio
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                     )
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                                )
-                                data.maybeThatCircleA
-                                data.maybeThatCircleB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    data.maybeThatAnchorA
+                                    data.maybeThatAnchorB
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                        LineLine data ->
-                            Maybe.map2
-                                (\thatLineA thatLineB ->
-                                    Pattern.lineLine pattern thatLineA thatLineB
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                                )
-                                data.maybeThatLineA
-                                data.maybeThatLineB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
-
-                        CircleLine data ->
-                            Maybe.map2
-                                (\thatCircle thatLine ->
-                                    (if data.first then
-                                        Pattern.firstCircleLine pattern
-                                            thatCircle
-                                            thatLine
-
-                                     else
-                                        Pattern.secondCircleLine pattern
-                                            thatCircle
-                                            thatLine
+                            BetweenLength data ->
+                                Maybe.map2
+                                    (\thatAnchorA thatAnchorB ->
+                                        Pattern.betweenLength pattern
+                                            thatAnchorA
+                                            thatAnchorB
+                                            data.length
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
                                     )
-                                        |> Maybe.map (insertPoint name storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                                )
-                                data.maybeThatCircleA
-                                data.maybeThatLineA
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    data.maybeThatAnchorA
+                                    data.maybeThatAnchorB
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                            CircleCircle data ->
+                                Maybe.map2
+                                    (\thatCircleA thatCircleB ->
+                                        (if data.first then
+                                            Pattern.firstCircleCircle pattern
+                                                thatCircleA
+                                                thatCircleB
+
+                                         else
+                                            Pattern.secondCircleCircle pattern
+                                                thatCircleA
+                                                thatCircleB
+                                        )
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    )
+                                    data.maybeThatCircleA
+                                    data.maybeThatCircleB
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                            LineLine data ->
+                                Maybe.map2
+                                    (\thatLineA thatLineB ->
+                                        Pattern.lineLine pattern thatLineA thatLineB
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    )
+                                    data.maybeThatLineA
+                                    data.maybeThatLineB
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                            CircleLine data ->
+                                Maybe.map2
+                                    (\thatCircle thatLine ->
+                                        (if data.first then
+                                            Pattern.firstCircleLine pattern
+                                                thatCircle
+                                                thatLine
+
+                                         else
+                                            Pattern.secondCircleLine pattern
+                                                thatCircle
+                                                thatLine
+                                        )
+                                            |> Maybe.map (insertPoint actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    )
+                                    data.maybeThatCircleA
+                                    data.maybeThatLineA
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
                 Just (EditPoint _ _) ->
                     ( model, Cmd.none, Nothing )
@@ -4789,100 +4868,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
 
-updateDropdownAnchorA pattern model toTool dropdownMsg data =
-    let
-        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
-            Dropdown.update dropdownUpdateConfig
-                (Pattern.points pattern
-                    |> List.map (Tuple.first >> Listbox.option)
-                )
-                dropdownMsg
-                data.dropdownAnchorA
-                data.maybeThatAnchorA
-
-        newTool =
-            toTool
-                { data
-                    | dropdownAnchorA = newDropdown
-                    , maybeThatAnchorA = newMaybeThatAnchor
-                }
-    in
-    ( { model | maybeTool = Just newTool }
-    , Cmd.map DropdownAnchorAMsg dropdownCmd
-    , Nothing
-    )
-
-
-updateDropdownAnchorB pattern model toTool dropdownMsg data =
-    let
-        ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
-            Dropdown.update dropdownUpdateConfig
-                (Pattern.points pattern
-                    |> List.map (Tuple.first >> Listbox.option)
-                )
-                dropdownMsg
-                data.dropdownAnchorB
-                data.maybeThatAnchorB
-
-        newTool =
-            toTool
-                { data
-                    | dropdownAnchorB = newDropdown
-                    , maybeThatAnchorB = newMaybeThatAnchor
-                }
-    in
-    ( { model | maybeTool = Just newTool }
-    , Cmd.map DropdownAnchorBMsg dropdownCmd
-    , Nothing
-    )
-
-
-updateDropdownLineA pattern model toTool dropdownMsg data =
-    let
-        ( newDropdown, dropdownCmd, newMaybeThatLine ) =
-            Dropdown.update dropdownUpdateConfig
-                (Pattern.lines pattern
-                    |> List.map (Tuple.first >> Listbox.option)
-                )
-                dropdownMsg
-                data.dropdownLineA
-                data.maybeThatLineA
-
-        newTool =
-            toTool
-                { data
-                    | dropdownLineA = newDropdown
-                    , maybeThatLineA = newMaybeThatLine
-                }
-    in
-    ( { model | maybeTool = Just newTool }
-    , Cmd.map DropdownLineAMsg dropdownCmd
-    , Nothing
-    )
-
-
-updateDropdownLineB pattern model toTool dropdownMsg data =
-    let
-        ( newDropdown, dropdownCmd, newMaybeThatLine ) =
-            Dropdown.update dropdownUpdateConfig
-                (Pattern.lines pattern
-                    |> List.map (Tuple.first >> Listbox.option)
-                )
-                dropdownMsg
-                data.dropdownLineB
-                data.maybeThatLineB
-
-        newTool =
-            toTool
-                { data
-                    | dropdownLineB = newDropdown
-                    , maybeThatLineB = newMaybeThatLine
-                }
-    in
-    ( { model | maybeTool = Just newTool }
-    , Cmd.map DropdownLineBMsg dropdownCmd
-    , Nothing
-    )
+optionsWith objects pattern =
+    pattern
+        |> objects
+        |> List.map (Tuple.first >> Listbox.option)
 
 
 insertPoint name viewedPattern model newPoint =
