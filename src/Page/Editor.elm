@@ -5341,7 +5341,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                             , maybeThat = Just (Tuple.first segment)
                                                             , actionMenu = Closed
                                                             , connectionPrevious =
-                                                                toConnection (Tuple.second second)
+                                                                toConnection (Tuple.second segment)
                                                             }
                                                         )
                                                         rest
