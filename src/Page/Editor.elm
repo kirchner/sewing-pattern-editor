@@ -71,6 +71,7 @@ import View.Design
 import View.Icon
 import View.Input
 import View.Navigation
+import View.Table
 import VoronoiDiagram2d
 
 
@@ -998,9 +999,7 @@ viewLeftToolbar prefix pattern model =
         [ Element.width (Element.maximum 330 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
-
-        --, Design.backgroundColor Dark
-        , Background.color (Element.rgba255 255 255 255 1)
+        , Background.color View.Design.white
         , Border.widthEach
             { left = 0
             , right = 1
@@ -2096,23 +2095,16 @@ viewToolSelector prefix =
 
 
 
--- VARIABLES
+-- TABLES
 
 
 viewVariables : Pattern -> Model -> Element Msg
 viewVariables pattern model =
-    let
-        viewFloatValue value =
-            Element.el [ Font.size 14 ] <|
-                Element.el [ Element.alignRight ]
-                    (Element.text (String.fromFloat value))
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing View.Design.xSmall
-        ]
-        [ accordionToggle VariablesRulerClicked "variables" model.variablesVisible
-        , if model.variablesVisible then
+    View.Navigation.accordion
+        { onPress = VariablesRulerClicked
+        , label = "Variables"
+        , open = model.variablesVisible
+        , content =
             Element.column
                 [ Element.width Element.fill
                 , Element.padding Design.small
@@ -2124,225 +2116,77 @@ viewVariables pattern model =
                     [ Element.spacing Design.xSmall ]
                     { data = List.sortBy .name (Pattern.variables pattern)
                     , columns =
-                        [ { header = Element.el [ Font.size 12 ] (Element.text "name")
-                          , width = Element.fill
-                          , view =
-                                \{ name } ->
-                                    Element.el [ Font.size 14 ] (Element.text name)
-                          }
-                        , { header =
-                                Element.el [ Font.size 12 ] (Element.text "value")
-                          , width = Element.shrink
-                          , view =
-                                \{ computed } ->
-                                    viewFloatValue computed
-                          }
-                        , { header = Element.none
-                          , width = Element.shrink
-                          , view =
-                                \_ ->
-                                    Element.row
-                                        [ Element.paddingEach
-                                            { left = 5
-                                            , right = 0
-                                            , top = 0
-                                            , bottom = 0
-                                            }
-                                        , Element.spacing 10
-                                        ]
-                                        [ View.Input.btnIcon
-                                            { onPress = Nothing
-                                            , icon = "edit"
-                                            }
-                                        , View.Input.btnIcon
-                                            { onPress = Nothing
-                                            , icon = "trash"
-                                            }
-                                        ]
-                          }
+                        [ View.Table.column
+                            { label = "Name"
+                            , recordToString = .name
+                            }
+                        , View.Table.columnFloat
+                            { label = "Value"
+                            , recordToFloat = Just << .computed
+                            }
+                        , View.Table.columnActions
+                            { onEditPress = always Nothing
+                            , onRemovePress = always Nothing
+                            }
                         ]
                     }
-                , Element.el [ Element.width Element.fill ] <|
-                    Element.el [ Element.alignRight ] <|
-                        View.Input.btnSecondary "create-variable--button"
-                            { onPress = Just VariableCreateClicked
-                            , label = "Create variable"
-                            }
+                , Element.el [ Element.alignRight ] <|
+                    View.Input.btnSecondary "create-variable--button"
+                        { onPress = Just VariableCreateClicked
+                        , label = "Create variable"
+                        }
                 ]
-
-          else
-            Element.none
-        ]
+        }
 
 
 viewPoints : Pattern -> Model -> Element Msg
 viewPoints pattern model =
-    let
-        viewHeader name =
-            Element.el [ Font.size 12 ] <|
-                Element.text name
-
-        viewValue value =
-            Element.el [ Font.size 14 ] <|
-                Element.text value
-
-        viewFloatHeader name =
-            Element.el [ Font.size 12 ] <|
-                Element.el [ Element.alignRight ]
-                    (Element.text name)
-
-        viewFloatValue value =
-            Element.el [ Font.size 14 ] <|
-                Element.el [ Element.alignRight ]
-                    (Element.text (String.fromInt (round value)))
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing View.Design.xSmall
-        ]
-        [ accordionToggle PointsRulerClicked "points" model.pointsVisible
-        , if model.pointsVisible then
+    View.Navigation.accordion
+        { onPress = PointsRulerClicked
+        , label = "Points"
+        , open = model.pointsVisible
+        , content =
             Element.column
                 [ Element.width Element.fill
                 , Element.padding Design.small
                 , Element.spacing Design.small
                 , Background.color View.Design.white
                 ]
-                [ Element.table
-                    [ Element.spacing Design.xSmall ]
+                [ View.Table.table
                     { data =
                         List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
                             (Pattern.points pattern)
                     , columns =
-                        [ { header = viewHeader "name"
-                          , width = Element.fill
-                          , view =
+                        [ View.Table.column
+                            { label = "Name"
+                            , recordToString =
                                 \( _, { name } ) ->
-                                    viewValue (Maybe.withDefault "<no name>" name)
-                          }
-                        , { header = viewFloatHeader "x"
-                          , width = Element.px 35
-                          , view =
+                                    Maybe.withDefault "<no name>" name
+                            }
+                        , View.Table.columnFloat
+                            { label = "x"
+                            , recordToFloat =
                                 \( thatPoint, _ ) ->
                                     thatPoint
                                         |> Pattern.getPointGeometry pattern
-                                        |> Maybe.map
-                                            (Point2d.xCoordinate >> viewFloatValue)
-                                        |> Maybe.withDefault Element.none
-                          }
-                        , { header = viewFloatHeader "y"
-                          , width = Element.px 35
-                          , view =
+                                        |> Maybe.map Point2d.xCoordinate
+                            }
+                        , View.Table.columnFloat
+                            { label = "y"
+                            , recordToFloat =
                                 \( thatPoint, _ ) ->
                                     thatPoint
                                         |> Pattern.getPointGeometry pattern
-                                        |> Maybe.map
-                                            (Point2d.yCoordinate >> viewFloatValue)
-                                        |> Maybe.withDefault Element.none
-                          }
-                        , { header = Element.none
-                          , width = Element.shrink
-                          , view =
-                                \( thatPoint, _ ) ->
-                                    Element.row
-                                        [ Element.paddingEach
-                                            { left = 5
-                                            , right = 0
-                                            , top = 0
-                                            , bottom = 0
-                                            }
-                                        , Element.spacing 10
-                                        ]
-                                        [ View.Input.btnIcon
-                                            { onPress = Just (EditPointClicked thatPoint)
-                                            , icon = "edit"
-                                            }
-                                        , View.Input.btnIcon
-                                            { onPress = Nothing
-                                            , icon = "trash"
-                                            }
-                                        ]
-                          }
+                                        |> Maybe.map Point2d.yCoordinate
+                            }
+                        , View.Table.columnActions
+                            { onEditPress = Just << EditPointClicked << Tuple.first
+                            , onRemovePress = always Nothing
+                            }
                         ]
                     }
                 ]
-
-          else
-            Element.none
-        ]
-
-
-
----- REUSABLE ELEMENTS
-
-
-accordionToggle : msg -> String -> Bool -> Element msg
-accordionToggle msg name visible =
-    Input.button
-        [ Element.width Element.fill
-        , Element.padding Design.xSmall
-        , Font.color View.Design.black
-        , Border.widthEach
-            { left = 0
-            , right = 0
-            , top = 0
-            , bottom = 1
-            }
-        , Border.color View.Design.black
-        , Element.mouseOver
-            [ Border.color View.Design.primaryDark
-            , Font.color View.Design.primaryDark
-            ]
-        ]
-        { onPress = Just msg
-        , label =
-            Element.row
-                [ Element.width Element.fill ]
-                [ Element.el
-                    [ Element.width Element.fill
-                    , Font.size 16
-                    ]
-                    (Element.text name)
-                , Element.el
-                    [ Element.centerY
-                    , Element.centerX
-                    ]
-                    (if visible then
-                        View.Icon.fa "chevron-up"
-
-                     else
-                        View.Icon.fa "chevron-down"
-                    )
-                ]
         }
-
-
-color =
-    Element.fromRgb << Color.toRgba
-
-
-white =
-    color (Color.rgb255 229 223 197)
-
-
-gray700 =
-    color (Color.rgb255 97 97 97)
-
-
-gray750 =
-    color (Color.rgb255 82 82 82)
-
-
-gray800 =
-    color (Color.rgb255 66 66 66)
-
-
-gray900 =
-    color (Color.rgb255 33 33 33)
-
-
-gray950 =
-    color (Color.rgb255 22 22 22)
 
 
 
