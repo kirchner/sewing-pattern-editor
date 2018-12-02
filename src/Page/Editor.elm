@@ -245,6 +245,14 @@ toolToTag tool =
             case circleData of
                 CenteredAt _ ->
                     CenteredAtTag
+
+        lineDataToTag lineData =
+            case lineData of
+                ThroughTwoPoints _ ->
+                    ThroughTwoPointsTag
+
+                ThroughOnePoint _ ->
+                    ThroughOnePointTag
     in
     case tool of
         CreatePoint _ pointData ->
@@ -259,11 +267,11 @@ toolToTag tool =
         EditCircle _ circleData ->
             circleDataToTag circleData
 
-        ThroughTwoPoints _ ->
-            ThroughTwoPointsTag
+        CreateLine _ lineData ->
+            lineDataToTag lineData
 
-        ThroughOnePoint _ ->
-            ThroughOnePointTag
+        EditLine _ lineData ->
+            lineDataToTag lineData
 
         FromTo _ ->
             FromToTag
@@ -346,6 +354,20 @@ type CircleData
         }
 
 
+type LineData
+    = ThroughTwoPoints
+        { dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , dropdownAnchorB : Dropdown
+        , maybeThatAnchorB : Maybe (That Point)
+        }
+    | ThroughOnePoint
+        { dropdownAnchorA : Dropdown
+        , maybeThatAnchorA : Maybe (That Point)
+        , angle : String
+        }
+
+
 type Tool
     = CreatePoint (Validatable String) PointData
     | EditPoint (That Point) PointData
@@ -353,19 +375,8 @@ type Tool
     | CreateCircle (Validatable String) CircleData
     | EditCircle (That Circle) CircleData
       -- LINES
-    | ThroughTwoPoints
-        { name : String
-        , dropdownAnchorA : Dropdown
-        , maybeThatAnchorA : Maybe (That Point)
-        , dropdownAnchorB : Dropdown
-        , maybeThatAnchorB : Maybe (That Point)
-        }
-    | ThroughOnePoint
-        { name : String
-        , dropdownAnchorA : Dropdown
-        , maybeThatAnchorA : Maybe (That Point)
-        , angle : String
-        }
+    | CreateLine (Validatable String) LineData
+    | EditLine (That Line) LineData
       -- LINE SEGMENTS
     | FromTo
         { name : String
@@ -849,6 +860,14 @@ selectedPointsFromTool tool =
             case circleData of
                 CenteredAt data ->
                     onlyAnchorA data
+
+        selectedPointsFromLineData lineData =
+            case lineData of
+                ThroughTwoPoints data ->
+                    anchorAandB data
+
+                ThroughOnePoint data ->
+                    onlyAnchorA data
     in
     case tool of
         CreatePoint _ pointData ->
@@ -863,11 +882,11 @@ selectedPointsFromTool tool =
         EditCircle _ circleData ->
             selectedPointsFromCircleData circleData
 
-        ThroughTwoPoints data ->
-            anchorAandB data
+        CreateLine _ lineData ->
+            selectedPointsFromLineData lineData
 
-        ThroughOnePoint data ->
-            onlyAnchorA data
+        EditLine _ lineData ->
+            selectedPointsFromLineData lineData
 
         FromTo data ->
             anchorAandB data
@@ -958,10 +977,10 @@ selectedLinesFromTool tool =
         EditCircle _ _ ->
             empty
 
-        ThroughTwoPoints _ ->
+        CreateLine _ _ ->
             empty
 
-        ThroughOnePoint _ ->
+        EditLine _ _ ->
             empty
 
         FromTo _ ->
@@ -1027,10 +1046,10 @@ selectedLineSegmentsFromTool tool =
         EditCircle _ _ ->
             empty
 
-        ThroughTwoPoints _ ->
+        CreateLine _ _ ->
             empty
 
-        ThroughOnePoint _ ->
+        EditLine _ _ ->
             empty
 
         FromTo _ ->
@@ -1094,10 +1113,10 @@ selectedDetailsFromTool tool =
         CreateCircle _ _ ->
             empty
 
-        ThroughTwoPoints _ ->
+        CreateLine _ _ ->
             empty
 
-        ThroughOnePoint _ ->
+        EditLine _ _ ->
             empty
 
         FromTo _ ->
@@ -1703,7 +1722,7 @@ viewTool pattern tool =
                     ]
                 ]
 
-        dialog pointData =
+        pointDialog pointData =
             case pointData of
                 LeftOf data ->
                     viewSimpleDistanceTool pattern points "leftof" data
@@ -1735,6 +1754,14 @@ viewTool pattern tool =
                 CircleLine data ->
                     viewCircleLine pattern circles lines data
 
+        lineDialog lineData =
+            case lineData of
+                ThroughTwoPoints data ->
+                    viewThroughTwoPoints pattern points data
+
+                ThroughOnePoint data ->
+                    viewThroughOnePoint pattern points data
+
         btnCreate =
             Element.el [ Element.alignLeft ] <|
                 View.Input.btnPrimary
@@ -1758,10 +1785,10 @@ viewTool pattern tool =
     in
     case tool of
         CreatePoint name pointData ->
-            createDialog name (dialog pointData)
+            createDialog name (pointDialog pointData)
 
         EditPoint thatPoint pointData ->
-            editDialog (pointName pattern thatPoint) (dialog pointData)
+            editDialog (pointName pattern thatPoint) (pointDialog pointData)
 
         CreateCircle name (CenteredAt data) ->
             createDialog name (viewCenteredAt pattern points data)
@@ -1769,11 +1796,11 @@ viewTool pattern tool =
         EditCircle thatCircle (CenteredAt data) ->
             editDialog (circleName pattern thatCircle) (viewCenteredAt pattern points data)
 
-        ThroughTwoPoints data ->
-            createDialog (Valid data.name) (viewThroughTwoPoints pattern points data)
+        CreateLine name lineData ->
+            createDialog name (lineDialog lineData)
 
-        ThroughOnePoint data ->
-            createDialog (Valid data.name) (viewThroughOnePoint pattern points data)
+        EditLine thatLine lineData ->
+            editDialog (lineName pattern thatLine) (lineDialog lineData)
 
         FromTo data ->
             createDialog (Valid data.name) (viewFromTo pattern points data)
@@ -2663,7 +2690,7 @@ viewLines pattern model =
                                 Maybe.withDefault "<no name>" name
                         }
                     , View.Table.columnActions
-                        { onEditPress = always Nothing
+                        { onEditPress = Just << LineEditClicked << Tuple.first
                         , onRemovePress = always Nothing
                         }
                     ]
@@ -2820,6 +2847,7 @@ type Msg
     | CirclesRulerClicked
     | CircleEditClicked (That Circle)
     | LinesRulerClicked
+    | LineEditClicked (That Line)
     | LineSegmentsRulerClicked
     | DetailsRulerClicked
     | DetailRemoveClicked (That Detail)
@@ -2936,6 +2964,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 createCircle toCircleData =
                     CreateCircle (Valid "") << toCircleData
 
+                createLine toLineData =
+                    CreateLine (Valid "") << toLineData
+
                 tool =
                     case toolTag of
                         LeftOfTag ->
@@ -3026,18 +3057,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 }
 
                         ThroughTwoPointsTag ->
-                            ThroughTwoPoints
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
+                            createLine ThroughTwoPoints
+                                { dropdownAnchorA = Dropdown.init
                                 , maybeThatAnchorA = Nothing
                                 , dropdownAnchorB = Dropdown.init
                                 , maybeThatAnchorB = Nothing
                                 }
 
                         ThroughOnePointTag ->
-                            ThroughOnePoint
-                                { name = ""
-                                , dropdownAnchorA = Dropdown.init
+                            createLine ThroughOnePoint
+                                { dropdownAnchorA = Dropdown.init
                                 , maybeThatAnchorA = Nothing
                                 , angle = ""
                                 }
@@ -3230,11 +3259,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Just (EditCircle _ _) ->
                     ( model, Cmd.none, Nothing )
 
-                Just (ThroughTwoPoints data) ->
-                    updateName ThroughTwoPoints data
+                Just (CreateLine name toolData) ->
+                    ( { model
+                        | maybeTool =
+                            Just (CreateLine (updateValue newName name) toolData)
+                      }
+                    , Cmd.none
+                    , Nothing
+                    )
 
-                Just (ThroughOnePoint data) ->
-                    updateName ThroughOnePoint data
+                Just (EditLine _ _) ->
+                    ( model, Cmd.none, Nothing )
 
                 Just (FromTo data) ->
                     updateName FromTo data
@@ -3258,6 +3293,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
 
+                updateLineDataWith toTool lineData =
+                    case lineData of
+                        ThroughOnePoint data ->
+                            updateDataWith (toTool << ThroughOnePoint) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | angle = newAngle }) }
                     , Cmd.none
@@ -3271,8 +3314,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Just (EditPoint thatPoint pointData) ->
                     updatePointDataWith (EditPoint thatPoint) pointData
 
-                Just (ThroughOnePoint data) ->
-                    updateDataWith ThroughOnePoint data
+                Just (CreateLine name pointData) ->
+                    updateLineDataWith (CreateLine name) pointData
+
+                Just (EditLine thatLine pointData) ->
+                    updateLineDataWith (EditLine thatLine) pointData
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -3425,6 +3471,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         CenteredAt data ->
                             updateDataWith (toTool << CenteredAt) data
 
+                updateLineDataWith toTool lineData =
+                    case lineData of
+                        ThroughTwoPoints data ->
+                            updateDataWith (toTool << ThroughTwoPoints) data
+
+                        ThroughOnePoint data ->
+                            updateDataWith (toTool << ThroughOnePoint) data
+
                 updateDataWith toTool data =
                     let
                         ( newDropdown, dropdownCmd, newMaybeThatAnchor ) =
@@ -3461,11 +3515,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Just (EditCircle thatCircle circleData) ->
                     updateCircleDataWith (EditCircle thatCircle) circleData
 
-                Just (ThroughTwoPoints data) ->
-                    updateDataWith ThroughTwoPoints data
+                Just (CreateLine name circleData) ->
+                    updateLineDataWith (CreateLine name) circleData
 
-                Just (ThroughOnePoint data) ->
-                    updateDataWith ThroughOnePoint data
+                Just (EditLine thatLine circleData) ->
+                    updateLineDataWith (EditLine thatLine) circleData
 
                 Just (FromTo data) ->
                     updateDataWith FromTo data
@@ -3482,6 +3536,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         BetweenLength data ->
                             updateDataWith (toTool << BetweenLength) data
+
+                        _ ->
+                            ( model, Cmd.none, Nothing )
+
+                updateLineDataWith toTool lineData =
+                    case lineData of
+                        ThroughTwoPoints data ->
+                            updateDataWith (toTool << ThroughTwoPoints) data
 
                         _ ->
                             ( model, Cmd.none, Nothing )
@@ -3518,8 +3580,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         EditPoint thatPoint pointData ->
                             updatePointDataWith (EditPoint thatPoint) pointData
 
-                        ThroughTwoPoints data ->
-                            updateDataWith ThroughTwoPoints data
+                        CreateLine name pointData ->
+                            updateLineDataWith (CreateLine name) pointData
+
+                        EditLine thatLine pointData ->
+                            updateLineDataWith (EditLine thatLine) pointData
 
                         FromTo data ->
                             updateDataWith FromTo data
@@ -4495,26 +4560,47 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 Just (EditCircle _ _) ->
                     ( model, Cmd.none, Nothing )
 
-                Just (ThroughTwoPoints data) ->
-                    Maybe.map2
-                        (\thatAnchorA thatAnchorB ->
-                            Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
-                                |> Maybe.map (insertLine data.name storedPattern model)
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                Just (CreateLine name lineData) ->
+                    if valueOf name == "" then
+                        let
+                            newName =
+                                Invalid (valueOf name) "Enter a name"
+                        in
+                        ( { model | maybeTool = Just (CreateLine newName lineData) }
+                        , Browser.Dom.focus "validation-messages"
+                            |> Task.attempt (\_ -> NoOp)
+                        , Nothing
                         )
-                        data.maybeThatAnchorA
-                        data.maybeThatAnchorB
-                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Just (ThroughOnePoint data) ->
-                    Maybe.map
-                        (\thatAnchorA ->
-                            Pattern.throughOnePoint pattern thatAnchorA data.angle
-                                |> Maybe.map (insertLine data.name storedPattern model)
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
-                        )
-                        data.maybeThatAnchorA
-                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                    else
+                        let
+                            actualName =
+                                valueOf name
+                        in
+                        case lineData of
+                            ThroughTwoPoints data ->
+                                Maybe.map2
+                                    (\thatAnchorA thatAnchorB ->
+                                        Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
+                                            |> Maybe.map (insertLine actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    )
+                                    data.maybeThatAnchorA
+                                    data.maybeThatAnchorB
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                            ThroughOnePoint data ->
+                                Maybe.map
+                                    (\thatAnchorA ->
+                                        Pattern.throughOnePoint pattern thatAnchorA data.angle
+                                            |> Maybe.map (insertLine actualName storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    )
+                                    data.maybeThatAnchorA
+                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                Just (EditLine _ _) ->
+                    ( model, Cmd.none, Nothing )
 
                 Just (FromTo data) ->
                     case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
@@ -4803,6 +4889,41 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatLineA
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
+                Just (EditCircle thatCircle circleData) ->
+                    case circleData of
+                        CenteredAt data ->
+                            case data.maybeThatAnchorA of
+                                Nothing ->
+                                    ( model, Cmd.none, Nothing )
+
+                                Just thatAnchor ->
+                                    Pattern.centeredAt pattern thatAnchor data.radius
+                                        |> Maybe.map (updateCircle thatCircle storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                Just (EditLine thatLine lineData) ->
+                    case lineData of
+                        ThroughTwoPoints data ->
+                            Maybe.map2
+                                (\thatAnchorA thatAnchorB ->
+                                    Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
+                                        |> Maybe.map (updateLine thatLine storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                )
+                                data.maybeThatAnchorA
+                                data.maybeThatAnchorB
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
+                        ThroughOnePoint data ->
+                            Maybe.map
+                                (\thatAnchorA ->
+                                    Pattern.throughOnePoint pattern thatAnchorA data.angle
+                                        |> Maybe.map (updateLine thatLine storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                )
+                                data.maybeThatAnchorA
+                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+
                 _ ->
                     ( model, Cmd.none, Nothing )
 
@@ -4933,6 +5054,38 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             , Nothing
             )
 
+        LineEditClicked thatLine ->
+            case Pattern.getLine pattern thatLine of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just { name, value } ->
+                    let
+                        editLine toLineData =
+                            EditLine thatLine << toLineData
+
+                        tool =
+                            case value of
+                                Pattern.ThroughTwoPoints thatAnchorA thatAnchorB ->
+                                    editLine ThroughTwoPoints
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchorA
+                                        , dropdownAnchorB = Dropdown.init
+                                        , maybeThatAnchorB = Just thatAnchorB
+                                        }
+
+                                Pattern.ThroughOnePoint thatAnchorA angle ->
+                                    editLine ThroughOnePoint
+                                        { dropdownAnchorA = Dropdown.init
+                                        , maybeThatAnchorA = Just thatAnchorA
+                                        , angle = angle
+                                        }
+                    in
+                    ( { model | maybeTool = Just tool }
+                    , Cmd.none
+                    , Nothing
+                    )
+
         LineSegmentsRulerClicked ->
             ( { model | lineSegmentsVisible = not model.lineSegmentsVisible }
             , Cmd.none
@@ -5028,6 +5181,17 @@ insertCircle name viewedPattern model newCircle =
     )
 
 
+updateCircle thatCircle viewedPattern model newCircle =
+    let
+        newPattern =
+            Pattern.updateCircle thatCircle newCircle viewedPattern.pattern
+    in
+    ( { model | maybeTool = Nothing }
+    , Cmd.none
+    , Just { viewedPattern | pattern = newPattern }
+    )
+
+
 insertLine name viewedPattern model newLine =
     let
         ( newPattern, _ ) =
@@ -5040,6 +5204,17 @@ insertLine name viewedPattern model newLine =
                 )
                 newLine
                 viewedPattern.pattern
+    in
+    ( { model | maybeTool = Nothing }
+    , Cmd.none
+    , Just { viewedPattern | pattern = newPattern }
+    )
+
+
+updateLine thatLine viewedPattern model newLine =
+    let
+        newPattern =
+            Pattern.updateLine thatLine newLine viewedPattern.pattern
     in
     ( { model | maybeTool = Nothing }
     , Cmd.none

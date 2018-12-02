@@ -13,9 +13,9 @@ module Pattern exposing
     , atAngle
     , betweenRatio, betweenLength
     , firstCircleCircle, secondCircleCircle, lineLine, firstCircleLine, secondCircleLine
-    , Circle(..), circles, insertCircle, getCircle
+    , Circle(..), circles, insertCircle, getCircle, updateCircle
     , centeredAt
-    , Line(..), lines, insertLine, getLine
+    , Line(..), lines, insertLine, getLine, updateLine
     , throughTwoPoints, throughOnePoint
     , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
     , Detail(..), Connection(..), details, insertDetail, deleteDetail, getDetail
@@ -53,7 +53,7 @@ module Pattern exposing
 
 ## Points
 
-@docs Point, points, insertPoint, getPoint, updatePoint, replacePoint, removePoint
+@docs Point, points, insertPoint, getPoint, updatePoint
 
 @docs origin
 
@@ -68,14 +68,14 @@ module Pattern exposing
 
 ## Circles
 
-@docs Circle, circles, insertCircle, getCircle, replaceCircle, removeCircle
+@docs Circle, circles, insertCircle, getCircle, updateCircle
 
 @docs centeredAt
 
 
 ## Lines
 
-@docs Line, lines, insertLine, getLine
+@docs Line, lines, insertLine, getLine, updateLine
 
 @docs throughTwoPoints, throughOnePoint
 
@@ -1154,6 +1154,16 @@ getCircleGeometry pattern thatCircle =
     circle2d pattern thatCircle
 
 
+updateCircle : That Circle -> Circle -> Pattern -> Pattern
+updateCircle thatcircle circle (Pattern pattern) =
+    Pattern
+        { pattern
+            | circles =
+                Store.updateValue (That.objectId thatcircle) circle pattern.circles
+            , cache = Nothing
+        }
+
+
 insertCircle : Maybe String -> Circle -> Pattern -> ( Pattern, That Circle )
 insertCircle name circle (Pattern pattern) =
     let
@@ -1203,6 +1213,16 @@ insertLine maybeName line (Pattern pattern) =
         }
     , that id
     )
+
+
+updateLine : That Line -> Line -> Pattern -> Pattern
+updateLine thatLine line (Pattern pattern) =
+    Pattern
+        { pattern
+            | lines =
+                Store.updateValue (That.objectId thatLine) line pattern.lines
+            , cache = Nothing
+        }
 
 
 
