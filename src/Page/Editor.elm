@@ -84,6 +84,7 @@ import VoronoiDiagram2d
 type alias Model =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
+    , maybeModal : Maybe Modal
 
     -- PATTERN
     , hoveredPoint : Maybe (That Point)
@@ -120,6 +121,10 @@ type alias Position =
     { x : Float
     , y : Float
     }
+
+
+type Modal
+    = DetailDeleteConfirm (That Detail)
 
 
 type VariableDialog
@@ -1064,6 +1069,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { maybeDrag = Nothing
       , patternContainerDimensions = Nothing
+      , maybeModal = Nothing
       , hoveredPoint = Nothing
       , maybeTool = Nothing
       , preventActionMenuClose = False
@@ -1106,10 +1112,109 @@ view prefix storedPattern model =
                     }
                 , Font.sansSerif
                 ]
+            , Element.inFront <|
+                case model.maybeModal of
+                    Nothing ->
+                        Element.none
+
+                    Just modal ->
+                        viewModal storedPattern.pattern modal
             ]
             (viewEditor prefix storedPattern model)
         ]
     }
+
+
+viewModal : Pattern -> Modal -> Element Msg
+viewModal pattern modal =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Background.color View.Design.grayDark
+        ]
+        (case modal of
+            DetailDeleteConfirm thatDetail ->
+                Element.column
+                    [ Element.centerX
+                    , Element.centerY
+                    , Element.width (Element.px 400)
+                    , Border.width 1
+                    , Border.rounded 4
+                    , Border.color View.Design.black
+                    , View.Design.fontNormal
+                    , Background.color View.Design.white
+                    , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
+                    , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
+                    , Element.htmlAttribute <|
+                        Html.Attributes.attribute "aria-labelledby" "dialog--title"
+                    , Element.htmlAttribute <|
+                        Html.Attributes.attribute "aria-describedby" "dialog--body"
+
+                    -- TODO: fix display error in Chromium with scale-factor=1.5
+                    , Element.htmlAttribute (Html.Attributes.style "padding-left" "1px")
+                    , Element.htmlAttribute (Html.Attributes.style "padding-right" "1px")
+                    ]
+                    [ Element.row
+                        [ Element.width Element.fill
+                        , Element.padding View.Design.small
+                        , Background.color View.Design.secondary
+                        , Border.roundEach
+                            { topLeft = 4
+                            , topRight = 4
+                            , bottomLeft = 0
+                            , bottomRight = 0
+                            }
+                        ]
+                        [ Element.el
+                            [ Element.htmlAttribute (Html.Attributes.id "dialog--title")
+                            , Element.centerX
+                            , Font.bold
+                            ]
+                            (Element.text <|
+                                "Delete «"
+                                    ++ detailName pattern thatDetail
+                                    ++ "»?"
+                            )
+                        , Element.el [ Element.alignRight ] <|
+                            View.Input.btnIcon
+                                { onPress = Just DetailRemoveDialogCancelClicked
+                                , icon = "times"
+                                }
+                        ]
+                    , Element.paragraph
+                        [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                        , Element.width Element.fill
+                        , Element.padding View.Design.normal
+                        , Background.color View.Design.white
+                        ]
+                        [ Element.text "Do you want to remove the detail "
+                        , Element.el [ Font.bold ]
+                            (Element.text ("«" ++ detailName pattern thatDetail ++ "»"))
+                        , Element.text "?"
+                        ]
+                    , Element.row
+                        [ Element.width Element.fill
+                        , Element.padding View.Design.small
+                        , Border.widthEach
+                            { top = 1
+                            , bottom = 0
+                            , left = 0
+                            , right = 0
+                            }
+                        , Border.color View.Design.secondary
+                        ]
+                        [ View.Input.btnDanger
+                            { onPress = Just DetailRemoveDialogDeleteClicked
+                            , label = "Delete detail"
+                            }
+                        , Element.el [ Element.alignRight ] <|
+                            View.Input.btnCancel
+                                { onPress = Just DetailRemoveDialogCancelClicked
+                                , label = "Cancel"
+                                }
+                        ]
+                    ]
+        )
 
 
 viewEditor : String -> StoredPattern -> Model -> Element Msg
@@ -2545,7 +2650,9 @@ viewDetails pattern model =
                         }
                     , View.Table.columnActions
                         { onEditPress = always Nothing
-                        , onRemovePress = always Nothing
+                        , onRemovePress =
+                            \( thatDetail, _ ) ->
+                                Just (DetailRemoveClicked thatDetail)
                         }
                     ]
                 }
@@ -2609,6 +2716,9 @@ type Msg
     | LinesRulerClicked
     | LineSegmentsRulerClicked
     | DetailsRulerClicked
+    | DetailRemoveClicked (That Detail)
+    | DetailRemoveDialogDeleteClicked
+    | DetailRemoveDialogCancelClicked
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
@@ -4647,6 +4757,33 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
         DetailsRulerClicked ->
             ( { model | detailsVisible = not model.detailsVisible }
+            , Cmd.none
+            , Nothing
+            )
+
+        DetailRemoveClicked thatDetail ->
+            ( { model | maybeModal = Just (DetailDeleteConfirm thatDetail) }
+            , Cmd.none
+            , Nothing
+            )
+
+        DetailRemoveDialogDeleteClicked ->
+            case model.maybeModal of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just (DetailDeleteConfirm thatDetail) ->
+                    let
+                        newPattern =
+                            Pattern.deleteDetail thatDetail pattern
+                    in
+                    ( { model | maybeModal = Nothing }
+                    , Cmd.none
+                    , Just { storedPattern | pattern = newPattern }
+                    )
+
+        DetailRemoveDialogCancelClicked ->
+            ( { model | maybeModal = Nothing }
             , Cmd.none
             , Nothing
             )

@@ -1,5 +1,6 @@
 module View.Input exposing
     ( btnCancel
+    , btnDanger
     , btnIcon
     , btnIconLarge
     , btnPrimary
@@ -78,6 +79,24 @@ btnSecondaryHelp width id { onPress, label } =
         , Design.fontSmall
         , Element.mouseOver
             [ Background.color Design.secondaryDark ]
+        , Element.htmlAttribute <|
+            Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
+        ]
+        { onPress = onPress
+        , label =
+            Element.text label
+        }
+
+
+btnDanger : { onPress : Maybe msg, label : String } -> Element msg
+btnDanger { onPress, label } =
+    Input.button
+        [ Element.paddingXY 18 10
+        , Background.color Design.danger
+        , Font.color Design.white
+        , Design.fontSmall
+        , Element.mouseOver
+            [ Background.color Design.dangerDark ]
         , Element.htmlAttribute <|
             Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
         ]

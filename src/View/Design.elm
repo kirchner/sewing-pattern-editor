@@ -1,5 +1,7 @@
 module View.Design exposing
     ( black
+    , danger
+    , dangerDark
     , fontNormal
     , fontSmall
     , grayDark
@@ -118,6 +120,14 @@ secondary =
 
 secondaryDark =
     Element.rgb255 217 215 205
+
+
+danger =
+    Element.rgb255 220 71 63
+
+
+dangerDark =
+    Element.rgb255 180 33 25
 
 
 

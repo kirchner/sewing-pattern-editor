@@ -8,6 +8,7 @@ module Store exposing
     , getByName
     , insert
     , member
+    , remove
     , toList
     , updateValue
     , values
@@ -74,6 +75,11 @@ insert name value (Store store) =
         }
     , id
     )
+
+
+remove : Int -> Store a -> Store a
+remove id (Store store) =
+    Store { store | entries = Dict.remove id store.entries }
 
 
 get : Store a -> Int -> Maybe (Entry a)
