@@ -87,14 +87,15 @@ type alias Model =
 
     -- PATTERN
     , hoveredPoint : Maybe (That Point)
-    , dialog : Dialog
 
     -- LEFT TOOLBAR
+    , maybeTool : Maybe Tool
     , preventActionMenuClose : Bool
 
     -- RIGHT TOOLBAR
     , rightToolbarVisible : Bool
     , variablesVisible : Bool
+    , maybeVariableDialog : Maybe VariableDialog
     , pointsVisible : Bool
     , circlesVisible : Bool
     , linesVisible : Bool
@@ -121,10 +122,8 @@ type alias Position =
     }
 
 
-type Dialog
-    = NoDialog
-    | Tool Tool
-    | CreateVariable
+type VariableDialog
+    = VariableDialogCreate
         { name : String
         , value : String
         }
@@ -885,10 +884,11 @@ init =
     ( { maybeDrag = Nothing
       , patternContainerDimensions = Nothing
       , hoveredPoint = Nothing
-      , dialog = NoDialog
+      , maybeTool = Nothing
       , preventActionMenuClose = False
       , rightToolbarVisible = True
       , variablesVisible = True
+      , maybeVariableDialog = Nothing
       , pointsVisible = False
       , circlesVisible = False
       , linesVisible = False
@@ -1018,12 +1018,12 @@ viewLeftToolbar prefix pattern model =
             }
         , Border.color View.Design.black
         ]
-        [ case model.dialog of
-            Tool tool ->
-                viewTool pattern tool
-
-            _ ->
+        [ case model.maybeTool of
+            Nothing ->
                 viewToolSelector prefix
+
+            Just tool ->
+                viewTool pattern tool
         ]
 
 
@@ -1042,8 +1042,7 @@ viewWorkspace storedPattern model =
                 model.patternContainerDimensions
                 model.maybeDrag
                 storedPattern
-                model.hoveredPoint
-                model.dialog
+                model
         )
 
 
@@ -1051,40 +1050,31 @@ viewPattern :
     Maybe Dimensions
     -> Maybe Drag
     -> StoredPattern
-    -> Maybe (That Point)
-    -> Dialog
+    -> Model
     -> Html Msg
-viewPattern maybeDimensions maybeDrag storedPattern hoveredPoint dialog =
+viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
             storedPattern
 
         selections =
             { points =
-                maybeTool
+                model.maybeTool
                     |> Maybe.map selectedPointsFromTool
                     |> Maybe.withDefault (Those.fromList [])
             , lines =
-                maybeTool
+                model.maybeTool
                     |> Maybe.map selectedLinesFromTool
                     |> Maybe.withDefault (Those.fromList [])
             , lineSegments =
-                maybeTool
+                model.maybeTool
                     |> Maybe.map selectedLineSegmentsFromTool
                     |> Maybe.withDefault (Those.fromList [])
             , details =
-                maybeTool
+                model.maybeTool
                     |> Maybe.map selectedDetailsFromTool
                     |> Maybe.withDefault (Those.fromList [])
             }
-
-        maybeTool =
-            case dialog of
-                Tool tool ->
-                    Just tool
-
-                _ ->
-                    Nothing
 
         localFrame =
             ( x, y )
@@ -1125,7 +1115,7 @@ viewPattern maybeDimensions maybeDrag storedPattern hoveredPoint dialog =
                 [ Svg.relativeTo localFrame <|
                     Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
                         Svg.g []
-                            [ Pattern.draw selections True zoom hoveredPoint pattern
+                            [ Pattern.draw selections True zoom model.hoveredPoint pattern
                             , Svg.Lazy.lazy drawHoverPolygons storedPattern
                             ]
                 ]
@@ -1247,11 +1237,8 @@ viewRightToolbar pattern model =
                 , Element.spacing View.Design.xSmall
                 , Element.scrollbarY
                 ]
-                (case model.dialog of
-                    CreateVariable { name, value } ->
-                        [ viewVariable name value ]
-
-                    _ ->
+                (case model.maybeVariableDialog of
+                    Nothing ->
                         [ viewVariables pattern model
                         , viewPoints pattern model
                         , viewCircles pattern model
@@ -1259,6 +1246,9 @@ viewRightToolbar pattern model =
                         , viewLineSegments pattern model
                         , viewDetails pattern model
                         ]
+
+                    Just (VariableDialogCreate { name, value }) ->
+                        [ viewVariable name value ]
                 )
 
           else
@@ -1416,7 +1406,7 @@ viewTool pattern tool =
                             }
             , Element.el [ Element.alignRight ] <|
                 View.Input.btnCancel
-                    { onPress = Just CancelClicked
+                    { onPress = Just ToolDialogCancelClicked
                     , label = "Cancel"
                     }
             ]
@@ -2031,12 +2021,12 @@ viewVariable name value =
             ]
             [ Element.el [ Element.alignLeft ] <|
                 View.Input.btnPrimary
-                    { onPress = Just CreateClicked
+                    { onPress = Just VariableCreateSubmitClicked
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
                 View.Input.btnCancel
-                    { onPress = Just CancelClicked
+                    { onPress = Just VariableDialogCancelClicked
                     , label = "Cancel"
                     }
             ]
@@ -2408,20 +2398,23 @@ type Msg
       -- TOOL ACTIONS
     | CreateClicked
     | UpdateClicked
-    | CancelClicked
+    | ToolDialogCancelClicked
       -- PATTERN
     | PointHovered (Maybe (That Point))
       -- RIGHT TOOLBAR
     | ToolbarToggleClicked
     | VariablesRulerClicked
     | VariableCreateClicked
-    | VariableNameChanged String
-    | VariableValueChanged String
     | PointsRulerClicked
     | CirclesRulerClicked
     | LinesRulerClicked
     | LineSegmentsRulerClicked
     | DetailsRulerClicked
+      -- VARIABLE DIALOG
+    | VariableNameChanged String
+    | VariableValueChanged String
+    | VariableCreateSubmitClicked
+    | VariableDialogCancelClicked
 
 
 update :
@@ -2664,7 +2657,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     , firstPointMaybeThat = Nothing
                                     }
             in
-            ( { model | dialog = Tool tool }
+            ( { model | maybeTool = Just tool }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             , Nothing
@@ -2682,8 +2675,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.LeftOf thatAnchor distance ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             LeftOf
                                                 { dropdownAnchorA = Dropdown.init
@@ -2697,8 +2690,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.RightOf thatAnchor distance ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             RightOf
                                                 { dropdownAnchorA = Dropdown.init
@@ -2712,8 +2705,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.Above thatAnchor distance ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             Above
                                                 { dropdownAnchorA = Dropdown.init
@@ -2727,8 +2720,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.Below thatAnchor distance ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             Below
                                                 { dropdownAnchorA = Dropdown.init
@@ -2742,8 +2735,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.AtAngle thatAnchor angle distance ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             AtAngle
                                                 { dropdownAnchorA = Dropdown.init
@@ -2758,8 +2751,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.BetweenRatio thatAnchorA thatAnchorB ratio ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             BetweenRatio
                                                 { dropdownAnchorA = Dropdown.init
@@ -2775,8 +2768,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.BetweenLength thatAnchorA thatAnchorB length ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             BetweenLength
                                                 { dropdownAnchorA = Dropdown.init
@@ -2792,8 +2785,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.LineLine thatLineA thatLineB ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             LineLine
                                                 { dropdownLineA = Dropdown.init
@@ -2808,8 +2801,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.FirstCircleCircle thatCircleA thatCircleB ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             CircleCircle
                                                 { dropdownCircleA = Dropdown.init
@@ -2825,8 +2818,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.SecondCircleCircle thatCircleA thatCircleB ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             CircleCircle
                                                 { dropdownCircleA = Dropdown.init
@@ -2842,8 +2835,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.FirstCircleLine thatCircle thatLine ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             CircleLine
                                                 { dropdownCircleA = Dropdown.init
@@ -2859,8 +2852,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
                         Pattern.SecondCircleLine thatCircle thatLine ->
                             ( { model
-                                | dialog =
-                                    Tool <|
+                                | maybeTool =
+                                    Just <|
                                         EditPoint thatPoint <|
                                             CircleLine
                                                 { dropdownCircleA = Dropdown.init
@@ -2881,47 +2874,46 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         NameChanged newName ->
             let
                 updateName toTool data =
-                    ( { model | dialog = Tool (toTool { data | name = newName }) }
+                    ( { model | maybeTool = Just (toTool { data | name = newName }) }
                     , Cmd.none
                     , Nothing
                     )
             in
-            case model.dialog of
-                NoDialog ->
+            case model.maybeTool of
+                --CreateVariable _ ->
+                --    ( model, Cmd.none, Nothing )
+                Nothing ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (CreatePoint name toolData) ->
-                    ( { model | dialog = Tool (CreatePoint newName toolData) }
+                Just (CreatePoint name toolData) ->
+                    ( { model | maybeTool = Just (CreatePoint newName toolData) }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (EditPoint _ _) ->
+                Just (EditPoint _ _) ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (CenteredAt data) ->
+                Just (CenteredAt data) ->
                     updateName CenteredAt data
 
-                Tool (ThroughTwoPoints data) ->
+                Just (ThroughTwoPoints data) ->
                     updateName ThroughTwoPoints data
 
-                Tool (ThroughOnePoint data) ->
+                Just (ThroughOnePoint data) ->
                     updateName ThroughOnePoint data
 
-                Tool (FromTo data) ->
+                Just (FromTo data) ->
                     updateName FromTo data
 
-                Tool (MirrorAt _) ->
+                Just (MirrorAt _) ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (Detail (DetailOnePoint data)) ->
+                Just (Detail (DetailOnePoint data)) ->
                     updateName (Detail << DetailOnePoint) data
 
-                Tool (Detail (DetailManyPoints data)) ->
+                Just (Detail (DetailManyPoints data)) ->
                     updateName (Detail << DetailManyPoints) data
-
-                CreateVariable _ ->
-                    ( model, Cmd.none, Nothing )
 
         AngleChanged newAngle ->
             let
@@ -2936,25 +2928,25 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             pointData
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     ( { model
-                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     ( { model
-                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (ThroughOnePoint data) ->
-                    ( { model | dialog = Tool (ThroughOnePoint { data | angle = newAngle }) }
+                Just (ThroughOnePoint data) ->
+                    ( { model | maybeTool = Just (ThroughOnePoint { data | angle = newAngle }) }
                     , Cmd.none
                     , Nothing
                     )
@@ -2987,18 +2979,18 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             pointData
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     ( { model
-                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     ( { model
-                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
@@ -3020,18 +3012,18 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             pointData
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     ( { model
-                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     ( { model
-                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
@@ -3053,18 +3045,18 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             pointData
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     ( { model
-                        | dialog = Tool (CreatePoint name (updatePointData pointData))
+                        | maybeTool = Just (CreatePoint name (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
                     )
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     ( { model
-                        | dialog = Tool (EditPoint thatPoint (updatePointData pointData))
+                        | maybeTool = Just (EditPoint thatPoint (updatePointData pointData))
                       }
                     , Cmd.none
                     , Nothing
@@ -3074,9 +3066,9 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         RadiusChanged newRadius ->
-            case model.dialog of
-                Tool (CenteredAt data) ->
-                    ( { model | dialog = Tool (CenteredAt { data | radius = newRadius }) }
+            case model.maybeTool of
+                Just (CenteredAt data) ->
+                    ( { model | maybeTool = Just (CenteredAt { data | radius = newRadius }) }
                     , Cmd.none
                     , Nothing
                     )
@@ -3112,23 +3104,23 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     updateDropdown (CreatePoint name) pointData
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     updateDropdown (EditPoint thatPoint) pointData
 
-                Tool (CenteredAt data) ->
+                Just (CenteredAt data) ->
                     updateDropdownAnchorA pattern model CenteredAt dropdownMsg data
 
-                Tool (ThroughTwoPoints data) ->
+                Just (ThroughTwoPoints data) ->
                     updateDropdownAnchorA pattern model ThroughTwoPoints dropdownMsg data
 
-                Tool (ThroughOnePoint data) ->
+                Just (ThroughOnePoint data) ->
                     updateDropdownAnchorA pattern model ThroughOnePoint dropdownMsg data
 
-                Tool (FromTo data) ->
+                Just (FromTo data) ->
                     updateDropdownAnchorA pattern model FromTo dropdownMsg data
 
                 _ ->
@@ -3147,56 +3139,56 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     updateDropdown (CreatePoint name) pointData
 
-                Tool (EditPoint thatPoint pointData) ->
+                Just (EditPoint thatPoint pointData) ->
                     updateDropdown (EditPoint thatPoint) pointData
 
-                Tool (ThroughTwoPoints data) ->
+                Just (ThroughTwoPoints data) ->
                     updateDropdownAnchorB pattern model ThroughTwoPoints dropdownMsg data
 
-                Tool (FromTo data) ->
+                Just (FromTo data) ->
                     updateDropdownAnchorB pattern model FromTo dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownLineAMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CreatePoint name (CircleLine data)) ->
+            case model.maybeTool of
+                Just (CreatePoint name (CircleLine data)) ->
                     updateDropdownLineA pattern model (CreatePoint name << CircleLine) dropdownMsg data
 
-                Tool (CreatePoint name (LineLine data)) ->
+                Just (CreatePoint name (LineLine data)) ->
                     updateDropdownLineA pattern model (CreatePoint name << LineLine) dropdownMsg data
 
-                Tool (EditPoint thatPoint (CircleLine data)) ->
+                Just (EditPoint thatPoint (CircleLine data)) ->
                     updateDropdownLineA pattern model (EditPoint thatPoint << CircleLine) dropdownMsg data
 
-                Tool (EditPoint thatPoint (LineLine data)) ->
+                Just (EditPoint thatPoint (LineLine data)) ->
                     updateDropdownLineA pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
 
-                Tool (MirrorAt data) ->
+                Just (MirrorAt data) ->
                     updateDropdownLineA pattern model MirrorAt dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownLineBMsg dropdownMsg ->
-            case model.dialog of
-                Tool (CreatePoint name (LineLine data)) ->
+            case model.maybeTool of
+                Just (CreatePoint name (LineLine data)) ->
                     updateDropdownLineB pattern model (CreatePoint name << LineLine) dropdownMsg data
 
-                Tool (EditPoint thatPoint (LineLine data)) ->
+                Just (EditPoint thatPoint (LineLine data)) ->
                     updateDropdownLineB pattern model (EditPoint thatPoint << LineLine) dropdownMsg data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         ListboxPointsMsg listboxMsg ->
-            case model.dialog of
-                Tool (MirrorAt data) ->
+            case model.maybeTool of
+                Just (MirrorAt data) ->
                     let
                         ( newListbox, listboxCmd, newPoints ) =
                             Listbox.update listboxUpdateConfig
@@ -3208,8 +3200,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 (Those.toList data.thosePoints)
                     in
                     ( { model
-                        | dialog =
-                            Tool <|
+                        | maybeTool =
+                            Just <|
                                 MirrorAt
                                     { data
                                         | listbox = newListbox
@@ -3237,7 +3229,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatCircleA
                     in
                     ( { model
-                        | dialog =
+                        | maybeTool =
                             toTool
                                 { data
                                     | dropdownCircleA = newDropdown
@@ -3248,18 +3240,18 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     , Nothing
                     )
             in
-            case model.dialog of
-                Tool (CreatePoint name (CircleCircle data)) ->
-                    updateCircleA (Tool << CreatePoint name << CircleCircle) data
+            case model.maybeTool of
+                Just (CreatePoint name (CircleCircle data)) ->
+                    updateCircleA (Just << CreatePoint name << CircleCircle) data
 
-                Tool (CreatePoint name (CircleLine data)) ->
-                    updateCircleA (Tool << CreatePoint name << CircleLine) data
+                Just (CreatePoint name (CircleLine data)) ->
+                    updateCircleA (Just << CreatePoint name << CircleLine) data
 
-                Tool (EditPoint thatPoint (CircleCircle data)) ->
-                    updateCircleA (Tool << EditPoint thatPoint << CircleCircle) data
+                Just (EditPoint thatPoint (CircleCircle data)) ->
+                    updateCircleA (Just << EditPoint thatPoint << CircleCircle) data
 
-                Tool (EditPoint thatPoint (CircleLine data)) ->
-                    updateCircleA (Tool << EditPoint thatPoint << CircleLine) data
+                Just (EditPoint thatPoint (CircleLine data)) ->
+                    updateCircleA (Just << EditPoint thatPoint << CircleLine) data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -3278,7 +3270,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatCircleB
                     in
                     ( { model
-                        | dialog =
+                        | maybeTool =
                             toTool
                                 { data
                                     | dropdownCircleB = newDropdown
@@ -3289,12 +3281,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     , Nothing
                     )
             in
-            case model.dialog of
-                Tool (CreatePoint name (CircleCircle data)) ->
-                    updateCircleB (Tool << CreatePoint name << CircleCircle) data
+            case model.maybeTool of
+                Just (CreatePoint name (CircleCircle data)) ->
+                    updateCircleB (Just << CreatePoint name << CircleCircle) data
 
-                Tool (EditPoint thatPoint (CircleCircle data)) ->
-                    updateCircleB (Tool << EditPoint thatPoint << CircleCircle) data
+                Just (EditPoint thatPoint (CircleCircle data)) ->
+                    updateCircleB (Just << EditPoint thatPoint << CircleCircle) data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
@@ -3302,30 +3294,30 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
         FirstChanged newFirst ->
             let
                 updateFirst toTool data =
-                    ( { model | dialog = toTool { data | first = newFirst } }
+                    ( { model | maybeTool = toTool { data | first = newFirst } }
                     , Cmd.none
                     , Nothing
                     )
             in
-            case model.dialog of
-                Tool (CreatePoint name (CircleCircle data)) ->
-                    updateFirst (Tool << CreatePoint name << CircleCircle) data
+            case model.maybeTool of
+                Just (CreatePoint name (CircleCircle data)) ->
+                    updateFirst (Just << CreatePoint name << CircleCircle) data
 
-                Tool (CreatePoint name (CircleLine data)) ->
-                    updateFirst (Tool << CreatePoint name << CircleLine) data
+                Just (CreatePoint name (CircleLine data)) ->
+                    updateFirst (Just << CreatePoint name << CircleLine) data
 
-                Tool (EditPoint thatPoint (CircleCircle data)) ->
-                    updateFirst (Tool << EditPoint thatPoint << CircleCircle) data
+                Just (EditPoint thatPoint (CircleCircle data)) ->
+                    updateFirst (Just << EditPoint thatPoint << CircleCircle) data
 
-                Tool (EditPoint thatPoint (CircleLine data)) ->
-                    updateFirst (Tool << EditPoint thatPoint << CircleLine) data
+                Just (EditPoint thatPoint (CircleLine data)) ->
+                    updateFirst (Just << EditPoint thatPoint << CircleLine) data
 
                 _ ->
                     ( model, Cmd.none, Nothing )
 
         DropdownPointMsg index dropdownMsg ->
-            case model.dialog of
-                Tool (Detail (DetailOnePoint data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailOnePoint data)) ->
                     if index /= 0 then
                         ( model, Cmd.none, Nothing )
 
@@ -3346,12 +3338,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     , firstPointMaybeThat = newMaybeThatPoint
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
                         , Cmd.map (DropdownPointMsg index) dropdownCmd
                         , Nothing
                         )
 
-                Tool (Detail (DetailManyPoints data)) ->
+                Just (Detail (DetailManyPoints data)) ->
                     if index < 0 || index > 1 + List.length data.otherPoints then
                         ( model, Cmd.none, Nothing )
 
@@ -3372,7 +3364,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     , firstPointMaybeThat = newMaybeThatPoint
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.map (DropdownPointMsg index) dropdownCmd
                         , Nothing
                         )
@@ -3394,7 +3386,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     , secondPointMaybeThat = newMaybeThatPoint
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.map (DropdownPointMsg index) dropdownCmd
                         , Nothing
                         )
@@ -3429,8 +3421,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         }
                                 in
                                 ( { model
-                                    | dialog =
-                                        Tool (Detail (DetailManyPoints newData))
+                                    | maybeTool =
+                                        Just (Detail (DetailManyPoints newData))
                                   }
                                 , Cmd.map (DropdownPointMsg index) dropdownCmd
                                 , Nothing
@@ -3440,8 +3432,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         DropdownControlPointMsg index dropdownMsg ->
-            case model.dialog of
-                Tool (Detail (DetailManyPoints data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailManyPoints data)) ->
                     if index < 0 || index > 1 + List.length data.otherPoints then
                         ( model, Cmd.none, Nothing )
 
@@ -3470,7 +3462,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                     }
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                                 , Cmd.map (DropdownControlPointMsg index) dropdownCmd
                                 , Nothing
                                 )
@@ -3500,7 +3492,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                     }
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                                 , Cmd.map (DropdownControlPointMsg index) dropdownCmd
                                 , Nothing
                                 )
@@ -3542,7 +3534,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                             data.otherPoints
                                                 }
                                         in
-                                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                                         , Cmd.map (DropdownControlPointMsg index) dropdownCmd
                                         , Nothing
                                         )
@@ -3551,8 +3543,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         ActionMenuClicked index ->
-            case model.dialog of
-                Tool (Detail (DetailManyPoints data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailManyPoints data)) ->
                     if index < 0 || index > 1 + List.length data.otherPoints then
                         ( model, Cmd.none, Nothing )
 
@@ -3569,7 +3561,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 Closed
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3587,7 +3579,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 Closed
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3612,7 +3604,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             data.otherPoints
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3621,8 +3613,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         ActionMenuLostFocus index ->
-            case model.dialog of
-                Tool (Detail (DetailManyPoints data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailManyPoints data)) ->
                     if index < 0 || index > 1 + List.length data.otherPoints then
                         ( model, Cmd.none, Nothing )
 
@@ -3631,7 +3623,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             newData =
                                 { data | firstPointActionMenu = Closed }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3641,7 +3633,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             newData =
                                 { data | secondPointActionMenu = Closed }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3656,7 +3648,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             data.otherPoints
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3680,8 +3672,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
         DetailRemovePointClicked index ->
-            case model.dialog of
-                Tool (Detail (DetailManyPoints data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailManyPoints data)) ->
                     if index == 0 then
                         case List.head data.otherPoints of
                             Nothing ->
@@ -3692,7 +3684,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         , firstPointMaybeThat = data.secondPointMaybeThat
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
                                 , Cmd.none
                                 , Nothing
                                 )
@@ -3712,7 +3704,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 List.drop 1 data.otherPoints
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                                 , Cmd.none
                                 , Nothing
                                 )
@@ -3727,7 +3719,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         , firstPointMaybeThat = data.firstPointMaybeThat
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailOnePoint newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailOnePoint newData)) }
                                 , Cmd.none
                                 , Nothing
                                 )
@@ -3744,7 +3736,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 List.drop 1 data.otherPoints
                                         }
                                 in
-                                ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                                ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                                 , Cmd.none
                                 , Nothing
                                 )
@@ -3760,7 +3752,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         List.removeAt (index - 2) data.otherPoints
                                 }
                         in
-                        ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                        ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                         , Cmd.none
                         , Nothing
                         )
@@ -3769,8 +3761,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         DetailAddPointAtEnd ->
-            case model.dialog of
-                Tool (Detail (DetailOnePoint data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailOnePoint data)) ->
                     let
                         newData =
                             { name = data.name
@@ -3785,13 +3777,13 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             , connectionLastFirst = ConnectionStraight
                             }
                     in
-                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                     , Browser.Dom.focus "detail--connection-0"
                         |> Task.attempt (\_ -> NoOp)
                     , Nothing
                     )
 
-                Tool (Detail (DetailManyPoints data)) ->
+                Just (Detail (DetailManyPoints data)) ->
                     let
                         newData =
                             { data
@@ -3805,7 +3797,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                            ]
                             }
                     in
-                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                     , Browser.Dom.focus
                         ("detail--connection-"
                             ++ String.fromInt (1 + List.length data.otherPoints)
@@ -3818,8 +3810,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         ConnectionChanged index newConnectionTag ->
-            case model.dialog of
-                Tool (Detail (DetailManyPoints data)) ->
+            case model.maybeTool of
+                Just (Detail (DetailManyPoints data)) ->
                     let
                         newData =
                             if index < 0 || index > pointCount - 1 then
@@ -3877,7 +3869,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         pointCount =
                             2 + List.length data.otherPoints
                     in
-                    ( { model | dialog = Tool (Detail (DetailManyPoints newData)) }
+                    ( { model | maybeTool = Just (Detail (DetailManyPoints newData)) }
                     , Cmd.none
                     , Nothing
                     )
@@ -3886,19 +3878,19 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     ( model, Cmd.none, Nothing )
 
         --
-        CancelClicked ->
-            ( { model | dialog = NoDialog }
-            , case model.dialog of
-                Tool tool ->
+        ToolDialogCancelClicked ->
+            ( { model | maybeTool = Nothing }
+            , case model.maybeTool of
+                Nothing ->
+                    Cmd.none
+
+                Just tool ->
                     tool
                         |> toolToTag
                         |> toolTagToId
                         |> (\tag -> tag ++ "-button")
                         |> Browser.Dom.focus
                         |> Task.attempt (\_ -> NoOp)
-
-                _ ->
-                    Cmd.none
             , Nothing
             )
 
@@ -3914,8 +3906,8 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 |> Maybe.map (insertPoint name storedPattern model)
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
             in
-            case model.dialog of
-                Tool (CreatePoint name pointData) ->
+            case model.maybeTool of
+                Just (CreatePoint name pointData) ->
                     case pointData of
                         LeftOf data ->
                             insertSimpleDistance Pattern.leftOf name data
@@ -4021,10 +4013,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 data.maybeThatLineA
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Tool (EditPoint _ _) ->
+                Just (EditPoint _ _) ->
                     ( model, Cmd.none, Nothing )
 
-                Tool (CenteredAt data) ->
+                Just (CenteredAt data) ->
                     case data.maybeThatAnchorA of
                         Nothing ->
                             ( model, Cmd.none, Nothing )
@@ -4034,7 +4026,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 |> Maybe.map (insertCircle data.name storedPattern model)
                                 |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Tool (ThroughTwoPoints data) ->
+                Just (ThroughTwoPoints data) ->
                     Maybe.map2
                         (\thatAnchorA thatAnchorB ->
                             Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
@@ -4045,7 +4037,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         data.maybeThatAnchorB
                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Tool (ThroughOnePoint data) ->
+                Just (ThroughOnePoint data) ->
                     Maybe.map
                         (\thatAnchorA ->
                             Pattern.throughOnePoint pattern thatAnchorA data.angle
@@ -4055,7 +4047,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         data.maybeThatAnchorA
                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Tool (FromTo data) ->
+                Just (FromTo data) ->
                     case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
                         ( Just thatAnchorA, Just thatAnchorB ) ->
                             let
@@ -4075,7 +4067,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         newLineSegment
                                         pattern
                             in
-                            ( { model | dialog = NoDialog }
+                            ( { model | maybeTool = Nothing }
                             , Cmd.none
                             , Just { storedPattern | pattern = newPattern }
                             )
@@ -4083,7 +4075,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
 
-                Tool (MirrorAt { maybeThatLineA, thosePoints }) ->
+                Just (MirrorAt { maybeThatLineA, thosePoints }) ->
                     case maybeThatLineA of
                         Just thatLine ->
                             let
@@ -4103,7 +4095,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     Pattern.insertPoint Nothing nextPattern point
                                         |> Tuple.first
                             in
-                            ( { model | dialog = NoDialog }
+                            ( { model | maybeTool = Nothing }
                             , Cmd.none
                             , Just
                                 { storedPattern
@@ -4115,7 +4107,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         _ ->
                             ( model, Cmd.none, Nothing )
 
-                Tool (Detail (DetailManyPoints data)) ->
+                Just (Detail (DetailManyPoints data)) ->
                     let
                         extract otherPoints =
                             List.foldr
@@ -4188,7 +4180,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         newDetail
                                         pattern
                             in
-                            ( { model | dialog = NoDialog }
+                            ( { model | maybeTool = Nothing }
                             , Cmd.none
                             , Just { storedPattern | pattern = newPattern }
                             )
@@ -4200,25 +4192,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         (connectionHelp data.connectionLastFirst)
                         |> Maybe.withDefault ( model, Cmd.none, Nothing )
 
-                Tool (Detail _) ->
+                Just (Detail _) ->
                     ( model, Cmd.none, Nothing )
 
-                CreateVariable { name, value } ->
-                    let
-                        newPattern =
-                            Pattern.insertVariable name value pattern
-                    in
-                    ( { model | dialog = NoDialog }
-                    , Cmd.none
-                    , Just { storedPattern | pattern = newPattern }
-                    )
-
-                NoDialog ->
+                Nothing ->
                     ( model, Cmd.none, Nothing )
 
         UpdateClicked ->
-            case model.dialog of
-                Tool (EditPoint thatPoint pointData) ->
+            case model.maybeTool of
+                Just (EditPoint thatPoint pointData) ->
                     case pointData of
                         LeftOf data ->
                             case data.maybeThatAnchorA of
@@ -4379,33 +4361,66 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             )
 
         VariableCreateClicked ->
-            ( { model | dialog = CreateVariable { name = "", value = "" } }
+            ( { model
+                | maybeVariableDialog =
+                    Just <|
+                        VariableDialogCreate { name = "", value = "" }
+              }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             , Nothing
             )
 
         VariableNameChanged newName ->
-            case model.dialog of
-                CreateVariable data ->
-                    ( { model | dialog = CreateVariable { data | name = newName } }
+            case model.maybeVariableDialog of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just (VariableDialogCreate data) ->
+                    ( { model
+                        | maybeVariableDialog =
+                            Just <|
+                                VariableDialogCreate { data | name = newName }
+                      }
                     , Cmd.none
                     , Nothing
                     )
-
-                _ ->
-                    ( model, Cmd.none, Nothing )
 
         VariableValueChanged newValue ->
-            case model.dialog of
-                CreateVariable data ->
-                    ( { model | dialog = CreateVariable { data | value = newValue } }
+            case model.maybeVariableDialog of
+                Nothing ->
+                    ( model, Cmd.none, Nothing )
+
+                Just (VariableDialogCreate data) ->
+                    ( { model
+                        | maybeVariableDialog =
+                            Just <|
+                                VariableDialogCreate { data | value = newValue }
+                      }
                     , Cmd.none
                     , Nothing
                     )
 
-                _ ->
+        VariableCreateSubmitClicked ->
+            case model.maybeVariableDialog of
+                Nothing ->
                     ( model, Cmd.none, Nothing )
+
+                Just (VariableDialogCreate { name, value }) ->
+                    let
+                        newPattern =
+                            Pattern.insertVariable name value pattern
+                    in
+                    ( { model | maybeVariableDialog = Nothing }
+                    , Cmd.none
+                    , Just { storedPattern | pattern = newPattern }
+                    )
+
+        VariableDialogCancelClicked ->
+            ( { model | maybeVariableDialog = Nothing }
+            , Cmd.none
+            , Nothing
+            )
 
         PointsRulerClicked ->
             ( { model | pointsVisible = not model.pointsVisible }
@@ -4456,7 +4471,7 @@ updateDropdownAnchorA pattern model toTool dropdownMsg data =
                     , maybeThatAnchorA = newMaybeThatAnchor
                 }
     in
-    ( { model | dialog = Tool newTool }
+    ( { model | maybeTool = Just newTool }
     , Cmd.map DropdownAnchorAMsg dropdownCmd
     , Nothing
     )
@@ -4480,7 +4495,7 @@ updateDropdownAnchorB pattern model toTool dropdownMsg data =
                     , maybeThatAnchorB = newMaybeThatAnchor
                 }
     in
-    ( { model | dialog = Tool newTool }
+    ( { model | maybeTool = Just newTool }
     , Cmd.map DropdownAnchorBMsg dropdownCmd
     , Nothing
     )
@@ -4504,7 +4519,7 @@ updateDropdownLineA pattern model toTool dropdownMsg data =
                     , maybeThatLineA = newMaybeThatLine
                 }
     in
-    ( { model | dialog = Tool newTool }
+    ( { model | maybeTool = Just newTool }
     , Cmd.map DropdownLineAMsg dropdownCmd
     , Nothing
     )
@@ -4528,7 +4543,7 @@ updateDropdownLineB pattern model toTool dropdownMsg data =
                     , maybeThatLineB = newMaybeThatLine
                 }
     in
-    ( { model | dialog = Tool newTool }
+    ( { model | maybeTool = Just newTool }
     , Cmd.map DropdownLineBMsg dropdownCmd
     , Nothing
     )
@@ -4547,7 +4562,7 @@ insertPoint name viewedPattern model newPoint =
                 newPoint
                 viewedPattern.pattern
     in
-    ( { model | dialog = NoDialog }
+    ( { model | maybeTool = Nothing }
     , Cmd.none
     , Just { viewedPattern | pattern = newPattern }
     )
@@ -4558,7 +4573,7 @@ updatePoint thatPoint viewedPattern model newPoint =
         newPattern =
             Pattern.updatePoint thatPoint newPoint viewedPattern.pattern
     in
-    ( { model | dialog = NoDialog }
+    ( { model | maybeTool = Nothing }
     , Cmd.none
     , Just { viewedPattern | pattern = newPattern }
     )
@@ -4577,7 +4592,7 @@ insertCircle name viewedPattern model newCircle =
                 newCircle
                 viewedPattern.pattern
     in
-    ( { model | dialog = NoDialog }
+    ( { model | maybeTool = Nothing }
     , Cmd.none
     , Just { viewedPattern | pattern = newPattern }
     )
@@ -4596,7 +4611,7 @@ insertLine name viewedPattern model newLine =
                 newLine
                 viewedPattern.pattern
     in
-    ( { model | dialog = NoDialog }
+    ( { model | maybeTool = Nothing }
     , Cmd.none
     , Just { viewedPattern | pattern = newPattern }
     )
@@ -4635,23 +4650,6 @@ subscriptions model =
                                 (Decode.field "screenX" Decode.float)
                                 (Decode.field "screenY" Decode.float)
                     ]
-        , case model.dialog of
-            NoDialog ->
-                Sub.none
-
-            _ ->
-                Browser.Events.onKeyDown
-                    (Decode.field "key" Decode.string
-                        |> Decode.andThen
-                            (\key ->
-                                case key of
-                                    "Escape" ->
-                                        Decode.succeed CancelClicked
-
-                                    _ ->
-                                        Decode.fail "not handling that key here"
-                            )
-                    )
         ]
 
 
