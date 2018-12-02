@@ -1476,13 +1476,13 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                     Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
                         Svg.g []
                             [ Pattern.draw selections True zoom model.hoveredPoint pattern
-                            , Svg.Lazy.lazy drawHoverPolygons storedPattern
                             ]
+                , Svg.Lazy.lazy3 drawHoverPolygons width height storedPattern
                 ]
 
 
-drawHoverPolygons : StoredPattern -> Svg Msg
-drawHoverPolygons { pattern, center, zoom } =
+drawHoverPolygons : Float -> Float -> StoredPattern -> Svg Msg
+drawHoverPolygons width height { pattern, center, zoom } =
     let
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -1496,20 +1496,13 @@ drawHoverPolygons { pattern, center, zoom } =
                 |> Maybe.withDefault []
 
         boundingBox2d =
-            geometry.points
-                |> List.map (\( _, _, p2d ) -> p2d)
-                |> BoundingBox2d.containingPoints
-                |> Maybe.withDefault
-                    (BoundingBox2d.fromExtrema
-                        { minX = -320
-                        , maxX = 320
-                        , minY = -320
-                        , maxY = 320
-                        }
-                    )
-                |> BoundingBox2d.scaleAbout
-                    (Point2d.fromCoordinates ( center.x, center.y ))
-                    3
+            BoundingBox2d.fromExtrema
+                { minX = -1.1 * width
+                , maxX = 1.1 * width
+                , minY = -1.1 * height
+                , maxY = 1.1 * height
+                }
+                |> BoundingBox2d.scaleAbout Point2d.origin (1 / zoom)
     in
     Svg.g []
         (List.map drawHoverPolygon hoverPolygons)
