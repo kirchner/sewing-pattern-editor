@@ -11,6 +11,7 @@ module View.Design exposing
     , sansSerif
     , secondary
     , secondaryDark
+    , small
     , white
     , xLarge
     , xSmall

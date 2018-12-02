@@ -3,6 +3,8 @@ module Pattern exposing
     , empty
     , Geometry, Segment(..), computeGeometry, geometry, Problems
     , getPointGeometries, getPointGeometry
+    , getCircleGeometry
+    , getLineSegmentGeometry
     , point2d, circle2d, axis2d
     , variables, insertVariable, removeVariable
     , Point(..), points, insertPoint, getPoint, updatePoint
@@ -33,6 +35,10 @@ module Pattern exposing
 @docs Geometry, Segment, computeGeometry, geometry, Problems
 
 @docs getPointGeometries, getPointGeometry
+
+@docs getCircleGeometry
+
+@docs getLineSegmentGeometry
 
 @docs point2d, circle2d, axis2d
 
@@ -1143,6 +1149,11 @@ getCircle (Pattern pattern) =
     Store.get pattern.circles << That.objectId
 
 
+getCircleGeometry : Pattern -> That Circle -> Maybe Circle2d
+getCircleGeometry pattern thatCircle =
+    circle2d pattern thatCircle
+
+
 insertCircle : Maybe String -> Circle -> Pattern -> ( Pattern, That Circle )
 insertCircle name circle (Pattern pattern) =
     let
@@ -1213,6 +1224,11 @@ thatLineSegmentFromId (Pattern pattern) id =
 getLineSegment : Pattern -> That LineSegment -> Maybe (Entry LineSegment)
 getLineSegment (Pattern pattern) =
     Store.get pattern.lineSegments << That.objectId
+
+
+getLineSegmentGeometry : Pattern -> That LineSegment -> Maybe LineSegment2d
+getLineSegmentGeometry pattern thatLineSegment =
+    lineSegment2d pattern thatLineSegment
 
 
 insertLineSegment : Maybe String -> LineSegment -> Pattern -> ( Pattern, That LineSegment )

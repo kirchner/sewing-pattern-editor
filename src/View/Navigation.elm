@@ -77,7 +77,11 @@ accordion { onPress, label, open, content } =
                     ]
             }
         , if open then
-            content
+            Element.el
+                [ Element.width Element.fill
+                , Element.padding Design.small
+                ]
+                content
 
           else
             Element.none

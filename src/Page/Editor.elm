@@ -32,6 +32,7 @@ import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Navigation
+import Circle2d
 import Color
 import Design exposing (Grey(..))
 import Draw.Pattern as Pattern
@@ -50,6 +51,7 @@ import Html.Lazy
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import LineSegment2d
 import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
@@ -94,6 +96,10 @@ type alias Model =
     , rightToolbarVisible : Bool
     , variablesVisible : Bool
     , pointsVisible : Bool
+    , circlesVisible : Bool
+    , linesVisible : Bool
+    , lineSegmentsVisible : Bool
+    , detailsVisible : Bool
     }
 
 
@@ -883,7 +889,11 @@ init =
       , preventActionMenuClose = False
       , rightToolbarVisible = True
       , variablesVisible = True
-      , pointsVisible = True
+      , pointsVisible = False
+      , circlesVisible = False
+      , linesVisible = False
+      , lineSegmentsVisible = False
+      , detailsVisible = False
       }
     , Cmd.none
     )
@@ -1244,6 +1254,10 @@ viewRightToolbar pattern model =
                     _ ->
                         [ viewVariables pattern model
                         , viewPoints pattern model
+                        , viewCircles pattern model
+                        , viewLines pattern model
+                        , viewLineSegments pattern model
+                        , viewDetails pattern model
                         ]
                 )
 
@@ -2107,10 +2121,7 @@ viewVariables pattern model =
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.padding Design.small
                 , Element.spacing Design.small
-                , Background.color View.Design.white
-                , Font.color View.Design.black
                 ]
                 [ Element.table
                     [ Element.spacing Design.xSmall ]
@@ -2146,46 +2157,209 @@ viewPoints pattern model =
         , label = "Points"
         , open = model.pointsVisible
         , content =
-            Element.column
-                [ Element.width Element.fill
-                , Element.padding Design.small
-                , Element.spacing Design.small
-                , Background.color View.Design.white
-                ]
-                [ View.Table.table
-                    { data =
-                        List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
-                            (Pattern.points pattern)
-                    , columns =
-                        [ View.Table.column
-                            { label = "Name"
-                            , recordToString =
-                                \( _, { name } ) ->
-                                    Maybe.withDefault "<no name>" name
-                            }
-                        , View.Table.columnFloat
-                            { label = "x"
-                            , recordToFloat =
-                                \( thatPoint, _ ) ->
-                                    thatPoint
-                                        |> Pattern.getPointGeometry pattern
-                                        |> Maybe.map Point2d.xCoordinate
-                            }
-                        , View.Table.columnFloat
-                            { label = "y"
-                            , recordToFloat =
-                                \( thatPoint, _ ) ->
-                                    thatPoint
-                                        |> Pattern.getPointGeometry pattern
-                                        |> Maybe.map Point2d.yCoordinate
-                            }
-                        , View.Table.columnActions
-                            { onEditPress = Just << EditPointClicked << Tuple.first
-                            , onRemovePress = always Nothing
-                            }
-                        ]
-                    }
-                ]
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.points pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnFloat
+                        { label = "x"
+                        , recordToFloat =
+                            \( thatPoint, _ ) ->
+                                thatPoint
+                                    |> Pattern.getPointGeometry pattern
+                                    |> Maybe.map Point2d.xCoordinate
+                        }
+                    , View.Table.columnFloat
+                        { label = "y"
+                        , recordToFloat =
+                            \( thatPoint, _ ) ->
+                                thatPoint
+                                    |> Pattern.getPointGeometry pattern
+                                    |> Maybe.map Point2d.yCoordinate
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = Just << EditPointClicked << Tuple.first
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
+        }
+
+
+viewCircles : Pattern -> Model -> Element Msg
+viewCircles pattern model =
+    View.Navigation.accordion
+        { onPress = CirclesRulerClicked
+        , label = "Circles"
+        , open = model.circlesVisible
+        , content =
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.circles pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnFloat
+                        { label = "x"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getCircleGeometry pattern
+                                    |> Maybe.map
+                                        (Circle2d.centerPoint >> Point2d.xCoordinate)
+                        }
+                    , View.Table.columnFloat
+                        { label = "y"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getCircleGeometry pattern
+                                    |> Maybe.map
+                                        (Circle2d.centerPoint >> Point2d.yCoordinate)
+                        }
+                    , View.Table.columnFloat
+                        { label = "r"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getCircleGeometry pattern
+                                    |> Maybe.map Circle2d.radius
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = always Nothing
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
+        }
+
+
+viewLines : Pattern -> Model -> Element Msg
+viewLines pattern model =
+    View.Navigation.accordion
+        { onPress = LinesRulerClicked
+        , label = "Lines"
+        , open = model.linesVisible
+        , content =
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.lines pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = always Nothing
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
+        }
+
+
+viewLineSegments : Pattern -> Model -> Element Msg
+viewLineSegments pattern model =
+    View.Navigation.accordion
+        { onPress = LineSegmentsRulerClicked
+        , label = "Line segments"
+        , open = model.lineSegmentsVisible
+        , content =
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.lineSegments pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnFloat
+                        { label = "x1"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getLineSegmentGeometry pattern
+                                    |> Maybe.map
+                                        (LineSegment2d.startPoint >> Point2d.xCoordinate)
+                        }
+                    , View.Table.columnFloat
+                        { label = "y1"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getLineSegmentGeometry pattern
+                                    |> Maybe.map
+                                        (LineSegment2d.startPoint >> Point2d.yCoordinate)
+                        }
+                    , View.Table.columnFloat
+                        { label = "x2"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getLineSegmentGeometry pattern
+                                    |> Maybe.map
+                                        (LineSegment2d.endPoint >> Point2d.xCoordinate)
+                        }
+                    , View.Table.columnFloat
+                        { label = "y2"
+                        , recordToFloat =
+                            \( thatCircle, _ ) ->
+                                thatCircle
+                                    |> Pattern.getLineSegmentGeometry pattern
+                                    |> Maybe.map
+                                        (LineSegment2d.endPoint >> Point2d.yCoordinate)
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = always Nothing
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
+        }
+
+
+viewDetails : Pattern -> Model -> Element Msg
+viewDetails pattern model =
+    View.Navigation.accordion
+        { onPress = DetailsRulerClicked
+        , label = "Details"
+        , open = model.detailsVisible
+        , content =
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.details pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = always Nothing
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
         }
 
 
@@ -2244,6 +2418,10 @@ type Msg
     | VariableNameChanged String
     | VariableValueChanged String
     | PointsRulerClicked
+    | CirclesRulerClicked
+    | LinesRulerClicked
+    | LineSegmentsRulerClicked
+    | DetailsRulerClicked
 
 
 update :
@@ -4231,6 +4409,30 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
 
         PointsRulerClicked ->
             ( { model | pointsVisible = not model.pointsVisible }
+            , Cmd.none
+            , Nothing
+            )
+
+        CirclesRulerClicked ->
+            ( { model | circlesVisible = not model.circlesVisible }
+            , Cmd.none
+            , Nothing
+            )
+
+        LinesRulerClicked ->
+            ( { model | linesVisible = not model.linesVisible }
+            , Cmd.none
+            , Nothing
+            )
+
+        LineSegmentsRulerClicked ->
+            ( { model | lineSegmentsVisible = not model.lineSegmentsVisible }
+            , Cmd.none
+            , Nothing
+            )
+
+        DetailsRulerClicked ->
+            ( { model | detailsVisible = not model.detailsVisible }
             , Cmd.none
             , Nothing
             )
