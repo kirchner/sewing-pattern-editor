@@ -359,7 +359,7 @@ viewPattern prefix ({ pattern } as storedPattern) =
             BoundingBox2d.scaleAbout centerPoint 1.1 box
 
         zoom =
-            max width height / 40
+            350 / max width height
 
         ( geometry, _ ) =
             Pattern.geometry pattern
