@@ -15,6 +15,7 @@ module View.Input exposing
     , text
     )
 
+import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -27,7 +28,6 @@ import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Store exposing (Entry)
 import That exposing (That)
 import Those exposing (Those)
-import View.Design as Design
 import View.Icon
 
 

@@ -5,9 +5,9 @@ module View.Table exposing
     , table
     )
 
+import Design
 import Element exposing (Column, Element)
 import Element.Font as Font
-import View.Design as Design
 import View.Input
 
 

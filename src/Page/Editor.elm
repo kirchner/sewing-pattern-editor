@@ -34,7 +34,7 @@ import Browser.Events
 import Browser.Navigation as Navigation
 import Circle2d
 import Color
-import Design exposing (Grey(..))
+import Design
 import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
@@ -71,9 +71,9 @@ import That exposing (That)
 import Those exposing (Those)
 import Url exposing (Url)
 import Vector2d
-import View.Design
 import View.Icon
 import View.Input
+import View.Modal
 import View.Navigation
 import View.Table
 import VoronoiDiagram2d
@@ -1230,94 +1230,35 @@ view prefix storedPattern model =
 
 viewModal : Pattern -> Modal -> Element Msg
 viewModal pattern modal =
-    Element.el
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Background.color View.Design.grayDark
-        ]
-        (case modal of
-            DetailDeleteConfirm thatDetail ->
-                Element.column
-                    [ Element.centerX
-                    , Element.centerY
-                    , Element.width (Element.px 400)
-                    , Border.width 1
-                    , Border.rounded 4
-                    , Border.color View.Design.black
-                    , View.Design.fontNormal
-                    , Background.color View.Design.white
-                    , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
-                    , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
-                    , Element.htmlAttribute <|
-                        Html.Attributes.attribute "aria-labelledby" "dialog--title"
-                    , Element.htmlAttribute <|
-                        Html.Attributes.attribute "aria-describedby" "dialog--body"
-
-                    -- TODO: fix display error in Chromium with scale-factor=1.5
-                    , Element.htmlAttribute (Html.Attributes.style "padding-left" "1px")
-                    , Element.htmlAttribute (Html.Attributes.style "padding-right" "1px")
-                    ]
-                    [ Element.row
-                        [ Element.width Element.fill
-                        , Element.padding View.Design.small
-                        , Background.color View.Design.secondary
-                        , Border.roundEach
-                            { topLeft = 4
-                            , topRight = 4
-                            , bottomLeft = 0
-                            , bottomRight = 0
-                            }
-                        ]
-                        [ Element.el
-                            [ Element.htmlAttribute (Html.Attributes.id "dialog--title")
-                            , Element.centerX
-                            , Font.bold
-                            ]
-                            (Element.text <|
-                                "Delete «"
-                                    ++ detailName pattern thatDetail
-                                    ++ "»?"
-                            )
-                        , Element.el [ Element.alignRight ] <|
-                            View.Input.btnIcon
-                                { onPress = Just DetailRemoveDialogCancelClicked
-                                , icon = "times"
-                                }
-                        ]
-                    , Element.paragraph
+    case modal of
+        DetailDeleteConfirm thatDetail ->
+            View.Modal.small
+                { onCancelPress = DetailRemoveDialogCancelClicked
+                , title = "Delete «" ++ detailName pattern thatDetail ++ "»?"
+                , content =
+                    Element.paragraph
                         [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
                         , Element.width Element.fill
-                        , Element.padding View.Design.normal
-                        , Background.color View.Design.white
+                        , Element.padding Design.small
+                        , Background.color Design.white
                         ]
                         [ Element.text "Do you want to remove the detail "
                         , Element.el [ Font.bold ]
                             (Element.text ("«" ++ detailName pattern thatDetail ++ "»"))
                         , Element.text "?"
                         ]
-                    , Element.row
-                        [ Element.width Element.fill
-                        , Element.padding View.Design.small
-                        , Border.widthEach
-                            { top = 1
-                            , bottom = 0
-                            , left = 0
-                            , right = 0
+                , actions =
+                    [ View.Input.btnDanger
+                        { onPress = Just DetailRemoveDialogDeleteClicked
+                        , label = "Delete detail"
+                        }
+                    , Element.el [ Element.alignRight ] <|
+                        View.Input.btnCancel
+                            { onPress = Just DetailRemoveDialogCancelClicked
+                            , label = "Cancel"
                             }
-                        , Border.color View.Design.secondary
-                        ]
-                        [ View.Input.btnDanger
-                            { onPress = Just DetailRemoveDialogDeleteClicked
-                            , label = "Delete detail"
-                            }
-                        , Element.el [ Element.alignRight ] <|
-                            View.Input.btnCancel
-                                { onPress = Just DetailRemoveDialogCancelClicked
-                                , label = "Cancel"
-                                }
-                        ]
                     ]
-        )
+                }
 
 
 viewEditor : String -> StoredPattern -> Model -> Element Msg
@@ -1341,9 +1282,9 @@ viewEditor prefix storedPattern model =
                 , right = 0
                 }
             , Font.size Design.small
-            , Background.color View.Design.white
-            , Border.color View.Design.black
-            , Font.color View.Design.black
+            , Background.color Design.white
+            , Border.color Design.black
+            , Font.color Design.black
             ]
             [ View.Navigation.link
                 { url = "/"
@@ -1353,10 +1294,10 @@ viewEditor prefix storedPattern model =
             , Element.el [] (Element.text name)
             , Element.newTabLink
                 [ Element.alignRight
-                , Font.color View.Design.black
+                , Font.color Design.black
                 , Font.size Design.small
                 , Element.mouseOver
-                    [ Font.color View.Design.primaryDark ]
+                    [ Font.color Design.primaryDark ]
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
                 , label = View.Icon.dev "github-plain"
@@ -1398,14 +1339,14 @@ viewLeftToolbar prefix pattern model =
         [ Element.width (Element.maximum 330 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
-        , Background.color View.Design.white
+        , Background.color Design.white
         , Border.widthEach
             { left = 0
             , right = 1
             , top = 0
             , bottom = 0
             }
-        , Border.color View.Design.black
+        , Border.color Design.black
         ]
         [ case model.maybeTool of
             Nothing ->
@@ -1581,22 +1522,22 @@ viewRightToolbar : Pattern -> Model -> Element Msg
 viewRightToolbar pattern model =
     Element.row
         [ Element.height Element.fill
-        , Background.color View.Design.white
+        , Background.color Design.white
         ]
         [ Input.button
             [ Element.height Element.fill
             , Element.padding 5
-            , Font.color View.Design.black
+            , Font.color Design.black
             , Border.widthEach
                 { left = 1
                 , right = 0
                 , top = 0
                 , bottom = 0
                 }
-            , Border.color View.Design.black
+            , Border.color Design.black
             , Element.mouseOver
-                [ Font.color View.Design.primaryDark
-                , Border.color View.Design.primaryDark
+                [ Font.color Design.primaryDark
+                , Border.color Design.primaryDark
                 ]
             ]
             { onPress = Just ToolbarToggleClicked
@@ -1604,7 +1545,7 @@ viewRightToolbar pattern model =
                 Element.column
                     [ Element.height Element.fill
                     , Element.width Element.fill
-                    , Element.spacing View.Design.xSmall
+                    , Element.spacing Design.xSmall
                     ]
                     (List.repeat 3
                         (Element.el
@@ -1624,8 +1565,8 @@ viewRightToolbar pattern model =
             Element.column
                 [ Element.width (Element.px 400)
                 , Element.height Element.fill
-                , Element.padding View.Design.xSmall
-                , Element.spacing View.Design.xSmall
+                , Element.padding Design.xSmall
+                , Element.spacing Design.xSmall
                 , Element.scrollbarY
                 ]
                 (case model.maybeVariableDialog of
@@ -1676,8 +1617,8 @@ viewTool pattern tool =
                 , Element.spacing Design.normal
                 ]
                 [ Element.el
-                    [ View.Design.fontNormal
-                    , Font.color View.Design.black
+                    [ Design.fontNormal
+                    , Font.color Design.black
                     ]
                     (toolDescription (toolToTag tool))
                 , case name of
@@ -1687,11 +1628,11 @@ viewTool pattern tool =
                     Invalid value help ->
                         Element.column
                             [ Element.width Element.fill
-                            , Element.padding View.Design.small
-                            , Element.spacing View.Design.small
+                            , Element.padding Design.small
+                            , Element.spacing Design.small
                             , Border.width 1
                             , Border.rounded 4
-                            , Border.color View.Design.danger
+                            , Border.color Design.danger
                             , Element.htmlAttribute <|
                                 Html.Attributes.id "validation-messages"
                             , Element.htmlAttribute <|
@@ -1699,16 +1640,16 @@ viewTool pattern tool =
                             ]
                             [ Element.el
                                 [ Region.heading 2
-                                , View.Design.fontLarge
+                                , Design.fontLarge
                                 , Font.bold
                                 ]
                                 (Element.text "There's a problem")
                             , Input.button
-                                [ View.Design.fontNormal
-                                , Font.color View.Design.danger
+                                [ Design.fontNormal
+                                , Font.color Design.danger
                                 , Font.underline
                                 , Element.mouseOver
-                                    [ Font.color View.Design.dangerDark ]
+                                    [ Font.color Design.dangerDark ]
                                 ]
                                 { onPress = Just ValidationNameClicked
                                 , label = Element.text help
@@ -1735,8 +1676,8 @@ viewTool pattern tool =
                 , Element.spacing Design.normal
                 ]
                 [ Element.el
-                    [ View.Design.fontNormal
-                    , Font.color View.Design.black
+                    [ Design.fontNormal
+                    , Font.color Design.black
                     ]
                     (toolDescriptionEdit name (toolToTag tool))
                 , Element.column
@@ -1846,8 +1787,8 @@ viewTool pattern tool =
                 , Element.spacing Design.normal
                 ]
                 [ Element.el
-                    [ View.Design.fontNormal
-                    , Font.color View.Design.black
+                    [ Design.fontNormal
+                    , Font.color Design.black
                     ]
                     (toolDescription (toolToTag tool))
                 , Element.column
@@ -2206,21 +2147,21 @@ viewDetail pattern points data =
                         , bottom = Design.xxSmall - 2
                         }
                     , Font.size 10
-                    , Font.color View.Design.black
+                    , Font.color Design.black
                     , Border.widthEach
                         { left = 0
                         , right = 0
                         , top = 0
                         , bottom = 2
                         }
-                    , Border.color View.Design.secondary
-                    , Background.color View.Design.secondary
+                    , Border.color Design.secondary
+                    , Background.color Design.secondary
                     , Element.mouseOver
-                        [ Background.color View.Design.secondaryDark
-                        , Border.color View.Design.black
+                        [ Background.color Design.secondaryDark
+                        , Border.color Design.black
                         ]
                     , Element.focused
-                        [ Border.color View.Design.black ]
+                        [ Border.color Design.black ]
                     , Element.htmlAttribute <|
                         Html.Attributes.style "transition" <|
                             String.join "; "
@@ -2238,9 +2179,9 @@ viewDetail pattern points data =
                                         Element.el
                                             [ Element.paddingXY 8 7
                                             , Element.width Element.fill
-                                            , Background.color View.Design.secondary
+                                            , Background.color Design.secondary
                                             , Element.mouseOver
-                                                [ Background.color View.Design.secondaryDark ]
+                                                [ Background.color Design.secondaryDark ]
                                             , Element.htmlAttribute <|
                                                 Html.Attributes.tabindex -1
                                             , Element.htmlAttribute <|
@@ -2255,7 +2196,7 @@ viewDetail pattern points data =
                                     , Events.onMouseUp (ActionMenuMouseUp index)
                                     , Element.moveDown 2
                                     , Font.size 14
-                                    , Font.color View.Design.black
+                                    , Font.color Design.black
                                     ]
                                     [ viewAction NoOp "Move down"
                                     , viewAction NoOp "Move up"
@@ -2440,7 +2381,7 @@ viewVariable name value =
         ]
         [ Element.paragraph
             [ Font.size 12
-            , Font.color View.Design.black
+            , Font.color Design.black
             ]
             [ Element.text "Create a new "
             , Element.el
@@ -2495,7 +2436,7 @@ viewToolSelector prefix =
                 ]
                 [ Element.el
                     [ Font.size 12
-                    , Font.color View.Design.black
+                    , Font.color Design.black
                     ]
                     (Element.text name)
                 , Element.column

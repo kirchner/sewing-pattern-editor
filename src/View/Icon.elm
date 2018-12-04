@@ -11,13 +11,14 @@ import Html.Attributes as Attributes
 
 
 dev name =
-    Element.html <|
-        Html.i
-            [ Attributes.class ("devicon-" ++ name)
-            , Attributes.style "font-size" "24px"
-            , Attributes.style "color" "inherit"
-            ]
-            []
+    Element.el [] <|
+        Element.html <|
+            Html.i
+                [ Attributes.class ("devicon-" ++ name)
+                , Attributes.style "font-size" "24px"
+                , Attributes.style "color" "inherit"
+                ]
+                []
 
 
 fa name =

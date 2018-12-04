@@ -1,24 +1,53 @@
 module Design exposing
-    ( Grey(..)
-    , backgroundColor
-    , borderColor
-    , color
-    , fontColor
-    , large
-    , normal
-    , small
-    , toColor
-    , white
-    , xLarge
-    , xSmall
-    , xxSmall
-    , xxxSmall
+    ( xxxSmall, xxSmall, xSmall, small, normal, large, xLarge
+    , fontSmall, fontNormal, fontLarge, fontXLarge, fontXXLarge
+    , sansSerif, monospace
+    , primary, primaryDark
+    , secondary, secondaryDark
+    , danger, dangerDark
+    , grayDark
+    , black, white
     )
 
-import Color
-import Element exposing (Attr)
-import Element.Background as Background
-import Element.Border as Border
+{-|
+
+
+# Spacing
+
+@docs xxxSmall, xxSmall, xSmall, small, normal, large, xLarge
+
+
+# Font
+
+@docs fontSmall, fontNormal, fontLarge, fontXLarge, fontXXLarge
+
+@docs sansSerif, monospace
+
+
+# Color
+
+
+## Main
+
+@docs primary, primaryDark
+@docs secondary, secondaryDark
+@docs danger, dangerDark
+
+
+## Gradients
+
+@docs white black
+@docs grayDark
+
+-}
+
+{-
+
+   http://paletton.com/#uid=43i0s0kmQrEaoKRhxwdrum-xsg2
+
+-}
+
+import Element
 import Element.Font as Font
 
 
@@ -62,152 +91,88 @@ xLarge =
 
 
 
---- COLOR
+---- FONT
 
 
-type Grey
-    = Brightest
-    | Bright
-    | Brightish
-    | Darkish
-    | Dark
-    | Darkest
+fontSmall =
+    Font.size 13
 
 
-toColor grey =
-    Element.fromRgb <|
-        Color.toRgba <|
-            case grey of
-                Brightest ->
-                    brightest
-
-                Bright ->
-                    bright
-
-                Brightish ->
-                    brightish
-
-                Darkish ->
-                    darkish
-
-                Dark ->
-                    dark
-
-                Darkest ->
-                    darkest
+fontNormal =
+    Font.size 15
 
 
-backgroundColor : Grey -> Attr decorative msg
-backgroundColor grey =
-    Background.color <|
-        color <|
-            case grey of
-                Brightest ->
-                    brightest
-
-                Bright ->
-                    bright
-
-                Brightish ->
-                    brightish
-
-                Darkish ->
-                    darkish
-
-                Dark ->
-                    dark
-
-                Darkest ->
-                    darkest
+fontLarge =
+    Font.size 18
 
 
-fontColor : Grey -> Attr decorative msg
-fontColor grey =
-    Font.color <|
-        color <|
-            case grey of
-                Brightest ->
-                    black
-
-                Bright ->
-                    black
-
-                Brightish ->
-                    black
-
-                Darkish ->
-                    white
-
-                Dark ->
-                    white
-
-                Darkest ->
-                    white
+fontXLarge =
+    Font.size 21
 
 
-borderColor : Grey -> Attr decorative msg
-borderColor grey =
-    Border.color <|
-        color <|
-            case grey of
-                Brightest ->
-                    brightest
-
-                Bright ->
-                    bright
-
-                Brightish ->
-                    brightish
-
-                Darkish ->
-                    darkish
-
-                Dark ->
-                    dark
-
-                Darkest ->
-                    darkest
+fontXXLarge =
+    Font.size 30
 
 
-color =
-    Element.fromRgb << Color.toRgba
+sansSerif =
+    Font.family
+        [ Font.external
+            { name = "Roboto"
+            , url = "https://fonts.googleapis.com/css?family=Roboto"
+            }
+        , Font.sansSerif
+        ]
+
+
+monospace =
+    Font.family
+        [ Font.external
+            { name = "Roboto Mono"
+            , url = "https://fonts.googleapis.com/css?family=Roboto+Mono"
+            }
+        , Font.monospace
+        ]
 
 
 
--- BLACK AND WHITE
+---- MAIN COLORS
+
+
+primary =
+    Element.rgb255 38 132 132
+
+
+primaryDark =
+    Element.rgb255 15 108 108
+
+
+secondary =
+    Element.rgb255 239 238 234
+
+
+secondaryDark =
+    Element.rgb255 217 215 205
+
+
+danger =
+    Element.rgb255 220 71 63
+
+
+dangerDark =
+    Element.rgb255 180 33 25
+
+
+
+---- GRADIENTS
 
 
 white =
-    Color.rgb255 229 223 197
+    Element.rgb255 255 255 255
 
 
 black =
-    Color.rgb255 0 0 0
+    Element.rgb255 36 28 21
 
 
-
--- GREY
-
-
-brightest =
-    Color.rgb255 240 240 240
-
-
-bright =
-    Color.rgb255 210 210 210
-
-
-brightish =
-    Color.rgb255 180 180 180
-
-
-darkish =
-    Color.rgb255 66 66 66
-
-
-dark =
-    Color.rgb255 33 33 33
-
-
-darkest =
-    Color.rgb255 5 5 5
+grayDark =
+    Element.rgba255 36 28 21 0.65

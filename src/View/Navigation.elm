@@ -3,11 +3,11 @@ module View.Navigation exposing
     , link
     )
 
+import Design
 import Element exposing (Element)
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import View.Design as Design
 import View.Icon
 
 
