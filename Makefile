@@ -16,4 +16,5 @@ setup-gh-pages:
 	mkdir -p gh-pages/assets/js
 	mkdir -p gh-pages/assets/icons
 	cp src/index.html gh-pages/
+	cp assets/js/*.js gh-pages/assets/js/
 	cp assets/icons/*.svg gh-pages/assets/icons/

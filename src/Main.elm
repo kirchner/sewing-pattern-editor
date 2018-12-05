@@ -4,19 +4,19 @@ import Browser
 import Browser.Navigation as Navigation
 import Dict exposing (Dict)
 import Html
+import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Editor as Editor
 import Page.Home as Home
 import Pattern exposing (Pattern)
-import Port
 import Route exposing (Route)
 import StoredPattern exposing (StoredPattern)
 import Url exposing (Url)
 
 
-main : Program Value Model Msg
+main : Program {} Model Msg
 main =
     Browser.application
         { init = init
@@ -36,24 +36,7 @@ type alias Model =
     { prefix : String
     , key : Navigation.Key
     , page : Page
-    , cache : Dict String StoredPattern
     }
-
-
-type alias Position =
-    { x : Float
-    , y : Float
-    }
-
-
-cacheDecoder : Decoder (Dict String StoredPattern)
-cacheDecoder =
-    Decode.dict StoredPattern.decoder
-
-
-encodeCache : Dict String StoredPattern -> Value
-encodeCache cache =
-    Encode.dict identity StoredPattern.encode cache
 
 
 
@@ -64,122 +47,16 @@ type Page
     = NotFound
       -- PAGES
     | Home Home.Model
-    | Editor String Editor.Model
+    | Editor Editor.Model
 
 
-type alias Flags =
-    { windowWidth : Int
-    , windowHeight : Int
-    , maybeCache : Maybe (Dict String StoredPattern)
-    }
-
-
-flagsDecoder : Decoder Flags
-flagsDecoder =
-    Decode.succeed Flags
-        |> Decode.required "windowWidth" Decode.int
-        |> Decode.required "windowHeight" Decode.int
-        |> Decode.optional "cache" (Decode.map Just cacheDecoder) Nothing
-
-
-init : Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
-init value url key =
-    case Decode.decodeValue flagsDecoder value of
-        Err error ->
-            let
-                initialCache =
-                    Dict.singleton "first-pattern"
-                        (StoredPattern.init "first-pattern" "First pattern")
-
-                ( page, cmd ) =
-                    case Route.fromUrl url of
-                        Nothing ->
-                            ( NotFound
-                            , Cmd.none
-                            )
-
-                        Just newRoute ->
-                            case newRoute of
-                                Route.Home ->
-                                    ( Home Home.init
-                                    , Cmd.none
-                                    )
-
-                                Route.Editor patternSlug maybePoint ->
-                                    let
-                                        ( editor, editorCmd ) =
-                                            Editor.init
-                                    in
-                                    ( Editor "first-pattern" editor
-                                    , Cmd.map EditorMsg editorCmd
-                                    )
-            in
-            ( { prefix = Route.prefixFromUrl url
-              , key = key
-              , page = page
-              , cache = initialCache
-              }
-            , Port.safeCache (encodeCache initialCache)
-            )
-
-        Ok flags ->
-            let
-                cache =
-                    Maybe.withDefault
-                        (Dict.singleton "first-pattern"
-                            (StoredPattern.init "first-pattern" "First pattern")
-                        )
-                        flags.maybeCache
-
-                ( page, cmd, computedCache ) =
-                    case Route.fromUrl url of
-                        Nothing ->
-                            ( NotFound, Cmd.none, cache )
-
-                        Just newRoute ->
-                            case newRoute of
-                                Route.Home ->
-                                    ( Home Home.init, Cmd.none, cache )
-
-                                Route.Editor patternSlug maybePoint ->
-                                    case Dict.get patternSlug cache of
-                                        Nothing ->
-                                            ( NotFound, Cmd.none, cache )
-
-                                        Just viewedPattern ->
-                                            let
-                                                computedPattern =
-                                                    { viewedPattern
-                                                        | pattern =
-                                                            viewedPattern.pattern
-                                                                |> Pattern.computeGeometry
-                                                                |> Tuple.first
-                                                    }
-
-                                                ( editor, editorCmd ) =
-                                                    Editor.init
-
-                                                newCache =
-                                                    Dict.insert patternSlug
-                                                        computedPattern
-                                                        cache
-                                            in
-                                            ( Editor patternSlug editor
-                                            , Cmd.map EditorMsg editorCmd
-                                            , newCache
-                                            )
-            in
-            ( { prefix = Route.prefixFromUrl url
-              , key = key
-              , page = page
-              , cache = computedCache
-              }
-            , if flags.maybeCache == Nothing then
-                Port.safeCache (encodeCache computedCache)
-
-              else
-                Cmd.none
-            )
+init : {} -> Url -> Navigation.Key -> ( Model, Cmd Msg )
+init _ url key =
+    changeRouteTo (Route.fromUrl url)
+        { prefix = Route.prefixFromUrl url
+        , key = key
+        , page = NotFound
+        }
 
 
 
@@ -197,32 +74,19 @@ view model =
         Home homeModel ->
             { title = "Sewing pattern editor"
             , body =
-                [ Html.map HomeMsg
-                    (Home.view model.prefix
-                        (Dict.values model.cache)
-                        homeModel
-                    )
+                [ Html.map HomeMsg <|
+                    Home.view model.prefix homeModel
                 ]
             }
 
-        Editor patternSlug editorModel ->
-            case Dict.get patternSlug model.cache of
-                Nothing ->
-                    { title = "Sewing pattern editor"
-                    , body = [ Html.text "We are sorry, but something went wrong." ]
-                    }
-
-                Just storedPattern ->
-                    let
-                        patternDocument =
-                            Editor.view
-                                model.prefix
-                                storedPattern
-                                editorModel
-                    in
-                    { title = patternDocument.title
-                    , body = List.map (Html.map EditorMsg) patternDocument.body
-                    }
+        Editor editorModel ->
+            let
+                { title, body } =
+                    Editor.view model.prefix editorModel
+            in
+            { title = title
+            , body = List.map (Html.map EditorMsg) body
+            }
 
 
 
@@ -233,7 +97,6 @@ type Msg
     = NoOp
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
-    | CacheChanged Value
       -- PAGES
     | HomeMsg Home.Msg
     | EditorMsg Editor.Msg
@@ -260,80 +123,32 @@ update msg model =
         ( UrlChanged url, _ ) ->
             changeRouteTo (Route.fromUrl url) model
 
-        ( CacheChanged value, _ ) ->
-            --case Decode.decodeValue cacheDecoder value of
-            --    Err _ ->
-            --        ( model, Cmd.none )
-            --    Ok newCache ->
-            --        ( { model | cache = newCache }
-            --        , Cmd.none
-            --        )
-            -- FIXME: try simple geometry caching
-            ( model, Cmd.none )
-
         -- PAGES
         ( _, NotFound ) ->
             ( model, Cmd.none )
 
         ( HomeMsg homeMsg, Home homeModel ) ->
             let
-                ( newHomeModel, homeCmd, maybeNewCache ) =
-                    Home.update model.prefix model.key model.cache homeMsg homeModel
+                ( newHomeModel, homeCmd ) =
+                    Home.update model.prefix model.key homeMsg homeModel
             in
-            case maybeNewCache of
-                Nothing ->
-                    ( { model | page = Home newHomeModel }
-                    , Cmd.map HomeMsg homeCmd
-                    )
+            ( { model | page = Home newHomeModel }
+            , Cmd.map HomeMsg homeCmd
+            )
 
-                Just newCache ->
-                    ( { model | page = Home newHomeModel }
-                    , Cmd.batch
-                        [ Cmd.map HomeMsg homeCmd
-                        , Port.safeCache (encodeCache newCache)
-                        ]
-                    )
+        ( HomeMsg _, _ ) ->
+            ( model, Cmd.none )
 
-        ( EditorMsg patternMsg, Editor patternSlug editorModel ) ->
-            case Dict.get patternSlug model.cache of
-                Nothing ->
-                    ( model, Cmd.none )
+        ( EditorMsg patternMsg, Editor editorModel ) ->
+            let
+                ( newEditorModel, patternCmd ) =
+                    Editor.update model.key patternMsg editorModel
+            in
+            ( { model | page = Editor newEditorModel }
+            , Cmd.map EditorMsg patternCmd
+            )
 
-                Just viewedPattern ->
-                    let
-                        ( newEditorModel, patternCmd, maybeNewViewedPattern ) =
-                            Editor.update model.key viewedPattern patternMsg editorModel
-
-                        newModel =
-                            { model | page = Editor patternSlug newEditorModel }
-                    in
-                    case maybeNewViewedPattern of
-                        Nothing ->
-                            ( newModel
-                            , Cmd.map EditorMsg patternCmd
-                            )
-
-                        Just newViewedPattern ->
-                            let
-                                computedPattern =
-                                    { newViewedPattern
-                                        | pattern =
-                                            newViewedPattern.pattern
-                                                |> Pattern.computeGeometry
-                                                |> Tuple.first
-                                    }
-
-                                newCache =
-                                    Dict.insert patternSlug computedPattern newModel.cache
-                            in
-                            ( { newModel | cache = newCache }
-                            , Cmd.batch
-                                [ Cmd.map EditorMsg patternCmd
-                                , Port.safeCache (encodeCache newCache)
-                                ]
-                            )
-
-        _ ->
+        ( EditorMsg _, _ ) ->
             ( model, Cmd.none )
 
 
@@ -350,41 +165,22 @@ changeRouteTo maybeRoute model =
                 Just newRoute ->
                     case newRoute of
                         Route.Home ->
-                            ( { model | page = Home Home.init }
-                            , Cmd.none
+                            let
+                                ( home, homeCmd ) =
+                                    Home.init
+                            in
+                            ( { model | page = Home home }
+                            , Cmd.map HomeMsg homeCmd
                             )
 
                         Route.Editor patternSlug maybePoint ->
-                            case Dict.get patternSlug model.cache of
-                                Nothing ->
-                                    ( { model | page = NotFound }
-                                    , Cmd.none
-                                    )
-
-                                Just viewedPattern ->
-                                    let
-                                        computedPattern =
-                                            { viewedPattern
-                                                | pattern =
-                                                    viewedPattern.pattern
-                                                        |> Pattern.computeGeometry
-                                                        |> Tuple.first
-                                            }
-
-                                        ( editor, editorCmd ) =
-                                            Editor.init
-
-                                        newCache =
-                                            Dict.insert patternSlug
-                                                computedPattern
-                                                model.cache
-                                    in
-                                    ( { model
-                                        | page = Editor patternSlug editor
-                                        , cache = newCache
-                                      }
-                                    , Cmd.map EditorMsg editorCmd
-                                    )
+                            let
+                                ( editor, editorCmd ) =
+                                    Editor.init patternSlug
+                            in
+                            ( { model | page = Editor editor }
+                            , Cmd.map EditorMsg editorCmd
+                            )
     in
     ( newModel
     , cmd
@@ -393,16 +189,13 @@ changeRouteTo maybeRoute model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Port.onCacheChange CacheChanged
-        , case model.page of
-            NotFound ->
-                Sub.none
+    case model.page of
+        NotFound ->
+            Sub.none
 
-            -- PAGES
-            Home homeModel ->
-                Sub.map HomeMsg (Home.subscriptions homeModel)
+        -- PAGES
+        Home homeModel ->
+            Sub.map HomeMsg (Home.subscriptions homeModel)
 
-            Editor _ editorModel ->
-                Sub.map EditorMsg (Editor.subscriptions editorModel)
-        ]
+        Editor editorModel ->
+            Sub.map EditorMsg (Editor.subscriptions editorModel)

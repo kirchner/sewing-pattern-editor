@@ -26,6 +26,7 @@ module Page.Editor exposing
 -}
 
 import Accessibility.Widget as Widget
+import Api
 import Array
 import BoundingBox2d
 import Browser exposing (Document)
@@ -49,6 +50,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Html.Lazy
+import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
@@ -83,28 +85,32 @@ import VoronoiDiagram2d
 ---- MODEL
 
 
-type alias Model =
-    { maybeDrag : Maybe Drag
-    , patternContainerDimensions : Maybe Dimensions
-    , maybeModal : Maybe Modal
+type Model
+    = Loading
+    | Error
+    | Loaded
+        { maybeDrag : Maybe Drag
+        , patternContainerDimensions : Maybe Dimensions
+        , maybeModal : Maybe Modal
 
-    -- PATTERN
-    , hoveredPoint : Maybe (That Point)
+        -- PATTERN
+        , storedPattern : StoredPattern
+        , hoveredPoint : Maybe (That Point)
 
-    -- LEFT TOOLBAR
-    , maybeTool : Maybe Tool
-    , preventActionMenuClose : Bool
+        -- LEFT TOOLBAR
+        , maybeTool : Maybe Tool
+        , preventActionMenuClose : Bool
 
-    -- RIGHT TOOLBAR
-    , rightToolbarVisible : Bool
-    , variablesVisible : Bool
-    , maybeVariableDialog : Maybe VariableDialog
-    , pointsVisible : Bool
-    , circlesVisible : Bool
-    , linesVisible : Bool
-    , lineSegmentsVisible : Bool
-    , detailsVisible : Bool
-    }
+        -- RIGHT TOOLBAR
+        , rightToolbarVisible : Bool
+        , variablesVisible : Bool
+        , maybeVariableDialog : Maybe VariableDialog
+        , pointsVisible : Bool
+        , circlesVisible : Bool
+        , linesVisible : Bool
+        , lineSegmentsVisible : Bool
+        , detailsVisible : Bool
+        }
 
 
 type alias Dimensions =
@@ -1168,24 +1174,10 @@ maybeToList maybeA =
             [ a ]
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { maybeDrag = Nothing
-      , patternContainerDimensions = Nothing
-      , maybeModal = Nothing
-      , hoveredPoint = Nothing
-      , maybeTool = Nothing
-      , preventActionMenuClose = False
-      , rightToolbarVisible = True
-      , variablesVisible = True
-      , maybeVariableDialog = Nothing
-      , pointsVisible = False
-      , circlesVisible = False
-      , linesVisible = False
-      , lineSegmentsVisible = False
-      , detailsVisible = False
-      }
-    , Cmd.none
+init : String -> ( Model, Cmd Msg )
+init slug =
+    ( Loading
+    , Api.getPattern PatternReceived slug
     )
 
 
@@ -1193,39 +1185,103 @@ init =
 ---- VIEW
 
 
-view : String -> StoredPattern -> Model -> Document Msg
-view prefix storedPattern model =
-    { title = "Sewing Pattern Editor"
-    , body =
-        [ Element.layoutWith
-            { options =
-                [ Element.focusStyle
-                    { borderColor = Nothing
-                    , backgroundColor = Nothing
-                    , shadow = Nothing
+view : String -> Model -> Document Msg
+view prefix model =
+    case model of
+        Loading ->
+            { title = "Loading pattern.."
+            , body =
+                [ Element.layoutWith
+                    { options =
+                        [ Element.focusStyle
+                            { borderColor = Nothing
+                            , backgroundColor = Nothing
+                            , shadow = Nothing
+                            }
+                        ]
                     }
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Font.family
+                        [ Font.external
+                            { name = "Roboto"
+                            , url = "https://fonts.googleapis.com/css?family=Roboto"
+                            }
+                        , Font.sansSerif
+                        ]
+                    ]
+                    (Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Element.text "Loading pattern..")
+                    )
                 ]
             }
-            [ Element.width Element.fill
-            , Element.height Element.fill
-            , Font.family
-                [ Font.external
-                    { name = "Roboto"
-                    , url = "https://fonts.googleapis.com/css?family=Roboto"
-                    }
-                , Font.sansSerif
-                ]
-            , Element.inFront <|
-                case model.maybeModal of
-                    Nothing ->
-                        Element.none
 
-                    Just modal ->
-                        viewModal storedPattern.pattern modal
-            ]
-            (viewEditor prefix storedPattern model)
-        ]
-    }
+        Error ->
+            { title = "Something went wrong."
+            , body =
+                [ Element.layoutWith
+                    { options =
+                        [ Element.focusStyle
+                            { borderColor = Nothing
+                            , backgroundColor = Nothing
+                            , shadow = Nothing
+                            }
+                        ]
+                    }
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Font.family
+                        [ Font.external
+                            { name = "Roboto"
+                            , url = "https://fonts.googleapis.com/css?family=Roboto"
+                            }
+                        , Font.sansSerif
+                        ]
+                    ]
+                    (Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Element.text "Loading pattern..")
+                    )
+                ]
+            }
+
+        Loaded data ->
+            { title = "Sewing Pattern Editor"
+            , body =
+                [ Element.layoutWith
+                    { options =
+                        [ Element.focusStyle
+                            { borderColor = Nothing
+                            , backgroundColor = Nothing
+                            , shadow = Nothing
+                            }
+                        ]
+                    }
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Font.family
+                        [ Font.external
+                            { name = "Roboto"
+                            , url = "https://fonts.googleapis.com/css?family=Roboto"
+                            }
+                        , Font.sansSerif
+                        ]
+                    , Element.inFront <|
+                        case data.maybeModal of
+                            Nothing ->
+                                Element.none
+
+                            Just modal ->
+                                viewModal data.storedPattern.pattern modal
+                    ]
+                    (viewEditor prefix data.storedPattern data)
+                ]
+            }
 
 
 viewModal : Pattern -> Modal -> Element Msg
@@ -1261,7 +1317,6 @@ viewModal pattern modal =
                 }
 
 
-viewEditor : String -> StoredPattern -> Model -> Element Msg
 viewEditor prefix storedPattern model =
     let
         { pattern, name } =
@@ -1333,7 +1388,6 @@ viewEditor prefix storedPattern model =
         ]
 
 
-viewLeftToolbar : String -> Pattern -> Model -> Element Msg
 viewLeftToolbar prefix pattern model =
     Element.column
         [ Element.width (Element.maximum 330 Element.fill)
@@ -1361,7 +1415,6 @@ viewLeftToolbar prefix pattern model =
 ---- WORKSPACE
 
 
-viewWorkspace : StoredPattern -> Model -> Element Msg
 viewWorkspace storedPattern model =
     Element.el
         [ Element.width Element.fill
@@ -1376,12 +1429,6 @@ viewWorkspace storedPattern model =
         )
 
 
-viewPattern :
-    Maybe Dimensions
-    -> Maybe Drag
-    -> StoredPattern
-    -> Model
-    -> Html Msg
 viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
@@ -1501,7 +1548,6 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
 ---- ZOOM
 
 
-viewZoom : Model -> Element Msg
 viewZoom model =
     Element.row
         [ Element.padding 20
@@ -1518,7 +1564,6 @@ viewZoom model =
         ]
 
 
-viewRightToolbar : Pattern -> Model -> Element Msg
 viewRightToolbar pattern model =
     Element.row
         [ Element.height Element.fill
@@ -2491,7 +2536,6 @@ viewToolSelector prefix =
 -- TABLES
 
 
-viewVariables : Pattern -> Model -> Element Msg
 viewVariables pattern model =
     View.Navigation.accordion
         { onPress = VariablesRulerClicked
@@ -2529,7 +2573,6 @@ viewVariables pattern model =
         }
 
 
-viewPoints : Pattern -> Model -> Element Msg
 viewPoints pattern model =
     View.Navigation.accordion
         { onPress = PointsRulerClicked
@@ -2572,7 +2615,6 @@ viewPoints pattern model =
         }
 
 
-viewCircles : Pattern -> Model -> Element Msg
 viewCircles pattern model =
     View.Navigation.accordion
         { onPress = CirclesRulerClicked
@@ -2625,7 +2667,6 @@ viewCircles pattern model =
         }
 
 
-viewLines : Pattern -> Model -> Element Msg
 viewLines pattern model =
     View.Navigation.accordion
         { onPress = LinesRulerClicked
@@ -2652,7 +2693,6 @@ viewLines pattern model =
         }
 
 
-viewLineSegments : Pattern -> Model -> Element Msg
 viewLineSegments pattern model =
     View.Navigation.accordion
         { onPress = LineSegmentsRulerClicked
@@ -2715,7 +2755,6 @@ viewLineSegments pattern model =
         }
 
 
-viewDetails : Pattern -> Model -> Element Msg
 viewDetails pattern model =
     View.Navigation.accordion
         { onPress = DetailsRulerClicked
@@ -2750,6 +2789,8 @@ viewDetails pattern model =
 
 type Msg
     = NoOp
+    | PatternReceived (Result Http.Error StoredPattern)
+    | PatternUpdateReceived (Result Http.Error ())
     | WindowResized
     | PatternContainerViewportRequested
     | PatternContainerViewportReceived (Result Browser.Dom.Error Browser.Dom.Viewport)
@@ -2817,20 +2858,92 @@ type Msg
 
 update :
     Navigation.Key
-    -> StoredPattern
     -> Msg
     -> Model
-    -> ( Model, Cmd Msg, Maybe StoredPattern )
-update key ({ pattern, zoom, center } as storedPattern) msg model =
+    -> ( Model, Cmd Msg )
+update key msg model =
+    case model of
+        Loading ->
+            case msg of
+                PatternReceived result ->
+                    case result of
+                        Err error ->
+                            ( Error
+                            , Cmd.none
+                            )
+
+                        Ok storedPattern ->
+                            ( Loaded
+                                { maybeDrag = Nothing
+                                , patternContainerDimensions = Nothing
+                                , maybeModal = Nothing
+                                , storedPattern = storedPattern
+                                , hoveredPoint = Nothing
+                                , maybeTool = Nothing
+                                , preventActionMenuClose = False
+                                , rightToolbarVisible = True
+                                , variablesVisible = True
+                                , maybeVariableDialog = Nothing
+                                , pointsVisible = False
+                                , circlesVisible = False
+                                , linesVisible = False
+                                , lineSegmentsVisible = False
+                                , detailsVisible = False
+                                }
+                            , Cmd.none
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        Error ->
+            ( model, Cmd.none )
+
+        Loaded data ->
+            updateWithData key msg data
+                |> Tuple.mapFirst Loaded
+
+
+updateWithData key msg model =
+    let
+        { pattern, zoom, center } =
+            storedPattern
+
+        storedPattern =
+            model.storedPattern
+    in
     case msg of
         NoOp ->
-            ( model, Cmd.none, Nothing )
+            ( model, Cmd.none )
+
+        PatternReceived result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok newStoredPattern ->
+                    ( { model | storedPattern = newStoredPattern }
+                    , Cmd.none
+                    )
+
+        PatternUpdateReceived result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( model
+                    , Cmd.none
+                    )
 
         WindowResized ->
             ( model
             , Browser.Dom.getViewportOf "pattern-container"
                 |> Task.attempt PatternContainerViewportReceived
-            , Nothing
             )
 
         PatternContainerViewportRequested ->
@@ -2838,13 +2951,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             , Process.sleep 500
                 |> Task.andThen (\_ -> Browser.Dom.getViewportOf "pattern-container")
                 |> Task.attempt PatternContainerViewportReceived
-            , Nothing
             )
 
         PatternContainerViewportReceived result ->
             case result of
                 Err _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Ok viewport ->
                     ( { model
@@ -2855,19 +2967,24 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 }
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
         ZoomPlusClicked ->
-            ( model
-            , Cmd.none
-            , Just { storedPattern | zoom = zoom * 1.1 }
+            let
+                newStoredPattern =
+                    { storedPattern | zoom = zoom * 1.1 }
+            in
+            ( { model | storedPattern = newStoredPattern }
+            , Api.updatePattern PatternUpdateReceived newStoredPattern
             )
 
         ZoomMinusClicked ->
-            ( model
-            , Cmd.none
-            , Just { storedPattern | zoom = zoom / 1.1 }
+            let
+                newStoredPattern =
+                    { storedPattern | zoom = zoom / 1.1 }
+            in
+            ( { model | storedPattern = newStoredPattern }
+            , Api.updatePattern PatternUpdateReceived newStoredPattern
             )
 
         MouseDown position ->
@@ -2879,18 +2996,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         }
               }
             , Cmd.none
-            , Nothing
             )
 
         MouseMove position ->
             case model.maybeDrag of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just drag ->
                     ( { model | maybeDrag = Just { drag | current = position } }
                     , Cmd.none
-                    , Nothing
                     )
 
         MouseUp position ->
@@ -2904,10 +3019,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             { x = center.x + (drag.start.x - position.x) / zoom
                             , y = center.y + (drag.start.y - position.y) / zoom
                             }
+
+                newStoredPattern =
+                    { storedPattern | center = newCenter }
             in
-            ( { model | maybeDrag = Nothing }
-            , Cmd.none
-            , Just { storedPattern | center = newCenter }
+            ( { model
+                | maybeDrag = Nothing
+                , storedPattern = newStoredPattern
+              }
+            , Api.updatePattern PatternUpdateReceived newStoredPattern
             )
 
         -- POINTS
@@ -3052,13 +3172,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
             ( { model | maybeTool = Just tool }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
-            , Nothing
             )
 
         EditPointClicked thatPoint ->
             case Pattern.getPoint pattern thatPoint of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just { name, value } ->
                     let
@@ -3173,7 +3292,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = maybeTool }
                     , Cmd.none
-                    , Nothing
                     )
 
         -- TOOL PARAMETERS
@@ -3182,12 +3300,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 updateName toTool data =
                     ( { model | maybeTool = Just (toTool { data | name = newName }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreatePoint name toolData) ->
                     ( { model
@@ -3195,11 +3312,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Just (CreatePoint (updateValue newName name) toolData)
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
                 Just (EditPoint _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreateCircle name toolData) ->
                     ( { model
@@ -3207,11 +3323,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Just (CreateCircle (updateValue newName name) toolData)
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
                 Just (EditCircle _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreateLine name toolData) ->
                     ( { model
@@ -3219,17 +3334,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Just (CreateLine (updateValue newName name) toolData)
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
                 Just (EditLine _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (FromTo data) ->
                     updateName FromTo data
 
                 Just (MirrorAt _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreateDetail name toolData) ->
                     ( { model
@@ -3237,11 +3351,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Just (CreateDetail (updateValue newName name) toolData)
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
                 Just (EditDetail _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         AngleChanged newAngle ->
             let
@@ -3251,7 +3364,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << AtAngle) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateLineDataWith toTool lineData =
                     case lineData of
@@ -3259,12 +3372,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << ThroughOnePoint) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | angle = newAngle }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3281,7 +3393,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateLineDataWith (EditLine thatLine) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DistanceChanged newDistance ->
             let
@@ -3303,14 +3415,13 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << AtAngle) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     ( { model
                         | maybeTool = Just (toTool { data | distance = newDistance })
                       }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3321,7 +3432,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         RatioChanged newRatio ->
             let
@@ -3331,12 +3442,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << BetweenRatio) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | ratio = newRatio }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3347,7 +3457,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         LengthChanged newLength ->
             let
@@ -3357,12 +3467,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << BetweenLength) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | length = newLength }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3373,7 +3482,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         RadiusChanged newRadius ->
             let
@@ -3385,7 +3494,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | radius = newRadius }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3396,7 +3504,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateCircleDataWith (EditCircle thatCircle) circleData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownAnchorAMsg dropdownMsg ->
             let
@@ -3424,7 +3532,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << BetweenLength) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateCircleDataWith toTool circleData =
                     case circleData of
@@ -3459,7 +3567,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just newTool }
                     , Cmd.map DropdownAnchorAMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3485,7 +3592,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDataWith FromTo data
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownAnchorBMsg dropdownMsg ->
             let
@@ -3498,7 +3605,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << BetweenLength) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateLineDataWith toTool lineData =
                     case lineData of
@@ -3506,7 +3613,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << ThroughTwoPoints) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     let
@@ -3525,12 +3632,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map DropdownAnchorBMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just tool ->
                     case tool of
@@ -3550,7 +3656,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith FromTo data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
         DropdownLineAMsg dropdownMsg ->
             let
@@ -3563,7 +3669,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << LineLine) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     let
@@ -3582,7 +3688,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map DropdownLineAMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3596,7 +3701,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDataWith MirrorAt data
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownLineBMsg dropdownMsg ->
             let
@@ -3606,7 +3711,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << LineLine) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     let
@@ -3625,7 +3730,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map DropdownLineBMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3636,7 +3740,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         ListboxPointsMsg listboxMsg ->
             let
@@ -3657,7 +3761,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map ListboxPointsMsg listboxCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3665,7 +3768,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDataWith MirrorAt data
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownCircleAMsg dropdownMsg ->
             let
@@ -3678,7 +3781,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << CircleLine) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     let
@@ -3699,7 +3802,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         | maybeTool = Just (toTool newData)
                       }
                     , Cmd.map DropdownCircleAMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3710,7 +3812,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownCircleBMsg dropdownMsg ->
             let
@@ -3720,7 +3822,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << CircleCircle) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     let
@@ -3739,7 +3841,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map DropdownCircleBMsg dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3750,7 +3851,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         FirstChanged newFirst ->
             let
@@ -3763,12 +3864,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             updateDataWith (toTool << CircleLine) data
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 updateDataWith toTool data =
                     ( { model | maybeTool = Just (toTool { data | first = newFirst }) }
                     , Cmd.none
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3779,7 +3879,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updatePointDataWith (EditPoint thatPoint) pointData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownPointMsg index dropdownMsg ->
             let
@@ -3787,14 +3887,14 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     case detailData of
                         DetailOnePoint data ->
                             if index /= 0 then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else
                                 updateFirstPointWith (toTool << DetailOnePoint) data
 
                         DetailManyPoints data ->
                             if index < 0 || index > 1 + List.length data.otherPoints then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else if index == 0 then
                                 updateFirstPointWith (toTool << DetailManyPoints) data
@@ -3805,7 +3905,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             else
                                 case List.head (List.drop (index - 2) data.otherPoints) of
                                     Nothing ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     Just { dropdown, maybeThat } ->
                                         updateIndexedPointWith toTool dropdown maybeThat data
@@ -3827,7 +3927,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map (DropdownPointMsg index) dropdownCmd
-                    , Nothing
                     )
 
                 updateSecondPointWith toTool data =
@@ -3847,7 +3946,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool newData) }
                     , Cmd.map (DropdownPointMsg index) dropdownCmd
-                    , Nothing
                     )
 
                 updateIndexedPointWith toTool dropdown maybeThat data =
@@ -3876,7 +3974,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                     , Cmd.map (DropdownPointMsg index) dropdownCmd
-                    , Nothing
                     )
             in
             case model.maybeTool of
@@ -3887,7 +3984,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail name) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DropdownControlPointMsg index dropdownMsg ->
             let
@@ -3895,12 +3992,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     case detailData of
                         DetailManyPoints data ->
                             if index < 0 || index > 1 + List.length data.otherPoints then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else if index == 0 then
                                 case data.connectionFirstSecond of
                                     ConnectionStraight ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     ConnectionQuadratic { dropdown, maybeThat } ->
                                         let
@@ -3927,13 +4024,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 Just (toTool (DetailManyPoints newData))
                                           }
                                         , Cmd.map (DropdownControlPointMsg index) dropdownCmd
-                                        , Nothing
                                         )
 
                             else if index == 1 + List.length data.otherPoints then
                                 case data.connectionLastFirst of
                                     ConnectionStraight ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     ConnectionQuadratic { dropdown, maybeThat } ->
                                         let
@@ -3960,18 +4056,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 Just (toTool (DetailManyPoints newData))
                                           }
                                         , Cmd.map (DropdownControlPointMsg index) dropdownCmd
-                                        , Nothing
                                         )
 
                             else
                                 case List.head (List.drop (index - 1) data.otherPoints) of
                                     Nothing ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     Just { connectionPrevious } ->
                                         case connectionPrevious of
                                             ConnectionStraight ->
-                                                ( model, Cmd.none, Nothing )
+                                                ( model, Cmd.none )
 
                                             ConnectionQuadratic { dropdown, maybeThat } ->
                                                 let
@@ -4005,11 +4100,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                         Just (toTool (DetailManyPoints newData))
                                                   }
                                                 , Cmd.map (DropdownControlPointMsg index) dropdownCmd
-                                                , Nothing
                                                 )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreateDetail name detailData) ->
@@ -4019,7 +4113,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         ActionMenuClicked index ->
             let
@@ -4027,7 +4121,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     case detailData of
                         DetailManyPoints data ->
                             if index < 0 || index > 1 + List.length data.otherPoints then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else if index == 0 then
                                 let
@@ -4044,7 +4138,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                             else if index == 1 then
@@ -4062,7 +4155,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                             else
@@ -4087,11 +4179,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreateDetail name detailData) ->
@@ -4101,7 +4192,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         ActionMenuLostFocus index ->
             let
@@ -4109,7 +4200,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     case detailData of
                         DetailManyPoints data ->
                             if index < 0 || index > 1 + List.length data.otherPoints then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else if index == 0 && not model.preventActionMenuClose then
                                 let
@@ -4118,7 +4209,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                             else if index == 1 && not model.preventActionMenuClose then
@@ -4128,7 +4218,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                             else if not model.preventActionMenuClose then
@@ -4143,14 +4232,13 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                             else
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreateDetail name detailData) ->
@@ -4160,18 +4248,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         ActionMenuMouseDown _ ->
             ( { model | preventActionMenuClose = True }
             , Cmd.none
-            , Nothing
             )
 
         ActionMenuMouseUp _ ->
             ( { model | preventActionMenuClose = False }
             , Cmd.none
-            , Nothing
             )
 
         DetailRemovePointClicked index ->
@@ -4190,7 +4276,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         in
                                         ( { model | maybeTool = Just (toTool (DetailOnePoint newData)) }
                                         , Cmd.none
-                                        , Nothing
                                         )
 
                                     Just { dropdown, maybeThat, actionMenu } ->
@@ -4210,7 +4295,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         in
                                         ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                         , Cmd.none
-                                        , Nothing
                                         )
 
                             else if index == 1 then
@@ -4224,7 +4308,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         in
                                         ( { model | maybeTool = Just (toTool (DetailOnePoint newData)) }
                                         , Cmd.none
-                                        , Nothing
                                         )
 
                                     Just { dropdown, maybeThat, actionMenu } ->
@@ -4241,11 +4324,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         in
                                         ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                         , Cmd.none
-                                        , Nothing
                                         )
 
                             else if index > 1 + List.length data.otherPoints then
-                                ( model, Cmd.none, Nothing )
+                                ( model, Cmd.none )
 
                             else
                                 let
@@ -4257,11 +4339,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 in
                                 ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                                 , Cmd.none
-                                , Nothing
                                 )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreateDetail name detailData) ->
@@ -4271,7 +4352,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         DetailAddPointAtEnd ->
             let
@@ -4294,7 +4375,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                             , Browser.Dom.focus "detail--connection-0"
                                 |> Task.attempt (\_ -> NoOp)
-                            , Nothing
                             )
 
                         DetailManyPoints data ->
@@ -4317,7 +4397,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                     ++ String.fromInt (1 + List.length data.otherPoints)
                                 )
                                 |> Task.attempt (\_ -> NoOp)
-                            , Nothing
                             )
             in
             case model.maybeTool of
@@ -4328,7 +4407,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         ConnectionChanged index newConnectionTag ->
             let
@@ -4394,11 +4473,10 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             in
                             ( { model | maybeTool = Just (toTool (DetailManyPoints newData)) }
                             , Cmd.none
-                            , Nothing
                             )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreateDetail name detailData) ->
@@ -4408,7 +4486,7 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     updateDetailDataWith (EditDetail thatDetail) detailData
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         --
         ToolDialogCancelClicked ->
@@ -4424,14 +4502,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         |> (\tag -> tag ++ "-button")
                         |> Browser.Dom.focus
                         |> Task.attempt (\_ -> NoOp)
-            , Nothing
             )
 
         ValidationNameClicked ->
             ( model
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
-            , Nothing
             )
 
         CreateClicked ->
@@ -4439,12 +4515,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                 insertSimpleDistance constructor name data =
                     case data.maybeThatAnchorA of
                         Nothing ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                         Just thatAnchor ->
                             constructor pattern thatAnchor data.distance
-                                |> Maybe.map (insertPoint name storedPattern model)
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.map (insertPoint name model.storedPattern model)
+                                |> Maybe.withDefault ( model, Cmd.none )
             in
             case model.maybeTool of
                 Just (CreatePoint name pointData) ->
@@ -4456,7 +4532,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         ( { model | maybeTool = Just (CreatePoint newName pointData) }
                         , Browser.Dom.focus "validation-messages"
                             |> Task.attempt (\_ -> NoOp)
-                        , Nothing
                         )
 
                     else
@@ -4480,15 +4555,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             AtAngle data ->
                                 case data.maybeThatAnchorA of
                                     Nothing ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     Just thatAnchor ->
                                         Pattern.atAngle pattern
                                             thatAnchor
                                             data.angle
                                             data.distance
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
 
                             BetweenRatio data ->
                                 Maybe.map2
@@ -4497,12 +4572,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             thatAnchorA
                                             thatAnchorB
                                             data.ratio
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatAnchorA
                                     data.maybeThatAnchorB
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                             BetweenLength data ->
                                 Maybe.map2
@@ -4511,12 +4586,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             thatAnchorA
                                             thatAnchorB
                                             data.length
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatAnchorA
                                     data.maybeThatAnchorB
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                             CircleCircle data ->
                                 Maybe.map2
@@ -4531,23 +4606,23 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 thatCircleA
                                                 thatCircleB
                                         )
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatCircleA
                                     data.maybeThatCircleB
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                             LineLine data ->
                                 Maybe.map2
                                     (\thatLineA thatLineB ->
                                         Pattern.lineLine pattern thatLineA thatLineB
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatLineA
                                     data.maybeThatLineB
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                             CircleLine data ->
                                 Maybe.map2
@@ -4562,15 +4637,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                                 thatCircle
                                                 thatLine
                                         )
-                                            |> Maybe.map (insertPoint actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertPoint actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatCircleA
                                     data.maybeThatLineA
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditPoint _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreateCircle name circleData) ->
                     if valueOf name == "" then
@@ -4581,7 +4656,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         ( { model | maybeTool = Just (CreateCircle newName circleData) }
                         , Browser.Dom.focus "validation-messages"
                             |> Task.attempt (\_ -> NoOp)
-                        , Nothing
                         )
 
                     else
@@ -4593,15 +4667,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             CenteredAt data ->
                                 case data.maybeThatAnchorA of
                                     Nothing ->
-                                        ( model, Cmd.none, Nothing )
+                                        ( model, Cmd.none )
 
                                     Just thatAnchor ->
                                         Pattern.centeredAt pattern thatAnchor data.radius
-                                            |> Maybe.map (insertCircle actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertCircle actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditCircle _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (CreateLine name lineData) ->
                     if valueOf name == "" then
@@ -4612,7 +4686,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         ( { model | maybeTool = Just (CreateLine newName lineData) }
                         , Browser.Dom.focus "validation-messages"
                             |> Task.attempt (\_ -> NoOp)
-                        , Nothing
                         )
 
                     else
@@ -4625,25 +4698,25 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 Maybe.map2
                                     (\thatAnchorA thatAnchorB ->
                                         Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
-                                            |> Maybe.map (insertLine actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertLine actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatAnchorA
                                     data.maybeThatAnchorB
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                             ThroughOnePoint data ->
                                 Maybe.map
                                     (\thatAnchorA ->
                                         Pattern.throughOnePoint pattern thatAnchorA data.angle
-                                            |> Maybe.map (insertLine actualName storedPattern model)
-                                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                            |> Maybe.map (insertLine actualName model.storedPattern model)
+                                            |> Maybe.withDefault ( model, Cmd.none )
                                     )
                                     data.maybeThatAnchorA
-                                    |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                    |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditLine _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (FromTo data) ->
                     case ( data.maybeThatAnchorA, data.maybeThatAnchorB ) of
@@ -4664,14 +4737,19 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         )
                                         newLineSegment
                                         pattern
+
+                                newStoredPattern =
+                                    { storedPattern | pattern = newPattern }
                             in
-                            ( { model | maybeTool = Nothing }
-                            , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
+                            ( { model
+                                | maybeTool = Nothing
+                                , storedPattern = newStoredPattern
+                              }
+                            , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 Just (MirrorAt { maybeThatLineA, thosePoints }) ->
                     case maybeThatLineA of
@@ -4692,18 +4770,19 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 insertPointHelp nextPattern point =
                                     Pattern.insertPoint Nothing nextPattern point
                                         |> Tuple.first
+
+                                newStoredPattern =
+                                    { storedPattern | pattern = newPattern }
                             in
-                            ( { model | maybeTool = Nothing }
-                            , Cmd.none
-                            , Just
-                                { storedPattern
-                                    | pattern =
-                                        List.foldl insertPointHelp newPattern newPoints
-                                }
+                            ( { model
+                                | maybeTool = Nothing
+                                , storedPattern = newStoredPattern
+                              }
+                            , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
 
                         _ ->
-                            ( model, Cmd.none, Nothing )
+                            ( model, Cmd.none )
 
                 Just (CreateDetail name (DetailManyPoints data)) ->
                     if valueOf name == "" then
@@ -4717,7 +4796,6 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                           }
                         , Browser.Dom.focus "validation-messages"
                             |> Task.attempt (\_ -> NoOp)
-                        , Nothing
                         )
 
                     else
@@ -4790,10 +4868,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             (Just actualName)
                                             newDetail
                                             pattern
+
+                                    newStoredPattern =
+                                        { storedPattern | pattern = newPattern }
                                 in
-                                ( { model | maybeTool = Nothing }
-                                , Cmd.none
-                                , Just { storedPattern | pattern = newPattern }
+                                ( { model
+                                    | maybeTool = Nothing
+                                    , storedPattern = newStoredPattern
+                                  }
+                                , Api.updatePattern PatternUpdateReceived newStoredPattern
                                 )
                             )
                             data.firstPointMaybeThat
@@ -4801,16 +4884,16 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             (connectionHelp data.connectionFirstSecond)
                             (extract data.otherPoints)
                             (connectionHelp data.connectionLastFirst)
-                            |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                            |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (CreateDetail _ (DetailOnePoint _)) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (EditDetail _ _) ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         UpdateClicked ->
             case model.maybeTool of
@@ -4819,55 +4902,55 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         LeftOf data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.leftOf pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                         RightOf data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.rightOf pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                         Above data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.above pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                         Below data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.below pattern thatAnchor data.distance
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                         AtAngle data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.atAngle pattern
                                         thatAnchor
                                         data.angle
                                         data.distance
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                         BetweenRatio data ->
                             Maybe.map2
@@ -4876,12 +4959,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.ratio
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatAnchorA
                                 data.maybeThatAnchorB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                         BetweenLength data ->
                             Maybe.map2
@@ -4890,12 +4973,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         thatAnchorA
                                         thatAnchorB
                                         data.length
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatAnchorA
                                 data.maybeThatAnchorB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                         CircleCircle data ->
                             Maybe.map2
@@ -4910,23 +4993,23 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             thatCircleA
                                             thatCircleB
                                     )
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatCircleA
                                 data.maybeThatCircleB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                         LineLine data ->
                             Maybe.map2
                                 (\thatLineA thatLineB ->
                                     Pattern.lineLine pattern thatLineA thatLineB
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatLineA
                                 data.maybeThatLineB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                         CircleLine data ->
                             Maybe.map2
@@ -4941,24 +5024,24 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                             thatCircle
                                             thatLine
                                     )
-                                        |> Maybe.map (updatePoint thatPoint storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updatePoint thatPoint model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatCircleA
                                 data.maybeThatLineA
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditCircle thatCircle circleData) ->
                     case circleData of
                         CenteredAt data ->
                             case data.maybeThatAnchorA of
                                 Nothing ->
-                                    ( model, Cmd.none, Nothing )
+                                    ( model, Cmd.none )
 
                                 Just thatAnchor ->
                                     Pattern.centeredAt pattern thatAnchor data.radius
-                                        |> Maybe.map (updateCircle thatCircle storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updateCircle thatCircle model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditLine thatLine lineData) ->
                     case lineData of
@@ -4966,22 +5049,22 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                             Maybe.map2
                                 (\thatAnchorA thatAnchorB ->
                                     Pattern.throughTwoPoints pattern thatAnchorA thatAnchorB
-                                        |> Maybe.map (updateLine thatLine storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updateLine thatLine model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatAnchorA
                                 data.maybeThatAnchorB
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                         ThroughOnePoint data ->
                             Maybe.map
                                 (\thatAnchorA ->
                                     Pattern.throughOnePoint pattern thatAnchorA data.angle
-                                        |> Maybe.map (updateLine thatLine storedPattern model)
-                                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                        |> Maybe.map (updateLine thatLine model.storedPattern model)
+                                        |> Maybe.withDefault ( model, Cmd.none )
                                 )
                                 data.maybeThatAnchorA
-                                |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                                |> Maybe.withDefault ( model, Cmd.none )
 
                 Just (EditDetail thatDetail (DetailManyPoints data)) ->
                     let
@@ -5050,10 +5133,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                         thatDetail
                                         newDetail
                                         pattern
+
+                                newStoredPattern =
+                                    { storedPattern | pattern = newPattern }
                             in
-                            ( { model | maybeTool = Nothing }
-                            , Cmd.none
-                            , Just { storedPattern | pattern = newPattern }
+                            ( { model
+                                | maybeTool = Nothing
+                                , storedPattern = newStoredPattern
+                              }
+                            , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
                         )
                         data.firstPointMaybeThat
@@ -5061,16 +5149,15 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                         (connectionHelp data.connectionFirstSecond)
                         (extract data.otherPoints)
                         (connectionHelp data.connectionLastFirst)
-                        |> Maybe.withDefault ( model, Cmd.none, Nothing )
+                        |> Maybe.withDefault ( model, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
         -- PATTERN
         PointHovered newHoveredPoint ->
             ( { model | hoveredPoint = newHoveredPoint }
             , Cmd.none
-            , Nothing
             )
 
         ToolbarToggleClicked ->
@@ -5080,13 +5167,11 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
               }
             , Browser.Dom.getViewportOf "pattern-container"
                 |> Task.attempt PatternContainerViewportReceived
-            , Nothing
             )
 
         VariablesRulerClicked ->
             ( { model | variablesVisible = not model.variablesVisible }
             , Cmd.none
-            , Nothing
             )
 
         VariableCreateClicked ->
@@ -5097,13 +5182,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
               }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
-            , Nothing
             )
 
         VariableNameChanged newName ->
             case model.maybeVariableDialog of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (VariableDialogCreate data) ->
                     ( { model
@@ -5112,13 +5196,12 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 VariableDialogCreate { data | name = newName }
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
         VariableValueChanged newValue ->
             case model.maybeVariableDialog of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (VariableDialogCreate data) ->
                     ( { model
@@ -5127,46 +5210,47 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                                 VariableDialogCreate { data | value = newValue }
                       }
                     , Cmd.none
-                    , Nothing
                     )
 
         VariableCreateSubmitClicked ->
             case model.maybeVariableDialog of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (VariableDialogCreate { name, value }) ->
                     let
                         newPattern =
                             Pattern.insertVariable name value pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
                     in
-                    ( { model | maybeVariableDialog = Nothing }
-                    , Cmd.none
-                    , Just { storedPattern | pattern = newPattern }
+                    ( { model
+                        | maybeVariableDialog = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
                     )
 
         VariableDialogCancelClicked ->
             ( { model | maybeVariableDialog = Nothing }
             , Cmd.none
-            , Nothing
             )
 
         PointsRulerClicked ->
             ( { model | pointsVisible = not model.pointsVisible }
             , Cmd.none
-            , Nothing
             )
 
         CirclesRulerClicked ->
             ( { model | circlesVisible = not model.circlesVisible }
             , Cmd.none
-            , Nothing
             )
 
         CircleEditClicked thatCircle ->
             case Pattern.getCircle pattern thatCircle of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just { name, value } ->
                     let
@@ -5184,19 +5268,17 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just tool }
                     , Cmd.none
-                    , Nothing
                     )
 
         LinesRulerClicked ->
             ( { model | linesVisible = not model.linesVisible }
             , Cmd.none
-            , Nothing
             )
 
         LineEditClicked thatLine ->
             case Pattern.getLine pattern thatLine of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just { name, value } ->
                     let
@@ -5222,25 +5304,22 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = Just tool }
                     , Cmd.none
-                    , Nothing
                     )
 
         LineSegmentsRulerClicked ->
             ( { model | lineSegmentsVisible = not model.lineSegmentsVisible }
             , Cmd.none
-            , Nothing
             )
 
         DetailsRulerClicked ->
             ( { model | detailsVisible = not model.detailsVisible }
             , Cmd.none
-            , Nothing
             )
 
         DetailEditClicked thatDetail ->
             case Pattern.getDetail pattern thatDetail of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just { name, value } ->
                     let
@@ -5292,34 +5371,36 @@ update key ({ pattern, zoom, center } as storedPattern) msg model =
                     in
                     ( { model | maybeTool = maybeTool }
                     , Cmd.none
-                    , Nothing
                     )
 
         DetailRemoveClicked thatDetail ->
             ( { model | maybeModal = Just (DetailDeleteConfirm thatDetail) }
             , Cmd.none
-            , Nothing
             )
 
         DetailRemoveDialogDeleteClicked ->
             case model.maybeModal of
                 Nothing ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 Just (DetailDeleteConfirm thatDetail) ->
                     let
                         newPattern =
                             Pattern.deleteDetail thatDetail pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
                     in
-                    ( { model | maybeModal = Nothing }
-                    , Cmd.none
-                    , Just { storedPattern | pattern = newPattern }
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
                     )
 
         DetailRemoveDialogCancelClicked ->
             ( { model | maybeModal = Nothing }
             , Cmd.none
-            , Nothing
             )
 
 
@@ -5341,10 +5422,18 @@ insertPoint name viewedPattern model newPoint =
                 )
                 newPoint
                 viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5352,10 +5441,18 @@ updatePoint thatPoint viewedPattern model newPoint =
     let
         newPattern =
             Pattern.updatePoint thatPoint newPoint viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5371,10 +5468,18 @@ insertCircle name viewedPattern model newCircle =
                 )
                 newCircle
                 viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5382,10 +5487,18 @@ updateCircle thatCircle viewedPattern model newCircle =
     let
         newPattern =
             Pattern.updateCircle thatCircle newCircle viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5401,10 +5514,18 @@ insertLine name viewedPattern model newLine =
                 )
                 newLine
                 viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5412,10 +5533,18 @@ updateLine thatLine viewedPattern model newLine =
     let
         newPattern =
             Pattern.updateLine thatLine newLine viewedPattern.pattern
+
+        storedPattern =
+            model.storedPattern
+
+        newStoredPattern =
+            { storedPattern | pattern = newPattern }
     in
-    ( { model | maybeTool = Nothing }
-    , Cmd.none
-    , Just { viewedPattern | pattern = newPattern }
+    ( { model
+        | maybeTool = Nothing
+        , storedPattern = newStoredPattern
+      }
+    , Api.updatePattern PatternUpdateReceived newStoredPattern
     )
 
 
@@ -5423,36 +5552,43 @@ updateLine thatLine viewedPattern model newLine =
 ---- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ case model.patternContainerDimensions of
-            Just _ ->
-                Sub.none
+    case model of
+        Loading ->
+            Sub.none
 
-            Nothing ->
-                Browser.Events.onAnimationFrame
-                    (\_ -> PatternContainerViewportRequested)
-        , Browser.Events.onResize
-            (\_ _ -> WindowResized)
-        , case model.maybeDrag of
-            Nothing ->
-                Sub.none
+        Error ->
+            Sub.none
 
-            Just _ ->
-                Sub.batch
-                    [ Browser.Events.onMouseMove <|
-                        Decode.map MouseMove <|
-                            Decode.map2 Position
-                                (Decode.field "screenX" Decode.float)
-                                (Decode.field "screenY" Decode.float)
-                    , Browser.Events.onMouseUp <|
-                        Decode.map MouseUp <|
-                            Decode.map2 Position
-                                (Decode.field "screenX" Decode.float)
-                                (Decode.field "screenY" Decode.float)
-                    ]
-        ]
+        Loaded data ->
+            Sub.batch
+                [ case data.patternContainerDimensions of
+                    Just _ ->
+                        Sub.none
+
+                    Nothing ->
+                        Browser.Events.onAnimationFrame
+                            (\_ -> PatternContainerViewportRequested)
+                , Browser.Events.onResize
+                    (\_ _ -> WindowResized)
+                , case data.maybeDrag of
+                    Nothing ->
+                        Sub.none
+
+                    Just _ ->
+                        Sub.batch
+                            [ Browser.Events.onMouseMove <|
+                                Decode.map MouseMove <|
+                                    Decode.map2 Position
+                                        (Decode.field "screenX" Decode.float)
+                                        (Decode.field "screenY" Decode.float)
+                            , Browser.Events.onMouseUp <|
+                                Decode.map MouseUp <|
+                                    Decode.map2 Position
+                                        (Decode.field "screenX" Decode.float)
+                                        (Decode.field "screenY" Decode.float)
+                            ]
+                ]
 
 
 

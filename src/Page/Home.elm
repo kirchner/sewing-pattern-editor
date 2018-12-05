@@ -7,6 +7,7 @@ module Page.Home exposing
     , view
     )
 
+import Api
 import BoundingBox2d
 import Browser.Dom
 import Browser.Events
@@ -26,9 +27,11 @@ import Frame2d
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Pattern exposing (Pattern)
+import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
@@ -41,7 +44,9 @@ import View.Modal
 
 
 type alias Model =
-    { dialog : Dialog }
+    { storedPatterns : WebData (List StoredPattern)
+    , dialog : Dialog
+    }
 
 
 type Dialog
@@ -49,13 +54,19 @@ type Dialog
     | CreatePattern String
 
 
-init : Model
+init : ( Model, Cmd Msg )
 init =
-    { dialog = NoDialog }
+    ( { storedPatterns = Loading
+      , dialog = NoDialog
+      }
+    , Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+    )
 
 
 type Msg
     = NoOp
+    | PatternsReceived (WebData (List StoredPattern))
+    | PatternCreateResponse (Result Http.Error ())
     | PatternCardClicked String
     | PatternCardMenuClicked String
     | DownloadPatternPressed String
@@ -66,65 +77,64 @@ type Msg
     | NewPatternCancelClicked
 
 
-update :
-    String
-    -> Navigation.Key
-    -> Dict String StoredPattern
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg, Maybe (Dict String StoredPattern) )
-update prefix key cache msg model =
+update : String -> Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
+update prefix key msg model =
     case msg of
         NoOp ->
-            ( model, Cmd.none, Nothing )
+            ( model, Cmd.none )
+
+        PatternsReceived storedPatterns ->
+            ( { model | storedPatterns = storedPatterns }
+            , Cmd.none
+            )
+
+        PatternCreateResponse result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( model
+                    , Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+                    )
 
         PatternCardClicked slug ->
             ( model
             , Navigation.pushUrl key <|
                 Route.toString prefix (Route.Editor slug Nothing)
-            , Nothing
             )
 
         PatternCardMenuClicked slug ->
-            ( model
-            , Cmd.none
-            , Nothing
-            )
+            ( model, Cmd.none )
 
         DownloadPatternPressed patternSlug ->
-            ( model
-            , Cmd.none
-            , Nothing
-            )
+            ( model, Cmd.none )
 
         DeletePatternPressed patternSlug ->
-            ( model
-            , Cmd.none
-            , Nothing
-            )
+            ( model, Cmd.none )
 
         AddPatternClicked ->
             ( { model | dialog = CreatePattern "" }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
-            , Nothing
             )
 
         NewPatternNameChanged newName ->
             case model.dialog of
                 NoDialog ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 CreatePattern _ ->
                     ( { model | dialog = CreatePattern newName }
                     , Cmd.none
-                    , Nothing
                     )
 
         NewPatternCreateClicked ->
             case model.dialog of
                 NoDialog ->
-                    ( model, Cmd.none, Nothing )
+                    ( model, Cmd.none )
 
                 CreatePattern name ->
                     let
@@ -140,22 +150,14 @@ update prefix key cache msg model =
                             else
                                 '-'
                     in
-                    if Dict.member slug cache then
-                        ( model
-                        , Cmd.none
-                        , Nothing
-                        )
-
-                    else
-                        ( { model | dialog = NoDialog }
-                        , Cmd.none
-                        , Just (Dict.insert slug (StoredPattern.init slug name) cache)
-                        )
+                    ( { model | dialog = NoDialog }
+                    , Api.createPattern PatternCreateResponse <|
+                        StoredPattern.init slug name
+                    )
 
         NewPatternCancelClicked ->
             ( { model | dialog = NoDialog }
             , Cmd.none
-            , Nothing
             )
 
 
@@ -180,8 +182,8 @@ subscriptions model =
                 )
 
 
-view : String -> List StoredPattern -> Model -> Html Msg
-view prefix storedPatterns model =
+view : String -> Model -> Html Msg
+view prefix model =
     Element.layoutWith
         { options =
             [ Element.focusStyle
@@ -210,8 +212,7 @@ view prefix storedPatterns model =
             , Element.spacing Design.normal
             ]
             [ Element.row
-                [ Element.width Element.fill
-                ]
+                [ Element.width Element.fill ]
                 [ Element.el
                     [ Design.fontXXLarge
                     , Font.color Design.primary
@@ -233,20 +234,39 @@ view prefix storedPatterns model =
                         }
                     ]
                 ]
-            , Element.column
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.spacing Design.normal
-                ]
-                (storedPatterns
-                    |> slice 3
-                    |> List.map
-                        (List.map (viewPattern prefix)
-                            >> List.intersperse
-                                (Element.el [ Element.width Element.fill ] Element.none)
-                            >> Element.row [ Element.width Element.fill ]
+            , case model.storedPatterns of
+                NotAsked ->
+                    Element.none
+
+                Loading ->
+                    Element.el
+                        [ Element.width Element.fill
+                        , Element.padding Design.xLarge
+                        ]
+                        (Element.el [ Element.centerX ]
+                            (Element.text "Loading patterns..")
                         )
-                )
+
+                Failure error ->
+                    Element.el
+                        [ Element.width Element.fill
+                        , Element.padding Design.xLarge
+                        ]
+                        (Element.el [ Element.centerX ]
+                            (Element.text "There was an error while loading your patterns:")
+                        )
+
+                Success storedPatterns ->
+                    Element.wrappedRow
+                        [ Element.width Element.fill
+                        , Element.spacing Design.normal
+                        ]
+                        (List.map
+                            (\storedPattern ->
+                                viewPattern prefix storedPattern
+                            )
+                            storedPatterns
+                        )
             , Element.row
                 [ Element.width Element.fill
                 , Element.paddingXY 0 Design.large
@@ -387,7 +407,7 @@ viewPattern prefix ({ pattern } as storedPattern) =
             ]
             [ Element.el
                 [ Border.rounded 4
-                , Element.width (Element.px 340)
+                , Element.width (Element.px 320)
                 , Element.height (Element.px 280)
                 , Background.color Design.secondary
                 ]
