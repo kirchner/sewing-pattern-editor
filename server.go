@@ -13,17 +13,7 @@ import (
 func main() {
 	r := mux.NewRouter()
 
-	r.Methods("GET").Path("/elm.js").HandlerFunc(
-		serveJSAsset("assets/js/elm"))
-	r.Methods("GET").Path("/service-worker.js").HandlerFunc(
-		serveJSAsset("assets/js/service-worker"))
-	r.Methods("GET").Path("/register-service-worker.js").HandlerFunc(
-		serveJSAsset("assets/js/register-service-worker"))
-
-	r.Methods("GET").PathPrefix("/assets/").Handler(
-		http.StripPrefix("/assets/",
-			http.FileServer(http.Dir("assets"))))
-	r.Methods("GET").PathPrefix("/").HandlerFunc(serveApplication)
+	r.Methods("GET").PathPrefix("/").Handler(http.FileServer(http.Dir("./dist")))
 
 	http.Handle("/", r)
 	log.Println("Listening on port 8080")
@@ -53,8 +43,4 @@ type gzipResponseWriter struct {
 
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
-}
-
-func serveApplication(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "src/index.html")
 }
