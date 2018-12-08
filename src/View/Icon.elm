@@ -1,6 +1,6 @@
 module View.Icon exposing
-    ( dev
-    , fa
+    ( fa
+    , faBrandLarge
     , faLarge
     , faMedium
     )
@@ -26,17 +26,6 @@ module View.Icon exposing
 import Element
 import Html
 import Html.Attributes as Attributes
-
-
-dev name =
-    Element.el [] <|
-        Element.html <|
-            Html.i
-                [ Attributes.class ("devicon-" ++ name)
-                , Attributes.style "font-size" "24px"
-                , Attributes.style "color" "inherit"
-                ]
-                []
 
 
 fa name =
@@ -68,6 +57,18 @@ faLarge name =
         Element.html <|
             Html.i
                 [ Attributes.class "fas"
+                , Attributes.class ("fa-" ++ name)
+                , Attributes.style "font-size" "24px"
+                , Attributes.style "color" "inherit"
+                ]
+                []
+
+
+faBrandLarge name =
+    Element.el [] <|
+        Element.html <|
+            Html.i
+                [ Attributes.class "fab"
                 , Attributes.class ("fa-" ++ name)
                 , Attributes.style "font-size" "24px"
                 , Attributes.style "color" "inherit"

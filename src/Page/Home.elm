@@ -303,7 +303,7 @@ view prefix model =
                             [ Element.spacing Design.xSmall ]
                             [ Element.el [ Font.underline ]
                                 (Element.text "Check out the source code")
-                            , View.Icon.dev "github-plain"
+                            , View.Icon.faBrandLarge "github"
                             ]
                     }
                 ]

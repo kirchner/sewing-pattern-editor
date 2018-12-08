@@ -1355,7 +1355,7 @@ viewEditor prefix storedPattern model =
                     [ Font.color Design.primaryDark ]
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = View.Icon.dev "github-plain"
+                , label = View.Icon.faBrandLarge "github"
                 }
             ]
         , Element.row
