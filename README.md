@@ -27,14 +27,11 @@ sewing patterns.
 
 ## Run locally
 
-You can either use elm reactor:
+You can run the development server with
 
 ```
-$ elm reactor
+$ yarn
+$ yarn run dev
 ```
 
-Or you can use the go server, by running
-
-```
-$ go run server/main.go
-```
+Then just visit `localhost:1234` in your browser.

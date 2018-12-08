@@ -1,3 +1,8 @@
+TODO.md
+node_modules/
+yarn-error.log
 elm-stuff/
+.cache/
+dist/
 gh-pages/
 assets/js/elm.js
