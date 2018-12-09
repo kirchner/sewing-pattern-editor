@@ -5,19 +5,35 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
 )
 
+const (
+	sewingPatternEditorDistPath = "SEWING_PATTERN_EDITOR_DIST_PATH"
+	sewingPatternEditorPort     = "SEWING_PATTERN_EDITOR_PORT"
+)
+
 func main() {
+	distPath := os.Getenv(sewingPatternEditorDistPath)
+	if distPath == "" {
+		log.Fatal(sewingPatternEditorDistPath + " must be set")
+	}
+
+	port := os.Getenv(sewingPatternEditorPort)
+	if port == "" {
+		log.Fatal(sewingPatternEditorPort + " must be set")
+	}
+
 	r := mux.NewRouter()
 
-	r.Methods("GET").PathPrefix("/").Handler(http.FileServer(http.Dir("./dist")))
+	r.Methods("GET").PathPrefix("/").Handler(http.FileServer(http.Dir(distPath)))
 
 	http.Handle("/", r)
-	log.Println("Listening on port 8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Listening on port " + port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func serveJSAsset(name string) func(w http.ResponseWriter, r *http.Request) {
