@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Elm } from './src/Main.elm';
+import '@fortawesome/fontawesome-free/css/all.css';
 
 
 if (module.hot) {
