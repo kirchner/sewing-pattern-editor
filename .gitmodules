@@ -1,0 +1,3 @@
+[submodule "elm-wai-aria-listbox"]
+	path = elm-wai-aria-listbox
+	url = https://github.com/kirchner/elm-wai-aria-listbox
