@@ -25,6 +25,9 @@
 #   unused-packages = true
 
 
+[metadata.heroku]
+  root-package = "github.com/kirchner/sewing-pattern-editor"
+
 [[constraint]]
   name = "github.com/gorilla/mux"
   version = "1.6.2"
