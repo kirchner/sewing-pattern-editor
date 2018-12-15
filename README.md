@@ -1,7 +1,7 @@
 # sewing-pattern-editor
 
 Create sewing patterns in your browser. [Live
-Demo](http://kirchner.github.io/sewing-pattern-editor)
+Demo](https://sewing-pattern-editor.herokuapp.com)
 
 Note, that this is in a very early development state.  Nevertheless,
 I appreciate any questions or feedback. :)
