@@ -74,6 +74,16 @@ const initElm = () => {
     const randInts = getRandomInts(5);
     app.ports.seedReceived.send([randInts[0], randInts.slice(1)]);
   });
+
+  app.ports.selectAllTextIn.subscribe(id => {
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById(id);
+
+      if (input !== null) {
+        input.select();
+      }
+    });
+  });
 };
 
 const getRandomInts = (n) => {

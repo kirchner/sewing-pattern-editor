@@ -50,6 +50,7 @@ import Html.Events
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
+import List.Extra as List
 import Pattern exposing (Pattern)
 import Ports
 import Random.Pcg.Extended as Random
@@ -77,6 +78,7 @@ type alias Model =
 type Dialog
     = NoDialog
     | CreatePattern String
+    | RenamePattern String String
     | DeletePattern String String
     | ImportPatterns
         { hover : Bool
@@ -115,6 +117,12 @@ type Msg
     | NewPatternNameChanged String
     | NewPatternCreateClicked
     | NewPatternCancelClicked
+      -- RENAME PATTERN
+    | RenamePatternPressed String
+    | RenamePatternNameChanged String
+    | RenamePatternRenameClicked
+    | RenamePatternCancelClicked
+    | PatternUpdateReceived (Result Http.Error ())
       -- DELETE PATTERN
     | DeletePatternPressed String String
     | DeletePatternDeleteClicked
@@ -204,6 +212,64 @@ update prefix key msg model =
             ( { model | dialog = NoDialog }
             , Cmd.none
             )
+
+        -- RENAME PATTERN
+        RenamePatternPressed slug ->
+            case getPattern model slug of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just storedPattern ->
+                    ( { model | dialog = RenamePattern slug storedPattern.name }
+                    , Cmd.batch
+                        [ Browser.Dom.focus "name-input"
+                            |> Task.attempt (\_ -> NoOp)
+                        , Ports.selectAllTextIn "name-input"
+                        ]
+                    )
+
+        RenamePatternNameChanged newName ->
+            case model.dialog of
+                RenamePattern slug _ ->
+                    ( { model | dialog = RenamePattern slug newName }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        RenamePatternRenameClicked ->
+            case model.dialog of
+                RenamePattern slug newName ->
+                    case getPattern model slug of
+                        Just storedPattern ->
+                            ( { model | dialog = NoDialog }
+                            , Api.updatePattern PatternUpdateReceived
+                                { storedPattern | name = newName }
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        RenamePatternCancelClicked ->
+            ( { model | dialog = NoDialog }
+            , Cmd.none
+            )
+
+        PatternUpdateReceived result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( model
+                    , Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+                    )
 
         -- DELETE PATTERNS
         DeletePatternPressed slug name ->
@@ -349,6 +415,16 @@ update prefix key msg model =
                     ( model, Cmd.none )
 
 
+getPattern model slug =
+    let
+        withSlug pattern =
+            pattern.slug == slug
+    in
+    model.storedPatterns
+        |> RemoteData.toMaybe
+        |> Maybe.andThen (List.find withSlug)
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
@@ -394,7 +470,7 @@ view prefix model =
             , Font.sansSerif
             ]
         , Element.inFront <|
-            viewDialog model.dialog
+            viewDialog model model.dialog
         ]
         (Element.column
             [ Element.width Element.fill
@@ -484,8 +560,8 @@ view prefix model =
         )
 
 
-viewDialog : Dialog -> Element Msg
-viewDialog dialog =
+viewDialog : Model -> Dialog -> Element Msg
+viewDialog model dialog =
     case dialog of
         NoDialog ->
             Element.none
@@ -519,6 +595,44 @@ viewDialog dialog =
                             }
                     ]
                 }
+
+        RenamePattern slug name ->
+            case Maybe.map .name (getPattern model slug) of
+                Nothing ->
+                    Element.none
+
+                Just oldName ->
+                    View.Modal.small
+                        { onCancelPress = RenamePatternCancelClicked
+                        , title = "Rename the pattern «" ++ oldName ++ "»?"
+                        , content =
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.small
+                                ]
+                                [ Element.text <|
+                                    "What do you want to rename the pattern «"
+                                        ++ oldName
+                                        ++ "» to?"
+                                , View.Input.text "name-input"
+                                    { onChange = RenamePatternNameChanged
+                                    , text = name
+                                    , label = "Pick a new name"
+                                    , help = Nothing
+                                    }
+                                ]
+                        , actions =
+                            [ View.Input.btnPrimary
+                                { onPress = Just RenamePatternRenameClicked
+                                , label = "Rename"
+                                }
+                            , Element.el [ Element.alignRight ] <|
+                                View.Input.btnCancel
+                                    { onPress = Just RenamePatternCancelClicked
+                                    , label = "Cancel"
+                                    }
+                            ]
+                        }
 
         DeletePattern slug name ->
             View.Modal.small
@@ -795,7 +909,7 @@ viewPattern prefix ({ pattern } as storedPattern) =
             , Element.spacing Design.xSmall
             ]
             [ View.Input.btnSecondary (storedPattern.slug ++ "-rename")
-                { onPress = Nothing
+                { onPress = Just (RenamePatternPressed storedPattern.slug)
                 , label = "Rename"
                 }
             , Element.downloadAs
