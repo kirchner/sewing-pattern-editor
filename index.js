@@ -67,4 +67,17 @@ const initElm = () => {
   var app = Elm.Main.init({
     flags: {}
   });
+
+  app.ports.requestSeed.subscribe(() => {
+    const crypto = window.crypto || window.msCrypto;
+
+    const randInts = getRandomInts(5);
+    app.ports.seedReceived.send([randInts[0], randInts.slice(1)]);
+  });
+};
+
+const getRandomInts = (n) => {
+  const randInts = new Uint32Array(n);
+  crypto.getRandomValues(randInts);
+  return Array.from(randInts);
 };

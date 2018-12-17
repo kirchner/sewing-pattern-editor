@@ -41,6 +41,8 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
+import File exposing (File)
+import File.Select
 import Frame2d
 import Html exposing (Html)
 import Html.Attributes
@@ -49,6 +51,8 @@ import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Pattern exposing (Pattern)
+import Ports
+import Random.Pcg.Extended as Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import StoredPattern exposing (StoredPattern)
@@ -56,43 +60,71 @@ import Svg exposing (Svg)
 import Svg.Attributes
 import Task
 import Those
+import Uuid
 import View.Icon
 import View.Input
 import View.Modal
+import View.Navigation
 
 
 type alias Model =
     { storedPatterns : WebData (List StoredPattern)
     , dialog : Dialog
+    , seed : Random.Seed
     }
 
 
 type Dialog
     = NoDialog
     | CreatePattern String
+    | ImportPatterns
+        { hover : Bool
+        , previews : List Preview
+        }
+
+
+type alias Preview =
+    { fileName : String
+    , content : Result Decode.Error StoredPattern
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { storedPatterns = Loading
       , dialog = NoDialog
+      , seed = Random.initialSeed 0 []
       }
-    , Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+    , Cmd.batch
+        [ Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+        , Ports.requestSeed ()
+        ]
     )
 
 
 type Msg
     = NoOp
+    | SeedReceived Int (List Int)
     | PatternsReceived (WebData (List StoredPattern))
     | PatternCreateResponse (Result Http.Error ())
     | PatternCardClicked String
     | PatternCardMenuClicked String
     | DownloadPatternPressed String
     | DeletePatternPressed String
+      -- ADD PATTERN
     | AddPatternClicked
     | NewPatternNameChanged String
     | NewPatternCreateClicked
     | NewPatternCancelClicked
+      -- IMPORT PATTERNS
+    | ImportPatternsPick
+    | ImportPatternsDragEnter
+    | ImportPatternsDragLeave
+    | ImportPatternsGotFiles File (List File)
+    | ImportPatternsGotPreview String String
+    | ImportPatternsClicked
+    | ImportPatternsCancelClicked
+    | ImportPatternsImportClicked
 
 
 update : String -> Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
@@ -100,6 +132,11 @@ update prefix key msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        SeedReceived seed seedExtension ->
+            ( { model | seed = Random.initialSeed seed seedExtension }
+            , Cmd.none
+            )
 
         PatternsReceived storedPatterns ->
             ( { model | storedPatterns = storedPatterns }
@@ -133,6 +170,7 @@ update prefix key msg model =
         DeletePatternPressed patternSlug ->
             ( model, Cmd.none )
 
+        -- ADD PATTERN
         AddPatternClicked ->
             ( { model | dialog = CreatePattern "" }
             , Browser.Dom.focus "name-input"
@@ -149,6 +187,9 @@ update prefix key msg model =
                     , Cmd.none
                     )
 
+                ImportPatterns _ ->
+                    ( model, Cmd.none )
+
         NewPatternCreateClicked ->
             case model.dialog of
                 NoDialog ->
@@ -156,48 +197,157 @@ update prefix key msg model =
 
                 CreatePattern name ->
                     let
-                        slug =
-                            name
-                                |> String.map replaceNonLetter
-                                |> String.toLower
-
-                        replaceNonLetter c =
-                            if Char.isAlpha c then
-                                c
-
-                            else
-                                '-'
+                        ( uuid, newSeed ) =
+                            Random.step Uuid.generator model.seed
                     in
                     ( { model | dialog = NoDialog }
                     , Api.createPattern PatternCreateResponse <|
-                        StoredPattern.init slug name
+                        StoredPattern.init (Uuid.toString uuid) name
                     )
+
+                ImportPatterns _ ->
+                    ( model, Cmd.none )
 
         NewPatternCancelClicked ->
             ( { model | dialog = NoDialog }
             , Cmd.none
             )
 
+        -- IMPORT PATTERNS
+        ImportPatternsPick ->
+            ( model
+            , File.Select.files [ "application/json" ] ImportPatternsGotFiles
+            )
+
+        ImportPatternsDragEnter ->
+            case model.dialog of
+                ImportPatterns data ->
+                    ( { model | dialog = ImportPatterns { data | hover = True } }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ImportPatternsDragLeave ->
+            case model.dialog of
+                ImportPatterns data ->
+                    ( { model | dialog = ImportPatterns { data | hover = False } }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ImportPatternsGotFiles firstFile files ->
+            case model.dialog of
+                ImportPatterns data ->
+                    ( { model | dialog = ImportPatterns { data | hover = False } }
+                    , Cmd.batch <|
+                        List.map
+                            (\file ->
+                                Task.perform (ImportPatternsGotPreview (File.name file)) <|
+                                    File.toString file
+                            )
+                            (firstFile :: files)
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ImportPatternsGotPreview name content ->
+            case model.dialog of
+                ImportPatterns data ->
+                    let
+                        newPreview =
+                            { fileName = name
+                            , content =
+                                Decode.decodeString StoredPattern.decoder content
+                            }
+                    in
+                    ( { model
+                        | dialog =
+                            ImportPatterns
+                                { data | previews = newPreview :: data.previews }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ImportPatternsClicked ->
+            ( { model
+                | dialog =
+                    ImportPatterns
+                        { hover = False
+                        , previews = []
+                        }
+              }
+            , Cmd.none
+            )
+
+        ImportPatternsCancelClicked ->
+            ( { model | dialog = NoDialog }
+            , Cmd.none
+            )
+
+        ImportPatternsImportClicked ->
+            case model.dialog of
+                ImportPatterns { previews } ->
+                    let
+                        ( allCmds, newSeed ) =
+                            List.foldl createPattern ( [], model.seed ) previews
+
+                        createPattern { content } ( cmds, seed ) =
+                            case content of
+                                Err _ ->
+                                    ( cmds, seed )
+
+                                Ok storedPattern ->
+                                    let
+                                        ( uuid, nextSeed ) =
+                                            Random.step Uuid.generator seed
+                                    in
+                                    ( Api.createPattern PatternCreateResponse
+                                        { storedPattern | slug = Uuid.toString uuid }
+                                        :: cmds
+                                    , nextSeed
+                                    )
+                    in
+                    ( { model
+                        | seed = newSeed
+                        , dialog = NoDialog
+                      }
+                    , Cmd.batch allCmds
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.dialog of
-        NoDialog ->
-            Sub.none
+    Sub.batch
+        [ Ports.seedReceived (\( seed, seedExtension ) -> SeedReceived seed seedExtension)
+        , case model.dialog of
+            NoDialog ->
+                Sub.none
 
-        _ ->
-            Browser.Events.onKeyDown
-                (Decode.field "key" Decode.string
-                    |> Decode.andThen
-                        (\key ->
-                            case key of
-                                "Escape" ->
-                                    Decode.succeed NewPatternCancelClicked
+            _ ->
+                Browser.Events.onKeyDown
+                    (Decode.field "key" Decode.string
+                        |> Decode.andThen
+                            (\key ->
+                                case key of
+                                    "Escape" ->
+                                        Decode.succeed NewPatternCancelClicked
 
-                                _ ->
-                                    Decode.fail "not handling that key here"
-                        )
-                )
+                                    _ ->
+                                        Decode.fail "not handling that key here"
+                            )
+                    )
+        ]
 
 
 view : String -> Model -> Html Msg
@@ -246,9 +396,9 @@ view prefix model =
                         { onPress = Just AddPatternClicked
                         , label = "Create new pattern"
                         }
-                    , View.Input.btnSecondary "upload-pattern"
-                        { onPress = Nothing
-                        , label = "Upload pattern"
+                    , View.Input.btnSecondary "import-patterns"
+                        { onPress = Just ImportPatternsClicked
+                        , label = "Import patterns"
                         }
                     ]
                 ]
@@ -346,6 +496,137 @@ viewDialog dialog =
                             }
                     ]
                 }
+
+        ImportPatterns { hover, previews } ->
+            let
+                hoverAttributes attrs =
+                    if hover then
+                        Border.color Design.primaryDark
+                            :: Background.color Design.secondary
+                            :: attrs
+
+                    else
+                        Border.color Design.primary
+                            :: attrs
+
+                viewFile { fileName, content } =
+                    Element.row
+                        [ Element.width Element.fill
+                        , Element.spacing Design.small
+                        ]
+                        (case content of
+                            Err decodeError ->
+                                [ Element.el
+                                    [ Element.width Element.fill
+                                    , Element.clip
+                                    ]
+                                    (Element.text fileName)
+                                , Element.row
+                                    [ Element.width (Element.fillPortion 1)
+                                    , Element.spacing Design.xxSmall
+                                    , Font.bold
+                                    , Font.color Design.danger
+                                    ]
+                                    [ View.Icon.fa "exclamation-circle"
+                                    , Element.text "This is not a valid pattern file."
+                                    ]
+                                , Element.el [ Element.alignRight ]
+                                    (View.Input.btnSecondary "remove-file-button"
+                                        { onPress = Nothing
+                                        , label = "Remove"
+                                        }
+                                    )
+                                ]
+
+                            Ok _ ->
+                                [ Element.el
+                                    [ Element.width Element.fill
+                                    , Element.clip
+                                    ]
+                                    (View.Navigation.newTabLink
+                                        { url = ""
+                                        , label = fileName
+                                        }
+                                    )
+                                , Element.row
+                                    [ Element.width (Element.fillPortion 1)
+                                    , Element.spacing Design.xxSmall
+                                    , Font.bold
+                                    , Font.color Design.success
+                                    ]
+                                    [ View.Icon.fa "check-circle"
+                                    , Element.text "File can be imported."
+                                    ]
+                                , Element.el [ Element.alignRight ]
+                                    (View.Input.btnSecondary "remove-file-button"
+                                        { onPress = Nothing
+                                        , label = "Remove"
+                                        }
+                                    )
+                                ]
+                        )
+            in
+            View.Modal.wide
+                { onCancelPress = ImportPatternsCancelClicked
+                , title = "Import patterns"
+                , content =
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing Design.small
+                        ]
+                        [ Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.xSmall
+                            ]
+                            (List.map viewFile previews)
+                        , Element.el
+                            ([ Element.width Element.fill
+                             , Element.height (Element.px 200)
+                             , Border.width 2
+                             , Border.rounded Design.xSmall
+                             , Border.dashed
+                             , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
+                             , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
+                             , hijackOn "dragleave" (Decode.succeed ImportPatternsDragLeave)
+                             , hijackOn "drop"
+                                (Decode.at [ "dataTransfer", "files" ]
+                                    (Decode.oneOrMore ImportPatternsGotFiles File.decoder)
+                                )
+                             ]
+                                |> hoverAttributes
+                            )
+                            (Element.el
+                                [ Element.centerX
+                                , Element.centerY
+                                ]
+                                (View.Input.btnSecondary "upload-file-button"
+                                    { onPress = Just ImportPatternsPick
+                                    , label = "Upload file"
+                                    }
+                                )
+                            )
+                        ]
+                , actions =
+                    [ View.Input.btnPrimary
+                        { onPress = Just ImportPatternsImportClicked
+                        , label = "Import"
+                        }
+                    , Element.el [ Element.alignRight ] <|
+                        View.Input.btnCancel
+                            { onPress = Just ImportPatternsCancelClicked
+                            , label = "Cancel"
+                            }
+                    ]
+                }
+
+
+hijackOn event decoder =
+    Element.htmlAttribute <|
+        Html.Events.preventDefaultOn event (Decode.map hijack decoder)
+
+
+hijack msg =
+    ( msg, True )
 
 
 viewPattern : String -> StoredPattern -> Element Msg

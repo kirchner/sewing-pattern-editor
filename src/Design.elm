@@ -5,6 +5,7 @@ module Design exposing
     , primary, primaryDark
     , secondary, secondaryDark
     , danger, dangerDark
+    , success
     , grayDark
     , black, white
     )
@@ -32,6 +33,7 @@ module Design exposing
 @docs primary, primaryDark
 @docs secondary, secondaryDark
 @docs danger, dangerDark
+@docs success
 
 
 ## Gradients
@@ -177,6 +179,12 @@ danger =
 
 dangerDark =
     Element.rgb255 180 33 25
+
+
+{-| <http://paletton.com/#uid=73i2p0kmQrEaoKRhxwdrum-xsg2>
+-}
+success =
+    Element.rgb255 48 169 69
 
 
 

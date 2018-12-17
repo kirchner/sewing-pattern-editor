@@ -1,6 +1,7 @@
 module View.Navigation exposing
     ( accordion
     , link
+    , newTabLink
     )
 
 {-
@@ -32,6 +33,22 @@ import View.Icon
 link : { url : String, label : String } -> Element msg
 link { url, label } =
     Element.link []
+        { url = url
+        , label =
+            Element.el
+                [ Design.fontNormal
+                , Font.underline
+                , Font.color Design.primary
+                , Element.mouseOver
+                    [ Font.color Design.primaryDark ]
+                ]
+                (Element.text label)
+        }
+
+
+newTabLink : { url : String, label : String } -> Element msg
+newTabLink { url, label } =
+    Element.newTabLink []
         { url = url
         , label =
             Element.el

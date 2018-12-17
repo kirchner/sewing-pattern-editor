@@ -1,4 +1,7 @@
-module View.Modal exposing (small)
+module View.Modal exposing
+    ( small
+    , wide
+    )
 
 {-
    Sewing pattern editor
@@ -28,6 +31,17 @@ import View.Icon
 import View.Input
 
 
+wide :
+    { onCancelPress : msg
+    , title : String
+    , content : Element msg
+    , actions : List (Element msg)
+    }
+    -> Element msg
+wide =
+    custom 600
+
+
 small :
     { onCancelPress : msg
     , title : String
@@ -35,7 +49,20 @@ small :
     , actions : List (Element msg)
     }
     -> Element msg
-small { onCancelPress, title, content, actions } =
+small =
+    custom 400
+
+
+custom :
+    Int
+    ->
+        { onCancelPress : msg
+        , title : String
+        , content : Element msg
+        , actions : List (Element msg)
+        }
+    -> Element msg
+custom width { onCancelPress, title, content, actions } =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -44,7 +71,7 @@ small { onCancelPress, title, content, actions } =
         (Element.column
             [ Element.centerX
             , Element.centerY
-            , Element.width (Element.px 400)
+            , Element.width (Element.px width)
             , Border.width 1
             , Border.rounded 4
             , Border.color Design.black
