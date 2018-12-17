@@ -1,0 +1,9 @@
+{
+  "background_color": "black",
+  "description": "A sewing pattern editor written in Elm",
+  "display": "fullscreen",
+  "icons": [],
+  "name": "sewing-pattern-editor",
+  "short_name": "spe",
+  "start_url": "/index.html"
+}
