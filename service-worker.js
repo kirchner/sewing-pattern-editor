@@ -48,6 +48,10 @@ self.addEventListener("fetch", event => {
     event.respondWith(
       event.request.json().then(updatePattern)
     );
+  } else if (method === "DELETE" && segments.length === 2 && segments[0] === "patterns") {
+    event.respondWith(
+      deletePattern(segments[1])
+    );
   }
 });
 
@@ -156,6 +160,22 @@ const updatePattern = data =>
       {
         status: 403,
         statusText: "Forbidden"
+      }
+    );
+  });
+
+const deletePattern = slug =>
+  dbPromise.then(db => {
+    return db.transaction("patterns", "readwrite")
+      .objectStore("patterns")
+      .delete(slug);
+  })
+  .then(() => {
+    return new Response(
+      null,
+      {
+        status: 200,
+        statusText: "OK"
       }
     );
   });

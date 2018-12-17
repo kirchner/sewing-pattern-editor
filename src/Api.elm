@@ -1,5 +1,6 @@
 module Api exposing
     ( createPattern
+    , deletePattern
     , getPattern
     , getPatterns
     , updatePattern
@@ -57,6 +58,18 @@ updatePattern onUpdateResponse storedPattern =
         , url = "/patterns"
         , body = Http.jsonBody (StoredPattern.encode storedPattern)
         , expect = Http.expectWhatever onUpdateResponse
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deletePattern onDeleteResponse slug =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/patterns/" ++ slug
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever onDeleteResponse
         , timeout = Nothing
         , tracker = Nothing
         }

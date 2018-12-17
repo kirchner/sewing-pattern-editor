@@ -77,6 +77,7 @@ type alias Model =
 type Dialog
     = NoDialog
     | CreatePattern String
+    | DeletePattern String String
     | ImportPatterns
         { hover : Bool
         , previews : List Preview
@@ -109,13 +110,16 @@ type Msg
     | PatternCreateResponse (Result Http.Error ())
     | PatternCardClicked String
     | PatternCardMenuClicked String
-    | DownloadPatternPressed String
-    | DeletePatternPressed String
       -- ADD PATTERN
     | AddPatternClicked
     | NewPatternNameChanged String
     | NewPatternCreateClicked
     | NewPatternCancelClicked
+      -- DELETE PATTERN
+    | DeletePatternPressed String String
+    | DeletePatternDeleteClicked
+    | DeletePatternCancelClicked
+    | PatternDeleteResponse (Result Http.Error ())
       -- IMPORT PATTERNS
     | ImportPatternsPick
     | ImportPatternsDragEnter
@@ -164,12 +168,6 @@ update prefix key msg model =
         PatternCardMenuClicked slug ->
             ( model, Cmd.none )
 
-        DownloadPatternPressed patternSlug ->
-            ( model, Cmd.none )
-
-        DeletePatternPressed patternSlug ->
-            ( model, Cmd.none )
-
         -- ADD PATTERN
         AddPatternClicked ->
             ( { model | dialog = CreatePattern "" }
@@ -179,22 +177,16 @@ update prefix key msg model =
 
         NewPatternNameChanged newName ->
             case model.dialog of
-                NoDialog ->
-                    ( model, Cmd.none )
-
                 CreatePattern _ ->
                     ( { model | dialog = CreatePattern newName }
                     , Cmd.none
                     )
 
-                ImportPatterns _ ->
+                _ ->
                     ( model, Cmd.none )
 
         NewPatternCreateClicked ->
             case model.dialog of
-                NoDialog ->
-                    ( model, Cmd.none )
-
                 CreatePattern name ->
                     let
                         ( uuid, newSeed ) =
@@ -205,13 +197,44 @@ update prefix key msg model =
                         StoredPattern.init (Uuid.toString uuid) name
                     )
 
-                ImportPatterns _ ->
+                _ ->
                     ( model, Cmd.none )
 
         NewPatternCancelClicked ->
             ( { model | dialog = NoDialog }
             , Cmd.none
             )
+
+        -- DELETE PATTERNS
+        DeletePatternPressed slug name ->
+            ( { model | dialog = DeletePattern slug name }
+            , Cmd.none
+            )
+
+        DeletePatternDeleteClicked ->
+            case model.dialog of
+                DeletePattern slug name ->
+                    ( { model | dialog = NoDialog }
+                    , Api.deletePattern PatternDeleteResponse slug
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DeletePatternCancelClicked ->
+            ( { model | dialog = NoDialog }, Cmd.none )
+
+        PatternDeleteResponse result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( model
+                    , Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
+                    )
 
         -- IMPORT PATTERNS
         ImportPatternsPick ->
@@ -497,6 +520,35 @@ viewDialog dialog =
                     ]
                 }
 
+        DeletePattern slug name ->
+            View.Modal.small
+                { onCancelPress = DeletePatternCancelClicked
+                , title = "Delete «" ++ name ++ "»?"
+                , content =
+                    Element.paragraph
+                        [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                        , Element.width Element.fill
+                        , Element.padding Design.small
+                        , Background.color Design.white
+                        ]
+                        [ Element.text "Do you want to delete the pattern "
+                        , Element.el [ Font.bold ]
+                            (Element.text ("«" ++ name ++ "»"))
+                        , Element.text "?"
+                        ]
+                , actions =
+                    [ View.Input.btnDanger
+                        { onPress = Just DeletePatternDeleteClicked
+                        , label = "Delete pattern"
+                        }
+                    , Element.el [ Element.alignRight ] <|
+                        View.Input.btnCancel
+                            { onPress = Just DeletePatternCancelClicked
+                            , label = "Cancel"
+                            }
+                    ]
+                }
+
         ImportPatterns { hover, previews } ->
             let
                 hoverAttributes attrs =
@@ -766,7 +818,9 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 }
             , Element.el [ Element.alignRight ] <|
                 View.Input.btnDanger
-                    { onPress = Nothing
+                    { onPress =
+                        Just <|
+                            DeletePatternPressed storedPattern.slug storedPattern.name
                     , label = "Delete"
                     }
             ]
