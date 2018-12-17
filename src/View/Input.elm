@@ -1,6 +1,7 @@
 module View.Input exposing
     ( btnCancel
     , btnDanger
+    , btnDangerIcon
     , btnIcon
     , btnIconLarge
     , btnPrimary
@@ -121,6 +122,23 @@ btnDanger { onPress, label } =
         { onPress = onPress
         , label =
             Element.text label
+        }
+
+
+btnDangerIcon : { onPress : Maybe msg, icon : String } -> Element msg
+btnDangerIcon { onPress, icon } =
+    Input.button
+        [ Font.color Design.danger
+        , Element.mouseOver
+            [ Font.color Design.dangerDark ]
+        ]
+        { onPress = onPress
+        , label =
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                ]
+                (View.Icon.fa icon)
         }
 
 

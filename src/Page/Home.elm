@@ -34,7 +34,7 @@ import Color
 import Design
 import Dict exposing (Dict)
 import Draw.Pattern as Pattern
-import Element exposing (Element)
+import Element exposing (DeviceClass(..), Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -69,9 +69,10 @@ import View.Navigation
 
 
 type alias Model =
-    { storedPatterns : WebData (List StoredPattern)
-    , dialog : Dialog
+    { device : Element.Device
     , seed : Random.Seed
+    , storedPatterns : WebData (List StoredPattern)
+    , dialog : Dialog
     }
 
 
@@ -94,19 +95,33 @@ type alias Preview =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { storedPatterns = Loading
-      , dialog = NoDialog
+    ( { device =
+            { class = Element.Desktop
+            , orientation = Element.Landscape
+            }
       , seed = Random.initialSeed 0 []
+      , storedPatterns = Loading
+      , dialog = NoDialog
       }
     , Cmd.batch
         [ Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
         , Ports.requestSeed ()
+        , Task.perform
+            (\{ viewport } ->
+                DeviceChanged <|
+                    Element.classifyDevice
+                        { width = Basics.floor viewport.width
+                        , height = Basics.floor viewport.height
+                        }
+            )
+            Browser.Dom.getViewport
         ]
     )
 
 
 type Msg
     = NoOp
+    | DeviceChanged Element.Device
     | SeedReceived Int (List Int)
     | PatternsReceived (WebData (List StoredPattern))
     | PatternCreateResponse (Result Http.Error ())
@@ -144,6 +159,15 @@ update prefix key msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        DeviceChanged newDevice ->
+            if model.device == newDevice then
+                ( model, Cmd.none )
+
+            else
+                ( { model | device = newDevice }
+                , Cmd.none
+                )
 
         SeedReceived seed seedExtension ->
             ( { model | seed = Random.initialSeed seed seedExtension }
@@ -429,6 +453,14 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Ports.seedReceived (\( seed, seedExtension ) -> SeedReceived seed seedExtension)
+        , Browser.Events.onResize
+            (\width height ->
+                DeviceChanged <|
+                    Element.classifyDevice
+                        { width = width
+                        , height = height
+                        }
+            )
         , case model.dialog of
             NoDialog ->
                 Sub.none
@@ -473,9 +505,23 @@ view prefix model =
             viewDialog model model.dialog
         ]
         (Element.column
-            [ Element.width Element.fill
+            [ Element.width
+                (case model.device.class of
+                    Phone ->
+                        Element.fill
+
+                    Tablet ->
+                        Element.fill |> Element.maximum 650
+
+                    Desktop ->
+                        Element.fill |> Element.maximum 1200
+
+                    BigDesktop ->
+                        Element.fill |> Element.maximum 1200
+                )
             , Element.height Element.fill
-            , Element.paddingXY (2 * Design.xLarge) Design.large
+            , Element.paddingXY 0 Design.large
+            , Element.centerX
             , Element.spacing Design.normal
             ]
             [ Element.row
@@ -524,16 +570,42 @@ view prefix model =
                         )
 
                 Success storedPatterns ->
-                    Element.wrappedRow
-                        [ Element.width Element.fill
-                        , Element.spacing Design.normal
-                        ]
-                        (List.map
-                            (\storedPattern ->
-                                viewPattern prefix storedPattern
-                            )
-                            storedPatterns
-                        )
+                    case model.device.class of
+                        Phone ->
+                            Element.column
+                                [ Element.centerX
+                                , Element.spacing Design.normal
+                                ]
+                                (List.map (viewPattern model.device prefix) storedPatterns)
+
+                        _ ->
+                            let
+                                columnCount =
+                                    case model.device.class of
+                                        Phone ->
+                                            1
+
+                                        Tablet ->
+                                            2
+
+                                        Desktop ->
+                                            3
+
+                                        BigDesktop ->
+                                            3
+                            in
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.large
+                                ]
+                                (List.map
+                                    (List.map (viewPattern model.device prefix)
+                                        >> List.intersperse
+                                            (Element.el [ Element.width Element.fill ] Element.none)
+                                        >> Element.row [ Element.width Element.fill ]
+                                    )
+                                    (slice columnCount storedPatterns)
+                                )
             , Element.row
                 [ Element.width Element.fill
                 , Element.paddingXY 0 Design.large
@@ -795,8 +867,8 @@ hijack msg =
     ( msg, True )
 
 
-viewPattern : String -> StoredPattern -> Element Msg
-viewPattern prefix ({ pattern } as storedPattern) =
+viewPattern : Element.Device -> String -> StoredPattern -> Element Msg
+viewPattern device prefix ({ pattern } as storedPattern) =
     let
         selections =
             { points = Those.fromList []
@@ -830,11 +902,25 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 |> Maybe.withDefault
                     (BoundingBox2d.fromExtrema
                         { minX = 0
-                        , maxX = 330
+                        , maxX = maxX
                         , minY = 0
-                        , maxY = 280
+                        , maxY = maxY
                         }
                     )
+
+        ( maxX, maxY ) =
+            case device.class of
+                Phone ->
+                    ( 330, 280 )
+
+                Tablet ->
+                    ( 250, 220 )
+
+                Desktop ->
+                    ( 330, 280 )
+
+                BigDesktop ->
+                    ( 330, 280 )
 
         scale box =
             let
@@ -872,8 +958,8 @@ viewPattern prefix ({ pattern } as storedPattern) =
             ]
             [ Element.el
                 [ Border.rounded 4
-                , Element.width (Element.px 320)
-                , Element.height (Element.px 280)
+                , Element.width (Element.px maxX)
+                , Element.height (Element.px maxY)
                 , Background.color Design.secondary
                 ]
                 (Element.html <|
@@ -931,12 +1017,22 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 , filename = storedPattern.slug ++ ".json"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnDanger
-                    { onPress =
-                        Just <|
-                            DeletePatternPressed storedPattern.slug storedPattern.name
-                    , label = "Delete"
-                    }
+                case device.class of
+                    Tablet ->
+                        View.Input.btnDangerIcon
+                            { onPress =
+                                Just <|
+                                    DeletePatternPressed storedPattern.slug storedPattern.name
+                            , icon = "trash"
+                            }
+
+                    _ ->
+                        View.Input.btnDanger
+                            { onPress =
+                                Just <|
+                                    DeletePatternPressed storedPattern.slug storedPattern.name
+                            , label = "Delete"
+                            }
             ]
         ]
 
