@@ -136,6 +136,7 @@ import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d exposing (QuadraticSpline2d)
 import Set exposing (Set)
+import State exposing (State)
 import Store exposing (Entry, Store)
 import That exposing (That, that)
 import Vector2d
@@ -155,6 +156,7 @@ type alias PatternData =
     , variables : Dict String String
 
     -- CACHE
+    , variablesCache : Dict String (Maybe Float)
     , cache :
         Maybe
             { geometry : Geometry
@@ -173,6 +175,7 @@ empty =
         , details = Store.empty
         , variables = Dict.empty
         , transformations = Store.empty
+        , variablesCache = Dict.empty
         , cache = Nothing
         }
 
@@ -249,67 +252,6 @@ type Connection
 type Transformation
     = MirrorAt (That Line)
     | RotateAround (That Point) String
-
-
-
----- EXPRESSIONS
-
-
-reservedWords : List String
-reservedWords =
-    [ "distance" ]
-
-
-compute : Pattern -> Expr -> Result DoesNotCompute Float
-compute ((Pattern data) as pattern) expr =
-    let
-        functions name args =
-            case name of
-                "distance" ->
-                    case args of
-                        namePointA :: namePointB :: [] ->
-                            Maybe.map2 Point2d.distanceFrom
-                                (namePointA
-                                    |> thatPointByName pattern
-                                    |> Maybe.andThen (point2d pattern)
-                                )
-                                (namePointB
-                                    |> thatPointByName pattern
-                                    |> Maybe.andThen (point2d pattern)
-                                )
-
-                        _ ->
-                            Nothing
-
-                _ ->
-                    Nothing
-
-        parsedVars =
-            data.variables
-                |> Dict.toList
-                |> List.filterMap
-                    (\( name, string ) ->
-                        case Expr.parse reservedWords string of
-                            Err _ ->
-                                Nothing
-
-                            Ok varExpr ->
-                                Just ( name, varExpr )
-                    )
-                |> Dict.fromList
-    in
-    case Expr.evaluate functions parsedVars expr of
-        Nothing ->
-            Err TODO
-
-        Just float ->
-            Ok float
-
-
-type DoesNotCompute
-    = TODO
-    | MissingVariable String
-    | RecursiveExpression (List String)
 
 
 
@@ -452,7 +394,7 @@ computePoint2d pattern thatPoint =
                     Nothing
 
                 Ok exprLength ->
-                    case compute pattern exprLength of
+                    case evaluate pattern exprLength of
                         Err _ ->
                             Nothing
 
@@ -510,8 +452,8 @@ computePoint2d pattern thatPoint =
                     |> Maybe.andThen
                         (\( exprAngle, exprDistance ) ->
                             Maybe.map2 Tuple.pair
-                                (Result.toMaybe (compute pattern exprAngle))
-                                (Result.toMaybe (compute pattern exprDistance))
+                                (Result.toMaybe (evaluate pattern exprAngle))
+                                (Result.toMaybe (evaluate pattern exprDistance))
                                 |> Maybe.andThen
                                     (\( angle, distance ) ->
                                         anchor
@@ -538,7 +480,7 @@ computePoint2d pattern thatPoint =
                     (rawRatio
                         |> Expr.parse reservedWords
                         |> Result.toMaybe
-                        |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                        |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
                     )
 
             Just (BetweenLength thatAnchorA thatAnchorB rawLength) ->
@@ -553,7 +495,7 @@ computePoint2d pattern thatPoint =
                                 (rawLength
                                     |> Expr.parse reservedWords
                                     |> Result.toMaybe
-                                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                                    |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
                                 )
                                     |> Maybe.map
                                         (\length ->
@@ -657,7 +599,7 @@ circle2d pattern thatCircle =
                 (rawRadius
                     |> Expr.parse reservedWords
                     |> Result.toMaybe
-                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
+                    |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
                 )
                 (point2d pattern thatCenter)
 
@@ -683,7 +625,7 @@ axis2d ((Pattern pattern) as p) thatLine =
                 (rawAngle
                     |> Expr.parse reservedWords
                     |> Result.toMaybe
-                    |> Maybe.andThen (compute p >> Result.toMaybe)
+                    |> Maybe.andThen (evaluate p >> Result.toMaybe)
                     |> Maybe.map (degrees >> Direction2d.fromAngle)
                 )
 
@@ -806,26 +748,6 @@ polygon2d ((Pattern pattern) as p) thatDetail =
 ---- VARIABLES
 
 
-variables : Pattern -> List { name : String, value : String, computed : Float }
-variables ((Pattern data) as pattern) =
-    data.variables
-        |> Dict.toList
-        |> List.filterMap
-            (\( name, value ) ->
-                value
-                    |> Expr.parse reservedWords
-                    |> Result.toMaybe
-                    |> Maybe.andThen (compute pattern >> Result.toMaybe)
-                    |> Maybe.map
-                        (\computed ->
-                            { name = name
-                            , value = value
-                            , computed = computed
-                            }
-                        )
-            )
-
-
 insertVariable : String -> String -> Pattern -> Pattern
 insertVariable name value ((Pattern data) as pattern) =
     case Expr.parse reservedWords value of
@@ -833,17 +755,189 @@ insertVariable name value ((Pattern data) as pattern) =
             pattern
 
         Ok _ ->
-            Pattern
-                { data
-                    | variables = Dict.insert name value data.variables
-                    , cache = Nothing
-                }
+            computeVariablesCache <|
+                Pattern { data | variables = Dict.insert name value data.variables }
 
 
 removeVariable : String -> Pattern -> Pattern
 removeVariable name (Pattern data) =
+    computeVariablesCache <|
+        Pattern
+            { data
+                | variables = Dict.remove name data.variables
+                , variablesCache = Dict.empty
+            }
+
+
+computeVariablesCache : Pattern -> Pattern
+computeVariablesCache ((Pattern data) as pattern) =
     Pattern
-        { data | variables = Dict.remove name data.variables }
+        { data
+            | variablesCache =
+                Dict.keys data.variables
+                    |> State.traverse (variableNamedHelper pattern)
+                    |> State.finalState data.variablesCache
+        }
+
+
+variables : Pattern -> List { name : String, value : String, computed : Float }
+variables ((Pattern data) as pattern) =
+    Dict.keys data.variables
+        |> State.traverse (variableNamedHelper pattern)
+        |> State.finalValue data.variablesCache
+        |> List.filterMap identity
+
+
+variable : Pattern -> String -> Maybe Float
+variable ((Pattern { variablesCache }) as pattern) name =
+    State.finalValue variablesCache (variableHelper pattern name)
+
+
+variableHelper : Pattern -> String -> State (Dict String (Maybe Float)) (Maybe Float)
+variableHelper ((Pattern data) as pattern) name =
+    let
+        modifyWhenNeeded cache =
+            case Dict.get name cache of
+                Nothing ->
+                    calculateVariable name
+                        |> State.andThen addVariable
+
+                Just value ->
+                    State.state value
+
+        calculateVariable n =
+            data.variables
+                |> Dict.get n
+                |> Maybe.andThen (Expr.parse reservedWords >> Result.toMaybe)
+                |> Maybe.map (evaluateHelper pattern >> State.map Result.toMaybe)
+                |> Maybe.withDefault (State.state Nothing)
+
+        addVariable value =
+            State.modify (Dict.insert name value)
+                |> State.map (\_ -> value)
+    in
+    State.get
+        |> State.andThen modifyWhenNeeded
+
+
+variableNamedHelper :
+    Pattern
+    -> String
+    ->
+        State (Dict String (Maybe Float))
+            (Maybe
+                { name : String
+                , value : String
+                , computed : Float
+                }
+            )
+variableNamedHelper ((Pattern data) as pattern) name =
+    State.map
+        (Maybe.map2
+            (\value computed ->
+                { name = name
+                , value = value
+                , computed = computed
+                }
+            )
+            (Dict.get name data.variables)
+        )
+        (variableHelper pattern name)
+
+
+evaluate : Pattern -> Expr -> Result DoesNotCompute Float
+evaluate ((Pattern data) as pattern) expr =
+    State.finalValue data.variablesCache (evaluateHelper pattern expr)
+
+
+evaluateHelper :
+    Pattern
+    -> Expr
+    -> State (Dict String (Maybe Float)) (Result DoesNotCompute Float)
+evaluateHelper pattern expr =
+    let
+        functions functionName args =
+            case functionName of
+                "distance" ->
+                    case args of
+                        namePointA :: namePointB :: [] ->
+                            Result.fromMaybe TODO <|
+                                Maybe.map2 Point2d.distanceFrom
+                                    (namePointA
+                                        |> thatPointByName pattern
+                                        |> Maybe.andThen (point2d pattern)
+                                    )
+                                    (namePointB
+                                        |> thatPointByName pattern
+                                        |> Maybe.andThen (point2d pattern)
+                                    )
+
+                        _ ->
+                            Err <|
+                                BadArguments
+                                    { functionName = functionName
+                                    , arguments = args
+                                    }
+
+                _ ->
+                    Err (UnknownFunction functionName)
+    in
+    case expr of
+        Number float ->
+            State.state (Ok float)
+
+        Variable n ->
+            State.map (Result.fromMaybe TODO)
+                (variableHelper pattern n)
+
+        Function n args ->
+            State.state (functions n args)
+
+        Sum exprA exprB ->
+            State.map2
+                (Result.map2 (\a b -> a + b))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        Difference exprA exprB ->
+            State.map2
+                (Result.map2 (\a b -> a - b))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        Product exprA exprB ->
+            State.map2
+                (Result.map2 (\a b -> a * b))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        Quotient exprA exprB ->
+            State.map2
+                (Result.map2 (\a b -> a / b))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        Max exprA exprB ->
+            State.map2
+                (Result.map2 Basics.max)
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+
+reservedWords : List String
+reservedWords =
+    [ "distance" ]
+
+
+type DoesNotCompute
+    = TODO
+    | UnknownFunction String
+    | BadArguments
+        { functionName : String
+        , arguments : List String
+        }
+    | MissingVariable String
+    | RecursiveExpression (List String)
 
 
 
@@ -1575,8 +1669,9 @@ decoder =
         |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.required "transformations" (Store.decoder transformationDecoder)
         |> Decode.required "variables" variablesDecoder
+        |> Decode.hardcoded Dict.empty
         |> Decode.hardcoded Nothing
-        |> Decode.map Pattern
+        |> Decode.map (Pattern >> computeVariablesCache)
 
 
 variablesDecoder : Decoder (Dict String String)

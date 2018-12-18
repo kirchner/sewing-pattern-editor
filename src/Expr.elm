@@ -1,6 +1,5 @@
 module Expr exposing
     ( Expr(..)
-    , evaluate
     , parse
     )
 
@@ -42,49 +41,6 @@ type Expr
 parse : List String -> String -> Result (List DeadEnd) Expr
 parse reservedWords string =
     Parser.run (expr ("max" :: reservedWords)) string
-
-
-evaluate :
-    (String -> List String -> Maybe Float)
-    -> Dict String Expr
-    -> Expr
-    -> Maybe Float
-evaluate functions variables e =
-    case e of
-        Number float ->
-            Just float
-
-        Variable name ->
-            Dict.get name variables
-                |> Maybe.andThen (evaluate functions variables)
-
-        Function name args ->
-            functions name args
-
-        Sum exprA exprB ->
-            Maybe.map2 (\a b -> a + b)
-                (evaluate functions variables exprA)
-                (evaluate functions variables exprB)
-
-        Difference exprA exprB ->
-            Maybe.map2 (\a b -> a - b)
-                (evaluate functions variables exprA)
-                (evaluate functions variables exprB)
-
-        Product exprA exprB ->
-            Maybe.map2 (\a b -> a * b)
-                (evaluate functions variables exprA)
-                (evaluate functions variables exprB)
-
-        Quotient exprA exprB ->
-            Maybe.map2 (\a b -> a / b)
-                (evaluate functions variables exprA)
-                (evaluate functions variables exprB)
-
-        Max exprA exprB ->
-            Maybe.map2 Basics.max
-                (evaluate functions variables exprA)
-                (evaluate functions variables exprB)
 
 
 
