@@ -74,37 +74,37 @@ import Element.Font as Font
 ---- SPACING
 
 
-xxxSmall : Int
+xxxSmall : number
 xxxSmall =
     2
 
 
-xxSmall : Int
+xxSmall : number
 xxSmall =
     4
 
 
-xSmall : Int
+xSmall : number
 xSmall =
     8
 
 
-small : Int
+small : number
 small =
     16
 
 
-normal : Int
+normal : number
 normal =
     32
 
 
-large : Int
+large : number
 large =
     64
 
 
-xLarge : Int
+xLarge : number
 xLarge =
     128
 

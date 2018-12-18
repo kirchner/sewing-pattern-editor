@@ -51,11 +51,13 @@ import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import List.Extra as List
+import List.Nonempty as Nonempty
 import Pattern exposing (Pattern)
 import Ports
 import Random.Pcg.Extended as Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
+import Seamly2D.V0_6_0 as Seamly2D
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -89,7 +91,7 @@ type Dialog
 
 type alias Preview =
     { fileName : String
-    , content : Result Decode.Error StoredPattern
+    , content : Result String StoredPattern
     }
 
 
@@ -329,7 +331,7 @@ update prefix key msg model =
         -- IMPORT PATTERNS
         ImportPatternsPick ->
             ( model
-            , File.Select.files [ "application/json" ] ImportPatternsGotFiles
+            , File.Select.files [] ImportPatternsGotFiles
             )
 
         ImportPatternsDragEnter ->
@@ -375,7 +377,30 @@ update prefix key msg model =
                         newPreview =
                             { fileName = name
                             , content =
-                                Decode.decodeString StoredPattern.decoder content
+                                case Decode.decodeString StoredPattern.decoder content of
+                                    Ok storedPattern ->
+                                        Ok storedPattern
+
+                                    Err _ ->
+                                        Seamly2D.decode content
+                                            |> Result.toMaybe
+                                            |> Maybe.map
+                                                (\val ->
+                                                    let
+                                                        pattern =
+                                                            Nonempty.head val.patterns
+
+                                                        storedPattern =
+                                                            Maybe.withDefault "<no name>"
+                                                                pattern.patternName
+                                                                |> StoredPattern.init ""
+                                                    in
+                                                    { storedPattern
+                                                        | pattern =
+                                                            Seamly2D.toPattern pattern
+                                                    }
+                                                )
+                                            |> Result.fromMaybe "This is not a valid Seamly2D file."
                             }
                     in
                     ( { model
@@ -511,7 +536,7 @@ view prefix model =
                         Element.fill
 
                     Tablet ->
-                        Element.fill |> Element.maximum 650
+                        Element.fill |> Element.maximum 580
 
                     Desktop ->
                         Element.fill |> Element.maximum 1200
@@ -753,7 +778,7 @@ viewDialog model dialog =
                         , Element.spacing Design.small
                         ]
                         (case content of
-                            Err decodeError ->
+                            Err error ->
                                 [ Element.el
                                     [ Element.width Element.fill
                                     , Element.clip
@@ -766,7 +791,9 @@ viewDialog model dialog =
                                     , Font.color Design.danger
                                     ]
                                     [ View.Icon.fa "exclamation-circle"
-                                    , Element.text "This is not a valid pattern file."
+                                    , Element.text <|
+                                        "This is not a valid pattern file: "
+                                            ++ error
                                     ]
                                 , Element.el [ Element.alignRight ]
                                     (View.Input.btnSecondary "remove-file-button"
@@ -914,7 +941,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                     ( 330, 280 )
 
                 Tablet ->
-                    ( 250, 220 )
+                    ( 270 - 2 * Design.small, 220 )
 
                 Desktop ->
                     ( 330, 280 )
