@@ -106,7 +106,7 @@ var : List String -> Parser Expr
 var reservedWords =
     map Variable <|
         variable
-            { start = Char.isAlpha
+            { start = \c -> Char.isAlpha c || c == '#'
             , inner = \c -> Char.isAlphaNum c || c == '_'
             , reserved = Set.fromList reservedWords
             }

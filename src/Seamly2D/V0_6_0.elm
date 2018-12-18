@@ -25,7 +25,8 @@ type alias Pattern =
     , patternNumber : Maybe String
     , company : Maybe String
     , customer : Maybe String
-    , measurements : String
+    , measurements : Maybe String
+    , increments : Dict String Increment
     , draws : Nonempty Draw
     }
 
@@ -34,6 +35,12 @@ type Unit
     = Mm
     | Cm
     | Inch
+
+
+type alias Increment =
+    { description : String
+    , formula : String
+    }
 
 
 type alias Draw =
@@ -151,8 +158,82 @@ type Color
 
 
 toPattern : Pattern -> Pattern.Pattern
-toPattern pattern =
+toPattern { increments, draws } =
+    let
+        insertVariables pattern =
+            increments
+                |> Dict.toList
+                |> List.foldl
+                    (\( name, { formula } ) nextPattern ->
+                        Pattern.insertVariable name formula nextPattern
+                    )
+                    pattern
+
+        insertObjects pattern =
+            Nonempty.head draws
+                |> .calculations
+                |> Nonempty.head
+                |> Dict.toList
+                |> List.foldl
+                    (\( id, object ) ( previousPattern, previousPoints ) ->
+                        case object of
+                            Point data ->
+                                let
+                                    maybePoint =
+                                        case data.type_ of
+                                            Just "single" ->
+                                                Maybe.map2
+                                                    (\x y ->
+                                                        Pattern.origin { x = x, y = y }
+                                                    )
+                                                    data.x
+                                                    data.y
+
+                                            Just "endLine" ->
+                                                Maybe.map3
+                                                    (\thatBasePoint angle length ->
+                                                        Pattern.atAngle previousPattern
+                                                            thatBasePoint
+                                                            angle
+                                                            length
+                                                    )
+                                                    (lookUp data.basePoint)
+                                                    data.angle
+                                                    data.length
+                                                    |> Maybe.withDefault Nothing
+
+                                            _ ->
+                                                Nothing
+
+                                    lookUp maybeId =
+                                        case maybeId of
+                                            Nothing ->
+                                                Nothing
+
+                                            Just id_ ->
+                                                Dict.get id_ previousPoints
+                                in
+                                case maybePoint of
+                                    Nothing ->
+                                        ( previousPattern, previousPoints )
+
+                                    Just point ->
+                                        let
+                                            ( nextPattern, thatPoint ) =
+                                                Pattern.insertPoint data.name
+                                                    point
+                                                    previousPattern
+                                        in
+                                        ( nextPattern
+                                        , Dict.insert id thatPoint previousPoints
+                                        )
+                    )
+                    ( pattern, Dict.empty )
+                |> Tuple.first
+    in
     Pattern.empty
+        |> insertVariables
+        |> insertObjects
 
 
 
@@ -182,6 +263,45 @@ decode content =
 
                                 Just toA ->
                                     Just (toA (contentAt nodes nodeName))
+
+                        -- INCREMENTS
+                        increments maybeToA =
+                            case maybeToA of
+                                Nothing ->
+                                    Nothing
+
+                                Just toA ->
+                                    nodes
+                                        |> List.filterMap getIncrementsElement
+                                        |> List.map (List.filterMap getIncrement)
+                                        |> List.concat
+                                        |> Dict.fromList
+                                        |> toA
+                                        |> Just
+
+                        getIncrementsElement node =
+                            case node of
+                                Xml.Element "increments" [] subNodes ->
+                                    Just subNodes
+
+                                _ ->
+                                    Nothing
+
+                        getIncrement node =
+                            case node of
+                                Xml.Element "increment" attributes [] ->
+                                    Maybe.map3
+                                        (\name description formula ->
+                                            ( name
+                                            , Increment description formula
+                                            )
+                                        )
+                                        (stringAttributeAt attributes "name")
+                                        (stringAttributeAt attributes "description")
+                                        (stringAttributeAt attributes "formula")
+
+                                _ ->
+                                    Nothing
 
                         -- DRAWS
                         draws maybeToA =
@@ -227,7 +347,8 @@ decode content =
                             |> possible stringAt "patternNumber"
                             |> possible stringAt "company"
                             |> possible stringAt "customer"
-                            |> required stringAt "measurements"
+                            |> possible stringAt "measurements"
+                            |> increments
                             |> draws
                     of
                         Nothing ->
@@ -239,7 +360,7 @@ decode content =
                 _ ->
                     Err "There is an error in the XML structure."
 
-        Err _ ->
+        Err error ->
             Err "This is not a valid XML file."
 
 

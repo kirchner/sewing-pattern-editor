@@ -73,7 +73,7 @@ insert name value (Store store) =
             | entries = Dict.insert store.nextId (Entry name value) store.entries
             , nextId = id
         }
-    , id
+    , store.nextId
     )
 
 
