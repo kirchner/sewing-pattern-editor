@@ -1,7 +1,7 @@
 module Pattern exposing
     ( Pattern
     , empty
-    , Geometry, Segment(..), computeGeometry, geometry, Problems
+    , Geometry, Segment(..), geometry, Problems
     , getPointGeometries, getPointGeometry
     , getCircleGeometry
     , getLineSegmentGeometry
@@ -32,7 +32,7 @@ module Pattern exposing
 
 # Geometry
 
-@docs Geometry, Segment, computeGeometry, geometry, Problems
+@docs Geometry, Segment, geometry, Problems
 
 @docs getPointGeometries, getPointGeometry
 
@@ -156,12 +156,15 @@ type alias PatternData =
     , variables : Dict String String
 
     -- CACHE
-    , variablesCache : Dict String (Maybe Float)
-    , cache :
-        Maybe
-            { geometry : Geometry
-            , problems : Problems
-            }
+    , cache : Cache
+    }
+
+
+type alias Cache =
+    { variables : Dict String (Maybe Float)
+    , point2ds : Dict Int (Maybe Point2d)
+    , circle2ds : Dict Int (Maybe Circle2d)
+    , axis2ds : Dict Int (Maybe Axis2d)
     }
 
 
@@ -175,9 +178,17 @@ empty =
         , details = Store.empty
         , variables = Dict.empty
         , transformations = Store.empty
-        , variablesCache = Dict.empty
-        , cache = Nothing
+        , cache = emptyCache
         }
+
+
+emptyCache : Cache
+emptyCache =
+    { variables = Dict.empty
+    , point2ds = Dict.empty
+    , circle2ds = Dict.empty
+    , axis2ds = Dict.empty
+    }
 
 
 
@@ -280,132 +291,137 @@ type alias Problems =
     }
 
 
-computeGeometry : Pattern -> ( Pattern, ( Geometry, Problems ) )
-computeGeometry ((Pattern data) as pattern) =
-    case data.cache of
-        Nothing ->
-            let
-                ( newGeometry, newProblems ) =
-                    geometry pattern
-            in
-            ( Pattern
-                { data
-                    | cache =
-                        Just
-                            { geometry = newGeometry
-                            , problems = newProblems
-                            }
-                }
-            , ( newGeometry
-              , newProblems
-              )
-            )
-
-        Just cache ->
-            ( pattern
-            , ( cache.geometry
-              , cache.problems
-              )
-            )
-
-
 geometry : Pattern -> ( Geometry, Problems )
 geometry ((Pattern data) as pattern) =
-    case data.cache of
-        Nothing ->
-            let
-                geometryPoint ( thatPoint, { name } ) =
-                    point2d pattern thatPoint
-                        |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
+    let
+        geometryPoint ( thatPoint, { name } ) =
+            point2d pattern thatPoint
+                |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
 
-                geometryCircle ( thatCircle, { name } ) =
-                    circle2d pattern thatCircle
-                        |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
+        geometryCircle ( thatCircle, { name } ) =
+            circle2d pattern thatCircle
+                |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
 
-                geometryLine ( thatLine, { name } ) =
-                    axis2d pattern thatLine
-                        |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
+        geometryLine ( thatLine, { name } ) =
+            axis2d pattern thatLine
+                |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
 
-                geometryLineSegment ( thatLineSegment, { name } ) =
-                    lineSegment2d pattern thatLineSegment
-                        |> Maybe.map (\ls2d -> ( thatLineSegment, name, ls2d ))
+        geometryLineSegment ( thatLineSegment, { name } ) =
+            lineSegment2d pattern thatLineSegment
+                |> Maybe.map (\ls2d -> ( thatLineSegment, name, ls2d ))
 
-                geometryDetail ( thatDetail, { name } ) =
-                    polygon2d pattern thatDetail
-                        |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
-            in
-            ( { points =
-                    pattern
-                        |> points
-                        |> List.filterMap geometryPoint
-              , circles =
-                    pattern
-                        |> circles
-                        |> List.filterMap geometryCircle
-              , lines =
-                    pattern
-                        |> lines
-                        |> List.filterMap geometryLine
-              , lineSegments =
-                    pattern
-                        |> lineSegments
-                        |> List.filterMap geometryLineSegment
-              , details =
-                    pattern
-                        |> details
-                        |> List.filterMap geometryDetail
-              }
-            , { doNotCompute = []
-              , missingPoints = []
-              , missingCircles = []
-              , missingLines = []
-              }
-            )
+        geometryDetail ( thatDetail, { name } ) =
+            polygon2d pattern thatDetail
+                |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
+    in
+    ( { points =
+            pattern
+                |> points
+                |> List.filterMap geometryPoint
+      , circles =
+            pattern
+                |> circles
+                |> List.filterMap geometryCircle
+      , lines =
+            pattern
+                |> lines
+                |> List.filterMap geometryLine
+      , lineSegments =
+            pattern
+                |> lineSegments
+                |> List.filterMap geometryLineSegment
+      , details =
+            pattern
+                |> details
+                |> List.filterMap geometryDetail
+      }
+    , { doNotCompute = []
+      , missingPoints = []
+      , missingCircles = []
+      , missingLines = []
+      }
+    )
 
-        Just cache ->
-            ( cache.geometry, cache.problems )
+
+computeCache : Pattern -> Pattern
+computeCache =
+    computeVariablesCache
+        >> computePoint2dCache
+        >> computeCircle2dCache
+        >> computeAxis2dCache
+
+
+computePoint2dCache : Pattern -> Pattern
+computePoint2dCache ((Pattern data) as pattern) =
+    Pattern
+        { data
+            | cache =
+                pattern
+                    |> points
+                    |> List.map Tuple.first
+                    |> State.traverse (point2dHelper pattern)
+                    |> State.finalState data.cache
+        }
 
 
 point2d : Pattern -> That Point -> Maybe Point2d
 point2d ((Pattern { cache }) as pattern) thatPoint =
-    case cache of
-        Nothing ->
-            computePoint2d pattern thatPoint
-
-        Just actualCache ->
-            actualCache.geometry.points
-                |> List.filterMap
-                    (\( that, _, p2d ) ->
-                        if that == thatPoint then
-                            Just p2d
-
-                        else
-                            Nothing
-                    )
-                |> List.head
+    State.finalValue cache (point2dHelper pattern thatPoint)
 
 
-computePoint2d : Pattern -> That Point -> Maybe Point2d
-computePoint2d pattern thatPoint =
+point2dHelper : Pattern -> That Point -> State Cache (Maybe Point2d)
+point2dHelper pattern thatPoint =
+    let
+        modifyWhenNeeded cache =
+            case Dict.get (That.objectId thatPoint) cache.point2ds of
+                Nothing ->
+                    calculatePoint2d pattern thatPoint
+                        |> State.andThen addPoint2d
+
+                Just value ->
+                    State.state value
+
+        addPoint2d value =
+            State.modify
+                (\cache ->
+                    { cache
+                        | point2ds =
+                            Dict.insert (That.objectId thatPoint)
+                                value
+                                cache.point2ds
+                    }
+                )
+                |> State.map (\_ -> value)
+    in
+    State.get
+        |> State.andThen modifyWhenNeeded
+
+
+calculatePoint2d : Pattern -> That Point -> State Cache (Maybe Point2d)
+calculatePoint2d pattern thatPoint =
     let
         simpleDistance anchor rawLength toDirection =
             case Expr.parse reservedWords rawLength of
                 Err _ ->
-                    Nothing
+                    State.state Nothing
 
                 Ok exprLength ->
-                    case evaluate pattern exprLength of
-                        Err _ ->
-                            Nothing
+                    State.map
+                        (\distanceResult ->
+                            case distanceResult of
+                                Err _ ->
+                                    Nothing
 
-                        Ok distance ->
-                            let
-                                v =
-                                    toDirection distance
-                            in
-                            anchor
-                                |> point2d pattern
-                                |> Maybe.map (Point2d.translateBy v)
+                                Ok distance ->
+                                    let
+                                        v =
+                                            toDirection distance
+                                    in
+                                    anchor
+                                        |> point2d pattern
+                                        |> Maybe.map (Point2d.translateBy v)
+                        )
+                        (evaluateHelper pattern exprLength)
 
         applyTransformations point =
             point
@@ -424,10 +440,11 @@ computePoint2d pattern thatPoint =
                 _ ->
                     point
     in
-    Maybe.map applyTransformations <|
+    State.map (Maybe.map applyTransformations) <|
         case Maybe.map .value (getPoint pattern thatPoint) of
             Just (Origin x y) ->
-                Just (Point2d.fromCoordinates ( x, y ))
+                State.state <|
+                    Just (Point2d.fromCoordinates ( x, y ))
 
             Just (LeftOf anchor rawLength) ->
                 simpleDistance anchor rawLength <|
@@ -445,78 +462,86 @@ computePoint2d pattern thatPoint =
                 simpleDistance anchor rawLength <|
                     \distance -> Vector2d.fromComponents ( 0, distance )
 
-            Just (AtAngle anchor rawAngle rawDistance) ->
-                Maybe.map2 Tuple.pair
+            Just (AtAngle thatAnchor rawAngle rawDistance) ->
+                Maybe.map2
+                    (\exprAngle exprDistance ->
+                        State.map3
+                            (\maybeAnchor angleResult distanceResult ->
+                                Maybe.map3
+                                    (\anchor angle distance ->
+                                        Point2d.translateBy
+                                            (Vector2d.fromPolarComponents
+                                                ( distance, degrees angle )
+                                            )
+                                            anchor
+                                    )
+                                    maybeAnchor
+                                    (Result.toMaybe angleResult)
+                                    (Result.toMaybe distanceResult)
+                            )
+                            (point2dHelper pattern thatAnchor)
+                            (evaluateHelper pattern exprAngle)
+                            (evaluateHelper pattern exprDistance)
+                    )
                     (Result.toMaybe (Expr.parse reservedWords rawAngle))
                     (Result.toMaybe (Expr.parse reservedWords rawDistance))
-                    |> Maybe.andThen
-                        (\( exprAngle, exprDistance ) ->
-                            Maybe.map2 Tuple.pair
-                                (Result.toMaybe (evaluate pattern exprAngle))
-                                (Result.toMaybe (evaluate pattern exprDistance))
-                                |> Maybe.andThen
-                                    (\( angle, distance ) ->
-                                        anchor
-                                            |> point2d pattern
-                                            |> Maybe.map
-                                                (Point2d.translateBy <|
-                                                    Vector2d.fromPolarComponents
-                                                        ( distance, degrees angle )
-                                                )
-                                    )
-                        )
+                    |> Maybe.withDefault (State.state Nothing)
 
             Just (BetweenRatio thatAnchorA thatAnchorB rawRatio) ->
-                Maybe.map3
-                    (\anchorA anchorB ratio ->
-                        anchorA
-                            |> Point2d.translateBy
-                                (Vector2d.from anchorA anchorB
-                                    |> Vector2d.scaleBy ratio
-                                )
+                Maybe.map
+                    (\exprRatio ->
+                        State.map3
+                            (\maybeAnchorA maybeAnchorB resultRatio ->
+                                Maybe.map3
+                                    (\anchorA anchorB ratio ->
+                                        Point2d.translateBy
+                                            (Vector2d.from anchorA anchorB
+                                                |> Vector2d.scaleBy ratio
+                                            )
+                                            anchorA
+                                    )
+                                    maybeAnchorA
+                                    maybeAnchorB
+                                    (Result.toMaybe resultRatio)
+                            )
+                            (point2dHelper pattern thatAnchorA)
+                            (point2dHelper pattern thatAnchorB)
+                            (evaluateHelper pattern exprRatio)
                     )
-                    (point2d pattern thatAnchorA)
-                    (point2d pattern thatAnchorB)
-                    (rawRatio
-                        |> Expr.parse reservedWords
-                        |> Result.toMaybe
-                        |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
-                    )
+                    (Result.toMaybe (Expr.parse reservedWords rawRatio))
+                    |> Maybe.withDefault (State.state Nothing)
 
             Just (BetweenLength thatAnchorA thatAnchorB rawLength) ->
-                case
-                    ( point2d pattern thatAnchorA
-                    , point2d pattern thatAnchorB
+                Maybe.map
+                    (\exprLength ->
+                        State.map3
+                            (\maybeAnchorA maybeAnchorB resultLength ->
+                                Maybe.map3
+                                    (\anchorA direction length ->
+                                        Point2d.along
+                                            (Axis2d.through anchorA direction)
+                                            length
+                                    )
+                                    maybeAnchorA
+                                    (Maybe.map2 Direction2d.from
+                                        maybeAnchorA
+                                        maybeAnchorB
+                                        |> Maybe.withDefault Nothing
+                                    )
+                                    (Result.toMaybe resultLength)
+                            )
+                            (point2dHelper pattern thatAnchorA)
+                            (point2dHelper pattern thatAnchorB)
+                            (evaluateHelper pattern exprLength)
                     )
-                of
-                    ( Just anchorA, Just anchorB ) ->
-                        case Direction2d.from anchorA anchorB of
-                            Just direction ->
-                                (rawLength
-                                    |> Expr.parse reservedWords
-                                    |> Result.toMaybe
-                                    |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
-                                )
-                                    |> Maybe.map
-                                        (\length ->
-                                            Point2d.along
-                                                (Axis2d.through anchorA direction)
-                                                length
-                                        )
-
-                            Nothing ->
-                                Nothing
-
-                    _ ->
-                        Nothing
+                    (Result.toMaybe (Expr.parse reservedWords rawLength))
+                    |> Maybe.withDefault (State.state Nothing)
 
             Just (FirstCircleCircle thatCircleA thatCircleB) ->
-                Maybe.map2 Tuple.pair
-                    (circle2d pattern thatCircleA)
-                    (circle2d pattern thatCircleB)
-                    |> Maybe.andThen
-                        (\( circleA, circleB ) ->
-                            case Circle2d.intersectionCircle circleA circleB of
+                State.map2
+                    (Maybe.map2
+                        (\circle2dA circle2dB ->
+                            case Circle2d.intersectionCircle circle2dA circle2dB of
                                 NoIntersection ->
                                     Nothing
 
@@ -526,14 +551,16 @@ computePoint2d pattern thatPoint =
                                 TwoPoints point _ ->
                                     Just point
                         )
+                    )
+                    (circle2dHelper pattern thatCircleA)
+                    (circle2dHelper pattern thatCircleB)
+                    |> State.map (Maybe.withDefault Nothing)
 
             Just (SecondCircleCircle thatCircleA thatCircleB) ->
-                Maybe.map2 Tuple.pair
-                    (circle2d pattern thatCircleA)
-                    (circle2d pattern thatCircleB)
-                    |> Maybe.andThen
-                        (\( circleA, circleB ) ->
-                            case Circle2d.intersectionCircle circleA circleB of
+                State.map2
+                    (Maybe.map2
+                        (\circle2dA circle2dB ->
+                            case Circle2d.intersectionCircle circle2dA circle2dB of
                                 NoIntersection ->
                                     Nothing
 
@@ -543,22 +570,26 @@ computePoint2d pattern thatPoint =
                                 TwoPoints _ point ->
                                     Just point
                         )
+                    )
+                    (circle2dHelper pattern thatCircleA)
+                    (circle2dHelper pattern thatCircleB)
+                    |> State.map (Maybe.withDefault Nothing)
 
             Just (LineLine thatLineA thatLineB) ->
-                Maybe.map2 Tuple.pair
-                    (axis2d pattern thatLineA)
-                    (axis2d pattern thatLineB)
-                    |> Maybe.andThen
-                        (\( axisA, axisB ) ->
-                            Axis2d.intersectionWithAxis axisA axisB
-                        )
+                State.map2
+                    (\maybeAxisA maybeAxisB ->
+                        Maybe.map2 Axis2d.intersectionWithAxis
+                            maybeAxisA
+                            maybeAxisB
+                    )
+                    (axis2dHelper pattern thatLineA)
+                    (axis2dHelper pattern thatLineB)
+                    |> State.map (Maybe.withDefault Nothing)
 
             Just (FirstCircleLine thatCircle thatLine) ->
-                Maybe.map2 Tuple.pair
-                    (circle2d pattern thatCircle)
-                    (axis2d pattern thatLine)
-                    |> Maybe.andThen
-                        (\( circle, axis ) ->
+                State.map2
+                    (Maybe.map2
+                        (\circle axis ->
                             case Circle2d.intersectionAxis circle axis of
                                 NoIntersection ->
                                     Nothing
@@ -569,13 +600,15 @@ computePoint2d pattern thatPoint =
                                 TwoPoints point _ ->
                                     Just point
                         )
+                    )
+                    (circle2dHelper pattern thatCircle)
+                    (axis2dHelper pattern thatLine)
+                    |> State.map (Maybe.withDefault Nothing)
 
             Just (SecondCircleLine thatCircle thatLine) ->
-                Maybe.map2 Tuple.pair
-                    (circle2d pattern thatCircle)
-                    (axis2d pattern thatLine)
-                    |> Maybe.andThen
-                        (\( circle, axis ) ->
+                State.map2
+                    (Maybe.map2
+                        (\circle axis ->
                             case Circle2d.intersectionAxis circle axis of
                                 NoIntersection ->
                                     Nothing
@@ -586,51 +619,157 @@ computePoint2d pattern thatPoint =
                                 TwoPoints _ point ->
                                     Just point
                         )
+                    )
+                    (circle2dHelper pattern thatCircle)
+                    (axis2dHelper pattern thatLine)
+                    |> State.map (Maybe.withDefault Nothing)
 
             _ ->
-                Nothing
+                State.state Nothing
+
+
+computeCircle2dCache : Pattern -> Pattern
+computeCircle2dCache ((Pattern data) as pattern) =
+    Pattern
+        { data
+            | cache =
+                pattern
+                    |> circles
+                    |> List.map Tuple.first
+                    |> State.traverse (circle2dHelper pattern)
+                    |> State.finalState data.cache
+        }
 
 
 circle2d : Pattern -> That Circle -> Maybe Circle2d
-circle2d pattern thatCircle =
+circle2d ((Pattern { cache }) as pattern) thatCircle =
+    State.finalValue cache (circle2dHelper pattern thatCircle)
+
+
+circle2dHelper : Pattern -> That Circle -> State Cache (Maybe Circle2d)
+circle2dHelper pattern thatCircle =
+    let
+        modifyWhenNeeded cache =
+            case Dict.get (That.objectId thatCircle) cache.circle2ds of
+                Nothing ->
+                    calculateCircle2d pattern thatCircle
+                        |> State.andThen addCircle2d
+
+                Just value ->
+                    State.state value
+
+        addCircle2d value =
+            State.modify
+                (\cache ->
+                    { cache
+                        | circle2ds =
+                            Dict.insert (That.objectId thatCircle)
+                                value
+                                cache.circle2ds
+                    }
+                )
+                |> State.map (\_ -> value)
+    in
+    State.get
+        |> State.andThen modifyWhenNeeded
+
+
+calculateCircle2d : Pattern -> That Circle -> State Cache (Maybe Circle2d)
+calculateCircle2d pattern thatCircle =
     case Maybe.map .value (getCircle pattern thatCircle) of
         Just (CenteredAt thatCenter rawRadius) ->
-            Maybe.map2 Circle2d.withRadius
-                (rawRadius
-                    |> Expr.parse reservedWords
-                    |> Result.toMaybe
-                    |> Maybe.andThen (evaluate pattern >> Result.toMaybe)
+            Maybe.map
+                (\radiusExpr ->
+                    State.map2 (Maybe.map2 Circle2d.withRadius)
+                        (State.map Result.toMaybe (evaluateHelper pattern radiusExpr))
+                        (point2dHelper pattern thatCenter)
                 )
-                (point2d pattern thatCenter)
+                (Result.toMaybe (Expr.parse reservedWords rawRadius))
+                |> Maybe.withDefault (State.state Nothing)
 
         Nothing ->
-            Nothing
+            State.state Nothing
+
+
+computeAxis2dCache : Pattern -> Pattern
+computeAxis2dCache ((Pattern data) as pattern) =
+    Pattern
+        { data
+            | cache =
+                pattern
+                    |> lines
+                    |> List.map Tuple.first
+                    |> State.traverse (axis2dHelper pattern)
+                    |> State.finalState data.cache
+        }
 
 
 axis2d : Pattern -> That Line -> Maybe Axis2d
-axis2d ((Pattern pattern) as p) thatLine =
-    case Maybe.map .value (getLine p thatLine) of
-        Just (ThroughTwoPoints thatPointA thatPointB) ->
-            case ( point2d p thatPointA, point2d p thatPointB ) of
-                ( Just point2dA, Just point2dB ) ->
-                    Direction2d.from point2dA point2dB
-                        |> Maybe.map (Axis2d.through point2dA)
+axis2d ((Pattern { cache }) as pattern) thatLine =
+    State.finalValue cache (axis2dHelper pattern thatLine)
 
-                _ ->
-                    Nothing
+
+axis2dHelper : Pattern -> That Line -> State Cache (Maybe Axis2d)
+axis2dHelper pattern thatLine =
+    let
+        modifyWhenNeeded cache =
+            case Dict.get (That.objectId thatLine) cache.axis2ds of
+                Nothing ->
+                    calculateLine2d pattern thatLine
+                        |> State.andThen addLine2d
+
+                Just value ->
+                    State.state value
+
+        addLine2d value =
+            State.modify
+                (\cache ->
+                    { cache
+                        | axis2ds =
+                            Dict.insert (That.objectId thatLine)
+                                value
+                                cache.axis2ds
+                    }
+                )
+                |> State.map (\_ -> value)
+    in
+    State.get
+        |> State.andThen modifyWhenNeeded
+
+
+calculateLine2d : Pattern -> That Line -> State Cache (Maybe Axis2d)
+calculateLine2d pattern thatLine =
+    case Maybe.map .value (getLine pattern thatLine) of
+        Just (ThroughTwoPoints thatPointA thatPointB) ->
+            State.map2
+                (Maybe.map2
+                    (\point2dA point2dB ->
+                        Direction2d.from point2dA point2dB
+                            |> Maybe.map (Axis2d.through point2dA)
+                    )
+                )
+                (point2dHelper pattern thatPointA)
+                (point2dHelper pattern thatPointB)
+                |> State.map (Maybe.withDefault Nothing)
 
         Just (ThroughOnePoint thatPoint rawAngle) ->
-            Maybe.map2 Axis2d.through
-                (point2d p thatPoint)
-                (rawAngle
-                    |> Expr.parse reservedWords
-                    |> Result.toMaybe
-                    |> Maybe.andThen (evaluate p >> Result.toMaybe)
-                    |> Maybe.map (degrees >> Direction2d.fromAngle)
+            Maybe.map
+                (\exprAngle ->
+                    State.map2
+                        (Maybe.map2 Axis2d.through)
+                        (point2dHelper pattern thatPoint)
+                        (State.map
+                            (Result.toMaybe
+                                >> Maybe.map (degrees >> Direction2d.fromAngle)
+                            )
+                            (evaluateHelper pattern exprAngle)
+                        )
                 )
+                (Result.toMaybe (Expr.parse reservedWords rawAngle))
+                |> Maybe.withDefault (State.state Nothing)
 
         Nothing ->
-            Nothing
+            State.state Nothing
 
 
 lineSegment2d : Pattern -> That LineSegment -> Maybe LineSegment2d
@@ -765,7 +904,7 @@ removeVariable name (Pattern data) =
         Pattern
             { data
                 | variables = Dict.remove name data.variables
-                , variablesCache = Dict.empty
+                , cache = emptyCache
             }
 
 
@@ -773,10 +912,10 @@ computeVariablesCache : Pattern -> Pattern
 computeVariablesCache ((Pattern data) as pattern) =
     Pattern
         { data
-            | variablesCache =
+            | cache =
                 Dict.keys data.variables
                     |> State.traverse (variableNamedHelper pattern)
-                    |> State.finalState data.variablesCache
+                    |> State.finalState data.cache
         }
 
 
@@ -784,20 +923,20 @@ variables : Pattern -> List { name : String, value : String, computed : Float }
 variables ((Pattern data) as pattern) =
     Dict.keys data.variables
         |> State.traverse (variableNamedHelper pattern)
-        |> State.finalValue data.variablesCache
+        |> State.finalValue data.cache
         |> List.filterMap identity
 
 
 variable : Pattern -> String -> Maybe Float
-variable ((Pattern { variablesCache }) as pattern) name =
-    State.finalValue variablesCache (variableHelper pattern name)
+variable ((Pattern { cache }) as pattern) name =
+    State.finalValue cache (variableHelper pattern name)
 
 
-variableHelper : Pattern -> String -> State (Dict String (Maybe Float)) (Maybe Float)
+variableHelper : Pattern -> String -> State Cache (Maybe Float)
 variableHelper ((Pattern data) as pattern) name =
     let
         modifyWhenNeeded cache =
-            case Dict.get name cache of
+            case Dict.get name cache.variables of
                 Nothing ->
                     calculateVariable name
                         |> State.andThen addVariable
@@ -813,7 +952,10 @@ variableHelper ((Pattern data) as pattern) name =
                 |> Maybe.withDefault (State.state Nothing)
 
         addVariable value =
-            State.modify (Dict.insert name value)
+            State.modify
+                (\cache ->
+                    { cache | variables = Dict.insert name value cache.variables }
+                )
                 |> State.map (\_ -> value)
     in
     State.get
@@ -824,7 +966,7 @@ variableNamedHelper :
     Pattern
     -> String
     ->
-        State (Dict String (Maybe Float))
+        State Cache
             (Maybe
                 { name : String
                 , value : String
@@ -847,13 +989,13 @@ variableNamedHelper ((Pattern data) as pattern) name =
 
 evaluate : Pattern -> Expr -> Result DoesNotCompute Float
 evaluate ((Pattern data) as pattern) expr =
-    State.finalValue data.variablesCache (evaluateHelper pattern expr)
+    State.finalValue data.cache (evaluateHelper pattern expr)
 
 
 evaluateHelper :
     Pattern
     -> Expr
-    -> State (Dict String (Maybe Float)) (Result DoesNotCompute Float)
+    -> State Cache (Result DoesNotCompute Float)
 evaluateHelper pattern expr =
     let
         functions functionName args =
@@ -963,10 +1105,7 @@ evaluateHelper pattern expr =
                 (evaluateHelper pattern exprB)
 
 
-evaluateBoolHelper :
-    Pattern
-    -> BoolExpr
-    -> State (Dict String (Maybe Float)) (Result DoesNotCompute Bool)
+evaluateBoolHelper : Pattern -> BoolExpr -> State Cache (Result DoesNotCompute Bool)
 evaluateBoolHelper pattern boolExpr =
     case boolExpr of
         ExprTrue ->
@@ -1268,10 +1407,10 @@ updatePoint : That Point -> Point -> Pattern -> Pattern
 updatePoint thatPoint point (Pattern pattern) =
     Pattern
         { pattern
-            | points =
-                Store.updateValue (That.objectId thatPoint) point pattern.points
-            , cache = Nothing
+            | points = Store.updateValue (That.objectId thatPoint) point pattern.points
+            , cache = emptyCache
         }
+        |> computeCache
 
 
 getPointGeometry : Pattern -> That Point -> Maybe Point2d
@@ -1296,11 +1435,8 @@ insertPoint name point (Pattern pattern) =
         ( newPoints, id ) =
             Store.insert name point pattern.points
     in
-    ( Pattern
-        { pattern
-            | points = newPoints
-            , cache = Nothing
-        }
+    ( computePoint2dCache <|
+        Pattern { pattern | points = newPoints }
     , that id
     )
 
@@ -1335,10 +1471,10 @@ updateCircle : That Circle -> Circle -> Pattern -> Pattern
 updateCircle thatcircle circle (Pattern pattern) =
     Pattern
         { pattern
-            | circles =
-                Store.updateValue (That.objectId thatcircle) circle pattern.circles
-            , cache = Nothing
+            | circles = Store.updateValue (That.objectId thatcircle) circle pattern.circles
+            , cache = emptyCache
         }
+        |> computeCache
 
 
 insertCircle : Maybe String -> Circle -> Pattern -> ( Pattern, That Circle )
@@ -1347,11 +1483,8 @@ insertCircle name circle (Pattern pattern) =
         ( newCircles, id ) =
             Store.insert name circle pattern.circles
     in
-    ( Pattern
-        { pattern
-            | circles = newCircles
-            , cache = Nothing
-        }
+    ( computeCircle2dCache <|
+        Pattern { pattern | circles = newCircles }
     , that id
     )
 
@@ -1383,11 +1516,8 @@ insertLine maybeName line (Pattern pattern) =
         ( newLines, id ) =
             Store.insert maybeName line pattern.lines
     in
-    ( Pattern
-        { pattern
-            | lines = newLines
-            , cache = Nothing
-        }
+    ( computeAxis2dCache <|
+        Pattern { pattern | lines = newLines }
     , that id
     )
 
@@ -1396,10 +1526,10 @@ updateLine : That Line -> Line -> Pattern -> Pattern
 updateLine thatLine line (Pattern pattern) =
     Pattern
         { pattern
-            | lines =
-                Store.updateValue (That.objectId thatLine) line pattern.lines
-            , cache = Nothing
+            | lines = Store.updateValue (That.objectId thatLine) line pattern.lines
+            , cache = emptyCache
         }
+        |> computeCache
 
 
 
@@ -1434,11 +1564,8 @@ insertLineSegment maybeName lineSegment (Pattern pattern) =
         ( newLineSegments, id ) =
             Store.insert maybeName lineSegment pattern.lineSegments
     in
-    ( Pattern
-        { pattern
-            | lineSegments = newLineSegments
-            , cache = Nothing
-        }
+    ( computeAxis2dCache <|
+        Pattern { pattern | lineSegments = newLineSegments }
     , that id
     )
 
@@ -1456,8 +1583,9 @@ insertTransformation transformation (Pattern pattern) =
     ( Pattern
         { pattern
             | transformations = newTransformations
-            , cache = Nothing
+            , cache = emptyCache
         }
+        |> computeCache
     , that id
     )
 
@@ -1477,11 +1605,7 @@ insertDetail maybeName detail (Pattern pattern) =
         ( newDetails, id ) =
             Store.insert maybeName detail pattern.details
     in
-    ( Pattern
-        { pattern
-            | details = newDetails
-            , cache = Nothing
-        }
+    ( Pattern { pattern | details = newDetails }
     , that id
     )
 
@@ -1490,9 +1614,7 @@ updateDetail : That Detail -> Detail -> Pattern -> Pattern
 updateDetail thatDetail detail (Pattern pattern) =
     Pattern
         { pattern
-            | details =
-                Store.updateValue (That.objectId thatDetail) detail pattern.details
-            , cache = Nothing
+            | details = Store.updateValue (That.objectId thatDetail) detail pattern.details
         }
 
 
@@ -1501,7 +1623,6 @@ deleteDetail thatDetail (Pattern pattern) =
     Pattern
         { pattern
             | details = Store.remove (That.objectId thatDetail) pattern.details
-            , cache = Nothing
         }
 
 
@@ -1752,9 +1873,9 @@ decoder =
         |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.required "transformations" (Store.decoder transformationDecoder)
         |> Decode.required "variables" variablesDecoder
-        |> Decode.hardcoded Dict.empty
-        |> Decode.hardcoded Nothing
-        |> Decode.map (Pattern >> computeVariablesCache)
+        |> Decode.hardcoded emptyCache
+        |> Decode.map
+            (Pattern >> computeCache)
 
 
 variablesDecoder : Decoder (Dict String String)
