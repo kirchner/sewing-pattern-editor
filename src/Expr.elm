@@ -62,8 +62,8 @@ var : List String -> Parser Expr
 var reservedWords =
     map Variable <|
         variable
-            { start = \c -> Char.isAlpha c || c == '#'
-            , inner = \c -> Char.isAlphaNum c || c == '_'
+            { start = isVarChar
+            , inner = isVarChar
             , reserved = Set.fromList reservedWords
             }
 
@@ -79,8 +79,8 @@ function reservedWords =
         |. symbol "("
         |. spaces
         |= (variable
-                { start = Char.isAlpha
-                , inner = \c -> Char.isAlphaNum c || c == '_'
+                { start = isVarChar
+                , inner = isVarChar
                 , reserved = Set.fromList reservedWords
                 }
                 |> andThen
@@ -115,8 +115,8 @@ argsHelp reservedWords revArgs =
                 |. symbol ","
                 |. spaces
                 |= variable
-                    { start = Char.isAlpha
-                    , inner = \c -> Char.isAlphaNum c || c == '_'
+                    { start = isVarChar
+                    , inner = isVarChar
                     , reserved = Set.fromList reservedWords
                     }
                 |> andThen (\nextArg -> argsHelp reservedWords (nextArg :: revArgs))
@@ -163,6 +163,23 @@ exprHelp reservedWords revOps prevExpr =
             ]
 
 
+isVarChar : Char -> Bool
+isVarChar char =
+    [ ' '
+    , '\t'
+    , '\n'
+    , ','
+    , '+'
+    , '-'
+    , '*'
+    , '/'
+    , '('
+    , ')'
+    ]
+        |> List.member char
+        |> not
+
+
 type Operator
     = AddOp
     | DifOp
@@ -186,14 +203,56 @@ finalize revOps finalExpr =
         [] ->
             finalExpr
 
-        ( nextExpr, MulOp ) :: otherRevOps ->
-            finalize otherRevOps (Product nextExpr finalExpr)
-
         ( nextExpr, DivOp ) :: otherRevOps ->
-            finalize otherRevOps (Quotient nextExpr finalExpr)
+            collect otherRevOps [ ( nextExpr, DivOp ) ] finalExpr
+
+        ( nextExpr, MulOp ) :: otherRevOps ->
+            collect otherRevOps [ ( nextExpr, MulOp ) ] finalExpr
 
         ( nextExpr, AddOp ) :: otherRevOps ->
             Sum (finalize otherRevOps nextExpr) finalExpr
 
         ( nextExpr, DifOp ) :: otherRevOps ->
+            Difference (finalize otherRevOps nextExpr) finalExpr
+
+
+collect : List ( Expr, Operator ) -> List ( Expr, Operator ) -> Expr -> Expr
+collect revOps collectedOps finalExpr =
+    case revOps of
+        [] ->
+            finalizeProducts (List.reverse collectedOps) finalExpr
+
+        ( nextExpr, DivOp ) :: otherRevOps ->
+            collect otherRevOps (( nextExpr, DivOp ) :: collectedOps) finalExpr
+
+        ( nextExpr, MulOp ) :: otherRevOps ->
+            collect otherRevOps (( nextExpr, MulOp ) :: collectedOps) finalExpr
+
+        ( nextExpr, AddOp ) :: otherRevOps ->
+            Sum (finalize otherRevOps nextExpr) <|
+                finalizeProducts (List.reverse collectedOps) finalExpr
+
+        ( nextExpr, DifOp ) :: otherRevOps ->
+            Difference (finalize otherRevOps nextExpr) <|
+                finalizeProducts (List.reverse collectedOps) finalExpr
+
+
+finalizeProducts : List ( Expr, Operator ) -> Expr -> Expr
+finalizeProducts revOps finalExpr =
+    case revOps of
+        [] ->
+            finalExpr
+
+        ( nextExpr, DivOp ) :: otherRevOps ->
+            Quotient (finalizeProducts otherRevOps nextExpr) finalExpr
+
+        ( nextExpr, MulOp ) :: otherRevOps ->
+            Product (finalizeProducts otherRevOps nextExpr) finalExpr
+
+        ( nextExpr, AddOp ) :: otherRevOps ->
+            -- this should never happen
+            Sum (finalize otherRevOps nextExpr) finalExpr
+
+        ( nextExpr, DifOp ) :: otherRevOps ->
+            -- this should never happen
             Difference (finalize otherRevOps nextExpr) finalExpr

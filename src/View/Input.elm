@@ -299,6 +299,7 @@ formula id data =
         , Border.color Design.black
         , Element.htmlAttribute (Attributes.rows lineCount)
         , Element.htmlAttribute (Attributes.style "white-space" "pre")
+        , Element.clip
         ]
         { onChange = data.onChange
         , text = data.text

@@ -879,6 +879,31 @@ evaluateHelper pattern expr =
                                     , arguments = args
                                     }
 
+                "angleOfLine" ->
+                    case args of
+                        namePointA :: namePointB :: [] ->
+                            Result.fromMaybe TODO
+                                (Maybe.map2 Direction2d.from
+                                    (namePointA
+                                        |> thatPointByName pattern
+                                        |> Maybe.andThen (point2d pattern)
+                                    )
+                                    (namePointB
+                                        |> thatPointByName pattern
+                                        |> Maybe.andThen (point2d pattern)
+                                    )
+                                    |> Maybe.withDefault Nothing
+                                    |> Maybe.map Direction2d.toAngle
+                                    |> Maybe.map (\radian -> 180 * radian / pi)
+                                )
+
+                        _ ->
+                            Err <|
+                                BadArguments
+                                    { functionName = functionName
+                                    , arguments = args
+                                    }
+
                 _ ->
                     Err (UnknownFunction functionName)
     in
@@ -912,8 +937,7 @@ evaluateHelper pattern expr =
                 (evaluateHelper pattern exprB)
 
         Quotient exprA exprB ->
-            State.map2
-                (Result.map2 (\a b -> a / b))
+            State.map2 (Result.map2 (\a b -> a / b))
                 (evaluateHelper pattern exprA)
                 (evaluateHelper pattern exprB)
 
@@ -926,7 +950,9 @@ evaluateHelper pattern expr =
 
 reservedWords : List String
 reservedWords =
-    [ "distance" ]
+    [ "distance"
+    , "angleOfLine"
+    ]
 
 
 type DoesNotCompute

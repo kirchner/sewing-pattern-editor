@@ -1,8 +1,8 @@
 build:
-	nix-shell --run "yarn; yarn build"
+	nix-shell --run "yarn build"
 
 dev:
-	nix-shell --run "yarn; yarn dev"
+	nix-shell --run "yarn dev"
 
 serve:
 	go run server.go
