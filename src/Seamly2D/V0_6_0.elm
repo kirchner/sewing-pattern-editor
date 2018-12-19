@@ -230,6 +230,22 @@ toPattern { increments, draws } =
                                                     previousObjects.points
                                           }
                                         )
+
+                                    insertLine line =
+                                        let
+                                            ( nextPattern, thatLine ) =
+                                                Pattern.insertLine Nothing
+                                                    line
+                                                    previousPattern
+                                        in
+                                        ( nextPattern
+                                        , { previousObjects
+                                            | lines =
+                                                Dict.insert id
+                                                    thatLine
+                                                    previousObjects.lines
+                                          }
+                                        )
                                 in
                                 case data.type_ of
                                     Just "single" ->
@@ -297,6 +313,47 @@ toPattern { increments, draws } =
                                             |> Maybe.map insertPoint
                                             |> Maybe.withDefault
                                                 ( previousPattern, previousObjects )
+
+                                    Just "lineIntersectAxis" ->
+                                        Maybe.map4
+                                            (\basePoint angle p1Line p2Line ->
+                                                Maybe.map2
+                                                    (\lineA lineB ->
+                                                        let
+                                                            ( nextPatternA, thatLineA ) =
+                                                                Pattern.insertLine Nothing lineA previousPattern
+
+                                                            ( nextPatternB, thatLineB ) =
+                                                                Pattern.insertLine Nothing lineB nextPatternA
+                                                        in
+                                                        case Pattern.lineLine nextPatternB thatLineA thatLineB of
+                                                            Nothing ->
+                                                                Nothing
+
+                                                            Just point ->
+                                                                let
+                                                                    ( finalPattern, thatPoint ) =
+                                                                        Pattern.insertPoint data.name
+                                                                            point
+                                                                            nextPatternB
+                                                                in
+                                                                Just
+                                                                    ( finalPattern
+                                                                    , { previousObjects
+                                                                        | points = Dict.insert id thatPoint previousObjects.points
+                                                                      }
+                                                                    )
+                                                    )
+                                                    (Pattern.throughOnePoint previousPattern basePoint angle)
+                                                    (Pattern.throughTwoPoints previousPattern p1Line p2Line)
+                                                    |> Maybe.withDefault Nothing
+                                            )
+                                            (lookUpPoint data.basePoint)
+                                            (data.angle)
+                                            (lookUpPoint data.p1Line)
+                                            (lookUpPoint data.p2Line)
+                                            |> Maybe.withDefault Nothing
+                                            |> Maybe.withDefault ( previousPattern, previousObjects )
 
                                     _ ->
                                         ( previousPattern, previousObjects )
