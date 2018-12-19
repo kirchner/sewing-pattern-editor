@@ -125,7 +125,7 @@ import Circle2d exposing (Circle2d)
 import Circle2d.Extra as Circle2d exposing (Intersection(..))
 import Dict exposing (Dict)
 import Direction2d
-import Expr exposing (Expr(..))
+import Expr exposing (BoolExpr(..), Expr(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
@@ -944,6 +944,63 @@ evaluateHelper pattern expr =
         Max exprA exprB ->
             State.map2
                 (Result.map2 Basics.max)
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        IfThenElse boolExpr exprA exprB ->
+            State.map3
+                (Result.map3
+                    (\bool a b ->
+                        if bool then
+                            a
+
+                        else
+                            b
+                    )
+                )
+                (evaluateBoolHelper pattern boolExpr)
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+
+evaluateBoolHelper :
+    Pattern
+    -> BoolExpr
+    -> State (Dict String (Maybe Float)) (Result DoesNotCompute Bool)
+evaluateBoolHelper pattern boolExpr =
+    case boolExpr of
+        ExprTrue ->
+            State.state (Ok True)
+
+        ExprFalse ->
+            State.state (Ok False)
+
+        Not nestedBoolExpr ->
+            State.map (Result.map not)
+                (evaluateBoolHelper pattern nestedBoolExpr)
+
+        And boolExprA boolExprB ->
+            State.map2 (Result.map2 (&&))
+                (evaluateBoolHelper pattern boolExprA)
+                (evaluateBoolHelper pattern boolExprB)
+
+        Or boolExprA boolExprB ->
+            State.map2 (Result.map2 (||))
+                (evaluateBoolHelper pattern boolExprA)
+                (evaluateBoolHelper pattern boolExprB)
+
+        Equal exprA exprB ->
+            State.map2 (Result.map2 (==))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        GreaterThan exprA exprB ->
+            State.map2 (Result.map2 (>))
+                (evaluateHelper pattern exprA)
+                (evaluateHelper pattern exprB)
+
+        StrictlyGreaterThan exprA exprB ->
+            State.map2 (Result.map2 (>=))
                 (evaluateHelper pattern exprA)
                 (evaluateHelper pattern exprB)
 

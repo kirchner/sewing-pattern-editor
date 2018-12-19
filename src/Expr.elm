@@ -1,5 +1,6 @@
 module Expr exposing
-    ( Expr(..)
+    ( BoolExpr(..)
+    , Expr(..)
     , parse
     )
 
@@ -36,11 +37,31 @@ type Expr
     | Product Expr Expr
     | Quotient Expr Expr
     | Max Expr Expr
+    | IfThenElse BoolExpr Expr Expr
+
+
+type BoolExpr
+    = ExprTrue
+    | ExprFalse
+    | Not BoolExpr
+    | And BoolExpr BoolExpr
+    | Or BoolExpr BoolExpr
+    | Equal Expr Expr
+    | GreaterThan Expr Expr
+    | StrictlyGreaterThan Expr Expr
 
 
 parse : List String -> String -> Result (List DeadEnd) Expr
 parse reservedWords string =
-    Parser.run (expr ("max" :: reservedWords)) string
+    Parser.run (expr (keyWords ++ reservedWords)) string
+
+
+keyWords =
+    [ "max"
+    , "if"
+    , "then"
+    , "else"
+    ]
 
 
 
@@ -49,12 +70,17 @@ parse reservedWords string =
 
 digits : Parser Expr
 digits =
+    Parser.map Number digitsHelp
+
+
+digitsHelp : Parser Float
+digitsHelp =
     number
-        { int = Just (Number << toFloat)
+        { int = Just toFloat
         , hex = Nothing
         , octal = Nothing
         , binary = Nothing
-        , float = Just Number
+        , float = Just identity
         }
 
 
@@ -106,6 +132,22 @@ max reservedWords =
         |. symbol ")"
 
 
+ifThenElse : List String -> Parser Expr
+ifThenElse reservedWords =
+    succeed IfThenElse
+        |. keyword "if"
+        |. space
+        |= lazy (\_ -> boolExpr reservedWords)
+        |. space
+        |. keyword "then"
+        |. space
+        |= lazy (\_ -> expr reservedWords)
+        |. space
+        |. keyword "else"
+        |. space
+        |= lazy (\_ -> expr reservedWords)
+
+
 argsHelp : List String -> List String -> Parser (List String)
 argsHelp reservedWords revArgs =
     succeed identity
@@ -127,8 +169,13 @@ argsHelp reservedWords revArgs =
 term : List String -> Parser Expr
 term reservedWords =
     oneOf
-        [ digits
+        [ succeed (\num -> Number (-1 * num))
+            |. symbol "-"
+            |. spaces
+            |= digitsHelp
+        , digits
         , max reservedWords
+        , ifThenElse reservedWords
         , backtrackable (function reservedWords)
         , var reservedWords
         , succeed identity
@@ -143,24 +190,41 @@ term reservedWords =
 expr : List String -> Parser Expr
 expr reservedWords =
     term reservedWords
-        |> andThen (exprHelp reservedWords [])
+        |> andThen
+            (\t ->
+                Parser.succeed identity
+                    |= exprHelp reservedWords [] t
+            )
 
 
 exprHelp : List String -> List ( Expr, Operator ) -> Expr -> Parser Expr
 exprHelp reservedWords revOps prevExpr =
-    succeed identity
-        |. spaces
-        |= oneOf
-            [ succeed Tuple.pair
-                |= operator
-                |. spaces
-                |= term reservedWords
-                |> andThen
-                    (\( op, nextExpr ) ->
-                        exprHelp reservedWords (( prevExpr, op ) :: revOps) nextExpr
-                    )
-            , lazy (\_ -> succeed (finalize revOps prevExpr))
+    oneOf
+        [ succeed Tuple.pair
+            |= backtrackable
+                (succeed identity
+                    |. spaces
+                    |= operator
+                )
+            |. spaces
+            |= term reservedWords
+            |> andThen
+                (\( op, nextExpr ) ->
+                    Parser.succeed identity
+                        |= exprHelp reservedWords (( prevExpr, op ) :: revOps) nextExpr
+                )
+        , lazy (\_ -> succeed (finalize revOps prevExpr))
+        ]
+
+
+space : Parser ()
+space =
+    Parser.succeed ()
+        |. Parser.oneOf
+            [ symbol " "
+            , symbol "\n"
             ]
+        |. spaces
 
 
 isVarChar : Char -> Bool
@@ -175,9 +239,99 @@ isVarChar char =
     , '/'
     , '('
     , ')'
+    , '&'
+    , '|'
+    , '='
+    , '>'
+    , '<'
     ]
         |> List.member char
         |> not
+
+
+boolExpr : List String -> Parser BoolExpr
+boolExpr reservedWords =
+    boolTerm reservedWords
+        |> andThen
+            (\t ->
+                Parser.succeed identity
+                    |= boolExprHelp reservedWords [] t
+            )
+
+
+boolExprHelp : List String -> List ( BoolExpr, BoolOperator ) -> BoolExpr -> Parser BoolExpr
+boolExprHelp reservedWords revOps prevExpr =
+    oneOf
+        [ succeed Tuple.pair
+            |. backtrackable space
+            |= boolOperator
+            |. space
+            |= boolTerm reservedWords
+            |> andThen
+                (\( op, nextExpr ) ->
+                    Parser.succeed identity
+                        |= boolExprHelp reservedWords
+                            (( prevExpr, op ) :: revOps)
+                            nextExpr
+                )
+        , lazy (\_ -> succeed (finalizeBool revOps prevExpr))
+        ]
+
+
+boolTerm : List String -> Parser BoolExpr
+boolTerm reservedWords =
+    Parser.oneOf
+        [ Parser.map (always ExprTrue) (keyword "true")
+        , Parser.map (always ExprFalse) (keyword "false")
+        , succeed Not
+            |. keyword "not"
+            |. space
+            |= lazy (\_ -> boolExpr reservedWords)
+        , succeed identity
+            |. symbol "("
+            |. spaces
+            |= lazy (\_ -> boolExpr reservedWords)
+            |. spaces
+            |. symbol ")"
+        , succeed identity
+            |= lazy (\_ -> expr reservedWords)
+            |. spaces
+            |> andThen
+                (\firstExpr ->
+                    oneOf
+                        [ succeed (Equal firstExpr)
+                            |. symbol "=="
+                            |. spaces
+                            |= lazy (\_ -> expr reservedWords)
+                        , succeed (Not << Equal firstExpr)
+                            |. symbol "/="
+                            |. spaces
+                            |= lazy (\_ -> expr reservedWords)
+                        , succeed identity
+                            |. symbol ">"
+                            |= oneOf
+                                [ succeed (StrictlyGreaterThan firstExpr)
+                                    |. symbol "="
+                                    |. spaces
+                                    |= lazy (\_ -> expr reservedWords)
+                                , succeed (GreaterThan firstExpr)
+                                    |. spaces
+                                    |= lazy (\_ -> expr reservedWords)
+                                ]
+                        , succeed identity
+                            |. symbol "<"
+                            |= oneOf
+                                [ succeed (Not << StrictlyGreaterThan firstExpr)
+                                    |. symbol "="
+                                    |. spaces
+                                    |= lazy (\_ -> expr reservedWords)
+                                , succeed (Not << GreaterThan firstExpr)
+                                    |. spaces
+                                    |= lazy (\_ -> expr reservedWords)
+                                ]
+                        ]
+                )
+        ]
 
 
 type Operator
@@ -256,3 +410,29 @@ finalizeProducts revOps finalExpr =
         ( nextExpr, DifOp ) :: otherRevOps ->
             -- this should never happen
             Difference (finalize otherRevOps nextExpr) finalExpr
+
+
+type BoolOperator
+    = AndOp
+    | OrOp
+
+
+boolOperator : Parser BoolOperator
+boolOperator =
+    oneOf
+        [ map (\_ -> AndOp) (symbol "&&")
+        , map (\_ -> OrOp) (symbol "||")
+        ]
+
+
+finalizeBool : List ( BoolExpr, BoolOperator ) -> BoolExpr -> BoolExpr
+finalizeBool revOps finalExpr =
+    case revOps of
+        [] ->
+            finalExpr
+
+        ( nextExpr, AndOp ) :: otherRevOps ->
+            finalizeBool otherRevOps (And nextExpr finalExpr)
+
+        ( nextExpr, OrOp ) :: otherRevOps ->
+            Or (finalizeBool otherRevOps nextExpr) finalExpr
