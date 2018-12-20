@@ -131,8 +131,10 @@ import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import LineSegment2d exposing (LineSegment2d)
 import List.Extra as List
+import Maybe.Extra as Maybe
 import Parser
 import Point2d exposing (Point2d)
+import Point2d.Extra as Point2d
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d exposing (QuadraticSpline2d)
 import Set exposing (Set)
@@ -375,7 +377,10 @@ point2dHelper pattern thatPoint =
         modifyWhenNeeded cache =
             case Dict.get (That.objectId thatPoint) cache.point2ds of
                 Nothing ->
-                    calculatePoint2d pattern thatPoint
+                    thatPoint
+                        |> getPoint pattern
+                        |> Maybe.map (.value >> calculatePoint2d pattern)
+                        |> Maybe.withDefault (State.state Nothing)
                         |> State.andThen addPoint2d
 
                 Just value ->
@@ -397,235 +402,85 @@ point2dHelper pattern thatPoint =
         |> State.andThen modifyWhenNeeded
 
 
-calculatePoint2d : Pattern -> That Point -> State Cache (Maybe Point2d)
-calculatePoint2d pattern thatPoint =
+calculatePoint2d : Pattern -> Point -> State Cache (Maybe Point2d)
+calculatePoint2d pattern point =
     let
-        simpleDistance anchor rawLength toDirection =
-            case Expr.parse reservedWords rawLength of
-                Err _ ->
-                    State.state Nothing
-
-                Ok exprLength ->
-                    State.map
-                        (\distanceResult ->
-                            case distanceResult of
-                                Err _ ->
-                                    Nothing
-
-                                Ok distance ->
-                                    let
-                                        v =
-                                            toDirection distance
-                                    in
-                                    anchor
-                                        |> point2d pattern
-                                        |> Maybe.map (Point2d.translateBy v)
-                        )
-                        (evaluateHelper pattern exprLength)
-
-        applyTransformations point =
-            point
-
-        applyTransformation point transformation =
-            case transformation of
-                MirrorAt thatLine ->
-                    case axis2d pattern thatLine of
-                        Just axis ->
-                            point
-                                |> Point2d.mirrorAcross axis
-
-                        Nothing ->
-                            point
-
-                _ ->
-                    point
+        simpleDistance thatAnchor rawLength toDirection =
+            State.map2
+                (Maybe.map2
+                    (\anchor distance ->
+                        Point2d.translateBy (toDirection distance) anchor
+                    )
+                )
+                (point2dHelper pattern thatAnchor)
+                (evaluateRawHelper pattern rawLength)
     in
-    State.map (Maybe.map applyTransformations) <|
-        case Maybe.map .value (getPoint pattern thatPoint) of
-            Just (Origin x y) ->
-                State.state <|
-                    Just (Point2d.fromCoordinates ( x, y ))
+    case point of
+        Origin x y ->
+            State.state <|
+                Just (Point2d.fromCoordinates ( x, y ))
 
-            Just (LeftOf anchor rawLength) ->
-                simpleDistance anchor rawLength <|
-                    \distance -> Vector2d.fromComponents ( -1 * distance, 0 )
+        LeftOf anchor rawLength ->
+            simpleDistance anchor rawLength <|
+                \distance -> Vector2d.fromComponents ( -1 * distance, 0 )
 
-            Just (RightOf anchor rawLength) ->
-                simpleDistance anchor rawLength <|
-                    \distance -> Vector2d.fromComponents ( distance, 0 )
+        RightOf anchor rawLength ->
+            simpleDistance anchor rawLength <|
+                \distance -> Vector2d.fromComponents ( distance, 0 )
 
-            Just (Above anchor rawLength) ->
-                simpleDistance anchor rawLength <|
-                    \distance -> Vector2d.fromComponents ( 0, -1 * distance )
+        Above anchor rawLength ->
+            simpleDistance anchor rawLength <|
+                \distance -> Vector2d.fromComponents ( 0, -1 * distance )
 
-            Just (Below anchor rawLength) ->
-                simpleDistance anchor rawLength <|
-                    \distance -> Vector2d.fromComponents ( 0, distance )
+        Below anchor rawLength ->
+            simpleDistance anchor rawLength <|
+                \distance -> Vector2d.fromComponents ( 0, distance )
 
-            Just (AtAngle thatAnchor rawAngle rawDistance) ->
-                Maybe.map2
-                    (\exprAngle exprDistance ->
-                        State.map3
-                            (\maybeAnchor angleResult distanceResult ->
-                                Maybe.map3
-                                    (\anchor angle distance ->
-                                        Point2d.translateBy
-                                            (Vector2d.fromPolarComponents
-                                                ( distance, degrees angle )
-                                            )
-                                            anchor
-                                    )
-                                    maybeAnchor
-                                    (Result.toMaybe angleResult)
-                                    (Result.toMaybe distanceResult)
-                            )
-                            (point2dHelper pattern thatAnchor)
-                            (evaluateHelper pattern exprAngle)
-                            (evaluateHelper pattern exprDistance)
-                    )
-                    (Result.toMaybe (Expr.parse reservedWords rawAngle))
-                    (Result.toMaybe (Expr.parse reservedWords rawDistance))
-                    |> Maybe.withDefault (State.state Nothing)
+        AtAngle thatAnchor rawAngle rawDistance ->
+            State.map3 (Maybe.map3 Point2d.atAngle)
+                (point2dHelper pattern thatAnchor)
+                (evaluateRawHelper pattern rawAngle)
+                (evaluateRawHelper pattern rawDistance)
 
-            Just (BetweenRatio thatAnchorA thatAnchorB rawRatio) ->
-                Maybe.map
-                    (\exprRatio ->
-                        State.map3
-                            (\maybeAnchorA maybeAnchorB resultRatio ->
-                                Maybe.map3
-                                    (\anchorA anchorB ratio ->
-                                        Point2d.translateBy
-                                            (Vector2d.from anchorA anchorB
-                                                |> Vector2d.scaleBy ratio
-                                            )
-                                            anchorA
-                                    )
-                                    maybeAnchorA
-                                    maybeAnchorB
-                                    (Result.toMaybe resultRatio)
-                            )
-                            (point2dHelper pattern thatAnchorA)
-                            (point2dHelper pattern thatAnchorB)
-                            (evaluateHelper pattern exprRatio)
-                    )
-                    (Result.toMaybe (Expr.parse reservedWords rawRatio))
-                    |> Maybe.withDefault (State.state Nothing)
+        BetweenRatio thatAnchorA thatAnchorB rawRatio ->
+            State.map3 (Maybe.map3 Point2d.betweenRatio)
+                (point2dHelper pattern thatAnchorA)
+                (point2dHelper pattern thatAnchorB)
+                (evaluateRawHelper pattern rawRatio)
 
-            Just (BetweenLength thatAnchorA thatAnchorB rawLength) ->
-                Maybe.map
-                    (\exprLength ->
-                        State.map3
-                            (\maybeAnchorA maybeAnchorB resultLength ->
-                                Maybe.map3
-                                    (\anchorA direction length ->
-                                        Point2d.along
-                                            (Axis2d.through anchorA direction)
-                                            length
-                                    )
-                                    maybeAnchorA
-                                    (Maybe.map2 Direction2d.from
-                                        maybeAnchorA
-                                        maybeAnchorB
-                                        |> Maybe.withDefault Nothing
-                                    )
-                                    (Result.toMaybe resultLength)
-                            )
-                            (point2dHelper pattern thatAnchorA)
-                            (point2dHelper pattern thatAnchorB)
-                            (evaluateHelper pattern exprLength)
-                    )
-                    (Result.toMaybe (Expr.parse reservedWords rawLength))
-                    |> Maybe.withDefault (State.state Nothing)
+        BetweenLength thatAnchorA thatAnchorB rawLength ->
+            State.map3 (Maybe.andThen3 Point2d.betweenLength)
+                (point2dHelper pattern thatAnchorA)
+                (point2dHelper pattern thatAnchorB)
+                (evaluateRawHelper pattern rawLength)
 
-            Just (FirstCircleCircle thatCircleA thatCircleB) ->
-                State.map2
-                    (Maybe.map2
-                        (\circle2dA circle2dB ->
-                            case Circle2d.intersectionCircle circle2dA circle2dB of
-                                NoIntersection ->
-                                    Nothing
+        FirstCircleCircle thatCircleA thatCircleB ->
+            State.map2 (Maybe.andThen2 Point2d.firstCircleCircle)
+                (circle2dHelper pattern thatCircleA)
+                (circle2dHelper pattern thatCircleB)
 
-                                OnePoint point ->
-                                    Just point
+        SecondCircleCircle thatCircleA thatCircleB ->
+            State.map2 (Maybe.andThen2 Point2d.secondCircleCircle)
+                (circle2dHelper pattern thatCircleA)
+                (circle2dHelper pattern thatCircleB)
 
-                                TwoPoints point _ ->
-                                    Just point
-                        )
-                    )
-                    (circle2dHelper pattern thatCircleA)
-                    (circle2dHelper pattern thatCircleB)
-                    |> State.map (Maybe.withDefault Nothing)
+        LineLine thatLineA thatLineB ->
+            State.map2 (Maybe.andThen2 Axis2d.intersectionWithAxis)
+                (axis2dHelper pattern thatLineA)
+                (axis2dHelper pattern thatLineB)
 
-            Just (SecondCircleCircle thatCircleA thatCircleB) ->
-                State.map2
-                    (Maybe.map2
-                        (\circle2dA circle2dB ->
-                            case Circle2d.intersectionCircle circle2dA circle2dB of
-                                NoIntersection ->
-                                    Nothing
+        FirstCircleLine thatCircle thatLine ->
+            State.map2 (Maybe.andThen2 Point2d.firstCircleAxis)
+                (circle2dHelper pattern thatCircle)
+                (axis2dHelper pattern thatLine)
 
-                                OnePoint point ->
-                                    Just point
+        SecondCircleLine thatCircle thatLine ->
+            State.map2 (Maybe.andThen2 Point2d.secondCircleAxis)
+                (circle2dHelper pattern thatCircle)
+                (axis2dHelper pattern thatLine)
 
-                                TwoPoints _ point ->
-                                    Just point
-                        )
-                    )
-                    (circle2dHelper pattern thatCircleA)
-                    (circle2dHelper pattern thatCircleB)
-                    |> State.map (Maybe.withDefault Nothing)
-
-            Just (LineLine thatLineA thatLineB) ->
-                State.map2
-                    (\maybeAxisA maybeAxisB ->
-                        Maybe.map2 Axis2d.intersectionWithAxis
-                            maybeAxisA
-                            maybeAxisB
-                    )
-                    (axis2dHelper pattern thatLineA)
-                    (axis2dHelper pattern thatLineB)
-                    |> State.map (Maybe.withDefault Nothing)
-
-            Just (FirstCircleLine thatCircle thatLine) ->
-                State.map2
-                    (Maybe.map2
-                        (\circle axis ->
-                            case Circle2d.intersectionAxis circle axis of
-                                NoIntersection ->
-                                    Nothing
-
-                                OnePoint point ->
-                                    Just point
-
-                                TwoPoints point _ ->
-                                    Just point
-                        )
-                    )
-                    (circle2dHelper pattern thatCircle)
-                    (axis2dHelper pattern thatLine)
-                    |> State.map (Maybe.withDefault Nothing)
-
-            Just (SecondCircleLine thatCircle thatLine) ->
-                State.map2
-                    (Maybe.map2
-                        (\circle axis ->
-                            case Circle2d.intersectionAxis circle axis of
-                                NoIntersection ->
-                                    Nothing
-
-                                OnePoint point ->
-                                    Just point
-
-                                TwoPoints _ point ->
-                                    Just point
-                        )
-                    )
-                    (circle2dHelper pattern thatCircle)
-                    (axis2dHelper pattern thatLine)
-                    |> State.map (Maybe.withDefault Nothing)
-
-            _ ->
-                State.state Nothing
+        TransformBy _ _ ->
+            State.state Nothing
 
 
 computeCircle2dCache : Pattern -> Pattern
@@ -652,7 +507,10 @@ circle2dHelper pattern thatCircle =
         modifyWhenNeeded cache =
             case Dict.get (That.objectId thatCircle) cache.circle2ds of
                 Nothing ->
-                    calculateCircle2d pattern thatCircle
+                    thatCircle
+                        |> getCircle pattern
+                        |> Maybe.map (.value >> calculateCircle2d pattern)
+                        |> Maybe.withDefault (State.state Nothing)
                         |> State.andThen addCircle2d
 
                 Just value ->
@@ -674,21 +532,13 @@ circle2dHelper pattern thatCircle =
         |> State.andThen modifyWhenNeeded
 
 
-calculateCircle2d : Pattern -> That Circle -> State Cache (Maybe Circle2d)
-calculateCircle2d pattern thatCircle =
-    case Maybe.map .value (getCircle pattern thatCircle) of
-        Just (CenteredAt thatCenter rawRadius) ->
-            Maybe.map
-                (\radiusExpr ->
-                    State.map2 (Maybe.map2 Circle2d.withRadius)
-                        (State.map Result.toMaybe (evaluateHelper pattern radiusExpr))
-                        (point2dHelper pattern thatCenter)
-                )
-                (Result.toMaybe (Expr.parse reservedWords rawRadius))
-                |> Maybe.withDefault (State.state Nothing)
-
-        Nothing ->
-            State.state Nothing
+calculateCircle2d : Pattern -> Circle -> State Cache (Maybe Circle2d)
+calculateCircle2d pattern circle =
+    case circle of
+        CenteredAt thatCenter rawRadius ->
+            State.map2 (Maybe.map2 Circle2d.withRadius)
+                (evaluateRawHelper pattern rawRadius)
+                (point2dHelper pattern thatCenter)
 
 
 computeAxis2dCache : Pattern -> Pattern
@@ -715,7 +565,10 @@ axis2dHelper pattern thatLine =
         modifyWhenNeeded cache =
             case Dict.get (That.objectId thatLine) cache.axis2ds of
                 Nothing ->
-                    calculateLine2d pattern thatLine
+                    thatLine
+                        |> getLine pattern
+                        |> Maybe.map (.value >> calculateAxis2d pattern)
+                        |> Maybe.withDefault (State.state Nothing)
                         |> State.andThen addLine2d
 
                 Just value ->
@@ -737,39 +590,18 @@ axis2dHelper pattern thatLine =
         |> State.andThen modifyWhenNeeded
 
 
-calculateLine2d : Pattern -> That Line -> State Cache (Maybe Axis2d)
-calculateLine2d pattern thatLine =
-    case Maybe.map .value (getLine pattern thatLine) of
-        Just (ThroughTwoPoints thatPointA thatPointB) ->
-            State.map2
-                (Maybe.map2
-                    (\point2dA point2dB ->
-                        Direction2d.from point2dA point2dB
-                            |> Maybe.map (Axis2d.through point2dA)
-                    )
-                )
+calculateAxis2d : Pattern -> Line -> State Cache (Maybe Axis2d)
+calculateAxis2d pattern line =
+    case line of
+        ThroughTwoPoints thatPointA thatPointB ->
+            State.map2 (Maybe.andThen2 Axis2d.throughTwoPoints)
                 (point2dHelper pattern thatPointA)
                 (point2dHelper pattern thatPointB)
-                |> State.map (Maybe.withDefault Nothing)
 
-        Just (ThroughOnePoint thatPoint rawAngle) ->
-            Maybe.map
-                (\exprAngle ->
-                    State.map2
-                        (Maybe.map2 Axis2d.through)
-                        (point2dHelper pattern thatPoint)
-                        (State.map
-                            (Result.toMaybe
-                                >> Maybe.map (degrees >> Direction2d.fromAngle)
-                            )
-                            (evaluateHelper pattern exprAngle)
-                        )
-                )
-                (Result.toMaybe (Expr.parse reservedWords rawAngle))
-                |> Maybe.withDefault (State.state Nothing)
-
-        Nothing ->
-            State.state Nothing
+        ThroughOnePoint thatPoint rawAngle ->
+            State.map2 (Maybe.map2 Axis2d.throughOnePoint)
+                (point2dHelper pattern thatPoint)
+                (evaluateRawHelper pattern rawAngle)
 
 
 lineSegment2d : Pattern -> That LineSegment -> Maybe LineSegment2d
@@ -992,10 +824,18 @@ evaluate ((Pattern data) as pattern) expr =
     State.finalValue data.cache (evaluateHelper pattern expr)
 
 
-evaluateHelper :
-    Pattern
-    -> Expr
-    -> State Cache (Result DoesNotCompute Float)
+evaluateRawHelper : Pattern -> String -> State Cache (Maybe Float)
+evaluateRawHelper pattern rawExpr =
+    Expr.parse reservedWords rawExpr
+        |> Result.toMaybe
+        |> Maybe.map
+            (evaluateHelper pattern
+                >> State.map Result.toMaybe
+            )
+        |> Maybe.withDefault (State.state Nothing)
+
+
+evaluateHelper : Pattern -> Expr -> State Cache (Result DoesNotCompute Float)
 evaluateHelper pattern expr =
     let
         functions functionName args =

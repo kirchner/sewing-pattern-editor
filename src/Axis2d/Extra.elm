@@ -1,4 +1,8 @@
-module Axis2d.Extra exposing (intersectionWithAxis)
+module Axis2d.Extra exposing
+    ( intersectionWithAxis
+    , throughOnePoint
+    , throughTwoPoints
+    )
 
 {-
    Sewing pattern editor
@@ -22,6 +26,17 @@ import Axis2d exposing (Axis2d)
 import Direction2d
 import Point2d exposing (Point2d)
 import Vector2d
+
+
+throughTwoPoints : Point2d -> Point2d -> Maybe Axis2d
+throughTwoPoints pointA pointB =
+    Direction2d.from pointA pointB
+        |> Maybe.map (Axis2d.through pointA)
+
+
+throughOnePoint : Point2d -> Float -> Axis2d
+throughOnePoint point angle =
+    Axis2d.through point (Direction2d.fromAngle (degrees angle))
 
 
 intersectionWithAxis : Axis2d -> Axis2d -> Maybe Point2d
