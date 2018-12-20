@@ -43,6 +43,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Lazy as Element
 import Element.Region as Region
 import Frame2d exposing (Frame2d)
 import Geometry.Svg as Svg
@@ -1368,7 +1369,7 @@ viewEditor prefix storedPattern model =
             , Element.htmlAttribute <|
                 Html.Attributes.style "flex-shrink" "1"
             ]
-            [ viewLeftToolbar prefix pattern model
+            [ Element.lazy3 viewLeftToolbar prefix pattern model.maybeTool
             , Element.el
                 [ Element.htmlAttribute <|
                     Html.Attributes.id "pattern-container"
@@ -1388,7 +1389,7 @@ viewEditor prefix storedPattern model =
         ]
 
 
-viewLeftToolbar prefix pattern model =
+viewLeftToolbar prefix pattern maybeTool =
     Element.column
         [ Element.width (Element.maximum 330 Element.fill)
         , Element.height Element.fill
@@ -1402,9 +1403,9 @@ viewLeftToolbar prefix pattern model =
             }
         , Border.color Design.black
         ]
-        [ case model.maybeTool of
+        [ case maybeTool of
             Nothing ->
-                viewToolSelector prefix
+                Element.lazy viewToolSelector prefix
 
             Just tool ->
                 viewTool pattern tool
@@ -1433,25 +1434,6 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
             storedPattern
-
-        selections =
-            { points =
-                model.maybeTool
-                    |> Maybe.map selectedPointsFromTool
-                    |> Maybe.withDefault (Those.fromList [])
-            , lines =
-                model.maybeTool
-                    |> Maybe.map selectedLinesFromTool
-                    |> Maybe.withDefault (Those.fromList [])
-            , lineSegments =
-                model.maybeTool
-                    |> Maybe.map selectedLineSegmentsFromTool
-                    |> Maybe.withDefault (Those.fromList [])
-            , details =
-                model.maybeTool
-                    |> Maybe.map selectedDetailsFromTool
-                    |> Maybe.withDefault (Those.fromList [])
-            }
 
         localFrame =
             ( x, y )
@@ -1492,14 +1474,47 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                 [ Svg.relativeTo localFrame <|
                     Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
                         Svg.g []
-                            [ Pattern.draw selections True zoom model.hoveredPoint pattern
-                            , Svg.Lazy.lazy4 drawHoverPolygons
+                            [ Svg.Lazy.lazy4 drawPatternHelp
+                                model.maybeTool
+                                zoom
+                                model.hoveredPoint
+                                pattern
+                            , drawHoverPolygons
                                 width
                                 height
                                 localFrame
                                 storedPattern
                             ]
                 ]
+
+
+drawPatternHelp maybeTool zoom hoveredPoint pattern =
+    let
+        selections =
+            { points =
+                maybeTool
+                    |> Maybe.map selectedPointsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , lines =
+                maybeTool
+                    |> Maybe.map selectedLinesFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , lineSegments =
+                maybeTool
+                    |> Maybe.map selectedLineSegmentsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            , details =
+                maybeTool
+                    |> Maybe.map selectedDetailsFromTool
+                    |> Maybe.withDefault (Those.fromList [])
+            }
+    in
+    Pattern.draw
+        selections
+        True
+        zoom
+        hoveredPoint
+        pattern
 
 
 drawHoverPolygons : Float -> Float -> Frame2d -> StoredPattern -> Svg Msg
@@ -1511,7 +1526,13 @@ drawHoverPolygons width height localFrame { pattern, center, zoom } =
         hoverPolygons =
             VoronoiDiagram2d.fromVerticesBy
                 (\( _, _, p2d ) -> p2d)
-                (Array.fromList geometry.points)
+                (geometry.points
+                    |> List.filter
+                        (\( _, _, p2d ) ->
+                            BoundingBox2d.contains p2d boundingBox2d
+                        )
+                    |> Array.fromList
+                )
                 |> Result.toMaybe
                 |> Maybe.map (VoronoiDiagram2d.polygons boundingBox2d)
                 |> Maybe.withDefault []
@@ -1616,12 +1637,12 @@ viewRightToolbar pattern model =
                 ]
                 (case model.maybeVariableDialog of
                     Nothing ->
-                        [ viewVariables pattern model
-                        , viewPoints pattern model
-                        , viewCircles pattern model
-                        , viewLines pattern model
-                        , viewLineSegments pattern model
-                        , viewDetails pattern model
+                        [ Element.lazy2 viewVariables pattern model.variablesVisible
+                        , Element.lazy2 viewPoints pattern model.pointsVisible
+                        , Element.lazy2 viewCircles pattern model.circlesVisible
+                        , Element.lazy2 viewLines pattern model.linesVisible
+                        , Element.lazy2 viewLineSegments pattern model.lineSegmentsVisible
+                        , Element.lazy2 viewDetails pattern model.detailsVisible
                         ]
 
                     Just (VariableDialogCreate { name, value }) ->
@@ -2536,11 +2557,11 @@ viewToolSelector prefix =
 -- TABLES
 
 
-viewVariables pattern model =
+viewVariables pattern variablesVisible =
     View.Navigation.accordion
         { onPress = VariablesRulerClicked
         , label = "Variables"
-        , open = model.variablesVisible
+        , open = variablesVisible
         , content =
             Element.column
                 [ Element.width Element.fill
@@ -2573,11 +2594,11 @@ viewVariables pattern model =
         }
 
 
-viewPoints pattern model =
+viewPoints pattern pointsVisible =
     View.Navigation.accordion
         { onPress = PointsRulerClicked
         , label = "Points"
-        , open = model.pointsVisible
+        , open = pointsVisible
         , content =
             View.Table.table
                 { data =
@@ -2615,11 +2636,11 @@ viewPoints pattern model =
         }
 
 
-viewCircles pattern model =
+viewCircles pattern circlesVisible =
     View.Navigation.accordion
         { onPress = CirclesRulerClicked
         , label = "Circles"
-        , open = model.circlesVisible
+        , open = circlesVisible
         , content =
             View.Table.table
                 { data =
@@ -2667,11 +2688,11 @@ viewCircles pattern model =
         }
 
 
-viewLines pattern model =
+viewLines pattern linesVisible =
     View.Navigation.accordion
         { onPress = LinesRulerClicked
         , label = "Lines"
-        , open = model.linesVisible
+        , open = linesVisible
         , content =
             View.Table.table
                 { data =
@@ -2693,11 +2714,11 @@ viewLines pattern model =
         }
 
 
-viewLineSegments pattern model =
+viewLineSegments pattern lineSegmentsVisible =
     View.Navigation.accordion
         { onPress = LineSegmentsRulerClicked
         , label = "Line segments"
-        , open = model.lineSegmentsVisible
+        , open = lineSegmentsVisible
         , content =
             View.Table.table
                 { data =
@@ -2755,11 +2776,11 @@ viewLineSegments pattern model =
         }
 
 
-viewDetails pattern model =
+viewDetails pattern detailsVisible =
     View.Navigation.accordion
         { onPress = DetailsRulerClicked
         , label = "Details"
-        , open = model.detailsVisible
+        , open = detailsVisible
         , content =
             View.Table.table
                 { data =
