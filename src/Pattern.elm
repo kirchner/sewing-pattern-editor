@@ -6,6 +6,7 @@ module Pattern exposing
     , getCircleGeometry
     , getLineSegmentGeometry
     , point2d, circle2d, axis2d
+    , computeCache
     , variables, insertVariable, removeVariable
     , Point(..), points, insertPoint, getPoint, updatePoint
     , origin
@@ -41,6 +42,8 @@ module Pattern exposing
 @docs getLineSegmentGeometry
 
 @docs point2d, circle2d, axis2d
+
+@docs computeCache
 
 
 # Variables
@@ -124,7 +127,7 @@ import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import Circle2d.Extra as Circle2d exposing (Intersection(..))
 import Dict exposing (Dict)
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
@@ -163,10 +166,10 @@ type alias PatternData =
 
 
 type alias Cache =
-    { variables : Dict String (Maybe Float)
-    , point2ds : Dict Int (Maybe Point2d)
-    , circle2ds : Dict Int (Maybe Circle2d)
-    , axis2ds : Dict Int (Maybe Axis2d)
+    { variables : Dict String Float
+    , point2ds : Dict Int Point2d
+    , circle2ds : Dict Int Circle2d
+    , axis2ds : Dict Int Axis2d
     }
 
 
@@ -384,19 +387,24 @@ point2dHelper pattern thatPoint =
                         |> State.andThen addPoint2d
 
                 Just value ->
-                    State.state value
+                    State.state (Just value)
 
-        addPoint2d value =
+        addPoint2d maybeValue =
             State.modify
                 (\cache ->
-                    { cache
-                        | point2ds =
-                            Dict.insert (That.objectId thatPoint)
-                                value
-                                cache.point2ds
-                    }
+                    case maybeValue of
+                        Nothing ->
+                            cache
+
+                        Just value ->
+                            { cache
+                                | point2ds =
+                                    Dict.insert (That.objectId thatPoint)
+                                        value
+                                        cache.point2ds
+                            }
                 )
-                |> State.map (\_ -> value)
+                |> State.map (\_ -> maybeValue)
     in
     State.get
         |> State.andThen modifyWhenNeeded
@@ -514,19 +522,24 @@ circle2dHelper pattern thatCircle =
                         |> State.andThen addCircle2d
 
                 Just value ->
-                    State.state value
+                    State.state (Just value)
 
-        addCircle2d value =
+        addCircle2d maybeValue =
             State.modify
                 (\cache ->
-                    { cache
-                        | circle2ds =
-                            Dict.insert (That.objectId thatCircle)
-                                value
-                                cache.circle2ds
-                    }
+                    case maybeValue of
+                        Nothing ->
+                            cache
+
+                        Just value ->
+                            { cache
+                                | circle2ds =
+                                    Dict.insert (That.objectId thatCircle)
+                                        value
+                                        cache.circle2ds
+                            }
                 )
-                |> State.map (\_ -> value)
+                |> State.map (\_ -> maybeValue)
     in
     State.get
         |> State.andThen modifyWhenNeeded
@@ -572,19 +585,24 @@ axis2dHelper pattern thatLine =
                         |> State.andThen addLine2d
 
                 Just value ->
-                    State.state value
+                    State.state (Just value)
 
-        addLine2d value =
+        addLine2d maybeValue =
             State.modify
                 (\cache ->
-                    { cache
-                        | axis2ds =
-                            Dict.insert (That.objectId thatLine)
-                                value
-                                cache.axis2ds
-                    }
+                    case maybeValue of
+                        Nothing ->
+                            cache
+
+                        Just value ->
+                            { cache
+                                | axis2ds =
+                                    Dict.insert (That.objectId thatLine)
+                                        value
+                                        cache.axis2ds
+                            }
                 )
-                |> State.map (\_ -> value)
+                |> State.map (\_ -> maybeValue)
     in
     State.get
         |> State.andThen modifyWhenNeeded
@@ -774,7 +792,7 @@ variableHelper ((Pattern data) as pattern) name =
                         |> State.andThen addVariable
 
                 Just value ->
-                    State.state value
+                    State.state (Just value)
 
         calculateVariable n =
             data.variables
@@ -783,12 +801,17 @@ variableHelper ((Pattern data) as pattern) name =
                 |> Maybe.map (evaluateHelper pattern >> State.map Result.toMaybe)
                 |> Maybe.withDefault (State.state Nothing)
 
-        addVariable value =
+        addVariable maybeValue =
             State.modify
                 (\cache ->
-                    { cache | variables = Dict.insert name value cache.variables }
+                    case maybeValue of
+                        Nothing ->
+                            cache
+
+                        Just value ->
+                            { cache | variables = Dict.insert name value cache.variables }
                 )
-                |> State.map (\_ -> value)
+                |> State.map (\_ -> maybeValue)
     in
     State.get
         |> State.andThen modifyWhenNeeded
@@ -837,68 +860,64 @@ evaluateRawHelper pattern rawExpr =
 
 evaluateHelper : Pattern -> Expr -> State Cache (Result DoesNotCompute Float)
 evaluateHelper pattern expr =
-    let
-        functions functionName args =
-            case functionName of
-                "distance" ->
-                    case args of
-                        namePointA :: namePointB :: [] ->
-                            Result.fromMaybe TODO <|
-                                Maybe.map2 Point2d.distanceFrom
-                                    (namePointA
-                                        |> thatPointByName pattern
-                                        |> Maybe.andThen (point2d pattern)
-                                    )
-                                    (namePointB
-                                        |> thatPointByName pattern
-                                        |> Maybe.andThen (point2d pattern)
-                                    )
-
-                        _ ->
-                            Err <|
-                                BadArguments
-                                    { functionName = functionName
-                                    , arguments = args
-                                    }
-
-                "angleOfLine" ->
-                    case args of
-                        namePointA :: namePointB :: [] ->
-                            Result.fromMaybe TODO
-                                (Maybe.map2 Direction2d.from
-                                    (namePointA
-                                        |> thatPointByName pattern
-                                        |> Maybe.andThen (point2d pattern)
-                                    )
-                                    (namePointB
-                                        |> thatPointByName pattern
-                                        |> Maybe.andThen (point2d pattern)
-                                    )
-                                    |> Maybe.withDefault Nothing
-                                    |> Maybe.map Direction2d.toAngle
-                                    |> Maybe.map (\radian -> 180 * radian / pi)
-                                )
-
-                        _ ->
-                            Err <|
-                                BadArguments
-                                    { functionName = functionName
-                                    , arguments = args
-                                    }
-
-                _ ->
-                    Err (UnknownFunction functionName)
-    in
     case expr of
         Number float ->
             State.state (Ok float)
 
-        Variable n ->
+        Variable variableName ->
             State.map (Result.fromMaybe TODO)
-                (variableHelper pattern n)
+                (variableHelper pattern variableName)
 
-        Function n args ->
-            State.state (functions n args)
+        Function functionName args ->
+            case functionName of
+                "distance" ->
+                    case args of
+                        namePointA :: namePointB :: [] ->
+                            Maybe.map2
+                                (\thatPointA thatPointB ->
+                                    State.map2 (Maybe.map2 Point2d.distanceFrom)
+                                        (point2dHelper pattern thatPointA)
+                                        (point2dHelper pattern thatPointB)
+                                        |> State.map (Result.fromMaybe TODO)
+                                )
+                                (thatPointByName pattern namePointA)
+                                (thatPointByName pattern namePointB)
+                                |> Maybe.withDefault (State.state (Err TODO))
+
+                        _ ->
+                            State.state <|
+                                Err <|
+                                    BadArguments
+                                        { functionName = functionName
+                                        , arguments = args
+                                        }
+
+                "angleOfLine" ->
+                    case args of
+                        namePointA :: namePointB :: [] ->
+                            Maybe.map2
+                                (\thatPointA thatPointB ->
+                                    State.map2 (Maybe.andThen2 Direction2d.from)
+                                        (point2dHelper pattern thatPointA)
+                                        (point2dHelper pattern thatPointB)
+                                        |> State.map (Maybe.map Direction2d.toAngle)
+                                        |> State.map (Maybe.map (\radian -> 180 * radian / pi))
+                                        |> State.map (Result.fromMaybe TODO)
+                                )
+                                (thatPointByName pattern namePointA)
+                                (thatPointByName pattern namePointB)
+                                |> Maybe.withDefault (State.state (Err TODO))
+
+                        _ ->
+                            State.state <|
+                                Err <|
+                                    BadArguments
+                                        { functionName = functionName
+                                        , arguments = args
+                                        }
+
+                _ ->
+                    State.state (Err (UnknownFunction functionName))
 
         Sum exprA exprB ->
             State.map2
@@ -1497,6 +1516,7 @@ encode (Pattern pattern) =
         , ( "details", Store.encode encodeDetail pattern.details )
         , ( "variables", encodeVariables pattern.variables )
         , ( "transformations", Store.encode encodeTransformation pattern.transformations )
+        , ( "cache", encodeCache pattern.cache )
         ]
 
 
@@ -1699,6 +1719,66 @@ withType type_ fields =
     Encode.object (( "type", Encode.string type_ ) :: fields)
 
 
+encodeCache : Cache -> Value
+encodeCache cache =
+    Encode.object
+        [ ( "variables"
+          , Encode.dict identity Encode.float cache.variables
+          )
+        , ( "point2ds"
+          , Encode.dict String.fromInt encodePoint2d cache.point2ds
+          )
+        , ( "circle2ds"
+          , Encode.dict String.fromInt encodeCircle2d cache.circle2ds
+          )
+        , ( "axis2ds"
+          , Encode.dict String.fromInt encodeAxis2d cache.axis2ds
+          )
+        ]
+
+
+encodeMaybe : (a -> Value) -> Maybe a -> Value
+encodeMaybe encodeA maybeA =
+    case maybeA of
+        Nothing ->
+            Encode.null
+
+        Just a ->
+            encodeA a
+
+
+encodePoint2d : Point2d -> Value
+encodePoint2d point =
+    Encode.object
+        [ ( "x", Encode.float (Point2d.xCoordinate point) )
+        , ( "y", Encode.float (Point2d.yCoordinate point) )
+        ]
+
+
+encodeCircle2d : Circle2d -> Value
+encodeCircle2d circle =
+    Encode.object
+        [ ( "radius", Encode.float (Circle2d.radius circle) )
+        , ( "center", encodePoint2d (Circle2d.centerPoint circle) )
+        ]
+
+
+encodeAxis2d : Axis2d -> Value
+encodeAxis2d axis =
+    Encode.object
+        [ ( "origin", encodePoint2d (Axis2d.originPoint axis) )
+        , ( "direction", encodeDirection2d (Axis2d.direction axis) )
+        ]
+
+
+encodeDirection2d : Direction2d -> Value
+encodeDirection2d direction =
+    Encode.object
+        [ ( "x", Encode.float (Direction2d.xComponent direction) )
+        , ( "y", Encode.float (Direction2d.yComponent direction) )
+        ]
+
+
 
 ---- DECODER
 
@@ -1713,7 +1793,7 @@ decoder =
         |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.required "transformations" (Store.decoder transformationDecoder)
         |> Decode.required "variables" variablesDecoder
-        |> Decode.hardcoded emptyCache
+        |> Decode.optional "cache" cacheDecoder emptyCache
         |> Decode.map
             (Pattern >> computeCache)
 
@@ -1885,3 +1965,61 @@ typeDecoder type_ dataDecoder =
                 else
                     Decode.fail "not a valid type"
             )
+
+
+cacheDecoder : Decoder Cache
+cacheDecoder =
+    Decode.succeed Cache
+        |> Decode.required "variables" (Decode.dict Decode.float)
+        |> Decode.required "point2ds" (dictIntDecoder point2dDecoder)
+        |> Decode.required "circle2ds" (dictIntDecoder circle2dDecoder)
+        |> Decode.required "axis2ds" (dictIntDecoder axis2dDecoder)
+
+
+dictIntDecoder : Decoder a -> Decoder (Dict Int a)
+dictIntDecoder aDecoder =
+    Decode.keyValuePairs aDecoder
+        |> Decode.map
+            (List.filterMap
+                (\( key, value ) ->
+                    case String.toInt key of
+                        Nothing ->
+                            Nothing
+
+                        Just int ->
+                            Just ( int, value )
+                )
+                >> Dict.fromList
+            )
+
+
+point2dDecoder : Decoder Point2d
+point2dDecoder =
+    Decode.succeed
+        (\x y ->
+            Point2d.fromCoordinates ( x, y )
+        )
+        |> Decode.required "x" Decode.float
+        |> Decode.required "y" Decode.float
+
+
+circle2dDecoder : Decoder Circle2d
+circle2dDecoder =
+    Decode.succeed Circle2d.withRadius
+        |> Decode.required "radius" Decode.float
+        |> Decode.required "center" point2dDecoder
+
+
+axis2dDecoder : Decoder Axis2d
+axis2dDecoder =
+    Decode.succeed Axis2d.through
+        |> Decode.required "origin" point2dDecoder
+        |> Decode.required "direction" direction2dDecoder
+
+
+direction2dDecoder : Decoder Direction2d
+direction2dDecoder =
+    Decode.succeed
+        (\x y -> Direction2d.unsafe ( x, y ))
+        |> Decode.required "x" Decode.float
+        |> Decode.required "y" Decode.float

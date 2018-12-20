@@ -22,6 +22,7 @@
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
             "elm-community/list-extra": "8.1.0",
+            "elm-community/string-extra": "4.0.0",
             "folkertdev/elm-state": "3.0.1",
             "ianmackenzie/elm-geometry": "1.2.1",
             "ianmackenzie/elm-geometry-svg": "1.0.2",

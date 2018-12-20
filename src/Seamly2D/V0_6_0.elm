@@ -1,13 +1,17 @@
 module Seamly2D.V0_6_0 exposing
     ( Val
     , decode
+    , replaceLineExprs
     , toPattern
     )
 
 import Dict exposing (Dict)
 import List.Extra as List
 import List.Nonempty as Nonempty exposing (Nonempty(..))
+import Parser exposing ((|.), (|=), Parser)
 import Pattern
+import Set
+import String.Extra as String
 import XmlParser as Xml
 
 
@@ -259,8 +263,8 @@ toPattern { increments, draws } =
                                     Just "endLine" ->
                                         Maybe.map3 (Pattern.atAngle previousPattern)
                                             (lookUpPoint data.basePoint)
-                                            data.angle
-                                            data.length
+                                            (Maybe.map replaceLineExprs data.angle)
+                                            (Maybe.map replaceLineExprs data.length)
                                             |> Maybe.withDefault Nothing
                                             |> Maybe.map insertPoint
                                             |> Maybe.withDefault
@@ -283,7 +287,7 @@ toPattern { increments, draws } =
                                                         )
                                                         length
                                                 )
-                                                data.length
+                                                (Maybe.map replaceLineExprs data.length)
                                                 (nameOfPoint data.firstPoint)
                                                 (nameOfPoint data.secondPoint)
                                             )
@@ -304,11 +308,11 @@ toPattern { increments, draws } =
                                                         ++ "\n) + 90 + "
                                                         ++ angle
                                                 )
-                                                data.angle
+                                                (Maybe.map replaceLineExprs data.angle)
                                                 (nameOfPoint data.firstPoint)
                                                 (nameOfPoint data.secondPoint)
                                             )
-                                            data.length
+                                            (Maybe.map replaceLineExprs data.length)
                                             |> Maybe.withDefault Nothing
                                             |> Maybe.map insertPoint
                                             |> Maybe.withDefault
@@ -349,7 +353,7 @@ toPattern { increments, draws } =
                                                     |> Maybe.withDefault Nothing
                                             )
                                             (lookUpPoint data.basePoint)
-                                            (data.angle)
+                                            (Maybe.map replaceLineExprs data.angle)
                                             (lookUpPoint data.p1Line)
                                             (lookUpPoint data.p2Line)
                                             |> Maybe.withDefault Nothing
@@ -394,6 +398,123 @@ toPattern { increments, draws } =
     Pattern.empty
         |> insertVariables
         |> insertObjects
+        |> Pattern.computeCache
+
+
+replaceLineExprs : String -> String
+replaceLineExprs string =
+    case Parser.run lengthParser string of
+        Err _ ->
+            string
+
+        Ok lineExprs ->
+            List.foldl
+                (\{ offsetStart, offsetEnd, pointA, pointB } previousString ->
+                    String.replaceSlice
+                        (String.concat
+                            [ "distance(\n  "
+                            , pointA
+                            , ",\n  "
+                            , pointB
+                            , "\n)"
+                            ]
+                        )
+                        offsetStart
+                        offsetEnd
+                        previousString
+                )
+                string
+                lineExprs
+
+
+type alias LineExpr =
+    { offsetStart : Int
+    , pointA : String
+    , pointB : String
+    , offsetEnd : Int
+    }
+
+
+lengthParser : Parser (List LineExpr)
+lengthParser =
+    Parser.succeed identity
+        |. Parser.chompWhile (\c -> c /= 'L')
+        |= Parser.oneOf
+            [ lineExprParser
+                |> Parser.andThen
+                    (\lineExpr ->
+                        lengthParserHelp [ lineExpr ]
+                    )
+            , Parser.chompIf (\c -> c == 'L')
+                |> Parser.andThen
+                    (\_ ->
+                        lengthParserHelp []
+                    )
+            , Parser.succeed []
+                |. Parser.end
+            ]
+
+
+lengthParserHelp : List LineExpr -> Parser (List LineExpr)
+lengthParserHelp lineExprs =
+    Parser.succeed identity
+        |. Parser.chompWhile (\c -> c /= 'L')
+        |= Parser.oneOf
+            [ lineExprParser
+                |> Parser.andThen
+                    (\lineExpr ->
+                        lengthParserHelp (lineExpr :: lineExprs)
+                    )
+            , Parser.chompIf (\c -> c == 'L')
+                |> Parser.andThen
+                    (\_ ->
+                        lengthParserHelp lineExprs
+                    )
+            , Parser.succeed lineExprs
+                |. Parser.end
+            ]
+
+
+lineExprParser : Parser LineExpr
+lineExprParser =
+    let
+        var =
+            Parser.variable
+                { start = isVarChar
+                , inner = isVarChar
+                , reserved = Set.empty
+                }
+    in
+    Parser.succeed LineExpr
+        |= Parser.getOffset
+        |. Parser.token "Line_"
+        |= var
+        |. Parser.token "_"
+        |= var
+        |= Parser.getOffset
+
+
+isVarChar : Char -> Bool
+isVarChar char =
+    [ ' '
+    , '\t'
+    , '\n'
+    , ','
+    , '+'
+    , '-'
+    , '*'
+    , '/'
+    , '('
+    , ')'
+    , '&'
+    , '|'
+    , '='
+    , '>'
+    , '<'
+    , '_'
+    ]
+        |> List.member char
+        |> not
 
 
 
