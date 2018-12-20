@@ -263,7 +263,12 @@ toPattern { increments, draws } =
                                     Just "endLine" ->
                                         Maybe.map3 (Pattern.atAngle previousPattern)
                                             (lookUpPoint data.basePoint)
-                                            (Maybe.map replaceLineExprs data.angle)
+                                            (Maybe.map replaceLineExprs data.angle
+                                                |> Maybe.map
+                                                    (\angle ->
+                                                        "-1 * (" ++ angle ++ ")"
+                                                    )
+                                            )
                                             (Maybe.map replaceLineExprs data.length)
                                             |> Maybe.withDefault Nothing
                                             |> Maybe.map insertPoint
@@ -305,8 +310,9 @@ toPattern { increments, draws } =
                                                         ++ firstName
                                                         ++ ",\n  "
                                                         ++ secondName
-                                                        ++ "\n) + 90 + "
+                                                        ++ "\n) - 90 + -1 * ("
                                                         ++ angle
+                                                        ++ ")"
                                                 )
                                                 (Maybe.map replaceLineExprs data.angle)
                                                 (nameOfPoint data.firstPoint)
@@ -353,9 +359,53 @@ toPattern { increments, draws } =
                                                     |> Maybe.withDefault Nothing
                                             )
                                             (lookUpPoint data.basePoint)
-                                            (Maybe.map replaceLineExprs data.angle)
+                                            (Maybe.map replaceLineExprs data.angle
+                                                |> Maybe.map
+                                                    (\angle ->
+                                                        "-1 * (" ++ angle ++ ")"
+                                                    )
+                                            )
                                             (lookUpPoint data.p1Line)
                                             (lookUpPoint data.p2Line)
+                                            |> Maybe.withDefault Nothing
+                                            |> Maybe.withDefault ( previousPattern, previousObjects )
+
+                                    Just "pointOfIntersection" ->
+                                        Maybe.map2
+                                            (\firstPoint secondPoint ->
+                                                Maybe.map2
+                                                    (\lineA lineB ->
+                                                        let
+                                                            ( nextPatternA, thatLineA ) =
+                                                                Pattern.insertLine Nothing lineA previousPattern
+
+                                                            ( nextPatternB, thatLineB ) =
+                                                                Pattern.insertLine Nothing lineB nextPatternA
+                                                        in
+                                                        case Pattern.lineLine nextPatternB thatLineA thatLineB of
+                                                            Nothing ->
+                                                                Nothing
+
+                                                            Just point ->
+                                                                let
+                                                                    ( finalPattern, thatPoint ) =
+                                                                        Pattern.insertPoint data.name
+                                                                            point
+                                                                            nextPatternB
+                                                                in
+                                                                Just
+                                                                    ( finalPattern
+                                                                    , { previousObjects
+                                                                        | points = Dict.insert id thatPoint previousObjects.points
+                                                                      }
+                                                                    )
+                                                    )
+                                                    (Pattern.throughOnePoint previousPattern firstPoint "90")
+                                                    (Pattern.throughOnePoint previousPattern secondPoint "0")
+                                                    |> Maybe.withDefault Nothing
+                                            )
+                                            (lookUpPoint data.firstPoint)
+                                            (lookUpPoint data.secondPoint)
                                             |> Maybe.withDefault Nothing
                                             |> Maybe.withDefault ( previousPattern, previousObjects )
 
