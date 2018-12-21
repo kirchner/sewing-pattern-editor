@@ -22,6 +22,7 @@ import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import Direction2d
+import Frame2d
 import Geometry.Svg as Svg
 import LineSegment2d exposing (LineSegment2d)
 import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point, Segment)
@@ -51,6 +52,9 @@ draw selected preview center zoom hoveredPoint pattern =
     let
         ( { details, lines, lineSegments, circles, points }, _ ) =
             Pattern.geometry pattern
+
+        frame =
+            Frame2d.atPoint center
     in
     Svg.g [] <|
         List.concat
@@ -62,11 +66,13 @@ draw selected preview center zoom hoveredPoint pattern =
                                 Pattern.LineSegment lineSegment2d ->
                                     lineSegment2d
                                         |> LineSegment2d.scaleAbout center zoom
+                                        |> LineSegment2d.relativeTo (Frame2d.atPoint center)
                                         |> Pattern.LineSegment
 
                                 Pattern.QuadraticSpline quadraticSpline2d ->
                                     quadraticSpline2d
                                         |> QuadraticSpline2d.scaleAbout center zoom
+                                        |> QuadraticSpline2d.relativeTo (Frame2d.atPoint center)
                                         |> Pattern.QuadraticSpline
                         )
                     )
@@ -74,22 +80,25 @@ draw selected preview center zoom hoveredPoint pattern =
                 )
                 details
             , List.map
-                (Triple.mapThird (Axis2d.scaleAbout center zoom)
+                (Triple.mapThird (Axis2d.scaleAbout center zoom >> Axis2d.relativeTo frame)
                     >> drawLine preview selected.lines
                 )
                 lines
             , List.map
-                (Triple.mapThird (LineSegment2d.scaleAbout center zoom)
+                (Triple.mapThird
+                    (LineSegment2d.scaleAbout center zoom >> LineSegment2d.relativeTo frame)
                     >> drawLineSegment selected.lineSegments
                 )
                 lineSegments
             , List.map
-                (Triple.mapThird (Circle2d.scaleAbout center zoom)
+                (Triple.mapThird
+                    (Circle2d.scaleAbout center zoom >> Circle2d.relativeTo frame)
                     >> drawCircle preview zoom
                 )
                 circles
             , List.map
-                (Triple.mapThird (Point2d.scaleAbout center zoom)
+                (Triple.mapThird
+                    (Point2d.scaleAbout center zoom >> Point2d.relativeTo frame)
                     >> drawPoint preview selected.points
                 )
                 points
@@ -102,6 +111,9 @@ draw selected preview center zoom hoveredPoint pattern =
 drawHoveredPoint : Pattern -> Point2d -> Float -> That Point -> Svg msg
 drawHoveredPoint pattern center zoom thatHoveredPoint =
     let
+        frame =
+            Frame2d.atPoint center
+
         drawFullPoint point2d =
             Svg.circle2d
                 [ Svg.Attributes.fill "blue"
@@ -146,37 +158,46 @@ drawHoveredPoint pattern center zoom thatHoveredPoint =
             Maybe.withDefault (Svg.text "") <|
                 Maybe.map func
                     (Pattern.point2d pattern thatPoint
-                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                        |> Maybe.map
+                            (Point2d.scaleAbout center zoom >> Point2d.relativeTo frame)
                     )
 
         map2 func thatPointA thatPointB =
             Maybe.withDefault (Svg.text "") <|
                 Maybe.map2 func
                     (Pattern.point2d pattern thatPointA
-                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                        |> Maybe.map
+                            (Point2d.scaleAbout center zoom >> Point2d.relativeTo frame)
                     )
                     (Pattern.point2d pattern thatPointB
-                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                        |> Maybe.map
+                            (Point2d.scaleAbout center zoom >> Point2d.relativeTo frame)
                     )
 
         mapCircle func thatCircle =
             Maybe.withDefault (Svg.text "") <|
                 Maybe.map func
                     (Pattern.circle2d pattern thatCircle
-                        |> Maybe.map (Circle2d.scaleAbout center zoom)
+                        |> Maybe.map
+                            (Circle2d.scaleAbout center zoom >> Circle2d.relativeTo frame)
                     )
 
         mapLine func thatLine =
             Maybe.withDefault (Svg.text "") <|
                 Maybe.map func
                     (Pattern.axis2d pattern thatLine
-                        |> Maybe.map (Axis2d.scaleAbout center zoom)
+                        |> Maybe.map
+                            (Axis2d.scaleAbout center zoom >> Axis2d.relativeTo frame)
                     )
     in
     Svg.g []
         [ map drawFullPoint thatHoveredPoint
         , case
-            Maybe.map (Point2d.scaleAbout center zoom >> Point2d.coordinates)
+            Maybe.map
+                (Point2d.scaleAbout center zoom
+                    >> Point2d.relativeTo frame
+                    >> Point2d.coordinates
+                )
                 (Pattern.point2d pattern thatHoveredPoint)
           of
             Nothing ->

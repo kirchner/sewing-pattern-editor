@@ -1440,26 +1440,28 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
             storedPattern
-
-        currentCenter =
-            case maybeDrag of
-                Nothing ->
-                    center
-
-                Just drag ->
-                    center
-                        |> Point2d.translateBy
-                            (Vector2d.fromComponents
-                                ( (drag.start.x - drag.current.x) / zoom
-                                , (drag.start.y - drag.current.y) / zoom
-                                )
-                            )
     in
     case maybeDimensions of
         Nothing ->
             Html.text ""
 
         Just { width, height } ->
+            let
+                currentCenter =
+                    case maybeDrag of
+                        Nothing ->
+                            center
+
+                        Just drag ->
+                            center
+                                |> Point2d.translateBy
+                                    (Vector2d.fromComponents
+                                        ( drag.start.x - drag.current.x
+                                        , drag.start.y - drag.current.y
+                                        )
+                                        |> Vector2d.scaleBy (1 / zoom)
+                                    )
+            in
             Svg.svg
                 [ Svg.Attributes.viewBox <|
                     String.join " "
@@ -1544,7 +1546,12 @@ drawHoverPolygons width height center { pattern, zoom } =
             VoronoiDiagram2d.fromVerticesBy
                 (\( _, _, p2d ) -> p2d)
                 (geometry.points
-                    |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
+                    |> List.map
+                        (Triple.mapThird
+                            (Point2d.scaleAbout center zoom
+                                >> Point2d.relativeTo (Frame2d.atPoint center)
+                            )
+                        )
                     |> List.filter
                         (\( _, _, point ) ->
                             BoundingBox2d.contains point boundingBox2d
@@ -1585,7 +1592,12 @@ drawHoverPoints width height center { pattern, zoom } =
 
         hoverPoints =
             geometry.points
-                |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
+                |> List.map
+                    (Triple.mapThird
+                        (Point2d.scaleAbout center zoom
+                            >> Point2d.relativeTo (Frame2d.atPoint center)
+                        )
+                    )
                 |> List.filter
                     (\( _, _, point ) ->
                         BoundingBox2d.contains point boundingBox2d
@@ -3087,9 +3099,11 @@ updateWithData key msg model =
                         Just drag ->
                             center
                                 |> Point2d.translateBy
-                                    (Vector2d.fromComponents
-                                        ( (drag.start.x - position.x) / zoom
-                                        , (drag.start.y - position.y) / zoom
+                                    (Vector2d.scaleBy (1 / zoom)
+                                        (Vector2d.fromComponents
+                                            ( drag.start.x - position.x
+                                            , drag.start.y - position.y
+                                            )
                                         )
                                     )
 
