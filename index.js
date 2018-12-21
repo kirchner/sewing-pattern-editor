@@ -49,7 +49,7 @@ if ("serviceWorker" in navigator) {
             if (newWorker.state === "activated") {
               console.log("Service worker is active now.")
 
-              initElm();
+              location.reload();
             }
           });
         };

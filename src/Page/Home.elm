@@ -40,6 +40,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Lazy as Element
 import Element.Region as Region
 import File exposing (File)
 import File.Select
@@ -61,6 +62,7 @@ import Seamly2D.V0_6_0 as Seamly2D
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
+import Svg.Lazy
 import Task
 import Those
 import Uuid
@@ -896,72 +898,6 @@ hijack msg =
 
 viewPattern : Element.Device -> String -> StoredPattern -> Element Msg
 viewPattern device prefix ({ pattern } as storedPattern) =
-    let
-        selections =
-            { points = Those.fromList []
-            , lines = Those.fromList []
-            , lineSegments = Those.fromList []
-            , details = Those.fromList []
-            }
-
-        viewBox =
-            String.join " "
-                [ String.fromFloat
-                    (BoundingBox2d.minX boundingBox
-                        - max 0 ((max width height - width) / 2)
-                    )
-                , String.fromFloat
-                    (BoundingBox2d.minY boundingBox
-                        - max 0 ((max width height - height) / 2)
-                    )
-                , String.fromFloat (max width height)
-                , String.fromFloat (max width height)
-                ]
-
-        ( width, height ) =
-            BoundingBox2d.dimensions boundingBox
-
-        boundingBox =
-            geometry.points
-                |> List.map (\( _, _, p2d ) -> p2d)
-                |> BoundingBox2d.containingPoints
-                |> Maybe.map scale
-                |> Maybe.withDefault
-                    (BoundingBox2d.fromExtrema
-                        { minX = 0
-                        , maxX = maxX
-                        , minY = 0
-                        , maxY = maxY
-                        }
-                    )
-
-        ( maxX, maxY ) =
-            case device.class of
-                Phone ->
-                    ( 330, 280 )
-
-                Tablet ->
-                    ( 270 - 2 * Design.small, 220 )
-
-                Desktop ->
-                    ( 330, 280 )
-
-                BigDesktop ->
-                    ( 330, 280 )
-
-        scale box =
-            let
-                centerPoint =
-                    BoundingBox2d.centerPoint box
-            in
-            BoundingBox2d.scaleAbout centerPoint 1.1 box
-
-        zoom =
-            130 / max width height
-
-        ( geometry, _ ) =
-            Pattern.geometry pattern
-    in
     Element.column
         [ Border.width 1
         , Border.rounded 4
@@ -983,26 +919,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
             , Element.pointer
             , Events.onClick (PatternCardClicked storedPattern.slug)
             ]
-            [ Element.el
-                [ Border.rounded 4
-                , Element.width (Element.px maxX)
-                , Element.height (Element.px maxY)
-                , Background.color Design.secondary
-                ]
-                (Element.html <|
-                    Svg.svg
-                        [ Svg.Attributes.viewBox viewBox
-                        , Html.Attributes.style "user-select" "none"
-                        , Html.Events.preventDefaultOn "dragstart" <|
-                            Decode.succeed ( NoOp, True )
-                        ]
-                        [ Pattern.draw selections
-                            True
-                            zoom
-                            Nothing
-                            pattern
-                        ]
-                )
+            [ Element.lazy2 viewPatternHelp device.class pattern
             , Element.el
                 [ Region.heading 2
                 , Element.alignLeft
@@ -1067,6 +984,91 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                             }
             ]
         ]
+
+
+viewPatternHelp class pattern =
+    let
+        viewBox =
+            String.join " "
+                [ String.fromFloat
+                    (BoundingBox2d.minX boundingBox
+                        - max 0 ((max width height - width) / 2)
+                    )
+                , String.fromFloat
+                    (BoundingBox2d.minY boundingBox
+                        - max 0 ((max width height - height) / 2)
+                    )
+                , String.fromFloat (max width height)
+                , String.fromFloat (max width height)
+                ]
+
+        ( width, height ) =
+            BoundingBox2d.dimensions boundingBox
+
+        boundingBox =
+            geometry.points
+                |> List.map (\( _, _, p2d ) -> p2d)
+                |> BoundingBox2d.containingPoints
+                |> Maybe.map scale
+                |> Maybe.withDefault
+                    (BoundingBox2d.fromExtrema
+                        { minX = 0
+                        , maxX = maxX
+                        , minY = 0
+                        , maxY = maxY
+                        }
+                    )
+
+        ( maxX, maxY ) =
+            case class of
+                Phone ->
+                    ( 330, 280 )
+
+                Tablet ->
+                    ( 270 - 2 * Design.small, 220 )
+
+                Desktop ->
+                    ( 330, 280 )
+
+                BigDesktop ->
+                    ( 330, 280 )
+
+        scale box =
+            let
+                centerPoint =
+                    BoundingBox2d.centerPoint box
+            in
+            BoundingBox2d.scaleAbout centerPoint 1.1 box
+
+        zoom =
+            130 / max width height
+
+        ( geometry, _ ) =
+            Pattern.geometry pattern
+    in
+    Element.el
+        [ Border.rounded 4
+        , Element.width (Element.px maxX)
+        , Element.height (Element.px maxY)
+        , Background.color Design.secondary
+        ]
+        (Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox viewBox
+                , Html.Attributes.style "user-select" "none"
+                , Html.Events.preventDefaultOn "dragstart" <|
+                    Decode.succeed ( NoOp, True )
+                ]
+                [ Pattern.draw noSelections True zoom Nothing pattern ]
+        )
+
+
+noSelections =
+    { points = Those.fromList []
+    , lines = Those.fromList []
+    , lineSegments = Those.fromList []
+    , details = Those.fromList []
+    }
 
 
 
