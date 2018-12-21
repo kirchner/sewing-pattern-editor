@@ -1459,7 +1459,6 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                                         ( drag.start.x - drag.current.x
                                         , drag.start.y - drag.current.y
                                         )
-                                        |> Vector2d.scaleBy (1 / zoom)
                                     )
             in
             Svg.svg
@@ -1478,35 +1477,56 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                             (Decode.field "screenX" Decode.float)
                             (Decode.field "screenY" Decode.float)
                 ]
-                [ Svg.g []
-                    [ Svg.Lazy.lazy5 drawPatternHelp
-                        model.maybeTool
-                        currentCenter
+                [ Svg.translateBy (Vector2d.from currentCenter Point2d.origin) <|
+                    Svg.Lazy.lazy6 drawHelp
+                        width
+                        height
                         zoom
+                        model.maybeTool
                         model.hoveredPoint
                         pattern
-                    , Svg.Lazy.lazy4 drawHoverPolygons
-                        width
-                        height
-                        currentCenter
-                        storedPattern
-                    , drawHoverPoints
-                        width
-                        height
-                        currentCenter
-                        storedPattern
-                    ]
                 ]
+
+
+drawHelp :
+    Float
+    -> Float
+    -> Float
+    -> Maybe Tool
+    -> Maybe (That Point)
+    -> Pattern
+    -> Svg Msg
+drawHelp width height zoom maybeTool hoveredPoint pattern =
+    let
+        ( geometry, _ ) =
+            Pattern.geometry pattern
+    in
+    Svg.g []
+        [ Svg.Lazy.lazy4 drawPatternHelp
+            maybeTool
+            zoom
+            hoveredPoint
+            pattern
+        , Svg.Lazy.lazy4 drawHoverPolygons
+            width
+            height
+            zoom
+            geometry
+        , Svg.Lazy.lazy4 drawHoverPoints
+            width
+            height
+            zoom
+            geometry
+        ]
 
 
 drawPatternHelp :
     Maybe Tool
-    -> Point2d
     -> Float
     -> Maybe (That Point)
     -> Pattern
     -> Svg msg
-drawPatternHelp maybeTool center zoom hoveredPoint pattern =
+drawPatternHelp maybeTool zoom hoveredPoint pattern =
     let
         selections =
             { points =
@@ -1530,32 +1550,22 @@ drawPatternHelp maybeTool center zoom hoveredPoint pattern =
     Pattern.draw
         selections
         False
-        center
         zoom
         hoveredPoint
         pattern
 
 
-drawHoverPolygons : Float -> Float -> Point2d -> StoredPattern -> Svg Msg
-drawHoverPolygons width height center { pattern, zoom } =
+drawHoverPolygons : Float -> Float -> Float -> Pattern.Geometry -> Svg Msg
+drawHoverPolygons width height zoom geometry =
     let
-        ( geometry, _ ) =
-            Pattern.geometry pattern
+        center =
+            Point2d.origin
 
         hoverPolygons =
             VoronoiDiagram2d.fromVerticesBy
                 (\( _, _, p2d ) -> p2d)
                 (geometry.points
-                    |> List.map
-                        (Triple.mapThird
-                            (Point2d.scaleAbout center zoom
-                                >> Point2d.relativeTo (Frame2d.atPoint center)
-                            )
-                        )
-                    |> List.filter
-                        (\( _, _, point ) ->
-                            BoundingBox2d.contains point boundingBox2d
-                        )
+                    |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
                     |> Array.fromList
                 )
                 |> Result.toMaybe
@@ -1584,24 +1594,15 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
         polygon2d
 
 
-drawHoverPoints : Float -> Float -> Point2d -> StoredPattern -> Svg Msg
-drawHoverPoints width height center { pattern, zoom } =
+drawHoverPoints : Float -> Float -> Float -> Pattern.Geometry -> Svg Msg
+drawHoverPoints width height zoom geometry =
     let
-        ( geometry, _ ) =
-            Pattern.geometry pattern
+        center =
+            Point2d.origin
 
         hoverPoints =
             geometry.points
-                |> List.map
-                    (Triple.mapThird
-                        (Point2d.scaleAbout center zoom
-                            >> Point2d.relativeTo (Frame2d.atPoint center)
-                        )
-                    )
-                |> List.filter
-                    (\( _, _, point ) ->
-                        BoundingBox2d.contains point boundingBox2d
-                    )
+                |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
 
         boundingBox2d =
             BoundingBox2d.fromExtrema
@@ -3053,7 +3054,10 @@ updateWithData key msg model =
         ZoomPlusClicked ->
             let
                 newStoredPattern =
-                    { storedPattern | zoom = zoom * 1.1 }
+                    { storedPattern
+                        | zoom = zoom * 1.1
+                        , center = Point2d.scaleAbout Point2d.origin 1.1 center
+                    }
             in
             ( { model | storedPattern = newStoredPattern }
             , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -3062,7 +3066,10 @@ updateWithData key msg model =
         ZoomMinusClicked ->
             let
                 newStoredPattern =
-                    { storedPattern | zoom = zoom / 1.1 }
+                    { storedPattern
+                        | zoom = zoom / 1.1
+                        , center = Point2d.scaleAbout Point2d.origin (1 / 1.1) center
+                    }
             in
             ( { model | storedPattern = newStoredPattern }
             , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -3099,11 +3106,9 @@ updateWithData key msg model =
                         Just drag ->
                             center
                                 |> Point2d.translateBy
-                                    (Vector2d.scaleBy (1 / zoom)
-                                        (Vector2d.fromComponents
-                                            ( drag.start.x - position.x
-                                            , drag.start.y - position.y
-                                            )
+                                    (Vector2d.fromComponents
+                                        ( drag.start.x - position.x
+                                        , drag.start.y - position.y
                                         )
                                     )
 

@@ -998,7 +998,6 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                         ]
                         [ Pattern.draw selections
                             True
-                            (BoundingBox2d.centerPoint boundingBox)
                             zoom
                             Nothing
                             pattern
