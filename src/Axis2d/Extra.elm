@@ -1,5 +1,6 @@
 module Axis2d.Extra exposing
     ( intersectionWithAxis
+    , scaleAbout
     , throughOnePoint
     , throughTwoPoints
     )
@@ -83,3 +84,10 @@ intersectionWithAxis axis1 axis2 =
                 , denominatorY / nominator
                 )
             )
+
+
+scaleAbout : Point2d -> Float -> Axis2d -> Axis2d
+scaleAbout point factor axis =
+    Axis2d.originPoint axis
+        |> Point2d.scaleAbout point factor
+        |> Axis2d.withDirection (Axis2d.direction axis)

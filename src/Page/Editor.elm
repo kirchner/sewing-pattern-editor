@@ -72,6 +72,7 @@ import Svg.Lazy
 import Task
 import That exposing (That)
 import Those exposing (Those)
+import Triple
 import Url exposing (Url)
 import Vector2d
 import View.Icon
@@ -89,29 +90,32 @@ import VoronoiDiagram2d
 type Model
     = Loading
     | Error
-    | Loaded
-        { maybeDrag : Maybe Drag
-        , patternContainerDimensions : Maybe Dimensions
-        , maybeModal : Maybe Modal
+    | Loaded LoadedData
 
-        -- PATTERN
-        , storedPattern : StoredPattern
-        , hoveredPoint : Maybe (That Point)
 
-        -- LEFT TOOLBAR
-        , maybeTool : Maybe Tool
-        , preventActionMenuClose : Bool
+type alias LoadedData =
+    { maybeDrag : Maybe Drag
+    , patternContainerDimensions : Maybe Dimensions
+    , maybeModal : Maybe Modal
 
-        -- RIGHT TOOLBAR
-        , rightToolbarVisible : Bool
-        , variablesVisible : Bool
-        , maybeVariableDialog : Maybe VariableDialog
-        , pointsVisible : Bool
-        , circlesVisible : Bool
-        , linesVisible : Bool
-        , lineSegmentsVisible : Bool
-        , detailsVisible : Bool
-        }
+    -- PATTERN
+    , storedPattern : StoredPattern
+    , hoveredPoint : Maybe (That Point)
+
+    -- LEFT TOOLBAR
+    , maybeTool : Maybe Tool
+    , preventActionMenuClose : Bool
+
+    -- RIGHT TOOLBAR
+    , rightToolbarVisible : Bool
+    , variablesVisible : Bool
+    , maybeVariableDialog : Maybe VariableDialog
+    , pointsVisible : Bool
+    , circlesVisible : Bool
+    , linesVisible : Bool
+    , lineSegmentsVisible : Bool
+    , detailsVisible : Bool
+    }
 
 
 type alias Dimensions =
@@ -1416,6 +1420,7 @@ viewLeftToolbar prefix pattern maybeTool =
 ---- WORKSPACE
 
 
+viewWorkspace : StoredPattern -> LoadedData -> Element Msg
 viewWorkspace storedPattern model =
     Element.el
         [ Element.width Element.fill
@@ -1430,25 +1435,25 @@ viewWorkspace storedPattern model =
         )
 
 
+viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern -> LoadedData -> Html Msg
 viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
             storedPattern
 
-        localFrame =
-            ( x, y )
-                |> Point2d.fromCoordinates
-                |> Frame2d.atPoint
-
-        { x, y } =
+        currentCenter =
             case maybeDrag of
                 Nothing ->
                     center
 
                 Just drag ->
-                    { x = center.x + (drag.start.x - drag.current.x) / zoom
-                    , y = center.y + (drag.start.y - drag.current.y) / zoom
-                    }
+                    center
+                        |> Point2d.translateBy
+                            (Vector2d.fromComponents
+                                ( (drag.start.x - drag.current.x) / zoom
+                                , (drag.start.y - drag.current.y) / zoom
+                                )
+                            )
     in
     case maybeDimensions of
         Nothing ->
@@ -1471,24 +1476,35 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                             (Decode.field "screenX" Decode.float)
                             (Decode.field "screenY" Decode.float)
                 ]
-                [ Svg.relativeTo localFrame <|
-                    Svg.scaleAbout (Frame2d.originPoint localFrame) zoom <|
-                        Svg.g []
-                            [ Svg.Lazy.lazy4 drawPatternHelp
-                                model.maybeTool
-                                zoom
-                                model.hoveredPoint
-                                pattern
-                            , drawHoverPolygons
-                                width
-                                height
-                                localFrame
-                                storedPattern
-                            ]
+                [ Svg.g []
+                    [ Svg.Lazy.lazy5 drawPatternHelp
+                        model.maybeTool
+                        currentCenter
+                        zoom
+                        model.hoveredPoint
+                        pattern
+                    , Svg.Lazy.lazy4 drawHoverPolygons
+                        width
+                        height
+                        currentCenter
+                        storedPattern
+                    , drawHoverPoints
+                        width
+                        height
+                        currentCenter
+                        storedPattern
+                    ]
                 ]
 
 
-drawPatternHelp maybeTool zoom hoveredPoint pattern =
+drawPatternHelp :
+    Maybe Tool
+    -> Point2d
+    -> Float
+    -> Maybe (That Point)
+    -> Pattern
+    -> Svg msg
+drawPatternHelp maybeTool center zoom hoveredPoint pattern =
     let
         selections =
             { points =
@@ -1511,14 +1527,15 @@ drawPatternHelp maybeTool zoom hoveredPoint pattern =
     in
     Pattern.draw
         selections
-        True
+        False
+        center
         zoom
         hoveredPoint
         pattern
 
 
-drawHoverPolygons : Float -> Float -> Frame2d -> StoredPattern -> Svg Msg
-drawHoverPolygons width height localFrame { pattern, center, zoom } =
+drawHoverPolygons : Float -> Float -> Point2d -> StoredPattern -> Svg Msg
+drawHoverPolygons width height center { pattern, zoom } =
     let
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -1527,9 +1544,10 @@ drawHoverPolygons width height localFrame { pattern, center, zoom } =
             VoronoiDiagram2d.fromVerticesBy
                 (\( _, _, p2d ) -> p2d)
                 (geometry.points
+                    |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
                     |> List.filter
-                        (\( _, _, p2d ) ->
-                            BoundingBox2d.contains p2d boundingBox2d
+                        (\( _, _, point ) ->
+                            BoundingBox2d.contains point boundingBox2d
                         )
                     |> Array.fromList
                 )
@@ -1539,17 +1557,11 @@ drawHoverPolygons width height localFrame { pattern, center, zoom } =
 
         boundingBox2d =
             BoundingBox2d.fromExtrema
-                { minX = -1.1 * width
-                , maxX = 1.1 * width
-                , minY = -1.1 * height
-                , maxY = 1.1 * height
+                { minX = -0.6 * width
+                , maxX = 0.6 * width
+                , minY = -0.6 * height
+                , maxY = 0.6 * height
                 }
-                |> BoundingBox2d.scaleAbout Point2d.origin (1 / zoom)
-                |> BoundingBox2d.translateBy
-                    (Vector2d.from
-                        Point2d.origin
-                        (Frame2d.originPoint localFrame)
-                    )
     in
     Svg.g []
         (List.map drawHoverPolygon hoverPolygons)
@@ -1563,6 +1575,42 @@ drawHoverPolygon ( ( thatPoint, _, _ ), polygon2d ) =
         , Svg.Events.onMouseOut (PointHovered Nothing)
         ]
         polygon2d
+
+
+drawHoverPoints : Float -> Float -> Point2d -> StoredPattern -> Svg Msg
+drawHoverPoints width height center { pattern, zoom } =
+    let
+        ( geometry, _ ) =
+            Pattern.geometry pattern
+
+        hoverPoints =
+            geometry.points
+                |> List.map (Triple.mapThird (Point2d.scaleAbout center zoom))
+                |> List.filter
+                    (\( _, _, point ) ->
+                        BoundingBox2d.contains point boundingBox2d
+                    )
+
+        boundingBox2d =
+            BoundingBox2d.fromExtrema
+                { minX = -0.6 * width
+                , maxX = 0.6 * width
+                , minY = -0.6 * height
+                , maxY = 0.6 * height
+                }
+    in
+    Svg.g []
+        (List.map drawHoverPoint hoverPoints)
+
+
+drawHoverPoint : ( That Point, Maybe String, Point2d ) -> Svg Msg
+drawHoverPoint ( thatPoint, _, point ) =
+    Svg.circle2d
+        [ Svg.Attributes.fill "transparent"
+        , Svg.Events.onMouseOver (PointHovered (Just thatPoint))
+        , Svg.Events.onMouseOut (PointHovered Nothing)
+        ]
+        (Circle2d.withRadius 7 point)
 
 
 
@@ -3037,9 +3085,13 @@ updateWithData key msg model =
                             center
 
                         Just drag ->
-                            { x = center.x + (drag.start.x - position.x) / zoom
-                            , y = center.y + (drag.start.y - position.y) / zoom
-                            }
+                            center
+                                |> Point2d.translateBy
+                                    (Vector2d.fromComponents
+                                        ( (drag.start.x - position.x) / zoom
+                                        , (drag.start.y - position.y) / zoom
+                                        )
+                                    )
 
                 newStoredPattern =
                     { storedPattern | center = newCenter }

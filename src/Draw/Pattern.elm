@@ -19,6 +19,7 @@ module Draw.Pattern exposing (draw)
 -}
 
 import Axis2d exposing (Axis2d)
+import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import Direction2d
 import Geometry.Svg as Svg
@@ -31,6 +32,7 @@ import Svg exposing (Svg)
 import Svg.Attributes
 import That exposing (That)
 import Those exposing (Those)
+import Triple
 
 
 draw :
@@ -40,73 +42,91 @@ draw :
     , details : Those Detail
     }
     -> Bool
+    -> Point2d
     -> Float
     -> Maybe (That Point)
     -> Pattern
     -> Svg msg
-draw selected preview zoom hoveredPoint pattern =
+draw selected preview center zoom hoveredPoint pattern =
     let
-        ( geometry, problems ) =
+        ( { details, lines, lineSegments, circles, points }, _ ) =
             Pattern.geometry pattern
     in
     Svg.g [] <|
         List.concat
-            [ [ Svg.defs []
-                    [ Svg.marker
-                        [ Svg.Attributes.id "arrow"
-                        , Svg.Attributes.viewBox "0 0 10 10"
-                        , Svg.Attributes.refX "5"
-                        , Svg.Attributes.refY "5"
-                        , Svg.Attributes.markerWidth "6"
-                        , Svg.Attributes.markerHeight "6"
-                        , Svg.Attributes.orient "auto-start-reverse"
-                        , Svg.Attributes.fill "blue"
-                        ]
-                        [ Svg.path
-                            [ Svg.Attributes.d "M 0 0 L 10 5 L 0 10 z" ]
-                            []
-                        ]
-                    ]
-              ]
-            , List.map (drawDetail zoom selected.details) geometry.details
-            , List.map (drawLine zoom selected.lines) geometry.lines
-            , List.map (drawLineSegment zoom selected.lineSegments) geometry.lineSegments
-            , List.map (drawCircle zoom) geometry.circles
-            , List.map (drawPoint preview zoom pattern selected.points) geometry.points
-            , [ Maybe.map (drawHoveredPoint pattern zoom) hoveredPoint
+            [ List.map
+                (Triple.mapThird
+                    (List.map
+                        (\segment ->
+                            case segment of
+                                Pattern.LineSegment lineSegment2d ->
+                                    lineSegment2d
+                                        |> LineSegment2d.scaleAbout center zoom
+                                        |> Pattern.LineSegment
+
+                                Pattern.QuadraticSpline quadraticSpline2d ->
+                                    quadraticSpline2d
+                                        |> QuadraticSpline2d.scaleAbout center zoom
+                                        |> Pattern.QuadraticSpline
+                        )
+                    )
+                    >> drawDetail selected.details
+                )
+                details
+            , List.map
+                (Triple.mapThird (Axis2d.scaleAbout center zoom)
+                    >> drawLine preview selected.lines
+                )
+                lines
+            , List.map
+                (Triple.mapThird (LineSegment2d.scaleAbout center zoom)
+                    >> drawLineSegment selected.lineSegments
+                )
+                lineSegments
+            , List.map
+                (Triple.mapThird (Circle2d.scaleAbout center zoom)
+                    >> drawCircle preview zoom
+                )
+                circles
+            , List.map
+                (Triple.mapThird (Point2d.scaleAbout center zoom)
+                    >> drawPoint preview selected.points
+                )
+                points
+            , [ Maybe.map (drawHoveredPoint pattern center zoom) hoveredPoint
                     |> Maybe.withDefault (Svg.text "")
               ]
             ]
 
 
-drawHoveredPoint : Pattern -> Float -> That Point -> Svg msg
-drawHoveredPoint pattern zoom thatHoveredPoint =
+drawHoveredPoint : Pattern -> Point2d -> Float -> That Point -> Svg msg
+drawHoveredPoint pattern center zoom thatHoveredPoint =
     let
         drawFullPoint point2d =
             Svg.circle2d
                 [ Svg.Attributes.fill "blue"
                 , stroke Blue
-                , strokeWidthNormal zoom
+                , strokeWidthNormal
                 ]
-                (Circle2d.withRadius (6 / zoom) point2d)
+                (Circle2d.withRadius 6 point2d)
 
         drawPointFilling point2d =
             Svg.circle2d
                 [ Svg.Attributes.fill "blue" ]
-                (Circle2d.withRadius (3 / zoom) point2d)
+                (Circle2d.withRadius 3 point2d)
 
         drawConnectingLine point2dA point2dB =
             Svg.lineSegment2d
                 [ stroke Blue
-                , dashArrayShort zoom
-                , strokeWidthNormal zoom
+                , dashArrayShort
+                , strokeWidthNormal
                 ]
                 (LineSegment2d.fromEndpoints ( point2dA, point2dB ))
 
         drawCircleHighlight circle2d =
             Svg.circle2d
                 [ stroke Blue
-                , strokeWidthNormal zoom
+                , strokeWidthNormal
                 , Svg.Attributes.fill "transparent"
                 ]
                 circle2d
@@ -114,7 +134,7 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
         drawLineHighlight axis2d =
             Svg.lineSegment2d
                 [ stroke Blue
-                , strokeWidthNormal zoom
+                , strokeWidthNormal
                 ]
                 (LineSegment2d.fromEndpoints
                     ( Point2d.along axis2d -10000
@@ -124,35 +144,51 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
 
         map func thatPoint =
             Maybe.withDefault (Svg.text "") <|
-                Maybe.map func (Pattern.point2d pattern thatPoint)
+                Maybe.map func
+                    (Pattern.point2d pattern thatPoint
+                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                    )
 
         map2 func thatPointA thatPointB =
             Maybe.withDefault (Svg.text "") <|
                 Maybe.map2 func
-                    (Pattern.point2d pattern thatPointA)
-                    (Pattern.point2d pattern thatPointB)
+                    (Pattern.point2d pattern thatPointA
+                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                    )
+                    (Pattern.point2d pattern thatPointB
+                        |> Maybe.map (Point2d.scaleAbout center zoom)
+                    )
 
         mapCircle func thatCircle =
             Maybe.withDefault (Svg.text "") <|
-                Maybe.map func (Pattern.circle2d pattern thatCircle)
+                Maybe.map func
+                    (Pattern.circle2d pattern thatCircle
+                        |> Maybe.map (Circle2d.scaleAbout center zoom)
+                    )
 
         mapLine func thatLine =
             Maybe.withDefault (Svg.text "") <|
-                Maybe.map func (Pattern.axis2d pattern thatLine)
+                Maybe.map func
+                    (Pattern.axis2d pattern thatLine
+                        |> Maybe.map (Axis2d.scaleAbout center zoom)
+                    )
     in
     Svg.g []
         [ map drawFullPoint thatHoveredPoint
-        , case Maybe.map Point2d.coordinates (Pattern.point2d pattern thatHoveredPoint) of
+        , case
+            Maybe.map (Point2d.scaleAbout center zoom >> Point2d.coordinates)
+                (Pattern.point2d pattern thatHoveredPoint)
+          of
             Nothing ->
                 Svg.text ""
 
             Just ( x, y ) ->
                 Svg.text_
-                    [ Svg.Attributes.x (String.fromFloat (x - 10 / zoom))
+                    [ Svg.Attributes.x (String.fromFloat (x - 10))
                     , Svg.Attributes.y (String.fromFloat y)
-                    , Svg.Attributes.dy (String.fromFloat (-10 / zoom))
+                    , Svg.Attributes.dy (String.fromFloat -10)
                     , Svg.Attributes.textAnchor "middle"
-                    , fontNormal zoom
+                    , fontNormal
                     , Svg.Attributes.fill "blue"
                     ]
                     [ Maybe.andThen .name (Pattern.getPoint pattern thatHoveredPoint)
@@ -161,7 +197,10 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
                     ]
         , case Maybe.map .value (Pattern.getPoint pattern thatHoveredPoint) of
             Just (Pattern.Origin x y) ->
-                drawPointFilling (Point2d.fromCoordinates ( x, y ))
+                drawPointFilling
+                    (Point2d.scaleAbout center zoom <|
+                        Point2d.fromCoordinates ( x, y )
+                    )
 
             Just (Pattern.LeftOf thatAnchorPoint _) ->
                 Svg.g []
@@ -244,21 +283,15 @@ drawHoveredPoint pattern zoom thatHoveredPoint =
         ]
 
 
-drawPoint :
-    Bool
-    -> Float
-    -> Pattern
-    -> Those Point
-    -> ( That Point, Maybe String, Point2d )
-    -> Svg msg
-drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) =
+drawPoint : Bool -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg msg
+drawPoint preview selectedPoints ( thatPoint, maybeName, point2d ) =
     let
         pointRadius =
             if preview then
-                5
+                1
 
             else
-                3
+                5
 
         ( x, y ) =
             Point2d.coordinates point2d
@@ -268,12 +301,15 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
 
         drawName name =
             if preview then
+                Svg.text ""
+
+            else
                 Svg.text_
-                    [ Svg.Attributes.x (String.fromFloat (x - 10 / zoom))
+                    [ Svg.Attributes.x (String.fromFloat (x - 10))
                     , Svg.Attributes.y (String.fromFloat y)
-                    , Svg.Attributes.dy (String.fromFloat (-10 / zoom))
+                    , Svg.Attributes.dy (String.fromFloat -10)
                     , Svg.Attributes.textAnchor "middle"
-                    , fontNormal zoom
+                    , fontNormal
                     , Svg.Attributes.fill <|
                         if selected then
                             "green"
@@ -282,9 +318,6 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
                             "black"
                     ]
                     [ Svg.text name ]
-
-            else
-                Svg.text ""
     in
     Svg.g []
         [ if selected then
@@ -293,9 +326,9 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
                 [ Svg.circle2d
                     [ stroke Green
                     , Svg.Attributes.fill "none"
-                    , strokeWidthBold zoom
+                    , strokeWidthBold
                     ]
-                    (Circle2d.withRadius (10 / zoom) point2d)
+                    (Circle2d.withRadius 10 point2d)
                 ]
 
           else
@@ -303,29 +336,37 @@ drawPoint preview zoom pattern selectedPoints ( thatPoint, maybeName, point2d ) 
         , Svg.circle2d
             [ Svg.Attributes.fill "none"
             , stroke Black
-            , strokeWidthNormal zoom
+            , if preview then
+                strokeWidthThin
+
+              else
+                strokeWidthNormal
             ]
-            (Circle2d.withRadius (pointRadius / zoom) point2d)
+            (Circle2d.withRadius pointRadius point2d)
         , maybeName
             |> Maybe.map drawName
             |> Maybe.withDefault (Svg.text "")
         ]
 
 
-drawLine : Float -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
-drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
+drawLine : Bool -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
+drawLine preview selectedLines ( thatLine, maybeName, axis2d ) =
     Svg.lineSegment2d
         (if Those.member thatLine selectedLines then
             [ stroke Green
             , Svg.Attributes.opacity "1"
-            , strokeWidthBold zoom
+            , strokeWidthBold
             ]
 
          else
             [ stroke Black
             , Svg.Attributes.opacity "0.1"
-            , dashArrayNormal zoom
-            , strokeWidthNormal zoom
+            , dashArrayNormal preview
+            , if preview then
+                strokeWidthThin
+
+              else
+                strokeWidthNormal
             ]
         )
         (LineSegment2d.fromEndpoints
@@ -336,11 +377,10 @@ drawLine zoom selectedLines ( thatLine, maybeName, axis2d ) =
 
 
 drawLineSegment :
-    Float
-    -> Those LineSegment
+    Those LineSegment
     -> ( That LineSegment, Maybe String, LineSegment2d )
     -> Svg msg
-drawLineSegment zoom selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
+drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
     let
         selected =
             Those.member thatLineSegment selectedLineSegments
@@ -349,39 +389,39 @@ drawLineSegment zoom selectedLineSegments ( thatLineSegment, maybeName, lineSegm
         (if selected then
             [ stroke Green
             , Svg.Attributes.opacity "1"
-            , strokeWidthBold zoom
+            , strokeWidthBold
             ]
 
          else
             [ stroke Black
             , Svg.Attributes.opacity "0.1"
-            , strokeWidthNormal zoom
+            , strokeWidthNormal
             ]
         )
         lineSegment2d
 
 
-drawCircle : Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
-drawCircle zoom ( thatCircle, maybeName, circle2d ) =
+drawCircle : Bool -> Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
+drawCircle preview zoom ( thatCircle, maybeName, circle2d ) =
     Svg.circle2d
         [ stroke Black
         , Svg.Attributes.opacity "0.1"
-        , dashArrayNormal zoom
-        , strokeWidthNormal zoom
+        , dashArrayNormal preview
+        , strokeWidthNormal
         , Svg.Attributes.fill "transparent"
         ]
         circle2d
 
 
-drawDetail : Float -> Those Detail -> ( That Detail, Maybe String, List Segment ) -> Svg msg
-drawDetail zoom selectedDetails ( thatDetail, maybeName, segments ) =
+drawDetail : Those Detail -> ( That Detail, Maybe String, List Segment ) -> Svg msg
+drawDetail selectedDetails ( thatDetail, maybeName, segments ) =
     let
         selected =
             Those.member thatDetail selectedDetails
     in
     Svg.path
         [ Svg.Attributes.fill "hsla(240, 2%, 80%, 0.5)"
-        , strokeWidthNormal zoom
+        , strokeWidthNormal
         , stroke <|
             if selected then
                 Blue
@@ -479,32 +519,39 @@ stroke color =
                 "green"
 
 
-strokeWidthNormal zoom =
+strokeWidthThin =
     Svg.Attributes.strokeWidth <|
-        String.fromFloat (1 / zoom)
+        String.fromFloat 0.5
 
 
-strokeWidthBold zoom =
+strokeWidthNormal =
     Svg.Attributes.strokeWidth <|
-        String.fromFloat (2 / zoom)
+        String.fromFloat 1
 
 
-dashArrayShort zoom =
+strokeWidthBold =
+    Svg.Attributes.strokeWidth <|
+        String.fromFloat 2
+
+
+dashArrayShort =
     Svg.Attributes.strokeDasharray <|
-        String.fromFloat (20 / zoom)
+        String.fromFloat 20
             ++ " "
-            ++ String.fromFloat (10 / zoom)
+            ++ String.fromFloat 10
 
 
-dashArrayNormal zoom =
+dashArrayNormal preview =
     Svg.Attributes.strokeDasharray <|
-        String.fromFloat (40 / zoom)
-            ++ " "
-            ++ String.fromFloat (20 / zoom)
+        if preview then
+            String.fromFloat 4 ++ " " ++ String.fromFloat 2
+
+        else
+            String.fromFloat 40 ++ " " ++ String.fromFloat 20
 
 
-fontNormal zoom =
+fontNormal =
     Svg.Attributes.style <|
         "font-size: "
-            ++ String.fromFloat (12 / zoom)
+            ++ String.fromFloat 12
             ++ "px; font-family: \"Roboto\";"

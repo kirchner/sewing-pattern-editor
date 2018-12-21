@@ -957,7 +957,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
             BoundingBox2d.scaleAbout centerPoint 1.1 box
 
         zoom =
-            350 / max width height
+            130 / max width height
 
         ( geometry, _ ) =
             Pattern.geometry pattern
@@ -996,7 +996,13 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                         , Html.Events.preventDefaultOn "dragstart" <|
                             Decode.succeed ( NoOp, True )
                         ]
-                        [ Pattern.draw selections False zoom Nothing pattern ]
+                        [ Pattern.draw selections
+                            True
+                            (BoundingBox2d.centerPoint boundingBox)
+                            zoom
+                            Nothing
+                            pattern
+                        ]
                 )
             , Element.el
                 [ Region.heading 2
