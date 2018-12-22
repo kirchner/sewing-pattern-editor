@@ -12,6 +12,7 @@ import Parser exposing ((|.), (|=), Parser)
 import Pattern
 import Set
 import String.Extra as String
+import That exposing (That)
 import XmlParser as Xml
 
 
@@ -133,6 +134,20 @@ type alias LineData =
     }
 
 
+type LinePenStyle
+    = None
+    | Hair
+    | DashLine
+    | DotLine
+    | DashDotLine
+    | DashDotDotLine
+
+
+type CrossType
+    = Cross1
+    | Cross2
+
+
 type alias SplineData =
     { pathPoints : List PathPoint
     , kCurve : Maybe Float
@@ -165,26 +180,12 @@ type alias PathPoint =
     }
 
 
-type LinePenStyle
-    = None
-    | Hair
-    | DashLine
-    | DotLine
-    | DashDotLine
-    | DashDotDotLine
-
-
 type CurvePenStyle
     = CurvePenStyleHair
     | CurvePenStyleDashLine
     | CurvePenStyleDotLine
     | CurvePenStyleDashDotLine
     | CurvePenStyleDashDotDotLine
-
-
-type CrossType
-    = Cross1
-    | Cross2
 
 
 type Color
@@ -208,7 +209,7 @@ type Color
 
 
 
----- IMPORT
+---- TO PATTERN
 
 
 toPattern : Pattern -> Pattern.Pattern
@@ -224,328 +225,24 @@ toPattern { increments, draws } =
                     pattern
 
         insertObjects pattern =
-            Nonempty.head draws
+            draws
+                |> Nonempty.head
                 |> .calculations
                 |> Nonempty.head
                 |> Dict.toList
-                |> List.foldl
-                    (\( id, object ) ( previousPattern, previousObjects ) ->
-                        let
-                            lookUpPoint maybeId =
-                                case maybeId of
-                                    Nothing ->
-                                        Nothing
-
-                                    Just id_ ->
-                                        Dict.get id_ previousObjects.points
-
-                            lookUpLine maybeId =
-                                case maybeId of
-                                    Nothing ->
-                                        Nothing
-
-                                    Just id_ ->
-                                        Dict.get id_ previousObjects.lines
-
-                            nameOfPoint maybeId =
-                                case maybeId of
-                                    Nothing ->
-                                        Nothing
-
-                                    Just id_ ->
-                                        Dict.get id_ previousObjects.points
-                                            |> Maybe.andThen (Pattern.getPoint previousPattern)
-                                            |> Maybe.andThen .name
-                        in
-                        case object of
-                            Point data ->
-                                let
-                                    insertPoint point =
-                                        let
-                                            ( nextPattern, thatPoint ) =
-                                                Pattern.insertPoint data.name
-                                                    point
-                                                    previousPattern
-                                        in
-                                        ( nextPattern
-                                        , { previousObjects
-                                            | points =
-                                                Dict.insert id
-                                                    thatPoint
-                                                    previousObjects.points
-                                          }
-                                        )
-
-                                    insertLine line =
-                                        let
-                                            ( nextPattern, thatLine ) =
-                                                Pattern.insertLine Nothing
-                                                    line
-                                                    previousPattern
-                                        in
-                                        ( nextPattern
-                                        , { previousObjects
-                                            | lines =
-                                                Dict.insert id
-                                                    thatLine
-                                                    previousObjects.lines
-                                          }
-                                        )
-                                in
-                                case data.type_ of
-                                    Just "single" ->
-                                        Maybe.map2 (\x y -> Pattern.origin { x = x, y = y })
-                                            data.x
-                                            data.y
-                                            |> Maybe.map insertPoint
-                                            |> Maybe.withDefault
-                                                ( previousPattern, previousObjects )
-
-                                    Just "endLine" ->
-                                        Maybe.map3 (Pattern.atAngle previousPattern)
-                                            (lookUpPoint data.basePoint)
-                                            (Maybe.map replaceLineExprs data.angle
-                                                |> Maybe.map
-                                                    (\angle ->
-                                                        "-1 * (" ++ angle ++ ")"
-                                                    )
-                                            )
-                                            (Maybe.map replaceLineExprs data.length)
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.map insertPoint
-                                            |> Maybe.withDefault
-                                                ( previousPattern, previousObjects )
-
-                                    Just "alongLine" ->
-                                        Maybe.map3
-                                            (Pattern.betweenLength previousPattern)
-                                            (lookUpPoint data.firstPoint)
-                                            (lookUpPoint data.secondPoint)
-                                            (Maybe.map3
-                                                (\length firstName secondName ->
-                                                    String.replace
-                                                        "CurrentLength"
-                                                        ("distance(\n  "
-                                                            ++ firstName
-                                                            ++ ",\n  "
-                                                            ++ secondName
-                                                            ++ ")"
-                                                        )
-                                                        length
-                                                )
-                                                (Maybe.map replaceLineExprs data.length)
-                                                (nameOfPoint data.firstPoint)
-                                                (nameOfPoint data.secondPoint)
-                                            )
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.map insertPoint
-                                            |> Maybe.withDefault
-                                                ( previousPattern, previousObjects )
-
-                                    Just "normal" ->
-                                        Maybe.map3 (Pattern.atAngle previousPattern)
-                                            (lookUpPoint data.firstPoint)
-                                            (Maybe.map3
-                                                (\angle firstName secondName ->
-                                                    "angleOfLine(\n  "
-                                                        ++ firstName
-                                                        ++ ",\n  "
-                                                        ++ secondName
-                                                        ++ "\n) - 90 + -1 * ("
-                                                        ++ angle
-                                                        ++ ")"
-                                                )
-                                                (Maybe.map replaceLineExprs data.angle)
-                                                (nameOfPoint data.firstPoint)
-                                                (nameOfPoint data.secondPoint)
-                                            )
-                                            (Maybe.map replaceLineExprs data.length)
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.map insertPoint
-                                            |> Maybe.withDefault
-                                                ( previousPattern, previousObjects )
-
-                                    Just "lineIntersectAxis" ->
-                                        Maybe.map4
-                                            (\basePoint angle p1Line p2Line ->
-                                                Maybe.map2
-                                                    (\lineA lineB ->
-                                                        let
-                                                            ( nextPatternA, thatLineA ) =
-                                                                Pattern.insertLine Nothing lineA previousPattern
-
-                                                            ( nextPatternB, thatLineB ) =
-                                                                Pattern.insertLine Nothing lineB nextPatternA
-                                                        in
-                                                        case Pattern.lineLine nextPatternB thatLineA thatLineB of
-                                                            Nothing ->
-                                                                Nothing
-
-                                                            Just point ->
-                                                                let
-                                                                    ( finalPattern, thatPoint ) =
-                                                                        Pattern.insertPoint data.name
-                                                                            point
-                                                                            nextPatternB
-                                                                in
-                                                                Just
-                                                                    ( finalPattern
-                                                                    , { previousObjects
-                                                                        | points = Dict.insert id thatPoint previousObjects.points
-                                                                      }
-                                                                    )
-                                                    )
-                                                    (Pattern.throughOnePoint previousPattern basePoint angle)
-                                                    (Pattern.throughTwoPoints previousPattern p1Line p2Line)
-                                                    |> Maybe.withDefault Nothing
-                                            )
-                                            (lookUpPoint data.basePoint)
-                                            (Maybe.map replaceLineExprs data.angle
-                                                |> Maybe.map
-                                                    (\angle ->
-                                                        "-1 * (" ++ angle ++ ")"
-                                                    )
-                                            )
-                                            (lookUpPoint data.p1Line)
-                                            (lookUpPoint data.p2Line)
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.withDefault ( previousPattern, previousObjects )
-
-                                    Just "pointOfIntersection" ->
-                                        Maybe.map2
-                                            (\firstPoint secondPoint ->
-                                                Maybe.map2
-                                                    (\lineA lineB ->
-                                                        let
-                                                            ( nextPatternA, thatLineA ) =
-                                                                Pattern.insertLine Nothing lineA previousPattern
-
-                                                            ( nextPatternB, thatLineB ) =
-                                                                Pattern.insertLine Nothing lineB nextPatternA
-                                                        in
-                                                        case Pattern.lineLine nextPatternB thatLineA thatLineB of
-                                                            Nothing ->
-                                                                Nothing
-
-                                                            Just point ->
-                                                                let
-                                                                    ( finalPattern, thatPoint ) =
-                                                                        Pattern.insertPoint data.name
-                                                                            point
-                                                                            nextPatternB
-                                                                in
-                                                                Just
-                                                                    ( finalPattern
-                                                                    , { previousObjects
-                                                                        | points = Dict.insert id thatPoint previousObjects.points
-                                                                      }
-                                                                    )
-                                                    )
-                                                    (Pattern.throughOnePoint previousPattern firstPoint "90")
-                                                    (Pattern.throughOnePoint previousPattern secondPoint "0")
-                                                    |> Maybe.withDefault Nothing
-                                            )
-                                            (lookUpPoint data.firstPoint)
-                                            (lookUpPoint data.secondPoint)
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.withDefault ( previousPattern, previousObjects )
-
-                                    _ ->
-                                        ( previousPattern, previousObjects )
-
-                            Line data ->
-                                let
-                                    insertLine line =
-                                        let
-                                            ( nextPattern, thatLine ) =
-                                                Pattern.insertLine Nothing
-                                                    line
-                                                    previousPattern
-                                        in
-                                        ( nextPattern
-                                        , { previousObjects
-                                            | lines =
-                                                Dict.insert id
-                                                    thatLine
-                                                    previousObjects.lines
-                                          }
-                                        )
-                                in
-                                Maybe.map2 (Pattern.throughTwoPoints previousPattern)
-                                    (lookUpPoint data.firstPoint)
-                                    (lookUpPoint data.secondPoint)
-                                    |> Maybe.withDefault Nothing
-                                    |> Maybe.map insertLine
-                                    |> Maybe.withDefault
-                                        ( previousPattern, previousObjects )
-
-                            Spline data ->
-                                case data.type_ of
-                                    Just "simpleInteractive" ->
-                                        Maybe.map2
-                                            (\point1 point4 ->
-                                                Maybe.map2
-                                                    (\controlPoint1 controlPoint4 ->
-                                                        let
-                                                            ( nextPatternA, thatControlPoint1 ) =
-                                                                Pattern.insertPoint Nothing controlPoint1 previousPattern
-
-                                                            ( nextPatternB, thatControlPoint4 ) =
-                                                                Pattern.insertPoint Nothing controlPoint4 nextPatternA
-                                                        in
-                                                        case Pattern.cubic nextPatternB point1 thatControlPoint1 thatControlPoint4 point4 of
-                                                            Nothing ->
-                                                                Nothing
-
-                                                            Just curve ->
-                                                                let
-                                                                    ( finalPattern, thatCurve ) =
-                                                                        Pattern.insertCurve Nothing curve nextPatternB
-                                                                in
-                                                                Just
-                                                                    ( finalPattern
-                                                                    , { previousObjects
-                                                                        | curves = Dict.insert id thatCurve previousObjects.curves
-                                                                      }
-                                                                    )
-                                                    )
-                                                    (Maybe.map2 (Pattern.atAngle previousPattern point1)
-                                                        (data.angle1
-                                                            |> Maybe.map
-                                                                (\angle ->
-                                                                    "-1 * (" ++ angle ++ ")"
-                                                                )
-                                                        )
-                                                        (Maybe.map replaceLineExprs data.length1)
-                                                        |> Maybe.withDefault Nothing
-                                                    )
-                                                    (Maybe.map2 (Pattern.atAngle previousPattern point4)
-                                                        (data.angle2
-                                                            |> Maybe.map
-                                                                (\angle ->
-                                                                    "-1 * (" ++ angle ++ ")"
-                                                                )
-                                                        )
-                                                        (Maybe.map replaceLineExprs data.length2)
-                                                        |> Maybe.withDefault Nothing
-                                                    )
-                                                    |> Maybe.withDefault Nothing
-                                            )
-                                            (lookUpPoint data.point1)
-                                            (lookUpPoint data.point4)
-                                            |> Maybe.withDefault Nothing
-                                            |> Maybe.withDefault ( previousPattern, previousObjects )
-
-                                    _ ->
-                                        ( previousPattern, previousObjects )
-                    )
-                    ( pattern
-                    , { points = Dict.empty
-                      , lines = Dict.empty
-                      , curves = Dict.empty
-                      }
-                    )
+                |> List.foldl insertObject ( pattern, noObjects )
                 |> Tuple.first
+
+        insertObject ( id, object ) ( previousPattern, previousObjects ) =
+            case object of
+                Point data ->
+                    insertPoint previousPattern previousObjects data id
+
+                Line data ->
+                    insertLine previousPattern previousObjects data id
+
+                Spline data ->
+                    insertSpline previousPattern previousObjects data id
     in
     Pattern.empty
         |> insertVariables
@@ -553,30 +250,398 @@ toPattern { increments, draws } =
         |> Pattern.computeCache
 
 
+type alias Objects =
+    { points : Dict Int (That Pattern.Point)
+    , lines : Dict Int (That Pattern.Line)
+    , curves : Dict Int (That Pattern.Curve)
+    }
+
+
+noObjects : Objects
+noObjects =
+    { points = Dict.empty
+    , lines = Dict.empty
+    , curves = Dict.empty
+    }
+
+
+
+---- INSERT POINT
+
+
+insertPoint :
+    Pattern.Pattern
+    -> Objects
+    -> PointData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertPoint pattern objects data id =
+    let
+        insert =
+            Maybe.map
+                (\point ->
+                    let
+                        ( nextPattern, thatPoint ) =
+                            Pattern.insertPoint data.name
+                                point
+                                pattern
+                    in
+                    ( nextPattern
+                    , { objects | points = Dict.insert id thatPoint objects.points }
+                    )
+                )
+                >> Maybe.withDefault ( pattern, objects )
+    in
+    case data.type_ of
+        Just "single" ->
+            insert (pointSingle data)
+
+        Just "endLine" ->
+            insert (pointEndLine pattern objects data)
+
+        Just "alongLine" ->
+            insert (pointAlongLine pattern objects data)
+
+        Just "normal" ->
+            insert (pointNormal pattern objects data)
+
+        Just "lineIntersectAxis" ->
+            insertPointLineIntersectAxis pattern objects data id
+
+        Just "pointOfIntersection" ->
+            insertPointOfIntersection pattern objects data id
+
+        _ ->
+            ( pattern, objects )
+
+
+pointSingle : PointData -> Maybe Pattern.Point
+pointSingle data =
+    Maybe.map2
+        (\x y ->
+            Pattern.origin { x = x, y = y }
+        )
+        data.x
+        data.y
+
+
+pointEndLine : Pattern.Pattern -> Objects -> PointData -> Maybe Pattern.Point
+pointEndLine pattern objects data =
+    Maybe.map3 (Pattern.atAngle pattern)
+        (Maybe.andThen (lookUp objects.points) data.basePoint)
+        (Maybe.map (replaceLineExprs >> fixRotation) data.angle)
+        (Maybe.map replaceLineExprs data.length)
+        |> Maybe.withDefault Nothing
+
+
+pointAlongLine : Pattern.Pattern -> Objects -> PointData -> Maybe Pattern.Point
+pointAlongLine pattern objects data =
+    Maybe.map3
+        (Pattern.betweenLength pattern)
+        (Maybe.andThen (lookUp objects.points) data.firstPoint)
+        (Maybe.andThen (lookUp objects.points) data.secondPoint)
+        (Maybe.map3
+            (\length firstName secondName ->
+                String.replace
+                    "CurrentLength"
+                    (String.concat
+                        [ "distance(\n  "
+                        , firstName
+                        , ",\n  "
+                        , secondName
+                        , ")"
+                        ]
+                    )
+                    length
+            )
+            (Maybe.map replaceLineExprs data.length)
+            (Maybe.andThen (pointName pattern objects) data.firstPoint)
+            (Maybe.andThen (pointName pattern objects) data.secondPoint)
+        )
+        |> Maybe.withDefault Nothing
+
+
+pointNormal : Pattern.Pattern -> Objects -> PointData -> Maybe Pattern.Point
+pointNormal pattern objects data =
+    Maybe.map3 (Pattern.atAngle pattern)
+        (Maybe.andThen (lookUp objects.points) data.firstPoint)
+        (Maybe.map3
+            (\angle firstName secondName ->
+                String.concat
+                    [ "angleOfLine(\n  "
+                    , firstName
+                    , ",\n  "
+                    , secondName
+                    , "\n) - 90 +\n"
+                    , fixRotation angle
+                    ]
+            )
+            (Maybe.map replaceLineExprs data.angle)
+            (Maybe.andThen (pointName pattern objects) data.firstPoint)
+            (Maybe.andThen (pointName pattern objects) data.secondPoint)
+        )
+        (Maybe.map replaceLineExprs data.length)
+        |> Maybe.withDefault Nothing
+
+
+insertPointLineIntersectAxis :
+    Pattern.Pattern
+    -> Objects
+    -> PointData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertPointLineIntersectAxis pattern objects data id =
+    Maybe.map4
+        (\basePoint angle p1Line p2Line ->
+            Maybe.map2
+                (\lineA lineB ->
+                    let
+                        ( nextPatternA, thatLineA ) =
+                            Pattern.insertLine Nothing lineA pattern
+
+                        ( nextPatternB, thatLineB ) =
+                            Pattern.insertLine Nothing lineB nextPatternA
+                    in
+                    case Pattern.lineLine nextPatternB thatLineA thatLineB of
+                        Nothing ->
+                            Nothing
+
+                        Just point ->
+                            let
+                                ( finalPattern, thatPoint ) =
+                                    Pattern.insertPoint data.name
+                                        point
+                                        nextPatternB
+                            in
+                            Just
+                                ( finalPattern
+                                , { objects
+                                    | points = Dict.insert id thatPoint objects.points
+                                  }
+                                )
+                )
+                (Pattern.throughOnePoint pattern basePoint angle)
+                (Pattern.throughTwoPoints pattern p1Line p2Line)
+                |> Maybe.withDefault Nothing
+        )
+        (Maybe.andThen (lookUp objects.points) data.basePoint)
+        (Maybe.map (replaceLineExprs >> fixRotation) data.angle)
+        (Maybe.andThen (lookUp objects.points) data.p1Line)
+        (Maybe.andThen (lookUp objects.points) data.p2Line)
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault ( pattern, objects )
+
+
+insertPointOfIntersection :
+    Pattern.Pattern
+    -> Objects
+    -> PointData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertPointOfIntersection pattern objects data id =
+    Maybe.map2
+        (\firstPoint secondPoint ->
+            Maybe.map2
+                (\lineA lineB ->
+                    let
+                        ( nextPatternA, thatLineA ) =
+                            Pattern.insertLine Nothing lineA pattern
+
+                        ( nextPatternB, thatLineB ) =
+                            Pattern.insertLine Nothing lineB nextPatternA
+                    in
+                    case Pattern.lineLine nextPatternB thatLineA thatLineB of
+                        Nothing ->
+                            Nothing
+
+                        Just point ->
+                            let
+                                ( finalPattern, thatPoint ) =
+                                    Pattern.insertPoint data.name
+                                        point
+                                        nextPatternB
+                            in
+                            Just
+                                ( finalPattern
+                                , { objects
+                                    | points = Dict.insert id thatPoint objects.points
+                                  }
+                                )
+                )
+                (Pattern.throughOnePoint pattern firstPoint "90")
+                (Pattern.throughOnePoint pattern secondPoint "0")
+                |> Maybe.withDefault Nothing
+        )
+        (Maybe.andThen (lookUp objects.points) data.firstPoint)
+        (Maybe.andThen (lookUp objects.points) data.secondPoint)
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault ( pattern, objects )
+
+
+
+---- INSERT LINE
+
+
+insertLine :
+    Pattern.Pattern
+    -> Objects
+    -> LineData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertLine pattern objects data id =
+    let
+        insert =
+            Maybe.map
+                (\line ->
+                    let
+                        ( nextPattern, thatLine ) =
+                            Pattern.insertLine Nothing line pattern
+                    in
+                    ( nextPattern
+                    , { objects
+                        | lines = Dict.insert id thatLine objects.lines
+                      }
+                    )
+                )
+                >> Maybe.withDefault ( pattern, objects )
+    in
+    insert
+        (Maybe.map2 (Pattern.throughTwoPoints pattern)
+            (Maybe.andThen (lookUp objects.points) data.firstPoint)
+            (Maybe.andThen (lookUp objects.points) data.secondPoint)
+            |> Maybe.withDefault Nothing
+        )
+
+
+
+---- INSERT SPLINE
+
+
+insertSpline :
+    Pattern.Pattern
+    -> Objects
+    -> SplineData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertSpline pattern objects data id =
+    case data.type_ of
+        Just "simpleInteractive" ->
+            insertSplineSimpleInteractive pattern objects data id
+
+        _ ->
+            ( pattern, objects )
+
+
+insertSplineSimpleInteractive :
+    Pattern.Pattern
+    -> Objects
+    -> SplineData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertSplineSimpleInteractive pattern objects data id =
+    Maybe.map2
+        (\point1 point4 ->
+            Maybe.map2
+                (\controlPoint1 controlPoint4 ->
+                    let
+                        ( nextPatternA, thatControlPoint1 ) =
+                            Pattern.insertPoint Nothing controlPoint1 pattern
+
+                        ( nextPatternB, thatControlPoint4 ) =
+                            Pattern.insertPoint Nothing controlPoint4 nextPatternA
+                    in
+                    case
+                        Pattern.cubic nextPatternB
+                            point1
+                            thatControlPoint1
+                            thatControlPoint4
+                            point4
+                    of
+                        Nothing ->
+                            Nothing
+
+                        Just curve ->
+                            let
+                                ( finalPattern, thatCurve ) =
+                                    Pattern.insertCurve Nothing curve nextPatternB
+                            in
+                            Just
+                                ( finalPattern
+                                , { objects
+                                    | curves = Dict.insert id thatCurve objects.curves
+                                  }
+                                )
+                )
+                (Maybe.map2 (Pattern.atAngle pattern point1)
+                    (Maybe.map fixRotation data.angle1)
+                    (Maybe.map replaceLineExprs data.length1)
+                    |> Maybe.withDefault Nothing
+                )
+                (Maybe.map2 (Pattern.atAngle pattern point4)
+                    (Maybe.map fixRotation data.angle2)
+                    (Maybe.map replaceLineExprs data.length2)
+                    |> Maybe.withDefault Nothing
+                )
+                |> Maybe.withDefault Nothing
+        )
+        (Maybe.andThen (lookUp objects.points) data.point1)
+        (Maybe.andThen (lookUp objects.points) data.point4)
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault ( pattern, objects )
+
+
+
+-- HELPER
+
+
+lookUp : Dict Int (That object) -> Int -> Maybe (That object)
+lookUp objects id =
+    Dict.get id objects
+
+
+pointName : Pattern.Pattern -> Objects -> Int -> Maybe String
+pointName pattern objects id =
+    Dict.get id objects.points
+        |> Maybe.andThen (Pattern.getPoint pattern)
+        |> Maybe.andThen .name
+
+
+
+---- HELPER
+
+
+fixRotation : String -> String
+fixRotation angle =
+    "-1 * (\n  " ++ angle ++ "\n)"
+
+
 replaceLineExprs : String -> String
 replaceLineExprs string =
+    let
+        replace { offsetStart, offsetEnd, pointA, pointB } previousString =
+            String.replaceSlice
+                (String.concat
+                    [ "distance(\n  "
+                    , pointA
+                    , ",\n  "
+                    , pointB
+                    , "\n)"
+                    ]
+                )
+                offsetStart
+                offsetEnd
+                previousString
+    in
     case Parser.run lengthParser string of
         Err _ ->
             string
 
         Ok lineExprs ->
-            List.foldl
-                (\{ offsetStart, offsetEnd, pointA, pointB } previousString ->
-                    String.replaceSlice
-                        (String.concat
-                            [ "distance(\n  "
-                            , pointA
-                            , ",\n  "
-                            , pointB
-                            , "\n)"
-                            ]
-                        )
-                        offsetStart
-                        offsetEnd
-                        previousString
-                )
-                string
-                lineExprs
+            List.foldl replace string lineExprs
+
+
+
+---- PARSER
 
 
 type alias LineExpr =
@@ -679,122 +744,127 @@ decode content =
         Ok xml ->
             case xml.root of
                 Xml.Element "pattern" _ nodes ->
-                    let
-                        required contentAt nodeName maybeToA =
-                            case maybeToA of
-                                Nothing ->
-                                    Nothing
-
-                                Just toA ->
-                                    contentAt nodes nodeName
-                                        |> Maybe.map toA
-
-                        possible contentAt nodeName maybeToA =
-                            case maybeToA of
-                                Nothing ->
-                                    Nothing
-
-                                Just toA ->
-                                    Just (toA (contentAt nodes nodeName))
-
-                        -- INCREMENTS
-                        increments maybeToA =
-                            case maybeToA of
-                                Nothing ->
-                                    Nothing
-
-                                Just toA ->
-                                    nodes
-                                        |> List.filterMap getIncrementsElement
-                                        |> List.map (List.filterMap getIncrement)
-                                        |> List.concat
-                                        |> Dict.fromList
-                                        |> toA
-                                        |> Just
-
-                        getIncrementsElement node =
-                            case node of
-                                Xml.Element "increments" [] subNodes ->
-                                    Just subNodes
-
-                                _ ->
-                                    Nothing
-
-                        getIncrement node =
-                            case node of
-                                Xml.Element "increment" attributes [] ->
-                                    Maybe.map3
-                                        (\name description formula ->
-                                            ( name
-                                            , Increment description formula
-                                            )
-                                        )
-                                        (stringAttributeAt attributes "name")
-                                        (stringAttributeAt attributes "description")
-                                        (stringAttributeAt attributes "formula")
-
-                                _ ->
-                                    Nothing
-
-                        -- DRAWS
-                        draws maybeToA =
-                            case maybeToA of
-                                Nothing ->
-                                    Nothing
-
-                                Just toA ->
-                                    nodes
-                                        |> List.filterMap getDrawElement
-                                        |> List.filterMap getDraw
-                                        |> Nonempty.fromList
-                                        |> Maybe.map toA
-
-                        getDrawElement node =
-                            case node of
-                                Xml.Element "draw" (attribute :: []) subNodes ->
-                                    if attribute.name == "name" then
-                                        Just
-                                            { name = attribute.value
-                                            , nodes = subNodes
-                                            }
-
-                                    else
-                                        Nothing
-
-                                _ ->
-                                    Nothing
-
-                        getDraw drawElement =
-                            drawElement.nodes
-                                |> calculations
-                                |> Nonempty.fromList
-                                |> Maybe.map (Draw drawElement.name)
-                    in
-                    case
-                        Just Pattern
-                            |> required stringAt "version"
-                            |> required unitAt "unit"
-                            |> possible stringAt "description"
-                            |> possible stringAt "notes"
-                            |> possible stringAt "patternName"
-                            |> possible stringAt "patternNumber"
-                            |> possible stringAt "company"
-                            |> possible stringAt "customer"
-                            |> possible stringAt "measurements"
-                            |> increments
-                            |> draws
-                    of
-                        Nothing ->
-                            Err "There is an error in the XML structure."
-
-                        Just pattern ->
-                            Ok { patterns = Nonempty.fromElement pattern }
+                    getPatterns nodes
 
                 _ ->
                     Err "There is an error in the XML structure."
 
         Err error ->
             Err "This is not a valid XML file."
+
+
+getPatterns : List Xml.Node -> Result String { patterns : Nonempty Pattern }
+getPatterns nodes =
+    let
+        required contentAt nodeName maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    contentAt nodes nodeName
+                        |> Maybe.map toA
+
+        possible contentAt nodeName maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    Just (toA (contentAt nodes nodeName))
+
+        -- INCREMENTS
+        increments maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    nodes
+                        |> List.filterMap getIncrementsElement
+                        |> List.map (List.filterMap getIncrement)
+                        |> List.concat
+                        |> Dict.fromList
+                        |> toA
+                        |> Just
+
+        getIncrementsElement node =
+            case node of
+                Xml.Element "increments" [] subNodes ->
+                    Just subNodes
+
+                _ ->
+                    Nothing
+
+        getIncrement node =
+            case node of
+                Xml.Element "increment" attributes [] ->
+                    Maybe.map3
+                        (\name description formula ->
+                            ( name
+                            , Increment description formula
+                            )
+                        )
+                        (stringAttributeAt attributes "name")
+                        (stringAttributeAt attributes "description")
+                        (stringAttributeAt attributes "formula")
+
+                _ ->
+                    Nothing
+
+        -- DRAWS
+        draws maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    nodes
+                        |> List.filterMap getDrawElement
+                        |> List.filterMap getDraw
+                        |> Nonempty.fromList
+                        |> Maybe.map toA
+
+        getDrawElement node =
+            case node of
+                Xml.Element "draw" (attribute :: []) subNodes ->
+                    if attribute.name == "name" then
+                        Just
+                            { name = attribute.value
+                            , nodes = subNodes
+                            }
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+
+        getDraw drawElement =
+            drawElement.nodes
+                |> calculations
+                |> Nonempty.fromList
+                |> Maybe.map (Draw drawElement.name)
+    in
+    case
+        Just Pattern
+            |> required stringAt "version"
+            |> required unitAt "unit"
+            |> possible stringAt "description"
+            |> possible stringAt "notes"
+            |> possible stringAt "patternName"
+            |> possible stringAt "patternNumber"
+            |> possible stringAt "company"
+            |> possible stringAt "customer"
+            |> possible stringAt "measurements"
+            |> increments
+            |> draws
+    of
+        Nothing ->
+            Err "There is an error in the XML structure."
+
+        Just pattern ->
+            Ok { patterns = Nonempty.fromElement pattern }
 
 
 calculations : List Xml.Node -> List Calculation
@@ -807,174 +877,208 @@ calculations nodes =
 
                 _ ->
                     Nothing
-
-        getCalculation =
-            List.filterMap <|
-                \node ->
-                    case node of
-                        Xml.Element "point" attributes [] ->
-                            let
-                                possible attributeAt attributeName maybeToA =
-                                    case maybeToA of
-                                        Nothing ->
-                                            Nothing
-
-                                        Just toA ->
-                                            attributeAt attributes attributeName
-                                                |> toA
-                                                |> Just
-                            in
-                            case intAttributeAt attributes "id" of
-                                Nothing ->
-                                    Nothing
-
-                                Just id ->
-                                    Just PointData
-                                        |> possible floatAttributeAt "x"
-                                        |> possible floatAttributeAt "y"
-                                        |> possible floatAttributeAt "mx"
-                                        |> possible floatAttributeAt "my"
-                                        |> possible stringAttributeAt "type"
-                                        |> possible stringAttributeAt "name"
-                                        |> possible intAttributeAt "firstPoint"
-                                        |> possible intAttributeAt "secondPoint"
-                                        |> possible intAttributeAt "thirdPoint"
-                                        |> possible intAttributeAt "basePoint"
-                                        |> possible intAttributeAt "pShoulder"
-                                        |> possible intAttributeAt "p1Line"
-                                        |> possible intAttributeAt "p2Line"
-                                        |> possible stringAttributeAt "length"
-                                        |> possible stringAttributeAt "angle"
-                                        |> possible linePenStyleAttributeAt "typeLine"
-                                        |> possible intAttributeAt "splinePath"
-                                        |> possible intAttributeAt "spline"
-                                        |> possible intAttributeAt "p1Line1"
-                                        |> possible intAttributeAt "p1Line2"
-                                        |> possible intAttributeAt "p2Line1"
-                                        |> possible intAttributeAt "p2Line2"
-                                        |> possible intAttributeAt "center"
-                                        |> possible stringAttributeAt "radius"
-                                        |> possible intAttributeAt "axisP1"
-                                        |> possible intAttributeAt "axisP2"
-                                        |> possible intAttributeAt "arc"
-                                        |> possible intAttributeAt "elArc"
-                                        |> possible intAttributeAt "curve"
-                                        |> possible intAttributeAt "curve1"
-                                        |> possible intAttributeAt "curve2"
-                                        |> possible colorAttributeAt "lineColor"
-                                        |> possible colorAttributeAt "color"
-                                        |> possible intAttributeAt "firstArc"
-                                        |> possible intAttributeAt "secondArc"
-                                        |> possible crossTypeAttributeAt "crossPoint"
-                                        |> possible crossTypeAttributeAt "vCrossPoint"
-                                        |> possible crossTypeAttributeAt "hCrossPoint"
-                                        |> possible intAttributeAt "c1Center"
-                                        |> possible intAttributeAt "c2Center"
-                                        |> possible stringAttributeAt "c1Radius"
-                                        |> possible stringAttributeAt "c2Radius"
-                                        |> possible stringAttributeAt "cRadius"
-                                        |> possible intAttributeAt "tangent"
-                                        |> possible intAttributeAt "cCenter"
-                                        |> possible stringAttributeAt "name1"
-                                        |> possible floatAttributeAt "mx1"
-                                        |> possible floatAttributeAt "my1"
-                                        |> possible stringAttributeAt "name2"
-                                        |> possible floatAttributeAt "mx2"
-                                        |> possible floatAttributeAt "my2"
-                                        |> possible intAttributeAt "point1"
-                                        |> possible intAttributeAt "point2"
-                                        |> possible intAttributeAt "dartP1"
-                                        |> possible intAttributeAt "dartP2"
-                                        |> possible intAttributeAt "dartP3"
-                                        |> possible intAttributeAt "baseLineP1"
-                                        |> possible intAttributeAt "baseLineP2"
-                                        |> Maybe.map (Point >> Tuple.pair id)
-
-                        Xml.Element "line" attributes [] ->
-                            let
-                                possible attributeAt attributeName maybeToA =
-                                    case maybeToA of
-                                        Nothing ->
-                                            Nothing
-
-                                        Just toA ->
-                                            attributeAt attributes attributeName
-                                                |> toA
-                                                |> Just
-                            in
-                            case intAttributeAt attributes "id" of
-                                Nothing ->
-                                    Nothing
-
-                                Just id ->
-                                    Just LineData
-                                        |> possible intAttributeAt "firstPoint"
-                                        |> possible intAttributeAt "secondPoint"
-                                        |> possible linePenStyleAttributeAt "typeLine"
-                                        |> possible colorAttributeAt "lineColor"
-                                        |> Maybe.map (Line >> Tuple.pair id)
-
-                        Xml.Element "spline" attributes elements ->
-                            let
-                                possible attributeAt attributeName maybeToA =
-                                    case maybeToA of
-                                        Nothing ->
-                                            Nothing
-
-                                        Just toA ->
-                                            attributeAt attributes attributeName
-                                                |> toA
-                                                |> Just
-
-                                pathPoints =
-                                    List.filterMap
-                                        (\element ->
-                                            case element of
-                                                Xml.Element "pathPoint" pathPointAttributes [] ->
-                                                    Just PathPoint
-                                                        |> possible stringAttributeAt "kAsm2"
-                                                        |> possible intAttributeAt "pSpline"
-                                                        |> possible stringAttributeAt "angle"
-                                                        |> possible stringAttributeAt "angle1"
-                                                        |> possible stringAttributeAt "angle2"
-                                                        |> possible stringAttributeAt "length1"
-                                                        |> possible stringAttributeAt "length2"
-                                                        |> possible stringAttributeAt "kAsm1"
-
-                                                _ ->
-                                                    Nothing
-                                        )
-                                        elements
-                            in
-                            case intAttributeAt attributes "id" of
-                                Nothing ->
-                                    Nothing
-
-                                Just id ->
-                                    Just (SplineData pathPoints)
-                                        |> possible floatAttributeAt "kCurve"
-                                        |> possible stringAttributeAt "type"
-                                        |> possible floatAttributeAt "kAsm1"
-                                        |> possible floatAttributeAt "kAsm2"
-                                        |> possible stringAttributeAt "angle1"
-                                        |> possible stringAttributeAt "angle2"
-                                        |> possible stringAttributeAt "length1"
-                                        |> possible stringAttributeAt "length2"
-                                        |> possible intAttributeAt "point1"
-                                        |> possible intAttributeAt "point2"
-                                        |> possible intAttributeAt "point3"
-                                        |> possible intAttributeAt "point4"
-                                        |> possible colorAttributeAt "color"
-                                        |> possible curvePenStyleAttributeAt "penStyle"
-                                        |> possible intAttributeAt "duplicate"
-                                        |> Maybe.map (Spline >> Tuple.pair id)
-
-                        _ ->
-                            Nothing
     in
     nodes
         |> List.filterMap getCalculationElement
-        |> List.map (getCalculation >> Dict.fromList)
+        |> List.map (getObjects >> Dict.fromList)
+
+
+getObjects : List Xml.Node -> List ( Int, Object )
+getObjects =
+    List.filterMap <|
+        \node ->
+            case node of
+                Xml.Element "point" attributes [] ->
+                    case intAttributeAt attributes "id" of
+                        Nothing ->
+                            Nothing
+
+                        Just id ->
+                            Maybe.map (Point >> Tuple.pair id)
+                                (getPointData attributes)
+
+                Xml.Element "line" attributes [] ->
+                    case intAttributeAt attributes "id" of
+                        Nothing ->
+                            Nothing
+
+                        Just id ->
+                            Maybe.map (Line >> Tuple.pair id)
+                                (getLineData attributes)
+
+                Xml.Element "spline" attributes nodes ->
+                    case intAttributeAt attributes "id" of
+                        Nothing ->
+                            Nothing
+
+                        Just id ->
+                            Maybe.map (Spline >> Tuple.pair id)
+                                (getSplineData attributes nodes)
+
+                _ ->
+                    Nothing
+
+
+getPointData : List Xml.Attribute -> Maybe PointData
+getPointData attributes =
+    let
+        possible attributeAt attributeName maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    attributeAt attributes attributeName
+                        |> toA
+                        |> Just
+    in
+    Just PointData
+        |> possible floatAttributeAt "x"
+        |> possible floatAttributeAt "y"
+        |> possible floatAttributeAt "mx"
+        |> possible floatAttributeAt "my"
+        |> possible stringAttributeAt "type"
+        |> possible stringAttributeAt "name"
+        |> possible intAttributeAt "firstPoint"
+        |> possible intAttributeAt "secondPoint"
+        |> possible intAttributeAt "thirdPoint"
+        |> possible intAttributeAt "basePoint"
+        |> possible intAttributeAt "pShoulder"
+        |> possible intAttributeAt "p1Line"
+        |> possible intAttributeAt "p2Line"
+        |> possible stringAttributeAt "length"
+        |> possible stringAttributeAt "angle"
+        |> possible linePenStyleAttributeAt "typeLine"
+        |> possible intAttributeAt "splinePath"
+        |> possible intAttributeAt "spline"
+        |> possible intAttributeAt "p1Line1"
+        |> possible intAttributeAt "p1Line2"
+        |> possible intAttributeAt "p2Line1"
+        |> possible intAttributeAt "p2Line2"
+        |> possible intAttributeAt "center"
+        |> possible stringAttributeAt "radius"
+        |> possible intAttributeAt "axisP1"
+        |> possible intAttributeAt "axisP2"
+        |> possible intAttributeAt "arc"
+        |> possible intAttributeAt "elArc"
+        |> possible intAttributeAt "curve"
+        |> possible intAttributeAt "curve1"
+        |> possible intAttributeAt "curve2"
+        |> possible colorAttributeAt "lineColor"
+        |> possible colorAttributeAt "color"
+        |> possible intAttributeAt "firstArc"
+        |> possible intAttributeAt "secondArc"
+        |> possible crossTypeAttributeAt "crossPoint"
+        |> possible crossTypeAttributeAt "vCrossPoint"
+        |> possible crossTypeAttributeAt "hCrossPoint"
+        |> possible intAttributeAt "c1Center"
+        |> possible intAttributeAt "c2Center"
+        |> possible stringAttributeAt "c1Radius"
+        |> possible stringAttributeAt "c2Radius"
+        |> possible stringAttributeAt "cRadius"
+        |> possible intAttributeAt "tangent"
+        |> possible intAttributeAt "cCenter"
+        |> possible stringAttributeAt "name1"
+        |> possible floatAttributeAt "mx1"
+        |> possible floatAttributeAt "my1"
+        |> possible stringAttributeAt "name2"
+        |> possible floatAttributeAt "mx2"
+        |> possible floatAttributeAt "my2"
+        |> possible intAttributeAt "point1"
+        |> possible intAttributeAt "point2"
+        |> possible intAttributeAt "dartP1"
+        |> possible intAttributeAt "dartP2"
+        |> possible intAttributeAt "dartP3"
+        |> possible intAttributeAt "baseLineP1"
+        |> possible intAttributeAt "baseLineP2"
+
+
+getLineData : List Xml.Attribute -> Maybe LineData
+getLineData attributes =
+    let
+        possible attributeAt attributeName maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    attributeAt attributes attributeName
+                        |> toA
+                        |> Just
+    in
+    Just LineData
+        |> possible intAttributeAt "firstPoint"
+        |> possible intAttributeAt "secondPoint"
+        |> possible linePenStyleAttributeAt "typeLine"
+        |> possible colorAttributeAt "lineColor"
+
+
+getSplineData : List Xml.Attribute -> List Xml.Node -> Maybe SplineData
+getSplineData attributes nodes =
+    let
+        possible attributeAt attributeName maybeToA =
+            case maybeToA of
+                Nothing ->
+                    Nothing
+
+                Just toA ->
+                    attributeAt attributes attributeName
+                        |> toA
+                        |> Just
+
+        pathPoints =
+            List.filterMap getPathPoint
+                nodes
+    in
+    Just (SplineData pathPoints)
+        |> possible floatAttributeAt "kCurve"
+        |> possible stringAttributeAt "type"
+        |> possible floatAttributeAt "kAsm1"
+        |> possible floatAttributeAt "kAsm2"
+        |> possible stringAttributeAt "angle1"
+        |> possible stringAttributeAt "angle2"
+        |> possible stringAttributeAt "length1"
+        |> possible stringAttributeAt "length2"
+        |> possible intAttributeAt "point1"
+        |> possible intAttributeAt "point2"
+        |> possible intAttributeAt "point3"
+        |> possible intAttributeAt "point4"
+        |> possible colorAttributeAt "color"
+        |> possible curvePenStyleAttributeAt "penStyle"
+        |> possible intAttributeAt "duplicate"
+
+
+getPathPoint : Xml.Node -> Maybe PathPoint
+getPathPoint node =
+    case node of
+        Xml.Element "pathPoint" attributes [] ->
+            let
+                possible attributeAt attributeName maybeToA =
+                    case maybeToA of
+                        Nothing ->
+                            Nothing
+
+                        Just toA ->
+                            attributeAt attributes attributeName
+                                |> toA
+                                |> Just
+            in
+            Just PathPoint
+                |> possible stringAttributeAt "kAsm2"
+                |> possible intAttributeAt "pSpline"
+                |> possible stringAttributeAt "angle"
+                |> possible stringAttributeAt "angle1"
+                |> possible stringAttributeAt "angle2"
+                |> possible stringAttributeAt "length1"
+                |> possible stringAttributeAt "length2"
+                |> possible stringAttributeAt "kAsm1"
+
+        _ ->
+            Nothing
+
+
+
+---- HELPER
 
 
 stringAt : List Xml.Node -> String -> Maybe String
