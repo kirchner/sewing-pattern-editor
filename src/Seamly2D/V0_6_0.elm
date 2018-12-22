@@ -60,6 +60,7 @@ type alias Calculation =
 type Object
     = Point PointData
     | Line LineData
+    | Spline SplineData
 
 
 type alias PointData =
@@ -132,6 +133,38 @@ type alias LineData =
     }
 
 
+type alias SplineData =
+    { pathPoints : List PathPoint
+    , kCurve : Maybe Float
+    , type_ : Maybe String
+    , kAsm1 : Maybe Float
+    , kAsm2 : Maybe Float
+    , angle1 : Maybe String
+    , angle2 : Maybe String
+    , length1 : Maybe String
+    , length2 : Maybe String
+    , point1 : Maybe Int
+    , point2 : Maybe Int
+    , point3 : Maybe Int
+    , point4 : Maybe Int
+    , color : Maybe Color
+    , penStyle : Maybe CurvePenStyle
+    , duplicate : Maybe Int
+    }
+
+
+type alias PathPoint =
+    { kAsm2 : Maybe String
+    , pSpline : Maybe Int
+    , angle : Maybe String
+    , angle1 : Maybe String
+    , angle2 : Maybe String
+    , length1 : Maybe String
+    , length2 : Maybe String
+    , kAsm1 : Maybe String
+    }
+
+
 type LinePenStyle
     = None
     | Hair
@@ -139,6 +172,14 @@ type LinePenStyle
     | DotLine
     | DashDotLine
     | DashDotDotLine
+
+
+type CurvePenStyle
+    = CurvePenStyleHair
+    | CurvePenStyleDashLine
+    | CurvePenStyleDotLine
+    | CurvePenStyleDashDotLine
+    | CurvePenStyleDashDotDotLine
 
 
 type CrossType
@@ -437,10 +478,71 @@ toPattern { increments, draws } =
                                     |> Maybe.map insertLine
                                     |> Maybe.withDefault
                                         ( previousPattern, previousObjects )
+
+                            Spline data ->
+                                case data.type_ of
+                                    Just "simpleInteractive" ->
+                                        Maybe.map2
+                                            (\point1 point4 ->
+                                                Maybe.map2
+                                                    (\controlPoint1 controlPoint4 ->
+                                                        let
+                                                            ( nextPatternA, thatControlPoint1 ) =
+                                                                Pattern.insertPoint Nothing controlPoint1 previousPattern
+
+                                                            ( nextPatternB, thatControlPoint4 ) =
+                                                                Pattern.insertPoint Nothing controlPoint4 nextPatternA
+                                                        in
+                                                        case Pattern.cubic nextPatternB point1 thatControlPoint1 thatControlPoint4 point4 of
+                                                            Nothing ->
+                                                                Nothing
+
+                                                            Just curve ->
+                                                                let
+                                                                    ( finalPattern, thatCurve ) =
+                                                                        Pattern.insertCurve Nothing curve nextPatternB
+                                                                in
+                                                                Just
+                                                                    ( finalPattern
+                                                                    , { previousObjects
+                                                                        | curves = Dict.insert id thatCurve previousObjects.curves
+                                                                      }
+                                                                    )
+                                                    )
+                                                    (Maybe.map2 (Pattern.atAngle previousPattern point1)
+                                                        (data.angle1
+                                                            |> Maybe.map
+                                                                (\angle ->
+                                                                    "-1 * (" ++ angle ++ ")"
+                                                                )
+                                                        )
+                                                        (Maybe.map replaceLineExprs data.length1)
+                                                        |> Maybe.withDefault Nothing
+                                                    )
+                                                    (Maybe.map2 (Pattern.atAngle previousPattern point4)
+                                                        (data.angle2
+                                                            |> Maybe.map
+                                                                (\angle ->
+                                                                    "-1 * (" ++ angle ++ ")"
+                                                                )
+                                                        )
+                                                        (Maybe.map replaceLineExprs data.length2)
+                                                        |> Maybe.withDefault Nothing
+                                                    )
+                                                    |> Maybe.withDefault Nothing
+                                            )
+                                            (lookUpPoint data.point1)
+                                            (lookUpPoint data.point4)
+                                            |> Maybe.withDefault Nothing
+                                            |> Maybe.withDefault ( previousPattern, previousObjects )
+
+                                    _ ->
+                                        ( previousPattern, previousObjects )
                     )
                     ( pattern
                     , { points = Dict.empty
                       , lines = Dict.empty
+                      , curves = Dict.empty
                       }
                     )
                 |> Tuple.first
@@ -812,6 +914,61 @@ calculations nodes =
                                         |> possible colorAttributeAt "lineColor"
                                         |> Maybe.map (Line >> Tuple.pair id)
 
+                        Xml.Element "spline" attributes elements ->
+                            let
+                                possible attributeAt attributeName maybeToA =
+                                    case maybeToA of
+                                        Nothing ->
+                                            Nothing
+
+                                        Just toA ->
+                                            attributeAt attributes attributeName
+                                                |> toA
+                                                |> Just
+
+                                pathPoints =
+                                    List.filterMap
+                                        (\element ->
+                                            case element of
+                                                Xml.Element "pathPoint" pathPointAttributes [] ->
+                                                    Just PathPoint
+                                                        |> possible stringAttributeAt "kAsm2"
+                                                        |> possible intAttributeAt "pSpline"
+                                                        |> possible stringAttributeAt "angle"
+                                                        |> possible stringAttributeAt "angle1"
+                                                        |> possible stringAttributeAt "angle2"
+                                                        |> possible stringAttributeAt "length1"
+                                                        |> possible stringAttributeAt "length2"
+                                                        |> possible stringAttributeAt "kAsm1"
+
+                                                _ ->
+                                                    Nothing
+                                        )
+                                        elements
+                            in
+                            case intAttributeAt attributes "id" of
+                                Nothing ->
+                                    Nothing
+
+                                Just id ->
+                                    Just (SplineData pathPoints)
+                                        |> possible floatAttributeAt "kCurve"
+                                        |> possible stringAttributeAt "type"
+                                        |> possible floatAttributeAt "kAsm1"
+                                        |> possible floatAttributeAt "kAsm2"
+                                        |> possible stringAttributeAt "angle1"
+                                        |> possible stringAttributeAt "angle2"
+                                        |> possible stringAttributeAt "length1"
+                                        |> possible stringAttributeAt "length2"
+                                        |> possible intAttributeAt "point1"
+                                        |> possible intAttributeAt "point2"
+                                        |> possible intAttributeAt "point3"
+                                        |> possible intAttributeAt "point4"
+                                        |> possible colorAttributeAt "color"
+                                        |> possible curvePenStyleAttributeAt "penStyle"
+                                        |> possible intAttributeAt "duplicate"
+                                        |> Maybe.map (Spline >> Tuple.pair id)
+
                         _ ->
                             Nothing
     in
@@ -950,6 +1107,37 @@ linePenStyleAttributeAt attributes attributeName =
     attributes
         |> List.find hasName
         |> Maybe.andThen getLinePenStyle
+
+
+curvePenStyleAttributeAt : List Xml.Attribute -> String -> Maybe CurvePenStyle
+curvePenStyleAttributeAt attributes attributeName =
+    let
+        hasName attribute =
+            attribute.name == attributeName
+
+        getCurvePenStyle attribute =
+            case attribute.value of
+                "hair" ->
+                    Just CurvePenStyleHair
+
+                "dashLine" ->
+                    Just CurvePenStyleDashLine
+
+                "dotLine" ->
+                    Just CurvePenStyleDotLine
+
+                "dashDotLine" ->
+                    Just CurvePenStyleDashDotLine
+
+                "dashDotDotLine" ->
+                    Just CurvePenStyleDashDotDotLine
+
+                _ ->
+                    Nothing
+    in
+    attributes
+        |> List.find hasName
+        |> Maybe.andThen getCurvePenStyle
 
 
 colorAttributeAt : List Xml.Attribute -> String -> Maybe Color

@@ -21,11 +21,23 @@ module Draw.Pattern exposing (draw)
 import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
+import CubicSpline2d
 import Direction2d
 import Frame2d
 import Geometry.Svg as Svg
 import LineSegment2d exposing (LineSegment2d)
-import Pattern exposing (Circle, Detail, Line, LineSegment, Pattern, Point, Segment)
+import Pattern
+    exposing
+        ( Circle
+        , Curve
+        , Curve2d(..)
+        , Detail
+        , Line
+        , LineSegment
+        , Pattern
+        , Point
+        , Segment
+        )
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
@@ -49,7 +61,7 @@ draw :
     -> Svg msg
 draw selected preview zoom hoveredPoint pattern =
     let
-        ( { details, lines, lineSegments, circles, points }, _ ) =
+        ( { details, lines, lineSegments, curves, circles, points }, _ ) =
             Pattern.geometry pattern
 
         center =
@@ -83,16 +95,22 @@ draw selected preview zoom hoveredPoint pattern =
                 lines
             , List.map
                 (Triple.mapThird
+                    (Circle2d.scaleAbout center zoom)
+                    >> drawCircle preview zoom
+                )
+                circles
+            , List.map
+                (Triple.mapThird
                     (LineSegment2d.scaleAbout center zoom)
                     >> drawLineSegment selected.lineSegments
                 )
                 lineSegments
             , List.map
                 (Triple.mapThird
-                    (Circle2d.scaleAbout center zoom)
-                    >> drawCircle preview zoom
+                    (curve2dScaleAbout center zoom)
+                    >> drawCurve preview
                 )
-                circles
+                curves
             , List.map
                 (Triple.mapThird (Point2d.scaleAbout center zoom)
                     >> drawPoint preview selected.points
@@ -412,6 +430,46 @@ drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d
             ]
         )
         lineSegment2d
+
+
+curve2dScaleAbout : Point2d -> Float -> Curve2d -> Curve2d
+curve2dScaleAbout center zoom curve =
+    case curve of
+        LineSegment2d lineSegment ->
+            LineSegment2d <|
+                LineSegment2d.scaleAbout center zoom lineSegment
+
+        QuadraticSpline2d quadraticSpline ->
+            QuadraticSpline2d <|
+                QuadraticSpline2d.scaleAbout center zoom quadraticSpline
+
+        CubicSpline2d cubicSpline ->
+            CubicSpline2d <|
+                CubicSpline2d.scaleAbout center zoom cubicSpline
+
+
+drawCurve : Bool -> ( That Curve, Maybe String, Curve2d ) -> Svg msg
+drawCurve preview ( thatCurve, maybeName, curve ) =
+    let
+        attributes =
+            [ stroke Black
+            , if preview then
+                strokeWidthThin
+
+              else
+                strokeWidthNormal
+            , Svg.Attributes.fill "transparent"
+            ]
+    in
+    case curve of
+        LineSegment2d lineSegment ->
+            Svg.lineSegment2d attributes lineSegment
+
+        QuadraticSpline2d quadraticSpline ->
+            Svg.quadraticSpline2d attributes quadraticSpline
+
+        CubicSpline2d cubicSpline ->
+            Svg.cubicSpline2d attributes cubicSpline
 
 
 drawCircle : Bool -> Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg

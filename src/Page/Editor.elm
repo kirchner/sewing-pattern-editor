@@ -114,6 +114,7 @@ type alias LoadedData =
     , circlesVisible : Bool
     , linesVisible : Bool
     , lineSegmentsVisible : Bool
+    , curvesVisible : Bool
     , detailsVisible : Bool
     }
 
@@ -1703,6 +1704,7 @@ viewRightToolbar pattern model =
                         , Element.lazy2 viewCircles pattern model.circlesVisible
                         , Element.lazy2 viewLines pattern model.linesVisible
                         , Element.lazy2 viewLineSegments pattern model.lineSegmentsVisible
+                        , Element.lazy2 viewCurves pattern model.curvesVisible
                         , Element.lazy2 viewDetails pattern model.detailsVisible
                         ]
 
@@ -2837,6 +2839,32 @@ viewLineSegments pattern lineSegmentsVisible =
         }
 
 
+viewCurves pattern visible =
+    View.Navigation.accordion
+        { onPress = CurvesRulerClicked
+        , label = "Curves"
+        , open = visible
+        , content =
+            View.Table.table
+                { data =
+                    List.sortBy (Tuple.second >> .name >> Maybe.withDefault "")
+                        (Pattern.curves pattern)
+                , columns =
+                    [ View.Table.column
+                        { label = "Name"
+                        , recordToString =
+                            \( _, { name } ) ->
+                                Maybe.withDefault "<no name>" name
+                        }
+                    , View.Table.columnActions
+                        { onEditPress = always Nothing
+                        , onRemovePress = always Nothing
+                        }
+                    ]
+                }
+        }
+
+
 viewDetails pattern detailsVisible =
     View.Navigation.accordion
         { onPress = DetailsRulerClicked
@@ -2926,6 +2954,7 @@ type Msg
     | LinesRulerClicked
     | LineEditClicked (That Line)
     | LineSegmentsRulerClicked
+    | CurvesRulerClicked
     | DetailsRulerClicked
     | DetailEditClicked (That Detail)
     | DetailRemoveClicked (That Detail)
@@ -2970,6 +2999,7 @@ update key msg model =
                                 , circlesVisible = False
                                 , linesVisible = False
                                 , lineSegmentsVisible = False
+                                , curvesVisible = False
                                 , detailsVisible = False
                                 }
                             , Cmd.none
@@ -5403,6 +5433,11 @@ updateWithData key msg model =
             , Cmd.none
             )
 
+        CurvesRulerClicked ->
+            ( { model | curvesVisible = not model.curvesVisible }
+            , Cmd.none
+            )
+
         DetailsRulerClicked ->
             ( { model | detailsVisible = not model.detailsVisible }
             , Cmd.none
@@ -5460,6 +5495,9 @@ updateWithData key msg model =
                                                 , connectionLastFirst =
                                                     toConnection data.lastToFirst
                                                 }
+
+                                Pattern.Detail _ ->
+                                    Nothing
                     in
                     ( { model | maybeTool = maybeTool }
                     , Cmd.none

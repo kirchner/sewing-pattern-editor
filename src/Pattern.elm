@@ -18,8 +18,11 @@ module Pattern exposing
     , centeredAt
     , Line(..), lines, insertLine, getLine, updateLine
     , throughTwoPoints, throughOnePoint
-    , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
     , Detail(..), Connection(..), details, insertDetail, updateDetail, deleteDetail, getDetail
+    , LineSegment(..), lineSegments, insertLineSegment, getLineSegment
+    , Curve(..), curves, insertCurve, getCurve
+    , straight, quadratic, cubic
+    , Curve2d(..)
     , Transformation(..), insertTransformation
     , decoder, encode
     )
@@ -83,14 +86,23 @@ module Pattern exposing
 @docs throughTwoPoints, throughOnePoint
 
 
+## Details
+
+@docs Detail, Connection, details, insertDetail, updateDetail, deleteDetail, getDetail
+
+
 ## Line Segments
 
 @docs LineSegment, lineSegments, insertLineSegment, getLineSegment
 
 
-## Details
+## Curves
 
-@docs Detail, Connection, details, insertDetail, updateDetail, deleteDetail, getDetail
+@docs Curve, curves, insertCurve, getCurve
+
+@docs straight, quadratic, cubic
+
+@docs Curve2d
 
 
 # Transformations
@@ -126,6 +138,7 @@ import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import Circle2d.Extra as Circle2d exposing (Intersection(..))
+import CubicSpline2d exposing (CubicSpline2d)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
@@ -156,6 +169,7 @@ type alias PatternData =
     , circles : Store Circle
     , lines : Store Line
     , lineSegments : Store LineSegment
+    , curves : Store Curve
     , details : Store Detail
     , transformations : Store Transformation
     , variables : Dict String String
@@ -170,6 +184,7 @@ type alias Cache =
     , point2ds : Dict Int Point2d
     , circle2ds : Dict Int Circle2d
     , axis2ds : Dict Int Axis2d
+    , curve2ds : Dict Int Curve2d
     }
 
 
@@ -180,6 +195,7 @@ empty =
         , circles = Store.empty
         , lines = Store.empty
         , lineSegments = Store.empty
+        , curves = Store.empty
         , details = Store.empty
         , variables = Dict.empty
         , transformations = Store.empty
@@ -193,6 +209,7 @@ emptyCache =
     , point2ds = Dict.empty
     , circle2ds = Dict.empty
     , axis2ds = Dict.empty
+    , curve2ds = Dict.empty
     }
 
 
@@ -240,16 +257,19 @@ type Circle
     = CenteredAt (That Point) String
 
 
-type Curve
-    = TODOCurve
-
-
 type Ellipsis
     = TODOEllipsis
 
 
+type Curve
+    = CurveStraight (That Point) (That Point)
+    | CurveQuadratic (That Point) (That Point) (That Point)
+    | CurveCubic (That Point) (That Point) (That Point) (That Point)
+
+
 type Detail
-    = FromPoints
+    = Detail (List (That Curve))
+    | FromPoints
         { firstPoint : That Point
         , segments : List ( That Point, Connection )
         , lastToFirst : Connection
@@ -279,6 +299,7 @@ type alias Geometry =
     , circles : List ( That Circle, Maybe String, Circle2d )
     , lines : List ( That Line, Maybe String, Axis2d )
     , lineSegments : List ( That LineSegment, Maybe String, LineSegment2d )
+    , curves : List ( That Curve, Maybe String, Curve2d )
     , details : List ( That Detail, Maybe String, List Segment )
     }
 
@@ -299,46 +320,34 @@ type alias Problems =
 geometry : Pattern -> ( Geometry, Problems )
 geometry ((Pattern data) as pattern) =
     let
-        geometryPoint ( thatPoint, { name } ) =
-            point2d pattern thatPoint
-                |> Maybe.map (\p2d -> ( thatPoint, name, p2d ))
-
-        geometryCircle ( thatCircle, { name } ) =
-            circle2d pattern thatCircle
-                |> Maybe.map (\c2d -> ( thatCircle, name, c2d ))
-
-        geometryLine ( thatLine, { name } ) =
-            axis2d pattern thatLine
-                |> Maybe.map (\a2d -> ( thatLine, name, a2d ))
-
-        geometryLineSegment ( thatLineSegment, { name } ) =
-            lineSegment2d pattern thatLineSegment
-                |> Maybe.map (\ls2d -> ( thatLineSegment, name, ls2d ))
-
-        geometryDetail ( thatDetail, { name } ) =
-            polygon2d pattern thatDetail
-                |> Maybe.map (\p2d -> ( thatDetail, name, p2d ))
+        toTriple object2d ( that, { name } ) =
+            object2d pattern that
+                |> Maybe.map (\object -> ( that, name, object ))
     in
     ( { points =
             pattern
                 |> points
-                |> List.filterMap geometryPoint
+                |> List.filterMap (toTriple point2d)
       , circles =
             pattern
                 |> circles
-                |> List.filterMap geometryCircle
+                |> List.filterMap (toTriple circle2d)
       , lines =
             pattern
                 |> lines
-                |> List.filterMap geometryLine
+                |> List.filterMap (toTriple axis2d)
       , lineSegments =
             pattern
                 |> lineSegments
-                |> List.filterMap geometryLineSegment
+                |> List.filterMap (toTriple lineSegment2d)
+      , curves =
+            pattern
+                |> curves
+                |> List.filterMap (toTriple curve2d)
       , details =
             pattern
                 |> details
-                |> List.filterMap geometryDetail
+                |> List.filterMap (toTriple polygon2d)
       }
     , { doNotCompute = []
       , missingPoints = []
@@ -354,6 +363,11 @@ computeCache =
         >> computePoint2dCache
         >> computeCircle2dCache
         >> computeAxis2dCache
+        >> computeCurve2dCache
+
+
+
+---- POINTS
 
 
 computePoint2dCache : Pattern -> Pattern
@@ -491,6 +505,10 @@ calculatePoint2d pattern point =
             State.state Nothing
 
 
+
+---- CIRCLES
+
+
 computeCircle2dCache : Pattern -> Pattern
 computeCircle2dCache ((Pattern data) as pattern) =
     Pattern
@@ -552,6 +570,10 @@ calculateCircle2d pattern circle =
             State.map2 (Maybe.map2 Circle2d.withRadius)
                 (evaluateRawHelper pattern rawRadius)
                 (point2dHelper pattern thatCenter)
+
+
+
+---- AXES
 
 
 computeAxis2dCache : Pattern -> Pattern
@@ -637,10 +659,120 @@ lineSegment2d ((Pattern pattern) as p) thatLineSegment =
             Nothing
 
 
+
+---- CURVES
+
+
+computeCurve2dCache : Pattern -> Pattern
+computeCurve2dCache ((Pattern data) as pattern) =
+    Pattern
+        { data
+            | cache =
+                pattern
+                    |> curves
+                    |> List.map Tuple.first
+                    |> State.traverse (curve2dHelper pattern)
+                    |> State.finalState data.cache
+        }
+
+
+curve2d : Pattern -> That Curve -> Maybe Curve2d
+curve2d ((Pattern { cache }) as pattern) thatCurve =
+    State.finalValue cache (curve2dHelper pattern thatCurve)
+
+
+curve2dHelper : Pattern -> That Curve -> State Cache (Maybe Curve2d)
+curve2dHelper pattern thatCurve =
+    let
+        modifyWhenNeeded cache =
+            case Dict.get (That.objectId thatCurve) cache.curve2ds of
+                Nothing ->
+                    thatCurve
+                        |> getCurve pattern
+                        |> Maybe.map (.value >> calculateCurve2d pattern)
+                        |> Maybe.withDefault (State.state Nothing)
+                        |> State.andThen addCurve2d
+
+                Just value ->
+                    State.state (Just value)
+
+        addCurve2d maybeValue =
+            State.modify
+                (\cache ->
+                    case maybeValue of
+                        Nothing ->
+                            cache
+
+                        Just value ->
+                            { cache
+                                | curve2ds =
+                                    Dict.insert (That.objectId thatCurve)
+                                        value
+                                        cache.curve2ds
+                            }
+                )
+                |> State.map (\_ -> maybeValue)
+    in
+    State.get
+        |> State.andThen modifyWhenNeeded
+
+
+calculateCurve2d : Pattern -> Curve -> State Cache (Maybe Curve2d)
+calculateCurve2d pattern curve =
+    case curve of
+        CurveStraight thatStartPoint thatEndPoint ->
+            let
+                toCurve2d startPoint endPoint =
+                    LineSegment2d (LineSegment2d.from startPoint endPoint)
+            in
+            State.map2 (Maybe.map2 toCurve2d)
+                (point2dHelper pattern thatStartPoint)
+                (point2dHelper pattern thatEndPoint)
+
+        CurveQuadratic thatStartPoint thatControlPoint thatEndPoint ->
+            let
+                toCurve2d startPoint controlPoint endPoint =
+                    QuadraticSpline2d <|
+                        QuadraticSpline2d.with
+                            { startPoint = startPoint
+                            , controlPoint = controlPoint
+                            , endPoint = endPoint
+                            }
+            in
+            State.map3 (Maybe.map3 toCurve2d)
+                (point2dHelper pattern thatStartPoint)
+                (point2dHelper pattern thatControlPoint)
+                (point2dHelper pattern thatEndPoint)
+
+        CurveCubic thatStartPoint thatStartControlPoint thatEndControlPoint thatEndPoint ->
+            let
+                toCurve2d startPoint startControlPoint endControlPoint endPoint =
+                    CubicSpline2d <|
+                        CubicSpline2d.with
+                            { startPoint = startPoint
+                            , startControlPoint = startControlPoint
+                            , endControlPoint = endControlPoint
+                            , endPoint = endPoint
+                            }
+            in
+            State.state (Maybe.map4 toCurve2d)
+                |> State.andMap (point2dHelper pattern thatStartPoint)
+                |> State.andMap (point2dHelper pattern thatStartControlPoint)
+                |> State.andMap (point2dHelper pattern thatEndControlPoint)
+                |> State.andMap (point2dHelper pattern thatEndPoint)
+
+
+
+---- POLYGONS
+
+
 polygon2d : Pattern -> That Detail -> Maybe (List Segment)
 polygon2d ((Pattern pattern) as p) thatDetail =
     case Maybe.map .value (getDetail p thatDetail) of
         Nothing ->
+            Nothing
+
+        Just (Detail _) ->
             Nothing
 
         Just (FromPoints { firstPoint, segments, lastToFirst }) ->
@@ -1243,7 +1375,50 @@ throughOnePoint (Pattern pattern) thatPoint rawAngle =
 
 
 
---
+---- CURVES
+
+
+straight : Pattern -> That Point -> That Point -> Maybe Curve
+straight (Pattern pattern) thatStartPoint thatEndPoint =
+    if
+        Store.member pattern.points (That.objectId thatStartPoint)
+            && Store.member pattern.points (That.objectId thatEndPoint)
+    then
+        Just (CurveStraight thatStartPoint thatEndPoint)
+
+    else
+        Nothing
+
+
+quadratic : Pattern -> That Point -> That Point -> That Point -> Maybe Curve
+quadratic (Pattern pattern) thatStartPoint thatControlPoint thatEndPoint =
+    if
+        Store.member pattern.points (That.objectId thatStartPoint)
+            && Store.member pattern.points (That.objectId thatControlPoint)
+            && Store.member pattern.points (That.objectId thatEndPoint)
+    then
+        Just (CurveQuadratic thatStartPoint thatControlPoint thatEndPoint)
+
+    else
+        Nothing
+
+
+cubic : Pattern -> That Point -> That Point -> That Point -> That Point -> Maybe Curve
+cubic (Pattern pattern) thatStartPoint thatStartControlPoint thatEndControlPoint thatEndPoint =
+    if
+        Store.member pattern.points (That.objectId thatStartPoint)
+            && Store.member pattern.points (That.objectId thatStartControlPoint)
+            && Store.member pattern.points (That.objectId thatEndControlPoint)
+            && Store.member pattern.points (That.objectId thatEndPoint)
+    then
+        Just (CurveCubic thatStartPoint thatStartControlPoint thatEndControlPoint thatEndPoint)
+
+    else
+        Nothing
+
+
+
+---- POINTS
 
 
 points : Pattern -> List ( That Point, Entry Point )
@@ -1430,6 +1605,50 @@ insertLineSegment maybeName lineSegment (Pattern pattern) =
 
 
 
+---- CURVES
+
+
+curves : Pattern -> List ( That Curve, Entry Curve )
+curves ((Pattern pattern) as p) =
+    pattern.curves
+        |> Store.toList
+        |> List.map (Tuple.mapFirst (thatCurveFromId p))
+
+
+thatCurveFromId : Pattern -> Int -> That Curve
+thatCurveFromId (Pattern pattern) id =
+    that id
+
+
+getCurve : Pattern -> That Curve -> Maybe (Entry Curve)
+getCurve (Pattern pattern) =
+    Store.get pattern.curves << That.objectId
+
+
+type Curve2d
+    = LineSegment2d LineSegment2d
+    | QuadraticSpline2d QuadraticSpline2d
+    | CubicSpline2d CubicSpline2d
+
+
+getCurveGeometry : Pattern -> That Curve -> Maybe Curve2d
+getCurveGeometry pattern thatCurve =
+    curve2d pattern thatCurve
+
+
+insertCurve : Maybe String -> Curve -> Pattern -> ( Pattern, That Curve )
+insertCurve maybeName curve (Pattern pattern) =
+    let
+        ( newCurves, id ) =
+            Store.insert maybeName curve pattern.curves
+    in
+    ( computeCurve2dCache <|
+        Pattern { pattern | curves = newCurves }
+    , that id
+    )
+
+
+
 ---- TRANSFORMATIONS
 
 
@@ -1513,6 +1732,7 @@ encode (Pattern pattern) =
         , ( "circles", Store.encode encodeCircle pattern.circles )
         , ( "lines", Store.encode encodeLine pattern.lines )
         , ( "lineSegments", Store.encode encodeLineSegment pattern.lineSegments )
+        , ( "curves", Store.encode encodeCurve pattern.curves )
         , ( "details", Store.encode encodeDetail pattern.details )
         , ( "variables", encodeVariables pattern.variables )
         , ( "transformations", Store.encode encodeTransformation pattern.transformations )
@@ -1674,6 +1894,31 @@ encodeLineSegment lineSegment =
                 ]
 
 
+encodeCurve : Curve -> Value
+encodeCurve curve =
+    case curve of
+        CurveStraight startPoint endPoint ->
+            withType "straight"
+                [ ( "startPoint", That.encode startPoint )
+                , ( "endPoint", That.encode endPoint )
+                ]
+
+        CurveQuadratic startPoint controlPoint endPoint ->
+            withType "quadratic"
+                [ ( "startPoint", That.encode startPoint )
+                , ( "controlPoint", That.encode controlPoint )
+                , ( "endPoint", That.encode endPoint )
+                ]
+
+        CurveCubic startPoint startControlPoint endControlPoint endPoint ->
+            withType "cubic"
+                [ ( "startPoint", That.encode startPoint )
+                , ( "startControlPoint", That.encode startControlPoint )
+                , ( "endControlPoint", That.encode endControlPoint )
+                , ( "endPoint", That.encode endPoint )
+                ]
+
+
 encodeDetail : Detail -> Value
 encodeDetail detail =
     let
@@ -1684,6 +1929,11 @@ encodeDetail detail =
                 ]
     in
     case detail of
+        Detail thatCurves ->
+            withType "detail"
+                [ ( "curves", Encode.list That.encode thatCurves )
+                ]
+
         FromPoints { firstPoint, segments, lastToFirst } ->
             withType "fromPoints"
                 [ ( "firstPoint", That.encode firstPoint )
@@ -1734,6 +1984,9 @@ encodeCache cache =
         , ( "axis2ds"
           , Encode.dict String.fromInt encodeAxis2d cache.axis2ds
           )
+        , ( "curve2ds"
+          , Encode.dict String.fromInt encodeCurve2d cache.curve2ds
+          )
         ]
 
 
@@ -1779,6 +2032,45 @@ encodeDirection2d direction =
         ]
 
 
+encodeCurve2d : Curve2d -> Value
+encodeCurve2d curve =
+    case curve of
+        LineSegment2d lineSegment ->
+            withType "lineSegment2d"
+                [ ( "startPoint", encodePoint2d (LineSegment2d.startPoint lineSegment) )
+                , ( "endPoint", encodePoint2d (LineSegment2d.endPoint lineSegment) )
+                ]
+
+        QuadraticSpline2d quadraticSpline ->
+            withType "quadraticSpline2d"
+                [ ( "startPoint"
+                  , encodePoint2d (QuadraticSpline2d.startPoint quadraticSpline)
+                  )
+                , ( "controlPoint"
+                  , encodePoint2d (QuadraticSpline2d.controlPoint quadraticSpline)
+                  )
+                , ( "endPoint"
+                  , encodePoint2d (QuadraticSpline2d.endPoint quadraticSpline)
+                  )
+                ]
+
+        CubicSpline2d cubicSpline ->
+            withType "cubicSpline2d"
+                [ ( "startPoint"
+                  , encodePoint2d (CubicSpline2d.startPoint cubicSpline)
+                  )
+                , ( "startControlPoint"
+                  , encodePoint2d (CubicSpline2d.startControlPoint cubicSpline)
+                  )
+                , ( "endControlPoint"
+                  , encodePoint2d (CubicSpline2d.endControlPoint cubicSpline)
+                  )
+                , ( "endPoint"
+                  , encodePoint2d (CubicSpline2d.endPoint cubicSpline)
+                  )
+                ]
+
+
 
 ---- DECODER
 
@@ -1790,6 +2082,7 @@ decoder =
         |> Decode.required "circles" (Store.decoder circleDecoder)
         |> Decode.required "lines" (Store.decoder lineDecoder)
         |> Decode.required "lineSegments" (Store.decoder lineSegmentDecoder)
+        |> Decode.optional "curves" (Store.decoder curveDecoder) Store.empty
         |> Decode.required "details" (Store.decoder detailDecoder)
         |> Decode.required "transformations" (Store.decoder transformationDecoder)
         |> Decode.required "variables" variablesDecoder
@@ -1909,6 +2202,27 @@ lineSegmentDecoder =
         ]
 
 
+curveDecoder : Decoder Curve
+curveDecoder =
+    Decode.oneOf
+        [ typeDecoder "straight" <|
+            Decode.map2 CurveStraight
+                (Decode.field "startPoint" That.decoder)
+                (Decode.field "endPoint" That.decoder)
+        , typeDecoder "quadratic" <|
+            Decode.map3 CurveQuadratic
+                (Decode.field "startPoint" That.decoder)
+                (Decode.field "endPoint" That.decoder)
+                (Decode.field "controlPoint" That.decoder)
+        , typeDecoder "cubic" <|
+            Decode.map4 CurveCubic
+                (Decode.field "startPoint" That.decoder)
+                (Decode.field "endPoint" That.decoder)
+                (Decode.field "startControlPoint" That.decoder)
+                (Decode.field "endControlPoint" That.decoder)
+        ]
+
+
 detailDecoder : Decoder Detail
 detailDecoder =
     let
@@ -1974,6 +2288,7 @@ cacheDecoder =
         |> Decode.required "point2ds" (dictIntDecoder point2dDecoder)
         |> Decode.required "circle2ds" (dictIntDecoder circle2dDecoder)
         |> Decode.required "axis2ds" (dictIntDecoder axis2dDecoder)
+        |> Decode.optional "curve2ds" (dictIntDecoder curve2dDecoder) Dict.empty
 
 
 dictIntDecoder : Decoder a -> Decoder (Dict Int a)
@@ -2015,6 +2330,60 @@ axis2dDecoder =
     Decode.succeed Axis2d.through
         |> Decode.required "origin" point2dDecoder
         |> Decode.required "direction" direction2dDecoder
+
+
+curve2dDecoder : Decoder Curve2d
+curve2dDecoder =
+    Decode.oneOf
+        [ typeDecoder "lineSegment2d" <|
+            Decode.map LineSegment2d
+                lineSegment2dDecoder
+        , typeDecoder "quadraticSpline2d" <|
+            Decode.map QuadraticSpline2d
+                quadraticSpline2dDecoder
+        , typeDecoder "cubicSpline2d" <|
+            Decode.map CubicSpline2d
+                cubicSpline2dDecoder
+        ]
+
+
+lineSegment2dDecoder : Decoder LineSegment2d
+lineSegment2dDecoder =
+    Decode.succeed LineSegment2d.from
+        |> Decode.required "startPoint" point2dDecoder
+        |> Decode.required "endPoint" point2dDecoder
+
+
+quadraticSpline2dDecoder : Decoder QuadraticSpline2d
+quadraticSpline2dDecoder =
+    Decode.succeed
+        (\startPoint controlPoint endPoint ->
+            QuadraticSpline2d.with
+                { startPoint = startPoint
+                , controlPoint = controlPoint
+                , endPoint = endPoint
+                }
+        )
+        |> Decode.required "startPoint" point2dDecoder
+        |> Decode.required "controlPoint" point2dDecoder
+        |> Decode.required "endPoint" point2dDecoder
+
+
+cubicSpline2dDecoder : Decoder CubicSpline2d
+cubicSpline2dDecoder =
+    Decode.succeed
+        (\startPoint startControlPoint endControlPoint endPoint ->
+            CubicSpline2d.with
+                { startPoint = startPoint
+                , startControlPoint = startControlPoint
+                , endControlPoint = endControlPoint
+                , endPoint = endPoint
+                }
+        )
+        |> Decode.required "startPoint" point2dDecoder
+        |> Decode.required "startControlPoint" point2dDecoder
+        |> Decode.required "endControlPoint" point2dDecoder
+        |> Decode.required "endPoint" point2dDecoder
 
 
 direction2dDecoder : Decoder Direction2d
