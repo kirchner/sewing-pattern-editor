@@ -253,7 +253,7 @@ toPattern { increments, draws } =
 type alias Objects =
     { points : Dict Int (That Pattern.Point)
     , lines : Dict Int (That Pattern.Line)
-    , curves : Dict Int (That Pattern.Curve)
+    , curves : Dict Int (List (That Pattern.Curve))
     }
 
 
@@ -528,6 +528,9 @@ insertSpline pattern objects data id =
         Just "simpleInteractive" ->
             insertSplineSimpleInteractive pattern objects data id
 
+        Just "pathInteractive" ->
+            insertSplinePathInteractive pattern objects data id
+
         _ ->
             ( pattern, objects )
 
@@ -568,7 +571,7 @@ insertSplineSimpleInteractive pattern objects data id =
                             Just
                                 ( finalPattern
                                 , { objects
-                                    | curves = Dict.insert id thatCurve objects.curves
+                                    | curves = Dict.insert id [ thatCurve ] objects.curves
                                   }
                                 )
                 )
@@ -588,6 +591,107 @@ insertSplineSimpleInteractive pattern objects data id =
         (Maybe.andThen (lookUp objects.points) data.point4)
         |> Maybe.withDefault Nothing
         |> Maybe.withDefault ( pattern, objects )
+
+
+insertSplinePathInteractive :
+    Pattern.Pattern
+    -> Objects
+    -> SplineData
+    -> Int
+    -> ( Pattern.Pattern, Objects )
+insertSplinePathInteractive pattern objects data id =
+    case data.pathPoints of
+        [] ->
+            ( pattern, objects )
+
+        pathPoint :: otherPathPoints ->
+            insertSplinePathInteractiveHelp pattern objects id pathPoint otherPathPoints
+
+
+insertSplinePathInteractiveHelp :
+    Pattern.Pattern
+    -> Objects
+    -> Int
+    -> PathPoint
+    -> List PathPoint
+    -> ( Pattern.Pattern, Objects )
+insertSplinePathInteractiveHelp pattern objects id pathPoint otherPathPoints =
+    case otherPathPoints of
+        [] ->
+            ( pattern, objects )
+
+        nextPathPoint :: remainingPathPoints ->
+            Maybe.map2
+                (\startPoint endPoint ->
+                    Maybe.map2
+                        (\startControlPoint endControlPoint ->
+                            let
+                                ( nextPatternA, thatStartControlPoint ) =
+                                    Pattern.insertPoint Nothing
+                                        startControlPoint
+                                        pattern
+
+                                ( nextPatternB, thatEndControlPoint ) =
+                                    Pattern.insertPoint Nothing
+                                        endControlPoint
+                                        nextPatternA
+                            in
+                            case
+                                Pattern.cubic nextPatternB
+                                    startPoint
+                                    thatStartControlPoint
+                                    thatEndControlPoint
+                                    endPoint
+                            of
+                                Nothing ->
+                                    Nothing
+
+                                Just curve ->
+                                    let
+                                        ( finalPattern, thatCurve ) =
+                                            Pattern.insertCurve Nothing curve nextPatternB
+                                    in
+                                    Just
+                                        ( finalPattern
+                                        , { objects
+                                            | curves =
+                                                Dict.update id
+                                                    (\maybeCurves ->
+                                                        case maybeCurves of
+                                                            Nothing ->
+                                                                Just [ thatCurve ]
+
+                                                            Just curves ->
+                                                                Just (thatCurve :: curves)
+                                                    )
+                                                    objects.curves
+                                          }
+                                        )
+                        )
+                        (Maybe.map2 (Pattern.atAngle pattern startPoint)
+                            (Maybe.map fixRotation pathPoint.angle2)
+                            (Maybe.map replaceLineExprs pathPoint.length2)
+                            |> Maybe.withDefault Nothing
+                        )
+                        (Maybe.map2 (Pattern.atAngle pattern endPoint)
+                            (Maybe.map fixRotation nextPathPoint.angle1)
+                            (Maybe.map replaceLineExprs nextPathPoint.length1)
+                            |> Maybe.withDefault Nothing
+                        )
+                        |> Maybe.withDefault Nothing
+                )
+                (Maybe.andThen (lookUp objects.points) pathPoint.pSpline)
+                (Maybe.andThen (lookUp objects.points) nextPathPoint.pSpline)
+                |> Maybe.withDefault Nothing
+                |> Maybe.withDefault ( pattern, objects )
+                |> (\( nextPattern, nextObjects ) ->
+                        insertSplinePathInteractiveHelp
+                            nextPattern
+                            nextObjects
+                            id
+                            nextPathPoint
+                            remainingPathPoints
+                   )
 
 
 
