@@ -20,3 +20,8 @@
   outline: 3px dotted rgb(38, 132, 132) !important;
   outline-offset: 1px !important;
 }
+
+.segment-control:focus {
+  z-index: 1;
+  position: relative;
+}

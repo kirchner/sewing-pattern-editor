@@ -51,11 +51,12 @@ init slug name =
     { slug = slug
     , name = name
     , pattern =
-        Pattern.empty
-            |> Pattern.insertPoint
-                (Just "origin")
-                (Pattern.origin { x = 0, y = 0 })
-            |> Tuple.first
+        case Pattern.insertPoint "Origin" (Pattern.origin 0 0) Pattern.empty of
+            Err _ ->
+                Pattern.empty
+
+            Ok pattern ->
+                pattern
     , zoom = 1
     , center = Point2d.origin
     }

@@ -24,6 +24,7 @@ module Page.Home exposing
    You should have received a copy of the GNU Affero General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
+--import Seamly2D.V0_6_0 as Seamly2D
 
 import Api
 import BoundingBox2d
@@ -58,7 +59,7 @@ import Ports
 import Random.Pcg.Extended as Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
-import Seamly2D.V0_6_0 as Seamly2D
+import State
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -384,25 +385,25 @@ update prefix key msg model =
                                         Ok storedPattern
 
                                     Err _ ->
-                                        Seamly2D.decode content
-                                            |> Result.toMaybe
-                                            |> Maybe.map
-                                                (\val ->
-                                                    let
-                                                        pattern =
-                                                            Nonempty.head val.patterns
-
-                                                        storedPattern =
-                                                            Maybe.withDefault "<no name>"
-                                                                pattern.patternName
-                                                                |> StoredPattern.init ""
-                                                    in
-                                                    { storedPattern
-                                                        | pattern =
-                                                            Seamly2D.toPattern pattern
-                                                    }
-                                                )
-                                            |> Result.fromMaybe "This is not a valid Seamly2D file."
+                                        --Seamly2D.decode content
+                                        --    |> Result.toMaybe
+                                        --    |> Maybe.map
+                                        --        (\val ->
+                                        --            let
+                                        --                pattern =
+                                        --                    Nonempty.head val.patterns
+                                        --                storedPattern =
+                                        --                    Maybe.withDefault "<no name>"
+                                        --                        pattern.patternName
+                                        --                        |> StoredPattern.init ""
+                                        --            in
+                                        --            { storedPattern
+                                        --                | pattern =
+                                        --                    Seamly2D.toPattern pattern
+                                        --            }
+                                        --        )
+                                        --    |> Result.fromMaybe "This is not a valid Seamly2D file."
+                                        Debug.todo "implement"
                             }
                     in
                     ( { model
@@ -1006,8 +1007,9 @@ viewPatternHelp class pattern =
             BoundingBox2d.dimensions boundingBox
 
         boundingBox =
-            geometry.points
-                |> List.map (\( _, _, p2d ) -> p2d)
+            State.finalValue pattern
+                (State.traverse Pattern.point2d (Pattern.points pattern))
+                |> List.filterMap Result.toMaybe
                 |> BoundingBox2d.containingPoints
                 |> Maybe.map scale
                 |> Maybe.withDefault
@@ -1042,9 +1044,6 @@ viewPatternHelp class pattern =
 
         zoom =
             130 / max width height
-
-        ( geometry, _ ) =
-            Pattern.geometry pattern
     in
     Element.el
         [ Border.rounded 4
@@ -1059,7 +1058,14 @@ viewPatternHelp class pattern =
                 , Html.Events.preventDefaultOn "dragstart" <|
                     Decode.succeed ( NoOp, True )
                 ]
-                [ Pattern.draw noSelections True zoom Nothing pattern ]
+                [ State.finalValue pattern <|
+                    Pattern.draw
+                        { preview = True
+                        , zoom = zoom
+                        , pointHovered = always NoOp
+                        , hoveredPoint = Nothing
+                        }
+                ]
         )
 
 

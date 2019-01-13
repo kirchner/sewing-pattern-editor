@@ -28,294 +28,171 @@ import Geometry.Svg as Svg
 import LineSegment2d exposing (LineSegment2d)
 import Pattern
     exposing
-        ( Circle
+        ( A
+        , Axis
+        , Circle
         , Curve
         , Curve2d(..)
         , Detail
-        , Line
-        , LineSegment
+        , Detail2d
+        , LastCurve2d(..)
+        , NextCurve2d(..)
         , Pattern
         , Point
-        , Segment
+        , PointInfo(..)
         )
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadraticSpline2d
+import State exposing (State)
+import StateResult
 import Svg exposing (Svg)
 import Svg.Attributes
-import That exposing (That)
-import Those exposing (Those)
+import Svg.Events
 import Triple
 
 
 draw :
-    { points : Those Point
-    , lines : Those Line
-    , lineSegments : Those LineSegment
-    , details : Those Detail
+    { preview : Bool
+    , zoom : Float
+    , pointHovered : Maybe (A Point) -> msg
+    , hoveredPoint : Maybe (A Point)
     }
-    -> Bool
-    -> Float
-    -> Maybe (That Point)
-    -> Pattern
-    -> Svg msg
-draw selected preview zoom hoveredPoint pattern =
+    -> State Pattern (Svg msg)
+draw { preview, zoom, pointHovered, hoveredPoint } =
     let
-        ( { details, lines, lineSegments, curves, circles, points }, _ ) =
-            Pattern.geometry pattern
-
         center =
             Point2d.origin
     in
-    Svg.g [] <|
-        List.concat
-            [ List.map
-                (Triple.mapThird
-                    (List.map
-                        (\segment ->
-                            case segment of
-                                Pattern.LineSegment lineSegment2d ->
-                                    lineSegment2d
-                                        |> LineSegment2d.scaleAbout center zoom
-                                        |> Pattern.LineSegment
+    State.get
+        |> State.andThen
+            (\pattern ->
+                State.map (Svg.g []) <|
+                    State.traverse identity
+                        [ case hoveredPoint of
+                            Nothing ->
+                                State.state (Svg.g [] [])
 
-                                Pattern.QuadraticSpline quadraticSpline2d ->
-                                    quadraticSpline2d
-                                        |> QuadraticSpline2d.scaleAbout center zoom
-                                        |> Pattern.QuadraticSpline
-                        )
-                    )
-                    >> drawDetail selected.details
-                )
-                details
-            , List.map
-                (Triple.mapThird (Axis2d.scaleAbout center zoom)
-                    >> drawLine preview selected.lines
-                )
-                lines
-            , List.map
-                (Triple.mapThird
-                    (Circle2d.scaleAbout center zoom)
-                    >> drawCircle preview zoom
-                )
-                circles
-            , List.map
-                (Triple.mapThird
-                    (LineSegment2d.scaleAbout center zoom)
-                    >> drawLineSegment selected.lineSegments
-                )
-                lineSegments
-            , List.map
-                (Triple.mapThird
-                    (curve2dScaleAbout center zoom)
-                    >> drawCurve preview
-                )
-                curves
-            , List.map
-                (Triple.mapThird (Point2d.scaleAbout center zoom)
-                    >> drawPoint preview selected.points
-                )
-                points
-            , [ Maybe.map (drawHoveredPoint pattern center zoom) hoveredPoint
-                    |> Maybe.withDefault (Svg.text "")
-              ]
-            ]
+                            Just aPoint ->
+                                drawPointInfo preview center zoom aPoint
+                        , Pattern.details pattern
+                            |> State.traverse (drawDetail preview center zoom)
+                            |> State.map (Svg.g [])
+                        , Pattern.axes pattern
+                            |> State.traverse (drawAxis preview center zoom)
+                            |> State.map (Svg.g [])
+                        , Pattern.circles pattern
+                            |> State.traverse (drawCircle preview center zoom)
+                            |> State.map (Svg.g [])
+                        , Pattern.curves pattern
+                            |> State.traverse (drawCurve preview center zoom)
+                            |> State.map (Svg.g [])
+                        , Pattern.points pattern
+                            |> State.traverse (drawPoint pointHovered preview center zoom)
+                            |> State.map (Svg.g [])
+                        ]
+            )
 
 
-drawHoveredPoint : Pattern -> Point2d -> Float -> That Point -> Svg msg
-drawHoveredPoint pattern center zoom thatHoveredPoint =
+drawPointInfo : Bool -> Point2d -> Float -> A Point -> State Pattern (Svg msg)
+drawPointInfo preview center zoom aPoint =
     let
-        frame =
-            Frame2d.atPoint center
+        pointRadius =
+            if preview then
+                1
 
-        drawFullPoint point2d =
-            Svg.circle2d
-                [ Svg.Attributes.fill "blue"
-                , stroke Blue
-                , strokeWidthNormal
-                ]
-                (Circle2d.withRadius 6 point2d)
-
-        drawPointFilling point2d =
-            Svg.circle2d
-                [ Svg.Attributes.fill "blue" ]
-                (Circle2d.withRadius 3 point2d)
-
-        drawConnectingLine point2dA point2dB =
-            Svg.lineSegment2d
-                [ stroke Blue
-                , dashArrayShort
-                , strokeWidthNormal
-                ]
-                (LineSegment2d.fromEndpoints ( point2dA, point2dB ))
-
-        drawCircleHighlight circle2d =
-            Svg.circle2d
-                [ stroke Blue
-                , strokeWidthNormal
-                , Svg.Attributes.fill "transparent"
-                ]
-                circle2d
-
-        drawLineHighlight axis2d =
-            Svg.lineSegment2d
-                [ stroke Blue
-                , strokeWidthNormal
-                ]
-                (LineSegment2d.fromEndpoints
-                    ( Point2d.along axis2d -10000
-                    , Point2d.along axis2d 10000
-                    )
-                )
-
-        map func thatPoint =
-            Maybe.withDefault (Svg.text "") <|
-                Maybe.map func
-                    (Pattern.point2d pattern thatPoint
-                        |> Maybe.map
-                            (Point2d.scaleAbout center zoom)
-                    )
-
-        map2 func thatPointA thatPointB =
-            Maybe.withDefault (Svg.text "") <|
-                Maybe.map2 func
-                    (Pattern.point2d pattern thatPointA
-                        |> Maybe.map
-                            (Point2d.scaleAbout center zoom)
-                    )
-                    (Pattern.point2d pattern thatPointB
-                        |> Maybe.map
-                            (Point2d.scaleAbout center zoom)
-                    )
-
-        mapCircle func thatCircle =
-            Maybe.withDefault (Svg.text "") <|
-                Maybe.map func
-                    (Pattern.circle2d pattern thatCircle
-                        |> Maybe.map
-                            (Circle2d.scaleAbout center zoom)
-                    )
-
-        mapLine func thatLine =
-            Maybe.withDefault (Svg.text "") <|
-                Maybe.map func
-                    (Pattern.axis2d pattern thatLine
-                        |> Maybe.map
-                            (Axis2d.scaleAbout center zoom)
-                    )
+            else
+                5
     in
-    Svg.g []
-        [ map drawFullPoint thatHoveredPoint
-        , case
-            Maybe.map (Point2d.scaleAbout center zoom >> Point2d.coordinates)
-                (Pattern.point2d pattern thatHoveredPoint)
-          of
-            Nothing ->
-                Svg.text ""
+    State.embed (Pattern.pointInfo aPoint)
+        |> State.andThen
+            (\maybePointInfo ->
+                case maybePointInfo of
+                    Nothing ->
+                        State.state (Svg.g [] [])
 
-            Just ( x, y ) ->
-                Svg.text_
-                    [ Svg.Attributes.x (String.fromFloat (x - 10))
-                    , Svg.Attributes.y (String.fromFloat y)
-                    , Svg.Attributes.dy (String.fromFloat -10)
-                    , Svg.Attributes.textAnchor "middle"
-                    , fontNormal
-                    , Svg.Attributes.fill "blue"
-                    ]
-                    [ Maybe.andThen .name (Pattern.getPoint pattern thatHoveredPoint)
-                        |> Maybe.withDefault ""
-                        |> Svg.text
-                    ]
-        , case Maybe.map .value (Pattern.getPoint pattern thatHoveredPoint) of
-            Just (Pattern.Origin x y) ->
-                drawPointFilling
-                    (Point2d.scaleAbout center zoom <|
-                        Point2d.fromCoordinates ( x, y )
-                    )
+                    Just (Origin _) ->
+                        State.state (Svg.g [] [])
 
-            Just (Pattern.LeftOf thatAnchorPoint _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPoint
-                    , map2 drawConnectingLine thatAnchorPoint thatHoveredPoint
-                    ]
+                    Just (FromOnePoint stuff) ->
+                        let
+                            toSvg thisPoint2d basePoint2d =
+                                Svg.g []
+                                    [ Svg.circle2d
+                                        [ fill Blue
+                                        , stroke Blue
+                                        ]
+                                        (Circle2d.withRadius pointRadius <|
+                                            Point2d.scaleAbout center zoom thisPoint2d
+                                        )
+                                    , Svg.circle2d
+                                        [ fill Blue
+                                        , stroke Blue
+                                        ]
+                                        (Circle2d.withRadius pointRadius <|
+                                            Point2d.scaleAbout center zoom basePoint2d
+                                        )
+                                    , Svg.lineSegment2d
+                                        [ Svg.Attributes.fill "none"
+                                        , stroke Blue
+                                        , dashArrayShort
+                                        ]
+                                        (LineSegment2d.scaleAbout center zoom <|
+                                            LineSegment2d.from thisPoint2d basePoint2d
+                                        )
+                                    ]
+                        in
+                        StateResult.ok toSvg
+                            |> StateResult.with (Pattern.point2d aPoint)
+                            |> StateResult.with (Pattern.point2d stuff.basePoint)
+                            |> StateResult.withDefault (Svg.g [] [])
 
-            Just (Pattern.RightOf thatAnchorPoint _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPoint
-                    , map2 drawConnectingLine thatAnchorPoint thatHoveredPoint
-                    ]
+                    Just (BetweenRatio stuff) ->
+                        State.state (Svg.g [] [])
 
-            Just (Pattern.Above thatAnchorPoint _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPoint
-                    , map2 drawConnectingLine thatAnchorPoint thatHoveredPoint
-                    ]
+                    Just (BetweenLength stuff) ->
+                        State.state (Svg.g [] [])
 
-            Just (Pattern.Below thatAnchorPoint _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPoint
-                    , map2 drawConnectingLine thatAnchorPoint thatHoveredPoint
-                    ]
+                    Just (Intersection stuff) ->
+                        State.state (Svg.g [] [])
 
-            Just (Pattern.AtAngle thatAnchorPoint _ _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPoint
-                    , map2 drawConnectingLine thatAnchorPoint thatHoveredPoint
-                    ]
-
-            Just (Pattern.BetweenRatio thatAnchorPointA thatAnchorPointB _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPointA
-                    , map drawPointFilling thatAnchorPointB
-                    , map2 drawConnectingLine thatAnchorPointA thatHoveredPoint
-                    , map2 drawConnectingLine thatAnchorPointB thatHoveredPoint
-                    ]
-
-            Just (Pattern.BetweenLength thatAnchorPointA thatAnchorPointB _) ->
-                Svg.g []
-                    [ map drawPointFilling thatAnchorPointA
-                    , map drawPointFilling thatAnchorPointB
-                    , map2 drawConnectingLine thatAnchorPointA thatHoveredPoint
-                    , map2 drawConnectingLine thatAnchorPointB thatHoveredPoint
-                    ]
-
-            Just (Pattern.FirstCircleCircle thatCircleA thatCircleB) ->
-                Svg.g []
-                    [ mapCircle drawCircleHighlight thatCircleA
-                    , mapCircle drawCircleHighlight thatCircleB
-                    ]
-
-            Just (Pattern.SecondCircleCircle thatCircleA thatCircleB) ->
-                Svg.g []
-                    [ mapCircle drawCircleHighlight thatCircleA
-                    , mapCircle drawCircleHighlight thatCircleB
-                    ]
-
-            Just (Pattern.LineLine thatLineA thatLineB) ->
-                Svg.g []
-                    [ mapLine drawLineHighlight thatLineA
-                    , mapLine drawLineHighlight thatLineB
-                    ]
-
-            Just (Pattern.FirstCircleLine thatCircle thatLine) ->
-                Svg.g []
-                    [ mapCircle drawCircleHighlight thatCircle
-                    , mapLine drawLineHighlight thatLine
-                    ]
-
-            Just (Pattern.SecondCircleLine thatCircle thatLine) ->
-                Svg.g []
-                    [ mapCircle drawCircleHighlight thatCircle
-                    , mapLine drawLineHighlight thatLine
-                    ]
-
-            _ ->
-                Svg.text ""
-        ]
+                    Just (TransformedPoint stuff) ->
+                        State.state (Svg.g [] [])
+            )
 
 
-drawPoint : Bool -> Those Point -> ( That Point, Maybe String, Point2d ) -> Svg msg
-drawPoint preview selectedPoints ( thatPoint, maybeName, point2d ) =
+drawPoint :
+    (Maybe (A Point) -> msg)
+    -> Bool
+    -> Point2d
+    -> Float
+    -> A Point
+    -> State Pattern (Svg msg)
+drawPoint pointHovered preview center zoom aPoint =
+    let
+        selected =
+            False
+
+        _ =
+            \_ ->
+                Debug.todo "implement selected"
+    in
+    Pattern.point2d aPoint
+        |> StateResult.map
+            (Point2d.scaleAbout center zoom
+                >> drawPointHelp pointHovered preview selected aPoint
+            )
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawPointHelp :
+    (Maybe (A Point) -> msg)
+    -> Bool
+    -> Bool
+    -> A Point
+    -> Point2d
+    -> Svg msg
+drawPointHelp pointHovered preview selected aPoint point2d =
     let
         pointRadius =
             if preview then
@@ -327,8 +204,8 @@ drawPoint preview selectedPoints ( thatPoint, maybeName, point2d ) =
         ( x, y ) =
             Point2d.coordinates point2d
 
-        selected =
-            Those.member thatPoint selectedPoints
+        maybeName =
+            Pattern.name aPoint
 
         drawName name =
             if preview then
@@ -374,16 +251,40 @@ drawPoint preview selectedPoints ( thatPoint, maybeName, point2d ) =
                 strokeWidthNormal
             ]
             (Circle2d.withRadius pointRadius point2d)
+        , Svg.circle2d
+            [ Svg.Attributes.fill "transparent"
+            , Svg.Events.onMouseOver (pointHovered (Just aPoint))
+            , Svg.Events.onMouseOut (pointHovered Nothing)
+            ]
+            (Circle2d.withRadius (pointRadius + 4) point2d)
         , maybeName
             |> Maybe.map drawName
             |> Maybe.withDefault (Svg.text "")
         ]
 
 
-drawLine : Bool -> Those Line -> ( That Line, Maybe String, Axis2d ) -> Svg msg
-drawLine preview selectedLines ( thatLine, maybeName, axis2d ) =
+drawAxis : Bool -> Point2d -> Float -> A Axis -> State Pattern (Svg msg)
+drawAxis preview center zoom aAxis =
+    let
+        selected =
+            False
+
+        _ =
+            \_ ->
+                Debug.todo "implement selected"
+    in
+    Pattern.axis2d aAxis
+        |> StateResult.map
+            (Axis2d.scaleAbout center zoom
+                >> drawAxisHelp preview selected aAxis
+            )
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawAxisHelp : Bool -> Bool -> A Axis -> Axis2d -> Svg msg
+drawAxisHelp preview selected aAxis axis2d =
     Svg.lineSegment2d
-        (if Those.member thatLine selectedLines then
+        (if selected then
             [ stroke Green
             , Svg.Attributes.opacity "1"
             , strokeWidthBold
@@ -407,49 +308,56 @@ drawLine preview selectedLines ( thatLine, maybeName, axis2d ) =
         )
 
 
-drawLineSegment :
-    Those LineSegment
-    -> ( That LineSegment, Maybe String, LineSegment2d )
-    -> Svg msg
-drawLineSegment selectedLineSegments ( thatLineSegment, maybeName, lineSegment2d ) =
+drawCircle : Bool -> Point2d -> Float -> A Circle -> State Pattern (Svg msg)
+drawCircle preview center zoom aCircle =
     let
         selected =
-            Those.member thatLineSegment selectedLineSegments
+            False
+
+        _ =
+            \_ ->
+                Debug.todo "implement selected"
     in
-    Svg.lineSegment2d
-        (if selected then
-            [ stroke Green
-            , Svg.Attributes.opacity "1"
-            , strokeWidthBold
-            ]
-
-         else
-            [ stroke Black
-            , Svg.Attributes.opacity "0.1"
-            , strokeWidthNormal
-            ]
-        )
-        lineSegment2d
+    Pattern.circle2d aCircle
+        |> StateResult.map
+            (Circle2d.scaleAbout center zoom
+                >> drawCircleHelp preview selected aCircle
+            )
+        |> StateResult.withDefault (Svg.g [] [])
 
 
-curve2dScaleAbout : Point2d -> Float -> Curve2d -> Curve2d
-curve2dScaleAbout center zoom curve =
-    case curve of
-        LineSegment2d lineSegment ->
-            LineSegment2d <|
-                LineSegment2d.scaleAbout center zoom lineSegment
-
-        QuadraticSpline2d quadraticSpline ->
-            QuadraticSpline2d <|
-                QuadraticSpline2d.scaleAbout center zoom quadraticSpline
-
-        CubicSpline2d cubicSpline ->
-            CubicSpline2d <|
-                CubicSpline2d.scaleAbout center zoom cubicSpline
+drawCircleHelp : Bool -> Bool -> A Circle -> Circle2d -> Svg msg
+drawCircleHelp preview selected aCircle circle2d =
+    Svg.circle2d
+        [ stroke Black
+        , Svg.Attributes.opacity "0.1"
+        , dashArrayNormal preview
+        , strokeWidthNormal
+        , Svg.Attributes.fill "transparent"
+        ]
+        circle2d
 
 
-drawCurve : Bool -> ( That Curve, Maybe String, Curve2d ) -> Svg msg
-drawCurve preview ( thatCurve, maybeName, curve ) =
+drawCurve : Bool -> Point2d -> Float -> A Curve -> State Pattern (Svg msg)
+drawCurve preview center zoom aCurve =
+    let
+        selected =
+            False
+
+        _ =
+            \_ ->
+                Debug.todo "implement selected"
+    in
+    Pattern.curve2d aCurve
+        |> StateResult.map
+            (curve2dScaleAbout center zoom
+                >> drawCurveHelp preview selected aCurve
+            )
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawCurveHelp : Bool -> Bool -> A Curve -> Curve2d -> Svg msg
+drawCurveHelp preview selected aCurve curve2d =
     let
         attributes =
             [ stroke Black
@@ -461,34 +369,82 @@ drawCurve preview ( thatCurve, maybeName, curve ) =
             , Svg.Attributes.fill "transparent"
             ]
     in
-    case curve of
-        LineSegment2d lineSegment ->
-            Svg.lineSegment2d attributes lineSegment
+    case curve2d of
+        LineSegment2d lineSegment2d ->
+            Svg.lineSegment2d attributes lineSegment2d
 
-        QuadraticSpline2d quadraticSpline ->
-            Svg.quadraticSpline2d attributes quadraticSpline
+        QuadraticSpline2d quadraticSpline2d ->
+            Svg.quadraticSpline2d attributes quadraticSpline2d
 
-        CubicSpline2d cubicSpline ->
-            Svg.cubicSpline2d attributes cubicSpline
-
-
-drawCircle : Bool -> Float -> ( That Circle, Maybe String, Circle2d ) -> Svg msg
-drawCircle preview zoom ( thatCircle, maybeName, circle2d ) =
-    Svg.circle2d
-        [ stroke Black
-        , Svg.Attributes.opacity "0.1"
-        , dashArrayNormal preview
-        , strokeWidthNormal
-        , Svg.Attributes.fill "transparent"
-        ]
-        circle2d
+        CubicSpline2d cubicSpline2d ->
+            Svg.cubicSpline2d attributes cubicSpline2d
 
 
-drawDetail : Those Detail -> ( That Detail, Maybe String, List Segment ) -> Svg msg
-drawDetail selectedDetails ( thatDetail, maybeName, segments ) =
+drawDetail : Bool -> Point2d -> Float -> A Detail -> State Pattern (Svg msg)
+drawDetail preview center zoom aDetail =
     let
         selected =
-            Those.member thatDetail selectedDetails
+            False
+
+        _ =
+            \_ ->
+                Debug.todo "implement selected"
+    in
+    Pattern.detail2d aDetail
+        |> StateResult.map
+            (detail2dScaleAbout center zoom
+                >> drawDetailHelp preview selected aDetail
+            )
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawDetailHelp : Bool -> Bool -> A Detail -> Detail2d -> Svg msg
+drawDetailHelp preview selected aDetail detail2d =
+    let
+        step nextCurve2d =
+            case nextCurve2d of
+                NextLineSegment2d stuff ->
+                    "L " ++ coord stuff.endPoint
+
+                NextQuadraticSpline2d stuff ->
+                    "Q "
+                        ++ coord stuff.controlPoint
+                        ++ ", "
+                        ++ coord stuff.endPoint
+
+                NextCubicSpline2d stuff ->
+                    "C "
+                        ++ coord stuff.startControlPoint
+                        ++ ", "
+                        ++ coord stuff.endControlPoint
+                        ++ ", "
+                        ++ coord stuff.endPoint
+
+        lastStep =
+            case detail2d.lastCurve of
+                LastLineSegment2d ->
+                    "L " ++ coord detail2d.firstPoint
+
+                LastQuadraticSpline2d stuff ->
+                    "Q "
+                        ++ coord stuff.controlPoint
+                        ++ ", "
+                        ++ coord detail2d.firstPoint
+
+                LastCubicSpline2d stuff ->
+                    "C "
+                        ++ coord stuff.startControlPoint
+                        ++ ", "
+                        ++ coord stuff.endControlPoint
+                        ++ ", "
+                        ++ coord detail2d.firstPoint
+
+        coord point2d =
+            Point2d.coordinates point2d
+                |> coordHelp
+
+        coordHelp ( x, y ) =
+            String.fromFloat x ++ " " ++ String.fromFloat y
     in
     Svg.path
         [ Svg.Attributes.fill "hsla(240, 2%, 80%, 0.5)"
@@ -500,71 +456,79 @@ drawDetail selectedDetails ( thatDetail, maybeName, segments ) =
             else
                 Black
         , Svg.Attributes.d <|
-            case segments of
-                [] ->
-                    ""
-
-                firstSegment :: rest ->
-                    let
-                        ( startX, startY ) =
-                            case firstSegment of
-                                Pattern.LineSegment lineSegment2d ->
-                                    lineSegment2d
-                                        |> LineSegment2d.startPoint
-                                        |> Point2d.coordinates
-
-                                Pattern.QuadraticSpline quadraticSpline2d ->
-                                    quadraticSpline2d
-                                        |> QuadraticSpline2d.startPoint
-                                        |> Point2d.coordinates
-                    in
-                    String.join " "
-                        [ "M " ++ String.fromFloat startX ++ " " ++ String.fromFloat startY
-                        , String.join " " <|
-                            List.map
-                                (\segment ->
-                                    case segment of
-                                        Pattern.LineSegment lineSegment2d ->
-                                            let
-                                                ( x, y ) =
-                                                    lineSegment2d
-                                                        |> LineSegment2d.endPoint
-                                                        |> Point2d.coordinates
-                                            in
-                                            String.concat
-                                                [ "L "
-                                                , String.fromFloat x
-                                                , " "
-                                                , String.fromFloat y
-                                                ]
-
-                                        Pattern.QuadraticSpline quadraticSpline2d ->
-                                            let
-                                                ( x, y ) =
-                                                    quadraticSpline2d
-                                                        |> QuadraticSpline2d.endPoint
-                                                        |> Point2d.coordinates
-
-                                                ( controlX, controlY ) =
-                                                    quadraticSpline2d
-                                                        |> QuadraticSpline2d.controlPoint
-                                                        |> Point2d.coordinates
-                                            in
-                                            String.concat
-                                                [ "Q "
-                                                , String.fromFloat controlX
-                                                , " "
-                                                , String.fromFloat controlY
-                                                , ", "
-                                                , String.fromFloat x
-                                                , " "
-                                                , String.fromFloat y
-                                                ]
-                                )
-                                segments
-                        ]
+            String.join " "
+                [ "M " ++ coord detail2d.firstPoint
+                , String.join " " (List.map step detail2d.nextCurves)
+                , " " ++ lastStep
+                ]
         ]
         []
+
+
+
+---- SCALE
+
+
+curve2dScaleAbout : Point2d -> Float -> Curve2d -> Curve2d
+curve2dScaleAbout center zoom curve =
+    case curve of
+        LineSegment2d lineSegment2d ->
+            LineSegment2d <|
+                LineSegment2d.scaleAbout center zoom lineSegment2d
+
+        QuadraticSpline2d quadraticSpline2d ->
+            QuadraticSpline2d <|
+                QuadraticSpline2d.scaleAbout center zoom quadraticSpline2d
+
+        CubicSpline2d cubicSpline2d ->
+            CubicSpline2d <|
+                CubicSpline2d.scaleAbout center zoom cubicSpline2d
+
+
+detail2dScaleAbout : Point2d -> Float -> Detail2d -> Detail2d
+detail2dScaleAbout center zoom detail =
+    let
+        scaleNextCurve nextCurve =
+            case nextCurve of
+                NextLineSegment2d stuff ->
+                    NextLineSegment2d
+                        { endPoint = Point2d.scaleAbout center zoom stuff.endPoint }
+
+                NextQuadraticSpline2d stuff ->
+                    NextQuadraticSpline2d
+                        { controlPoint = Point2d.scaleAbout center zoom stuff.controlPoint
+                        , endPoint = Point2d.scaleAbout center zoom stuff.endPoint
+                        }
+
+                NextCubicSpline2d stuff ->
+                    NextCubicSpline2d
+                        { startControlPoint =
+                            Point2d.scaleAbout center zoom stuff.startControlPoint
+                        , endControlPoint =
+                            Point2d.scaleAbout center zoom stuff.endControlPoint
+                        , endPoint = Point2d.scaleAbout center zoom stuff.endPoint
+                        }
+    in
+    { detail
+        | firstPoint = Point2d.scaleAbout center zoom detail.firstPoint
+        , nextCurves = List.map scaleNextCurve detail.nextCurves
+        , lastCurve =
+            case detail.lastCurve of
+                LastLineSegment2d ->
+                    detail.lastCurve
+
+                LastQuadraticSpline2d stuff ->
+                    LastQuadraticSpline2d
+                        { controlPoint = Point2d.scaleAbout center zoom stuff.controlPoint }
+
+                LastCubicSpline2d stuff ->
+                    LastCubicSpline2d
+                        { startControlPoint =
+                            Point2d.scaleAbout center zoom stuff.startControlPoint
+                        , endControlPoint =
+                            Point2d.scaleAbout center zoom stuff.endControlPoint
+                        }
+    }
 
 
 
@@ -579,6 +543,19 @@ type Color
 
 stroke color =
     Svg.Attributes.stroke <|
+        case color of
+            Blue ->
+                "blue"
+
+            Black ->
+                "black"
+
+            Green ->
+                "green"
+
+
+fill color =
+    Svg.Attributes.fill <|
         case color of
             Blue ->
                 "blue"

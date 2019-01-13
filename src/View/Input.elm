@@ -1,5 +1,6 @@
 module View.Input exposing
-    ( btnCancel
+    ( btnCallToAction
+    , btnCancel
     , btnDanger
     , btnDangerIcon
     , btnIcon
@@ -8,10 +9,13 @@ module View.Input exposing
     , btnSecondary
     , btnSecondaryWide
     , dropdown
+    , dropdownAppended
     , dropdownWithMenu
     , formula
     , listbox
     , option
+    , optionCustom
+    , radioColumn
     , radioRow
     , text
     )
@@ -104,6 +108,34 @@ btnSecondaryHelp width id { onPress, label } =
         { onPress = onPress
         , label =
             Element.text label
+        }
+
+
+btnCallToAction : String -> { onPress : Maybe msg, label : String } -> Element msg
+btnCallToAction id { onPress, label } =
+    Input.button
+        [ Element.htmlAttribute <|
+            Attributes.id id
+        , Element.width Element.fill
+        , Element.paddingXY 18 10
+        , Border.rounded 7
+        , Background.color Design.secondary
+        , Font.color Design.black
+        , Design.fontSmall
+        , Element.mouseOver
+            [ Background.color Design.secondaryDark ]
+        , Element.htmlAttribute <|
+            Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
+        ]
+        { onPress = onPress
+        , label =
+            Element.row
+                [ Element.width Element.fill ]
+                [ Element.text label
+                , Element.el
+                    [ Element.alignRight ]
+                    (View.Icon.fa "chevron-right")
+                ]
         }
 
 
@@ -210,7 +242,7 @@ text id data =
         [ Element.htmlAttribute <|
             Attributes.id id
         , Element.width Element.fill
-        , Element.paddingXY 5 5
+        , Element.padding Design.xSmall
         , Design.fontNormal
         , Font.color Design.black
         , Background.color Design.white
@@ -229,6 +261,7 @@ text id data =
                             [ Design.fontSmall
                             , Font.color Design.black
                             , Font.bold
+                            , Element.paddingXY 0 Design.xxSmall
                             ]
                             (Element.text data.label)
 
@@ -245,6 +278,7 @@ text id data =
                                 [ Element.spacing Design.xSmall
                                 , Element.paddingXY 0 Design.xxSmall
                                 , Font.color Design.danger
+                                , Design.fontSmall
                                 ]
                                 [ View.Icon.fa "exclamation-circle"
                                 , Element.text helpText
@@ -260,6 +294,7 @@ formula :
         { onChange : String -> msg
         , text : String
         , label : String
+        , help : Maybe String
         }
     -> Element msg
 formula id data =
@@ -289,7 +324,7 @@ formula id data =
         , Element.width Element.fill
         , Element.inFront (lineNumbers lineCount)
         , padding
-        , Element.spacing 5
+        , Element.spacing Design.xSmall
         , Font.size 16
         , Font.color Design.black
         , Design.monospace
@@ -306,13 +341,44 @@ formula id data =
         , placeholder = Nothing
         , spellcheck = False
         , label =
-            Input.labelAbove
-                [ Font.size 12
-                , Font.color Design.black
-                , Font.bold
-                , Design.sansSerif
-                ]
-                (Element.text data.label)
+            Input.labelAbove []
+                (case data.help of
+                    Nothing ->
+                        Element.el
+                            [ Design.fontSmall
+                            , Font.color Design.black
+                            , Font.bold
+                            , Design.sansSerif
+                            ]
+                            (Element.text data.label)
+
+                    Just helpText ->
+                        Element.column
+                            [ Element.spacing Design.xxSmall ]
+                            [ Element.el
+                                [ Design.fontSmall
+                                , Font.color Design.black
+                                , Font.bold
+                                , Design.sansSerif
+                                ]
+                                (Element.text data.label)
+                            , Element.row
+                                [ Element.spacing Design.xSmall
+                                , Element.paddingEach
+                                    { left = 0
+                                    , right = 0
+                                    , top = Design.xxSmall
+                                    , bottom = 0
+                                    }
+                                , Font.color Design.danger
+                                , Design.fontSmall
+                                , Design.sansSerif
+                                ]
+                                [ View.Icon.fa "exclamation-circle"
+                                , Element.text helpText
+                                ]
+                            ]
+                )
         }
 
 
@@ -381,13 +447,50 @@ radioRow id { onChange, options, selected, label } =
         }
 
 
+radioColumn id { onChange, options, selected, label } =
+    Input.radio
+        [ Element.htmlAttribute (Attributes.id id)
+        , Element.width Element.fill
+        , Element.paddingEach
+            { left = Design.xxSmall
+            , right = 0
+            , top = Design.xSmall
+            , bottom = Design.xSmall
+            }
+        , Element.spacing Design.xSmall
+        , Font.size 14
+        , Font.color Design.black
+        ]
+        { onChange = onChange
+        , options = options
+        , selected = selected
+        , label =
+            Input.labelAbove
+                [ Font.size 12
+                , Font.color Design.black
+                , Font.bold
+                ]
+                (Element.text label)
+        }
+
+
 option : value -> String -> Input.Option value msg
 option value label =
     Input.optionWith value (radioOption label)
 
 
+optionCustom : value -> Element msg -> Input.Option value msg
+optionCustom value label =
+    Input.optionWith value (radioOptionCustom label)
+
+
 radioOption : String -> Input.OptionState -> Element msg
 radioOption label status =
+    radioOptionCustom (Element.text label) status
+
+
+radioOptionCustom : Element msg -> Input.OptionState -> Element msg
+radioOptionCustom label status =
     let
         setClass attrs =
             case status of
@@ -401,11 +504,12 @@ radioOption label status =
     Element.row
         [ Element.spacing 10
         , Element.alignLeft
-        , Element.width Element.shrink
+        , Element.width Element.fill
         ]
         [ Element.el
             ([ Element.width (Element.px 14)
              , Element.height (Element.px 14)
+             , Element.alignTop
              , Background.color Design.white
              , Border.rounded 7
              , Border.width <|
@@ -437,7 +541,7 @@ radioOption label status =
             , Element.htmlAttribute <|
                 Attributes.class "unfocusable"
             ]
-            (Element.text label)
+            label
         ]
 
 
@@ -448,12 +552,13 @@ radioOption label status =
 dropdown :
     String
     ->
-        { lift : Dropdown.Msg (That object) -> msg
-        , entryToString : That object -> String
+        { lift : Dropdown.Msg entry -> msg
+        , entryToString : entry -> String
+        , entryToHash : entry -> String
         , label : String
-        , options : List ( That object, Entry object )
+        , options : List entry
         , dropdown : Dropdown
-        , selection : Maybe (That object)
+        , selection : Maybe entry
         }
     -> Element msg
 dropdown =
@@ -464,18 +569,19 @@ dropdownWithMenu :
     Element msg
     -> String
     ->
-        { lift : Dropdown.Msg (That object) -> msg
-        , entryToString : That object -> String
+        { lift : Dropdown.Msg entry -> msg
+        , entryToString : entry -> String
+        , entryToHash : entry -> String
         , label : String
-        , options : List ( That object, Entry object )
+        , options : List entry
         , dropdown : Dropdown
-        , selection : Maybe (That object)
+        , selection : Maybe entry
         }
     -> Element msg
 dropdownWithMenu menu id data =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing 3
+        , Element.spacing Design.xSmall
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -491,19 +597,19 @@ dropdownWithMenu menu id data =
                 menu
             ]
         , Dropdown.customView dropdownDomFunctions
-            (dropdownViewConfig data.entryToString)
+            (dropdownViewConfig False data.entryToString data.entryToHash)
             { id = id
             , labelledBy = id ++ "-label"
             , lift = data.lift
             }
-            (List.map (Tuple.first >> Listbox.option) data.options)
+            (List.map Listbox.option data.options)
             data.dropdown
             data.selection
         ]
 
 
-dropdownViewConfig printOption =
-    Dropdown.customViewConfig That.hash
+dropdownViewConfig appended printOption hashOption =
+    Dropdown.customViewConfig hashOption
         { container =
             [ Element.width Element.fill
             , Element.height (Element.px 30)
@@ -516,7 +622,16 @@ dropdownViewConfig printOption =
                     , Element.padding 5
                     , Font.size 16
                     , Font.color Design.black
-                    , Border.rounded 3
+                    , if appended then
+                        Border.roundEach
+                            { topLeft = 0
+                            , topRight = 0
+                            , bottomLeft = 3
+                            , bottomRight = 3
+                            }
+
+                      else
+                        Border.rounded 3
                     , Border.width 1
                     , Border.color Design.black
                     , Background.color Design.white
@@ -581,6 +696,35 @@ dropdownViewConfig printOption =
                 , children = []
                 }
         }
+
+
+dropdownAppended :
+    String
+    ->
+        { lift : Dropdown.Msg entry -> msg
+        , entryToString : entry -> String
+        , entryToHash : entry -> String
+        , label : String
+        , options : List entry
+        , dropdown : Dropdown
+        , selection : Maybe entry
+        }
+    -> Element msg
+dropdownAppended id data =
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing Design.xSmall
+        ]
+        [ Dropdown.customView dropdownDomFunctions
+            (dropdownViewConfig True data.entryToString data.entryToHash)
+            { id = id
+            , labelledBy = id ++ "-label"
+            , lift = data.lift
+            }
+            (List.map Listbox.option data.options)
+            data.dropdown
+            data.selection
+        ]
 
 
 dropdownDomFunctions =
