@@ -77,6 +77,7 @@ import Pattern
         , FirstCurve(..)
         , InsertHelp(..)
         , Intersectable(..)
+        , IntersectableTag(..)
         , LastCurve(..)
         , NextCurve(..)
         , OneInTwo(..)
@@ -717,7 +718,7 @@ initIntersectionForm =
         { objectA = initReferencedIntersectableForm
         , objectB = initReferencedIntersectableForm
         , objectsHelp = Nothing
-        , which = 0
+        , which = 1
         , whichHelp = Nothing
         }
 
@@ -1163,6 +1164,28 @@ viewPointFormHelp pattern { point, id } =
                     ]
 
             IntersectionForm stuff ->
+                let
+                    whichSize =
+                        Maybe.withDefault 1 <|
+                            Maybe.map2 Pattern.whichSize
+                                (intersectableFrom stuff.objectA)
+                                (intersectableFrom stuff.objectB)
+
+                    intersectableFrom object =
+                        case object of
+                            ReferencedIntersectableForm { maybeAIntersectable } ->
+                                Maybe.andThen (Pattern.tagFromIntersectable pattern)
+                                    maybeAIntersectable
+
+                            InlinedAxisForm _ ->
+                                Just IntersectableAxisTag
+
+                            InlinedCircleForm _ ->
+                                Just IntersectableCircleTag
+
+                            InlinedCurveForm _ ->
+                                Just IntersectableCurveTag
+                in
                 Element.column
                     [ Element.width Element.fill
                     , Element.spacing Design.small
@@ -1179,6 +1202,34 @@ viewPointFormHelp pattern { point, id } =
                             , id = "__intersection--object-b"
                             , label = "2nd object"
                             }
+                    , if whichSize > 1 then
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.xSmall
+                            ]
+                            [ Element.el
+                                [ Element.htmlAttribute (Attributes.id (id ++ "__which"))
+                                , Element.alignLeft
+                                , Design.fontSmall
+                                , Font.color Design.black
+                                , Font.bold
+                                ]
+                                (Element.text "Which intersection?")
+                            , segmentControl
+                                { selectionChanged = Intersection_WhichChanged
+                                , tags =
+                                    List.range 1 whichSize
+                                        |> List.map
+                                            (\index ->
+                                                ( index, "Intersection #" ++ String.fromInt index )
+                                            )
+                                , elementAppended = True
+                                , selectedTag = stuff.which
+                                }
+                            ]
+
+                      else
+                        Element.none
                     ]
         ]
 
@@ -1250,7 +1301,7 @@ viewAxisFormHelp pattern { axis, id } =
                         viewOtherPointForm pattern
                             { otherPoint = stuff.pointB
                             , id = id ++ "__through-two-points--point-b"
-                            , label = "end point"
+                            , label = "2nd point"
                             }
                     ]
         ]
@@ -3340,7 +3391,9 @@ updatePointForm pattern pointMsg form =
             )
 
         ( Intersection_WhichChanged newWhich, IntersectionForm stuff ) ->
-            Debug.todo "implement"
+            ( IntersectionForm { stuff | which = newWhich }
+            , Cmd.none
+            )
 
         -- CATCH ALL
         _ ->
@@ -4451,7 +4504,48 @@ newPointFrom form pattern =
                 |> Result.mapError FromTwoPointsForm
 
         IntersectionForm stuff ->
-            Debug.todo "implement"
+            let
+                getObjectA =
+                    newOtherIntersectableFrom stuff.objectA pattern
+                        |> Result.mapError
+                            (\objectAWithHelp ->
+                                { stuff
+                                    | objectA = objectAWithHelp
+                                    , objectB =
+                                        checkOtherIntersectableObject pattern
+                                            stuff.objectB
+                                }
+                            )
+                        |> Result.andThen getObjectB
+
+                getObjectB aIntersectableA =
+                    newOtherIntersectableFrom stuff.objectB pattern
+                        |> Result.mapError
+                            (\objectBWithHelp ->
+                                { stuff | objectB = objectBWithHelp }
+                            )
+                        |> Result.andThen (createNewPoint aIntersectableA)
+
+                createNewPoint aIntersectableA aIntersectableB =
+                    Pattern.intersection
+                        aIntersectableA
+                        aIntersectableB
+                        stuff.which
+                        pattern
+                        |> Result.mapError
+                            (\intersectionHelp ->
+                                { stuff
+                                    | whichHelp =
+                                        if intersectionHelp.whichOutOfBound then
+                                            Just "Make a different choice."
+
+                                        else
+                                            Nothing
+                                }
+                            )
+            in
+            getObjectA
+                |> Result.mapError IntersectionForm
 
 
 newAxisFrom : AxisForm -> Pattern -> Result AxisForm Axis
@@ -5229,6 +5323,16 @@ checkOtherPoint pattern otherPoint =
 
         Ok _ ->
             otherPoint
+
+
+checkOtherIntersectableObject : Pattern -> OtherIntersectableForm -> OtherIntersectableForm
+checkOtherIntersectableObject pattern otherIntersectable =
+    case newOtherIntersectableFrom otherIntersectable pattern of
+        Err otherIntersectableWithHelp ->
+            otherIntersectableWithHelp
+
+        Ok _ ->
+            otherIntersectable
 
 
 checkTwoPointsPosition : TwoPointsPosition -> TwoPointsPosition

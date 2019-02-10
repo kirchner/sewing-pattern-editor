@@ -40,6 +40,8 @@ import Pattern
         , Detail
         , Detail2d
         , Direction(..)
+        , Intersectable
+        , Intersectable2d(..)
         , LastCurve2d(..)
         , NextCurve2d(..)
         , OneInTwo(..)
@@ -167,6 +169,13 @@ drawReferencedPoint center zoom aPoint =
         |> StateResult.withDefault (Svg.g [] [])
 
 
+drawReferencedIntersectable : Point2d -> Float -> A Intersectable -> State Pattern (Svg msg)
+drawReferencedIntersectable center zoom aIntersectable =
+    StateResult.ok (svgReferencedIntersectable center zoom)
+        |> StateResult.with (Pattern.intersectable2d aIntersectable)
+        |> StateResult.withDefault (Svg.g [] [])
+
+
 drawPointInfo : Point2d -> Float -> A Point -> State Pattern (Svg msg)
 drawPointInfo center zoom aPoint =
     State.embed (Pattern.pointInfo aPoint)
@@ -236,7 +245,14 @@ drawPointInfo center zoom aPoint =
                             |> StateResult.withDefault (Svg.g [] [])
 
                     Just (Intersection stuff) ->
-                        State.state (Svg.g [] [])
+                        [ State.map Ok
+                            (drawReferencedIntersectable center zoom stuff.objectA)
+                        , State.map Ok
+                            (drawReferencedIntersectable center zoom stuff.objectB)
+                        ]
+                            |> StateResult.combine
+                            |> StateResult.map (Svg.g [])
+                            |> StateResult.withDefault (Svg.g [] [])
 
                     Just (TransformedPoint stuff) ->
                         State.state (Svg.g [] [])
@@ -791,6 +807,47 @@ svgReferencedPoint center zoom point2d =
         (Circle2d.withRadius 3 <|
             Point2d.scaleAbout center zoom point2d
         )
+
+
+svgReferencedIntersectable : Point2d -> Float -> Intersectable2d -> Svg msg
+svgReferencedIntersectable center zoom intersectable2d =
+    case intersectable2d of
+        Axis2d axis2d ->
+            Svg.lineSegment2d
+                [ stroke Blue ]
+                (LineSegment2d.scaleAbout center zoom <|
+                    LineSegment2d.fromEndpoints
+                        ( Point2d.along axis2d -10000
+                        , Point2d.along axis2d 10000
+                        )
+                )
+
+        Circle2d circle2d ->
+            Svg.circle2d
+                [ Svg.Attributes.fill "none"
+                , stroke Blue
+                ]
+                (Circle2d.scaleAbout center zoom circle2d)
+
+        Curve2d curve2d ->
+            let
+                attributes =
+                    [ Svg.Attributes.fill "none"
+                    , stroke Black
+                    ]
+            in
+            case curve2d of
+                LineSegment2d lineSegment2d ->
+                    Svg.lineSegment2d attributes <|
+                        LineSegment2d.scaleAbout center zoom lineSegment2d
+
+                QuadraticSpline2d quadraticSpline2d ->
+                    Svg.quadraticSpline2d attributes <|
+                        QuadraticSpline2d.scaleAbout center zoom quadraticSpline2d
+
+                CubicSpline2d cubicSpline2d ->
+                    Svg.cubicSpline2d attributes <|
+                        CubicSpline2d.scaleAbout center zoom cubicSpline2d
 
 
 svgLabeledLineSegment : Point2d -> Float -> String -> Point2d -> Point2d -> Svg msg

@@ -4,6 +4,7 @@ module Pattern exposing
     , Intersectable
     , A, this, name, inlined, hash
     , intersectableAxis, intersectableCircle, intersectableCurve
+    , whichSize, IntersectableTag(..), tagFromIntersectable
     , insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
     , insertTransformation
     , insertVariable
@@ -17,10 +18,11 @@ module Pattern exposing
     , transformationInfo, TransformationInfo(..)
     , variableInfo
     , Direction(..), Orientation(..), OneInTwo(..)
-    , point2d, axis2d, circle2d, curve2d, detail2d
+    , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
     , Curve2d(..)
     , Detail2d, NextCurve2d(..), LastCurve2d(..)
+    , Intersectable2d(..)
     , ComputeHelp(..)
     , origin
     , fromOnePoint, FromOnePointHelp
@@ -55,6 +57,7 @@ module Pattern exposing
 
 @docs A, this, name, inlined, hash
 @docs intersectableAxis, intersectableCircle, intersectableCurve
+@docs whichSize, IntersectableTag, tagFromIntersectable
 
 
 # Insert
@@ -88,12 +91,14 @@ module Pattern exposing
 
 # Compute
 
-@docs point2d, axis2d, circle2d, curve2d, detail2d
+@docs point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
 @docs float
 
 @docs Curve2d
 
 @docs Detail2d, NextCurve2d, LastCurve2d
+
+@docs Intersectable2d
 
 @docs ComputeHelp
 
@@ -263,6 +268,12 @@ type Intersectable
     = IntersectableAxis Axis
     | IntersectableCircle Circle
     | IntersectableCurve Curve
+
+
+type IntersectableTag
+    = IntersectableAxisTag
+    | IntersectableCircleTag
+    | IntersectableCurveTag
 
 
 
@@ -1855,7 +1866,79 @@ intersection :
     -> Pattern
     -> Result IntersectionHelp Point
 intersection aObjectA aObjectB which pattern =
-    Debug.todo "implement"
+    Ok IntersectionHelp
+        |> collectBool (checkObjectsCoincidence aObjectA aObjectB)
+        |> collectBool (checkWhichInBound aObjectA aObjectB pattern which)
+        |> Result.map
+            (always <|
+                Point <|
+                    Intersection
+                        { objectA = aObjectA
+                        , objectB = aObjectB
+                        , which = which
+                        }
+            )
+
+
+checkWhichInBound : A Intersectable -> A Intersectable -> Pattern -> Int -> Bool
+checkWhichInBound aIntersectableA aIntersectableB pattern which =
+    let
+        maybeSize =
+            Maybe.map2 whichSize
+                (tagFromIntersectable pattern aIntersectableA)
+                (tagFromIntersectable pattern aIntersectableB)
+    in
+    case maybeSize of
+        Nothing ->
+            False
+
+        Just size ->
+            0 >= which && which < size
+
+
+tagFromIntersectable : Pattern -> A Intersectable -> Maybe IntersectableTag
+tagFromIntersectable (Pattern data) aIntersectable =
+    case aIntersectable of
+        That name_ ->
+            if Dict.member name_ data.axes then
+                Just IntersectableAxisTag
+
+            else if Dict.member name_ data.circles then
+                Just IntersectableCircleTag
+
+            else if Dict.member name_ data.curves then
+                Just IntersectableCurveTag
+
+            else
+                Nothing
+
+        This (IntersectableAxis _) ->
+            Just IntersectableAxisTag
+
+        This (IntersectableCircle _) ->
+            Just IntersectableCircleTag
+
+        This (IntersectableCurve _) ->
+            Just IntersectableCurveTag
+
+
+whichSize : IntersectableTag -> IntersectableTag -> Int
+whichSize intersectableTagA intersectableTagB =
+    case ( intersectableTagA, intersectableTagB ) of
+        ( IntersectableAxisTag, IntersectableAxisTag ) ->
+            1
+
+        ( IntersectableCircleTag, IntersectableCurveTag ) ->
+            2
+
+        ( IntersectableAxisTag, IntersectableCircleTag ) ->
+            2
+
+        ( IntersectableCircleTag, IntersectableAxisTag ) ->
+            2
+
+        _ ->
+            Debug.todo "implement"
 
 
 type alias IntersectionHelp =
@@ -2564,6 +2647,12 @@ pointDecoder =
             |> Decode.required "from" oneInTwoDecoder
             |> Decode.map BetweenLength
             |> ensureType "betweenLength"
+        , Decode.succeed IntersectionStuff
+            |> Decode.required "objectA" aIntersectableDecoder
+            |> Decode.required "objectB" aIntersectableDecoder
+            |> Decode.required "which" Decode.int
+            |> Decode.map Intersection
+            |> ensureType "intersection"
         ]
         |> Decode.map Point
 
