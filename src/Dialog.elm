@@ -5401,7 +5401,16 @@ printExprHelp : ExprHelp -> String
 printExprHelp exprHelp =
     case exprHelp of
         SyntaxHelp deadEnds ->
-            "There is a syntactical error"
+            "There is a syntactical error."
+
+        UnknownFunction function ->
+            "I do not know the function ‘" ++ function ++ "’."
+
+        WrongArguments { function, args } ->
+            "The function ‘" ++ function ++ "’ cannot handle one of its arguments."
+
+        CannotComputeFunction function ->
+            "I could not compute the value of the function ‘" ++ function ++ "’."
 
 
 addTwoPointsPositionRatioHelp help stuff =

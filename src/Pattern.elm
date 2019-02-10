@@ -1636,7 +1636,58 @@ evaluateExpr expr =
             evaluateVariable variable
 
         Function function args ->
-            Debug.todo "implement"
+            case function of
+                "distance" ->
+                    case args of
+                        nameA :: nameB :: [] ->
+                            StateResult.ok Point2d.distanceFrom
+                                |> StateResult.with (point2d (That nameA))
+                                |> StateResult.with (point2d (That nameB))
+
+                        _ ->
+                            StateResult.err <|
+                                ExprHelp <|
+                                    WrongArguments
+                                        { function = function
+                                        , args = args
+                                        }
+
+                "angleOfLine" ->
+                    case args of
+                        nameA :: nameB :: [] ->
+                            let
+                                toAngle point2dA point2dB =
+                                    Direction2d.from point2dA point2dB
+                                        |> Maybe.map (Direction2d.toAngle >> toDegree)
+
+                                toDegree radian =
+                                    180 * radian / pi
+                            in
+                            StateResult.ok toAngle
+                                |> StateResult.with (point2d (That nameA))
+                                |> StateResult.with (point2d (That nameB))
+                                |> StateResult.andThen
+                                    (\maybeAngle ->
+                                        case maybeAngle of
+                                            Nothing ->
+                                                StateResult.err <|
+                                                    ExprHelp <|
+                                                        CannotComputeFunction function
+
+                                            Just angle ->
+                                                StateResult.ok angle
+                                    )
+
+                        _ ->
+                            StateResult.err <|
+                                ExprHelp <|
+                                    WrongArguments
+                                        { function = function
+                                        , args = args
+                                        }
+
+                _ ->
+                    StateResult.err (ExprHelp (UnknownFunction function))
 
         Sum exprA exprB ->
             StateResult.ok (+)
@@ -2173,6 +2224,12 @@ collectBool bool resultFunc =
 
 type ExprHelp
     = SyntaxHelp (List DeadEnd)
+    | UnknownFunction String
+    | WrongArguments
+        { function : String
+        , args : List String
+        }
+    | CannotComputeFunction String
 
 
 checkExpr : String -> Maybe ExprHelp
