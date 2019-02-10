@@ -1,6 +1,7 @@
 module StateResult exposing
     ( StateResult
     , andThen
+    , combine
     , err
     , join
     , map
@@ -29,6 +30,7 @@ module StateResult exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Result.Extra as Result
 import State exposing (State)
 
 
@@ -50,6 +52,12 @@ traverse : (a -> StateResult s err b) -> List a -> StateResult s err (List b)
 traverse func listA =
     State.traverse func listA
         |> State.map sort
+
+
+combine : List (StateResult s err a) -> StateResult s err (List a)
+combine =
+    State.combine
+        >> State.map Result.combine
 
 
 sort : List (Result err b) -> Result err (List b)

@@ -37,7 +37,7 @@ import Circle2d
 import Color
 import Design
 import Dialog
-import Draw.Pattern as Pattern
+import Draw.Pattern as Pattern exposing (HoveredObject)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -107,7 +107,7 @@ type alias LoadedData =
 
     -- PATTERN
     , storedPattern : StoredPattern
-    , hoveredPoint : Maybe (A Point)
+    , hoveredObject : Maybe HoveredObject
 
     -- LEFT TOOLBAR
     , maybeDialog : Maybe Dialog
@@ -474,8 +474,8 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                         (Pattern.draw
                             { preview = False
                             , zoom = zoom
-                            , pointHovered = PointHovered
-                            , hoveredPoint = model.hoveredPoint
+                            , objectHovered = ObjectHovered
+                            , hoveredObject = model.hoveredObject
                             }
                         )
                 ]
@@ -1056,7 +1056,7 @@ type Msg
     | MouseMove Position
     | MouseUp Position
       -- PATTERN
-    | PointHovered (Maybe (A Point))
+    | ObjectHovered (Maybe HoveredObject)
       -- LEFT TOOLBAR
     | CreatePointPressed
     | CreateAxisPressed
@@ -1119,7 +1119,7 @@ update key msg model =
 
                                 -- PATTERN
                                 , storedPattern = storedPattern
-                                , hoveredPoint = Nothing
+                                , hoveredObject = Nothing
 
                                 -- LEFT TOOLBAR
                                 , maybeDialog = Nothing
@@ -1374,8 +1374,8 @@ updateWithData key msg model =
                             )
 
         -- PATTERN
-        PointHovered newHoveredPoint ->
-            ( { model | hoveredPoint = newHoveredPoint }
+        ObjectHovered newHoveredObject ->
+            ( { model | hoveredObject = newHoveredObject }
             , Cmd.none
             )
 

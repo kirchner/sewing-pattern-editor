@@ -1062,8 +1062,8 @@ viewPatternHelp class pattern =
                     Pattern.draw
                         { preview = True
                         , zoom = zoom
-                        , pointHovered = always NoOp
-                        , hoveredPoint = Nothing
+                        , objectHovered = always NoOp
+                        , hoveredObject = Nothing
                         }
                 ]
         )
