@@ -2153,7 +2153,7 @@ viewOtherIntersectableForm pattern { otherIntersectable, id, label } =
                     }
                 , case otherIntersectable of
                     ReferencedIntersectableForm { dropdown, maybeAIntersectable, help } ->
-                        View.Input.dropdownAppended "base-point"
+                        View.Input.dropdownAppended (id ++ "__other-intersectable-object")
                             { lift = ReferencedIntersectableDropdownMsg
                             , entryToString = objectName
                             , entryToHash = Pattern.hash
