@@ -1888,6 +1888,7 @@ type alias Chains =
     }
 
 
+noChains : Chains
 noChains =
     { points = Set.empty
     , axes = Set.empty
@@ -1976,7 +1977,8 @@ collectPointsInPointInfo data pointName chains info =
             Debug.todo ""
 
 
-collectPointsInExpr data pointName pointsChain expr =
+collectPointsInExpr : PatternData -> String -> Chains -> String -> State Collection ()
+collectPointsInExpr data pointName chains expr =
     State.state ()
 
 

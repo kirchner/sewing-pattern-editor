@@ -149,8 +149,11 @@ type Dialog
 
 
 type Modal
-    = DetailDeleteConfirm (A Detail)
-    | PointDeleteConfirm (A Point)
+    = PointDeleteConfirm (A Point)
+    | AxisDeleteConfirm (A Axis)
+    | CircleDeleteConfirm (A Circle)
+    | CurveDeleteConfirm (A Curve)
+    | DetailDeleteConfirm (A Detail)
 
 
 type VariableDialog
@@ -267,35 +270,6 @@ view prefix model =
 viewModal : Pattern -> Modal -> Element Msg
 viewModal pattern modal =
     case modal of
-        DetailDeleteConfirm aDetail ->
-            View.Modal.small
-                { onCancelPress = ModalCancelPressed
-                , title = "Delete «" ++ objectName aDetail ++ "»?"
-                , content =
-                    Element.paragraph
-                        [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                        , Element.width Element.fill
-                        , Element.padding Design.small
-                        , Background.color Design.white
-                        ]
-                        [ Element.text "Do you want to remove the detail "
-                        , Element.el [ Font.bold ]
-                            (Element.text ("«" ++ objectName aDetail ++ "»"))
-                        , Element.text "?"
-                        ]
-                , actions =
-                    [ View.Input.btnDanger
-                        { onPress = Just DetailRemoveDialogDeleteClicked
-                        , label = "Delete detail"
-                        }
-                    , Element.el [ Element.alignRight ] <|
-                        View.Input.btnCancel
-                            { onPress = Just ModalCancelPressed
-                            , label = "Cancel"
-                            }
-                    ]
-                }
-
         PointDeleteConfirm aPoint ->
             let
                 dependentObjects =
@@ -383,6 +357,64 @@ viewModal pattern modal =
                             }
                     ]
                 }
+
+        AxisDeleteConfirm aAxis ->
+            viewDeleteModal
+                { name = objectName aAxis
+                , kind = "axis"
+                , onDeletePress = AxisDeleteModalDeletePressed
+                }
+
+        CircleDeleteConfirm aCircle ->
+            viewDeleteModal
+                { name = objectName aCircle
+                , kind = "circle"
+                , onDeletePress = CircleDeleteModalDeletePressed
+                }
+
+        CurveDeleteConfirm aCurve ->
+            viewDeleteModal
+                { name = objectName aCurve
+                , kind = "curve"
+                , onDeletePress = CurveDeleteModalDeletePressed
+                }
+
+        DetailDeleteConfirm aDetail ->
+            viewDeleteModal
+                { name = objectName aDetail
+                , kind = "detail"
+                , onDeletePress = DetailDeleteModalDeletePressed
+                }
+
+
+viewDeleteModal { name, kind, onDeletePress } =
+    View.Modal.small
+        { onCancelPress = ModalCancelPressed
+        , title = "Delete «" ++ name ++ "»?"
+        , content =
+            Element.paragraph
+                [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                , Element.width Element.fill
+                , Element.padding Design.small
+                , Background.color Design.white
+                ]
+                [ Element.text ("Do you want to remove the " ++ kind ++ " ")
+                , Element.el [ Font.bold ]
+                    (Element.text ("«" ++ name ++ "»"))
+                , Element.text "?"
+                ]
+        , actions =
+            [ View.Input.btnDanger
+                { onPress = Just onDeletePress
+                , label = "Delete " ++ kind
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just ModalCancelPressed
+                    , label = "Cancel"
+                    }
+            ]
+        }
 
 
 viewEditor prefix storedPattern model =
@@ -876,7 +908,7 @@ viewAxes pattern axesVisible =
                         }
                     , View.Table.columnActions
                         { onEditPress = Just << AxisEditPressed
-                        , onRemovePress = Just << AxisRemovePressed
+                        , onRemovePress = Just << AxisDeletePressed
                         }
                     ]
                 }
@@ -950,7 +982,7 @@ viewCurves pattern curvesVisible =
                         }
                     , View.Table.columnActions
                         { onEditPress = Just << CurveEditPressed
-                        , onRemovePress = Just << CurveRemovePressed
+                        , onRemovePress = Just << CurveDeletePressed
                         }
                     ]
                 }
@@ -975,7 +1007,7 @@ viewDetails pattern curvesVisible =
                         }
                     , View.Table.columnActions
                         { onEditPress = Just << DetailEditPressed
-                        , onRemovePress = Just << DetailRemovePressed
+                        , onRemovePress = Just << DetailDeletePressed
                         }
                     ]
                 }
@@ -1022,19 +1054,16 @@ type Msg
     | PointDeletePressed (A Point)
     | AxesRulerClicked
     | AxisEditPressed (A Axis)
-    | AxisRemovePressed (A Axis)
+    | AxisDeletePressed (A Axis)
     | CirclesRulerClicked
     | CircleEditPressed (A Circle)
-    | CircleRemovePressed (A Circle)
+    | CircleDeletePressed (A Circle)
     | CurvesRulerClicked
     | CurveEditPressed (A Curve)
-    | CurveRemovePressed (A Curve)
+    | CurveDeletePressed (A Curve)
     | DetailsRulerClicked
     | DetailEditPressed (A Detail)
-    | DetailRemovePressed (A Detail)
-      --
-    | DetailRemoveClicked (A Detail)
-    | DetailRemoveDialogDeleteClicked
+    | DetailDeletePressed (A Detail)
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
@@ -1042,6 +1071,10 @@ type Msg
     | VariableDialogCancelClicked
       -- MODALS
     | PointDeleteModalDeletePressed
+    | AxisDeleteModalDeletePressed
+    | CircleDeleteModalDeletePressed
+    | CurveDeleteModalDeletePressed
+    | DetailDeleteModalDeletePressed
     | ModalCancelPressed
 
 
@@ -1464,8 +1497,10 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        AxisRemovePressed aAxis ->
-            Debug.todo ""
+        AxisDeletePressed aAxis ->
+            ( { model | maybeModal = Just (AxisDeleteConfirm aAxis) }
+            , Cmd.none
+            )
 
         -- CIRCLES
         CirclesRulerClicked ->
@@ -1483,8 +1518,10 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        CircleRemovePressed aCircle ->
-            Debug.todo ""
+        CircleDeletePressed aCircle ->
+            ( { model | maybeModal = Just (CircleDeleteConfirm aCircle) }
+            , Cmd.none
+            )
 
         -- CURVES
         CurvesRulerClicked ->
@@ -1502,8 +1539,10 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        CurveRemovePressed aCurve ->
-            Debug.todo ""
+        CurveDeletePressed aCurve ->
+            ( { model | maybeModal = Just (CurveDeleteConfirm aCurve) }
+            , Cmd.none
+            )
 
         -- DETAILS
         DetailsRulerClicked ->
@@ -1521,18 +1560,15 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        DetailRemovePressed aDetail ->
-            Debug.todo ""
-
-        --
-        DetailRemoveClicked thatDetail ->
-            ( { model | maybeModal = Just (DetailDeleteConfirm thatDetail) }
+        DetailDeletePressed aDetail ->
+            ( { model | maybeModal = Just (DetailDeleteConfirm aDetail) }
             , Cmd.none
             )
 
-        DetailRemoveDialogDeleteClicked ->
+        -- MODALS
+        PointDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (DetailDeleteConfirm thatDetail) ->
+                Just (PointDeleteConfirm aPoint) ->
                     let
                         newPattern =
                             Debug.todo "implement"
@@ -1550,10 +1586,18 @@ updateWithData key msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        -- MODALS
-        PointDeleteModalDeletePressed ->
+        AxisDeleteModalDeletePressed ->
+            Debug.todo ""
+
+        CircleDeleteModalDeletePressed ->
+            Debug.todo ""
+
+        CurveDeleteModalDeletePressed ->
+            Debug.todo ""
+
+        DetailDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (PointDeleteConfirm aPoint) ->
+                Just (DetailDeleteConfirm thatDetail) ->
                     let
                         newPattern =
                             Debug.todo "implement"
