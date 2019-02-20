@@ -273,8 +273,7 @@ viewModal pattern modal =
         PointDeleteConfirm aPoint ->
             let
                 dependentObjects =
-                    Debug.log "dependentObjects" <|
-                        Pattern.objectsDependingOnPoint pattern aPoint
+                    Pattern.objectsDependingOnPoint pattern aPoint
 
                 viewDependentObjects =
                     [ Element.paragraph []
@@ -1571,7 +1570,7 @@ updateWithData key msg model =
                 Just (PointDeleteConfirm aPoint) ->
                     let
                         newPattern =
-                            Debug.todo "implement"
+                            Pattern.removePoint aPoint pattern
 
                         newStoredPattern =
                             { storedPattern | pattern = newPattern }
@@ -1587,20 +1586,71 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
         AxisDeleteModalDeletePressed ->
-            Debug.todo ""
+            case model.maybeModal of
+                Just (AxisDeleteConfirm aAxis) ->
+                    let
+                        newPattern =
+                            Pattern.removeAxis aAxis pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
+                    in
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         CircleDeleteModalDeletePressed ->
-            Debug.todo ""
+            case model.maybeModal of
+                Just (CircleDeleteConfirm aCircle) ->
+                    let
+                        newPattern =
+                            Pattern.removeCircle aCircle pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
+                    in
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         CurveDeleteModalDeletePressed ->
-            Debug.todo ""
+            case model.maybeModal of
+                Just (CurveDeleteConfirm aCurve) ->
+                    let
+                        newPattern =
+                            Pattern.removeCurve aCurve pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
+                    in
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         DetailDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (DetailDeleteConfirm thatDetail) ->
+                Just (DetailDeleteConfirm aDetail) ->
                     let
                         newPattern =
-                            Debug.todo "implement"
+                            Pattern.removeDetail aDetail pattern
 
                         newStoredPattern =
                             { storedPattern | pattern = newPattern }
@@ -1625,6 +1675,7 @@ updateWithData key msg model =
 ---- SUBSCRIPTIONS
 
 
+subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
         Loading ->

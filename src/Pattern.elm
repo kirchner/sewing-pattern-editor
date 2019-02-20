@@ -9,6 +9,7 @@ module Pattern exposing
     , insertTransformation
     , insertVariable
     , InsertHelp(..)
+    , removePoint, removeAxis, removeCircle, removeCurve, removeDetail
     , points, axes, circles, curves, details, transformations, variables
     , pointInfo, PointInfo(..)
     , axisInfo, AxisInfo(..)
@@ -67,6 +68,11 @@ module Pattern exposing
 @docs insertTransformation
 @docs insertVariable
 @docs InsertHelp
+
+
+# Remove
+
+@docs removePoint, removeAxis, removeCircle, removeCurve, removeDetail
 
 
 # Query
@@ -500,6 +506,65 @@ nameTaken name_ data =
         || Dict.member name_ data.details
         || Dict.member name_ data.transformations
         || Dict.member name_ data.variables
+
+
+
+---- REMOVE
+
+
+removePoint : A Point -> Pattern -> Pattern
+removePoint aPoint ((Pattern data) as pattern) =
+    case aPoint of
+        That name_ ->
+            let
+                dependingObjects =
+                    objectsDependingOnPoint pattern aPoint
+
+                newPoints =
+                    Dict.filter
+                        (\thisName _ ->
+                            dependingObjects.points
+                                |> List.filterMap name
+                                |> (::) name_
+                                |> List.member thisName
+                                |> not
+                        )
+                        data.points
+            in
+            newPoints
+                |> Dict.keys
+                |> List.map That
+                |> State.traverse point2d
+                |> State.finalState
+                    (Pattern
+                        { data
+                            | points = newPoints
+                            , point2ds = Dict.empty
+                        }
+                    )
+
+        This _ ->
+            pattern
+
+
+removeAxis : A Axis -> Pattern -> Pattern
+removeAxis aAxis ((Pattern data) as pattern) =
+    Debug.todo ""
+
+
+removeCircle : A Circle -> Pattern -> Pattern
+removeCircle aCircle ((Pattern data) as pattern) =
+    Debug.todo ""
+
+
+removeCurve : A Curve -> Pattern -> Pattern
+removeCurve aCurve ((Pattern data) as pattern) =
+    Debug.todo ""
+
+
+removeDetail : A Detail -> Pattern -> Pattern
+removeDetail aDetail ((Pattern data) as pattern) =
+    Debug.todo ""
 
 
 
