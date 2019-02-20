@@ -1504,36 +1504,3 @@ subscriptions model =
                                         (Decode.field "screenY" Decode.float)
                             ]
                 ]
-
-
-
----- DROPDOWN CONFIG
-
-
-dropdownUpdateConfig =
-    Dropdown.updateConfig Pattern.hash
-        { jumpAtEnds = True
-        , separateFocus = True
-        , selectionFollowsFocus = False
-        , handleHomeAndEnd = True
-        , closeAfterMouseSelection = True
-        , typeAhead = Listbox.noTypeAhead
-        , minimalGap = 0
-        , initialGap = 0
-        }
-
-
-
----- LISTBOX CONFIG
-
-
-listboxUpdateConfig =
-    Listbox.updateConfig Pattern.hash
-        { jumpAtEnds = True
-        , separateFocus = True
-        , selectionFollowsFocus = False
-        , handleHomeAndEnd = True
-        , typeAhead = Listbox.noTypeAhead
-        , minimalGap = 0
-        , initialGap = 0
-        }
