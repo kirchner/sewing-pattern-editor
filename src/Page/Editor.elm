@@ -150,6 +150,7 @@ type Dialog
 
 type Modal
     = DetailDeleteConfirm (A Detail)
+    | PointDeleteConfirm (A Point)
 
 
 type VariableDialog
@@ -268,7 +269,7 @@ viewModal pattern modal =
     case modal of
         DetailDeleteConfirm aDetail ->
             View.Modal.small
-                { onCancelPress = DetailRemoveDialogCancelClicked
+                { onCancelPress = ModalCancelPressed
                 , title = "Delete «" ++ objectName aDetail ++ "»?"
                 , content =
                     Element.paragraph
@@ -289,7 +290,95 @@ viewModal pattern modal =
                         }
                     , Element.el [ Element.alignRight ] <|
                         View.Input.btnCancel
-                            { onPress = Just DetailRemoveDialogCancelClicked
+                            { onPress = Just ModalCancelPressed
+                            , label = "Cancel"
+                            }
+                    ]
+                }
+
+        PointDeleteConfirm aPoint ->
+            let
+                dependentObjects =
+                    Debug.log "dependentObjects" <|
+                        Pattern.objectsDependingOnPoint pattern aPoint
+
+                viewDependentObjects =
+                    [ Element.paragraph []
+                        [ Element.el [ Font.bold ]
+                            (Element.text "Note:")
+                        , Element.text " The following objects depend on this point and will therefore be "
+                        , Element.el [ Font.bold ]
+                            (Element.text "removed, as well")
+                        , Element.text ":"
+                        ]
+                    , if List.isEmpty dependentObjects.points then
+                        Element.none
+
+                      else
+                        Element.paragraph
+                            [ Element.paddingEach
+                                { top = 0
+                                , bottom = 0
+                                , left = Design.small
+                                , right = 0
+                                }
+                            ]
+                            (List.concat
+                                [ [ Element.text "The points " ]
+                                , dependentObjects.points
+                                    |> List.map
+                                        (\aDependentPoint ->
+                                            Element.el [ Font.bold ] <|
+                                                Element.text
+                                                    ("«"
+                                                        ++ objectName aDependentPoint
+                                                        ++ "»"
+                                                    )
+                                        )
+                                    |> List.intersperse (Element.text ", ")
+                                , [ Element.text "." ]
+                                ]
+                            )
+                    ]
+            in
+            View.Modal.small
+                { onCancelPress = ModalCancelPressed
+                , title = "Delete «" ++ objectName aPoint ++ "»?"
+                , content =
+                    Element.column
+                        [ Element.spacing Design.small
+                        , Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                        , Element.width Element.fill
+                        , Element.padding Design.small
+                        , Background.color Design.white
+                        ]
+                        (Element.paragraph []
+                            [ Element.text "Do you want to remove the point "
+                            , Element.el [ Font.bold ]
+                                (Element.text ("«" ++ objectName aPoint ++ "»"))
+                            , Element.text "?"
+                            ]
+                            :: (if
+                                    List.isEmpty dependentObjects.points
+                                        && List.isEmpty dependentObjects.axes
+                                        && List.isEmpty dependentObjects.circles
+                                        && List.isEmpty dependentObjects.curves
+                                        && List.isEmpty dependentObjects.details
+                                then
+                                    []
+
+                                else
+                                    viewDependentObjects
+                               )
+                        )
+                , actions =
+                    [ View.Input.btnDanger
+                        { onPress = Just PointDeleteModalDeletePressed
+                        , label = "Delete point"
+                        }
+                    , Element.el [ Element.alignRight ] <|
+                        View.Input.btnCancel
+                            { onPress = Just ModalCancelPressed
                             , label = "Cancel"
                             }
                     ]
@@ -762,7 +851,7 @@ viewPoints pattern pointsVisible =
                         }
                     , View.Table.columnActions
                         { onEditPress = Just << PointEditPressed
-                        , onRemovePress = Just << PointRemovePressed
+                        , onRemovePress = Just << PointDeletePressed
                         }
                     ]
                 }
@@ -930,7 +1019,7 @@ type Msg
     | VariableCreateClicked
     | PointsRulerClicked
     | PointEditPressed (A Point)
-    | PointRemovePressed (A Point)
+    | PointDeletePressed (A Point)
     | AxesRulerClicked
     | AxisEditPressed (A Axis)
     | AxisRemovePressed (A Axis)
@@ -946,12 +1035,14 @@ type Msg
       --
     | DetailRemoveClicked (A Detail)
     | DetailRemoveDialogDeleteClicked
-    | DetailRemoveDialogCancelClicked
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
     | VariableCreateSubmitClicked
     | VariableDialogCancelClicked
+      -- MODALS
+    | PointDeleteModalDeletePressed
+    | ModalCancelPressed
 
 
 update :
@@ -1352,8 +1443,10 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        PointRemovePressed aPoint ->
-            Debug.todo ""
+        PointDeletePressed aPoint ->
+            ( { model | maybeModal = Just (PointDeleteConfirm aPoint) }
+            , Cmd.none
+            )
 
         -- AXES
         AxesRulerClicked ->
@@ -1439,9 +1532,6 @@ updateWithData key msg model =
 
         DetailRemoveDialogDeleteClicked ->
             case model.maybeModal of
-                Nothing ->
-                    ( model, Cmd.none )
-
                 Just (DetailDeleteConfirm thatDetail) ->
                     let
                         newPattern =
@@ -1457,7 +1547,31 @@ updateWithData key msg model =
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
                     )
 
-        DetailRemoveDialogCancelClicked ->
+                _ ->
+                    ( model, Cmd.none )
+
+        -- MODALS
+        PointDeleteModalDeletePressed ->
+            case model.maybeModal of
+                Just (PointDeleteConfirm aPoint) ->
+                    let
+                        newPattern =
+                            Debug.todo "implement"
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
+                    in
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ModalCancelPressed ->
             ( { model | maybeModal = Nothing }
             , Cmd.none
             )

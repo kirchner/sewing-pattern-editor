@@ -24,6 +24,7 @@ module Pattern exposing
     , Detail2d, NextCurve2d(..), LastCurve2d(..)
     , Intersectable2d(..)
     , ComputeHelp(..)
+    , objectsDependingOnPoint
     , origin
     , fromOnePoint, FromOnePointHelp
     , betweenRatio, BetweenRatioHelp
@@ -101,6 +102,11 @@ module Pattern exposing
 @docs Intersectable2d
 
 @docs ComputeHelp
+
+
+# Dependencies
+
+@docs objectsDependingOnPoint
 
 
 # Construct
@@ -187,6 +193,7 @@ import Parser exposing (DeadEnd)
 import Point2d exposing (Point2d)
 import Point2d.Extra as Point2d
 import QuadraticSpline2d exposing (QuadraticSpline2d)
+import Set exposing (Set)
 import State exposing (State)
 import StateResult
 import Vector2d
@@ -1817,6 +1824,160 @@ type ComputeHelp
     | AxisAndCircleDoNotIntersect
     | WhichMustBeBetween Int Int
     | ExprHelp ExprHelp
+
+
+
+---- DEPENDENCIES
+
+
+type alias Objects =
+    { points : List (A Point)
+    , axes : List (A Point)
+    , circles : List (A Circle)
+    , curves : List (A Curve)
+    , details : List (A Detail)
+    }
+
+
+objectsDependingOnPoint : Pattern -> A Point -> Objects
+objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
+    let
+        noObjects =
+            { points = []
+            , axes = []
+            , circles = []
+            , curves = []
+            , details = []
+            }
+    in
+    case name aPoint of
+        Nothing ->
+            noObjects
+
+        Just name_ ->
+            { points =
+                pattern
+                    |> points
+                    |> State.traverse (collectPointsInPoint data name_ noChains)
+                    |> State.finalState
+                        { checkedPoints = Set.empty
+                        , dependentPoints = Set.empty
+                        }
+                    |> .dependentPoints
+                    |> Set.toList
+                    |> List.map That
+            , axes = []
+            , circles = []
+            , curves = []
+            , details = []
+            }
+
+
+type alias Collection =
+    { checkedPoints : Set String
+    , dependentPoints : Set String
+    }
+
+
+type alias Chains =
+    { points : Set String
+    , axes : Set String
+    , circles : Set String
+    , curves : Set String
+    , details : Set String
+    }
+
+
+noChains =
+    { points = Set.empty
+    , axes = Set.empty
+    , circles = Set.empty
+    , curves = Set.empty
+    , details = Set.empty
+    }
+
+
+collectPointsInPoint : PatternData -> String -> Chains -> A Point -> State Collection ()
+collectPointsInPoint data pointName chains aPoint =
+    case aPoint of
+        That name_ ->
+            let
+                safeChainAsDependent state =
+                    { state
+                        | dependentPoints = Set.union chains.points state.dependentPoints
+                    }
+
+                addAsChecked state =
+                    { state
+                        | checkedPoints = Set.insert name_ state.checkedPoints
+                    }
+            in
+            if name_ == pointName then
+                State.modify safeChainAsDependent
+
+            else
+                State.get
+                    |> State.andThen
+                        (\state ->
+                            if Set.member name_ state.checkedPoints then
+                                State.state ()
+
+                            else
+                                case Dict.get name_ data.points of
+                                    Nothing ->
+                                        State.modify addAsChecked
+
+                                    Just (Point info) ->
+                                        collectPointsInPointInfo data
+                                            pointName
+                                            { chains
+                                                | points = Set.insert name_ chains.points
+                                            }
+                                            info
+                        )
+
+        This (Point info) ->
+            collectPointsInPointInfo data pointName chains info
+
+
+collectPointsInPointInfo :
+    PatternData
+    -> String
+    -> Chains
+    -> PointInfo
+    -> State Collection ()
+collectPointsInPointInfo data pointName chains info =
+    let
+        and func =
+            State.andThen (\_ -> func)
+    in
+    case info of
+        Origin _ ->
+            State.state ()
+
+        FromOnePoint stuff ->
+            collectPointsInPoint data pointName chains stuff.basePoint
+                |> and (collectPointsInExpr data pointName chains stuff.distance)
+
+        BetweenRatio stuff ->
+            collectPointsInPoint data pointName chains stuff.basePointA
+                |> and (collectPointsInPoint data pointName chains stuff.basePointB)
+                |> and (collectPointsInExpr data pointName chains stuff.ratio)
+
+        BetweenLength stuff ->
+            collectPointsInPoint data pointName chains stuff.basePointA
+                |> and (collectPointsInPoint data pointName chains stuff.basePointB)
+                |> and (collectPointsInExpr data pointName chains stuff.distance)
+
+        Intersection stuff ->
+            Debug.todo ""
+
+        TransformedPoint stuff ->
+            Debug.todo ""
+
+
+collectPointsInExpr data pointName pointsChain expr =
+    State.state ()
 
 
 
