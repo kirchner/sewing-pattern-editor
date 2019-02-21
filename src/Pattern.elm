@@ -330,7 +330,7 @@ hash aObject =
             n
 
         This _ ->
-            Debug.todo "implement"
+            "do-we-even-need-this"
 
 
 intersectableAxis : A Axis -> A Intersectable
