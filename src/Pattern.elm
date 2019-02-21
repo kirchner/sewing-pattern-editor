@@ -1153,7 +1153,7 @@ computePoint2d (Point info) =
                                 |> Result.fromMaybe AxisAndCircleDoNotIntersect
 
                         ( Axis2d axis, Curve2d curve ) ->
-                            Debug.todo "implement"
+                            Err NotComputableYet
 
                         ( Circle2d circle, Axis2d axis ) ->
                             Point2d.firstCircleAxis circle axis
@@ -1173,16 +1173,16 @@ computePoint2d (Point info) =
                                     Err (WhichMustBeBetween 0 1)
 
                         ( Circle2d circle, Curve2d curve ) ->
-                            Debug.todo "implement"
+                            Err NotComputableYet
 
                         ( Curve2d curve, Axis2d axis ) ->
-                            Debug.todo "implement"
+                            Err NotComputableYet
 
                         ( Curve2d curve, Circle2d circle ) ->
-                            Debug.todo "implement"
+                            Err NotComputableYet
 
                         ( Curve2d curveA, Curve2d curveB ) ->
-                            Debug.todo "implement"
+                            Err NotComputableYet
             in
             StateResult.ok toPoint2d
                 |> StateResult.with (intersectable2d stuff.objectA)
@@ -2430,7 +2430,7 @@ whichSize intersectableTagA intersectableTagB =
             2
 
         _ ->
-            Debug.todo "implement"
+            1
 
 
 type alias IntersectionHelp =
