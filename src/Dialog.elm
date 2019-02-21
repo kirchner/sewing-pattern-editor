@@ -3043,10 +3043,10 @@ createUpdate pattern msg ((Create stuff) as create) =
                                             )
 
                                     BadObject _ ->
-                                        Debug.todo "implement"
+                                        CreateOpen ( Create stuff, Cmd.none )
 
                                     NotImplementedYet ->
-                                        Debug.todo "implement"
+                                        CreateOpen ( Create stuff, Cmd.none )
 
                             Ok newPattern ->
                                 CreateSucceeded newPattern

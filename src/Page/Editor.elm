@@ -1440,7 +1440,7 @@ updateWithData key msg model =
                             )
 
                         Err _ ->
-                            Debug.todo ""
+                            ( model, Cmd.none )
 
                         Ok newPattern ->
                             let
