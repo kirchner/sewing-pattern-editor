@@ -3045,6 +3045,9 @@ createUpdate pattern msg ((Create stuff) as create) =
                                     BadObject _ ->
                                         Debug.todo "implement"
 
+                                    NotImplementedYet ->
+                                        Debug.todo "implement"
+
                             Ok newPattern ->
                                 CreateSucceeded newPattern
             in

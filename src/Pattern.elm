@@ -469,7 +469,7 @@ insertDetail name_ detail_ ((Pattern data) as pattern) =
 
 insertTransformation : String -> Transformation -> Pattern -> Result InsertHelp Pattern
 insertTransformation n transformation pattern =
-    Debug.todo "implement"
+    Err NotImplementedYet
 
 
 insertVariable : String -> String -> Pattern -> Result InsertHelp Pattern
@@ -495,6 +495,7 @@ insertVariable name_ expr ((Pattern data) as pattern) =
 type InsertHelp
     = NameTaken
     | BadObject ComputeHelp
+    | NotImplementedYet
 
 
 nameTaken : String -> PatternData -> Bool
@@ -1021,7 +1022,7 @@ type alias RotateAroundStuff =
 
 transformedObjects : A Transformation -> Pattern -> Maybe TransformedObjects
 transformedObjects aTransformation pattern =
-    Debug.todo "implement"
+    Nothing
 
 
 type alias TransformedObjects =
@@ -1189,7 +1190,7 @@ computePoint2d (Point info) =
                 |> StateResult.join
 
         TransformedPoint stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 type Intersectable2d
@@ -1345,7 +1346,7 @@ computeAxis2d (Axis info) =
                 |> StateResult.join
 
         TransformedAxis stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 circle2d : A Circle -> State Pattern (Result ComputeHelp Circle2d)
@@ -1405,7 +1406,7 @@ computeCircle2d (Circle info) =
                 |> StateResult.join
 
         TransformedCircle stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 type Curve2d
@@ -1495,7 +1496,7 @@ computeCurve2d (Curve info) =
                 |> StateResult.with (point2d stuff.endPoint)
 
         TransformedCurve stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 type alias Detail2d =
@@ -1976,6 +1977,7 @@ type ComputeHelp
     | AxisAndCircleDoNotIntersect
     | WhichMustBeBetween Int Int
     | ExprHelp ExprHelp
+    | NotComputableYet
 
 
 
@@ -2437,9 +2439,9 @@ type alias IntersectionHelp =
     }
 
 
-transformedPoint : A Point -> A Transformation -> Pattern -> Point
+transformedPoint : A Point -> A Transformation -> Pattern -> Result () Point
 transformedPoint aPoint aTransformation pattern =
-    Debug.todo "implement"
+    Err ()
 
 
 throughOnePoint : A Point -> Orientation -> Pattern -> Result ThroughOnePointHelp Axis
@@ -2480,9 +2482,9 @@ type alias ThroughTwoPointsHelp =
     }
 
 
-transformedAxis : A Axis -> A Transformation -> Pattern -> Axis
+transformedAxis : A Axis -> A Transformation -> Pattern -> Result () Axis
 transformedAxis aAxis aTransformation pattern =
-    Debug.todo "implement"
+    Err ()
 
 
 withRadius : String -> A Point -> Pattern -> Result WithRadiusHelp Circle
@@ -2533,9 +2535,9 @@ type alias ThroughThreePointsHelp =
     }
 
 
-transformedCircle : A Circle -> A Transformation -> Pattern -> Circle
+transformedCircle : A Circle -> A Transformation -> Pattern -> Result () Circle
 transformedCircle aCircle aTransformation pattern =
-    Debug.todo "implement"
+    Err ()
 
 
 straight : A Point -> A Point -> Pattern -> Result StraightHelp Curve
@@ -2598,9 +2600,9 @@ type alias CubicHelp =
     }
 
 
-transformedCurve : A Curve -> A Transformation -> Pattern -> Curve
+transformedCurve : A Curve -> A Transformation -> Pattern -> Result () Curve
 transformedCurve aCurve aTransformation pattern =
-    Debug.todo "implement"
+    Err ()
 
 
 detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern -> Result DetailHelp Detail
