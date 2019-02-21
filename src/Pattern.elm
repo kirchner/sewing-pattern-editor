@@ -1583,7 +1583,7 @@ computeDetail2d (Detail info) =
                     point2d stuff.startPoint
 
                 FirstReferencedCurve stuff ->
-                    Debug.todo "implement"
+                    StateResult.err NotComputableYet
             )
         |> StateResult.with
             (StateResult.ok (::)
@@ -1617,7 +1617,7 @@ computeDetail2d (Detail info) =
                         |> StateResult.with (point2d stuff.endControlPoint)
 
                 LastReferencedCurve stuff ->
-                    Debug.todo "implement"
+                    StateResult.err NotComputableYet
             )
 
 
@@ -1660,7 +1660,7 @@ secondCurve2d firstCurve =
                 |> StateResult.with (point2d stuff.endPoint)
 
         FirstReferencedCurve stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 nextCurve2d : NextCurve -> State Pattern (Result ComputeHelp NextCurve2d)
@@ -1702,7 +1702,7 @@ nextCurve2d nextCurve =
                 |> StateResult.with (point2d stuff.endPoint)
 
         NextReferencedCurve stuff ->
-            Debug.todo "implement"
+            StateResult.err NotComputableYet
 
 
 float : String -> State Pattern (Result ComputeHelp Float)
