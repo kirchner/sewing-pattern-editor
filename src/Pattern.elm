@@ -513,58 +513,145 @@ nameTaken name_ data =
 
 
 removePoint : A Point -> Pattern -> Pattern
-removePoint aPoint ((Pattern data) as pattern) =
+removePoint aPoint pattern =
     case aPoint of
         That name_ ->
             let
-                dependingObjects =
-                    objectsDependingOnPoint pattern aPoint
-
-                newPoints =
-                    Dict.filter
-                        (\thisName _ ->
-                            dependingObjects.points
-                                |> List.filterMap name
-                                |> (::) name_
-                                |> List.member thisName
-                                |> not
-                        )
-                        data.points
+                (Pattern data) =
+                    removeObjects (objectsDependingOnPoint pattern aPoint) pattern
             in
-            newPoints
-                |> Dict.keys
-                |> List.map That
-                |> State.traverse point2d
-                |> State.finalState
-                    (Pattern
-                        { data
-                            | points = newPoints
-                            , point2ds = Dict.empty
-                        }
-                    )
+            regenerateCaches <|
+                Pattern
+                    { data
+                        | points = Dict.remove name_ data.points
+                        , point2ds = Dict.empty
+                    }
 
         This _ ->
             pattern
 
 
 removeAxis : A Axis -> Pattern -> Pattern
-removeAxis aAxis ((Pattern data) as pattern) =
-    Debug.todo ""
+removeAxis aAxis pattern =
+    case aAxis of
+        That name_ ->
+            let
+                (Pattern data) =
+                    removeObjects (objectsDependingOnAxis pattern aAxis) pattern
+            in
+            regenerateCaches <|
+                Pattern
+                    { data
+                        | axes = Dict.remove name_ data.axes
+                        , axis2ds = Dict.empty
+                    }
+
+        This _ ->
+            pattern
 
 
 removeCircle : A Circle -> Pattern -> Pattern
-removeCircle aCircle ((Pattern data) as pattern) =
-    Debug.todo ""
+removeCircle aCircle pattern =
+    case aCircle of
+        That name_ ->
+            let
+                (Pattern data) =
+                    removeObjects (objectsDependingOnCircle pattern aCircle) pattern
+            in
+            regenerateCaches <|
+                Pattern
+                    { data
+                        | circles = Dict.remove name_ data.circles
+                        , circle2ds = Dict.empty
+                    }
+
+        This _ ->
+            pattern
 
 
 removeCurve : A Curve -> Pattern -> Pattern
-removeCurve aCurve ((Pattern data) as pattern) =
-    Debug.todo ""
+removeCurve aCurve pattern =
+    case aCurve of
+        That name_ ->
+            let
+                (Pattern data) =
+                    removeObjects (objectsDependingOnCurve pattern aCurve) pattern
+            in
+            regenerateCaches <|
+                Pattern
+                    { data
+                        | curves = Dict.remove name_ data.curves
+                        , curve2ds = Dict.empty
+                    }
+
+        This _ ->
+            pattern
 
 
 removeDetail : A Detail -> Pattern -> Pattern
-removeDetail aDetail ((Pattern data) as pattern) =
-    Debug.todo ""
+removeDetail aDetail pattern =
+    case aDetail of
+        That name_ ->
+            let
+                (Pattern data) =
+                    removeObjects (objectsDependingOnDetail pattern aDetail) pattern
+            in
+            regenerateCaches <|
+                Pattern
+                    { data
+                        | details = Dict.remove name_ data.details
+                        , detail2ds = Dict.empty
+                    }
+
+        This _ ->
+            pattern
+
+
+removeObjects : Objects -> Pattern -> Pattern
+removeObjects objects (Pattern data) =
+    Pattern
+        { data
+            | points =
+                Dict.filter
+                    (\thisName _ ->
+                        objects.points
+                            |> List.filterMap name
+                            |> List.member thisName
+                            |> not
+                    )
+                    data.points
+            , point2ds = Dict.empty
+        }
+
+
+regenerateCaches : Pattern -> Pattern
+regenerateCaches ((Pattern data) as pattern) =
+    State.finalState
+        (Pattern
+            { data
+                | point2ds = Dict.empty
+                , axis2ds = Dict.empty
+                , circle2ds = Dict.empty
+                , curve2ds = Dict.empty
+                , detail2ds = Dict.empty
+                , variablesCache = Dict.empty
+            }
+        )
+        (State.combine <|
+            [ State.traverse point2d (points pattern)
+                |> State.map (always ())
+            , State.traverse axis2d (axes pattern)
+                |> State.map (always ())
+            , State.traverse circle2d (circles pattern)
+                |> State.map (always ())
+            , State.traverse curve2d (curves pattern)
+                |> State.map (always ())
+            , State.traverse detail2d (details pattern)
+                |> State.map (always ())
+            , State.traverse float (variables pattern)
+                |> State.map (always ())
+            ]
+        )
 
 
 
@@ -1904,43 +1991,122 @@ type alias Objects =
     }
 
 
+noObjects : Objects
+noObjects =
+    { points = []
+    , axes = []
+    , circles = []
+    , curves = []
+    , details = []
+    }
+
+
 objectsDependingOnPoint : Pattern -> A Point -> Objects
 objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
-    let
-        noObjects =
-            { points = []
-            , axes = []
-            , circles = []
-            , curves = []
-            , details = []
-            }
-    in
     case name aPoint of
         Nothing ->
             noObjects
 
         Just name_ ->
-            { points =
-                pattern
-                    |> points
-                    |> State.traverse (collectPointsInPoint data name_ noChains)
-                    |> State.finalState
-                        { checkedPoints = Set.empty
-                        , dependentPoints = Set.empty
-                        }
-                    |> .dependentPoints
-                    |> Set.toList
-                    |> List.map That
-            , axes = []
-            , circles = []
-            , curves = []
-            , details = []
-            }
+            pattern
+                |> points
+                |> State.traverse (collectObjectsDependingOnPoint data name_ noChains)
+                |> State.finalState emptyCollection
+                |> objectsFromCollection
+
+
+objectsDependingOnAxis : Pattern -> A Axis -> Objects
+objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
+    case name aAxis of
+        Nothing ->
+            noObjects
+
+        Just name_ ->
+            pattern
+                |> axes
+                |> State.traverse (collectObjectsDependingOnAxis data name_ noChains)
+                |> State.finalState emptyCollection
+                |> objectsFromCollection
+
+
+objectsDependingOnCircle : Pattern -> A Circle -> Objects
+objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
+    case name aCircle of
+        Nothing ->
+            noObjects
+
+        Just name_ ->
+            pattern
+                |> circles
+                |> State.traverse (collectObjectsDependingOnCircle data name_ noChains)
+                |> State.finalState emptyCollection
+                |> objectsFromCollection
+
+
+objectsDependingOnCurve : Pattern -> A Curve -> Objects
+objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
+    case name aCurve of
+        Nothing ->
+            noObjects
+
+        Just name_ ->
+            pattern
+                |> curves
+                |> State.traverse (collectObjectsDependingOnCurve data name_ noChains)
+                |> State.finalState emptyCollection
+                |> objectsFromCollection
+
+
+objectsDependingOnDetail : Pattern -> A Detail -> Objects
+objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
+    case name aDetail of
+        Nothing ->
+            noObjects
+
+        Just name_ ->
+            pattern
+                |> details
+                |> State.traverse (collectObjectsDependingOnDetail data name_ noChains)
+                |> State.finalState emptyCollection
+                |> objectsFromCollection
 
 
 type alias Collection =
     { checkedPoints : Set String
-    , dependentPoints : Set String
+    , checkedAxes : Set String
+    , checkedCircles : Set String
+    , checkedCurves : Set String
+    , checkedDetails : Set String
+    , dependingPoints : Set String
+    , dependingAxes : Set String
+    , dependingCircles : Set String
+    , dependingCurves : Set String
+    , dependingDetails : Set String
+    }
+
+
+emptyCollection : Collection
+emptyCollection =
+    { checkedPoints = Set.empty
+    , checkedAxes = Set.empty
+    , checkedCircles = Set.empty
+    , checkedCurves = Set.empty
+    , checkedDetails = Set.empty
+    , dependingPoints = Set.empty
+    , dependingAxes = Set.empty
+    , dependingCircles = Set.empty
+    , dependingCurves = Set.empty
+    , dependingDetails = Set.empty
+    }
+
+
+objectsFromCollection : Collection -> Objects
+objectsFromCollection collection =
+    { points = List.map That (Set.toList collection.dependingPoints)
+    , axes = List.map That (Set.toList collection.dependingAxes)
+    , circles = List.map That (Set.toList collection.dependingCircles)
+    , curves = List.map That (Set.toList collection.dependingCurves)
+    , details = List.map That (Set.toList collection.dependingDetails)
     }
 
 
@@ -1963,14 +2129,19 @@ noChains =
     }
 
 
-collectPointsInPoint : PatternData -> String -> Chains -> A Point -> State Collection ()
-collectPointsInPoint data pointName chains aPoint =
+collectObjectsDependingOnPoint :
+    PatternData
+    -> String
+    -> Chains
+    -> A Point
+    -> State Collection ()
+collectObjectsDependingOnPoint data pointName chains aPoint =
     case aPoint of
         That name_ ->
             let
                 safeChainAsDependent state =
                     { state
-                        | dependentPoints = Set.union chains.points state.dependentPoints
+                        | dependingPoints = Set.union chains.points state.dependingPoints
                     }
 
                 addAsChecked state =
@@ -1994,7 +2165,7 @@ collectPointsInPoint data pointName chains aPoint =
                                         State.modify addAsChecked
 
                                     Just (Point info) ->
-                                        collectPointsInPointInfo data
+                                        collectObjectsDependingOnPointInfo data
                                             pointName
                                             { chains
                                                 | points = Set.insert name_ chains.points
@@ -2003,16 +2174,56 @@ collectPointsInPoint data pointName chains aPoint =
                         )
 
         This (Point info) ->
-            collectPointsInPointInfo data pointName chains info
+            collectObjectsDependingOnPointInfo data pointName chains info
 
 
-collectPointsInPointInfo :
+collectObjectsDependingOnAxis :
+    PatternData
+    -> String
+    -> Chains
+    -> A Axis
+    -> State Collection ()
+collectObjectsDependingOnAxis data pointName chains aAxis =
+    State.state ()
+
+
+collectObjectsDependingOnCircle :
+    PatternData
+    -> String
+    -> Chains
+    -> A Circle
+    -> State Collection ()
+collectObjectsDependingOnCircle data pointName chains aCircle =
+    State.state ()
+
+
+collectObjectsDependingOnCurve :
+    PatternData
+    -> String
+    -> Chains
+    -> A Curve
+    -> State Collection ()
+collectObjectsDependingOnCurve data pointName chains aCurve =
+    State.state ()
+
+
+collectObjectsDependingOnDetail :
+    PatternData
+    -> String
+    -> Chains
+    -> A Detail
+    -> State Collection ()
+collectObjectsDependingOnDetail data pointName chains aDetail =
+    State.state ()
+
+
+collectObjectsDependingOnPointInfo :
     PatternData
     -> String
     -> Chains
     -> PointInfo
     -> State Collection ()
-collectPointsInPointInfo data pointName chains info =
+collectObjectsDependingOnPointInfo data pointName chains info =
     let
         and func =
             State.andThen (\_ -> func)
@@ -2022,28 +2233,28 @@ collectPointsInPointInfo data pointName chains info =
             State.state ()
 
         FromOnePoint stuff ->
-            collectPointsInPoint data pointName chains stuff.basePoint
-                |> and (collectPointsInExpr data pointName chains stuff.distance)
+            collectObjectsDependingOnPoint data pointName chains stuff.basePoint
+                |> and (collectObjectsDependingOnExpr data pointName chains stuff.distance)
 
         BetweenRatio stuff ->
-            collectPointsInPoint data pointName chains stuff.basePointA
-                |> and (collectPointsInPoint data pointName chains stuff.basePointB)
-                |> and (collectPointsInExpr data pointName chains stuff.ratio)
+            collectObjectsDependingOnPoint data pointName chains stuff.basePointA
+                |> and (collectObjectsDependingOnPoint data pointName chains stuff.basePointB)
+                |> and (collectObjectsDependingOnExpr data pointName chains stuff.ratio)
 
         BetweenLength stuff ->
-            collectPointsInPoint data pointName chains stuff.basePointA
-                |> and (collectPointsInPoint data pointName chains stuff.basePointB)
-                |> and (collectPointsInExpr data pointName chains stuff.distance)
+            collectObjectsDependingOnPoint data pointName chains stuff.basePointA
+                |> and (collectObjectsDependingOnPoint data pointName chains stuff.basePointB)
+                |> and (collectObjectsDependingOnExpr data pointName chains stuff.distance)
 
         Intersection stuff ->
-            Debug.todo ""
+            State.state ()
 
         TransformedPoint stuff ->
-            Debug.todo ""
+            State.state ()
 
 
-collectPointsInExpr : PatternData -> String -> Chains -> String -> State Collection ()
-collectPointsInExpr data pointName chains expr =
+collectObjectsDependingOnExpr : PatternData -> String -> Chains -> String -> State Collection ()
+collectObjectsDependingOnExpr data pointName chains expr =
     State.state ()
 
 
