@@ -506,7 +506,7 @@ initPointFormWith pattern aPoint =
         Just info ->
             case info of
                 Origin stuff ->
-                    Debug.todo "get point data from pattern"
+                    Nothing
 
                 FromOnePoint stuff ->
                     let
@@ -566,28 +566,22 @@ initPointFormWith pattern aPoint =
                         (initOtherPointFormWith pattern stuff.basePointB)
 
                 Intersection stuff ->
-                    Debug.todo "get point data from pattern"
+                    Nothing
 
                 TransformedPoint stuff ->
-                    Debug.todo "get point data from pattern"
+                    Nothing
 
 
 {-| -}
 editAxis : Pattern -> A Pattern.Axis -> Maybe Edit
 editAxis pattern thatAxis =
-    Just <|
-        Edit <|
-            DialogAxis <|
-                Debug.todo "get axis data from pattern"
+    Nothing
 
 
 {-| -}
 editCircle : Pattern -> A Pattern.Circle -> Maybe Edit
 editCircle pattern thatCircle =
-    Just <|
-        Edit <|
-            DialogCircle <|
-                Debug.todo "get circle data from pattern"
+    Nothing
 
 
 {-| -}
@@ -650,16 +644,13 @@ initCurveFormWith pattern aCurve =
                         (initOtherPointFormWith pattern stuff.endPoint)
 
                 TransformedCurve stuff ->
-                    Debug.todo ""
+                    Nothing
 
 
 {-| -}
 editDetail : Pattern -> A Pattern.Detail -> Maybe Edit
 editDetail pattern thatDetail =
-    Just <|
-        Edit <|
-            DialogDetail <|
-                Debug.todo "get detail data from pattern"
+    Nothing
 
 
 initOtherPointFormWith : Pattern -> A Point -> Maybe OtherPointForm
@@ -3083,7 +3074,7 @@ createUpdate pattern msg ((Create stuff) as create) =
                         |> Result.resolve
 
         CreatePreviewPressed ->
-            Debug.todo "implement"
+            CreateOpen ( create, Cmd.none )
 
         CreateCancelPressed ->
             CreateCanceled
@@ -3840,7 +3831,7 @@ updateDetailForm pattern detailMsg detail =
                     ( detail, Cmd.none )
 
         FirstCurveActionMenuMsg actionMenuMsg ->
-            Debug.todo "implement"
+            ( detail, Cmd.none )
 
         -- NEXT CURVE
         NextCurveTypeChanged index nextCurveTag ->
@@ -4054,7 +4045,7 @@ updateDetailForm pattern detailMsg detail =
                     ( detail, Cmd.none )
 
         NextCurveActionMenuMsg index actionMenuMsg ->
-            Debug.todo "implement"
+            ( detail, Cmd.none )
 
         -- LAST CURVE
         LastCurveTypeChanged lastCurveTag ->
@@ -4156,7 +4147,7 @@ updateDetailForm pattern detailMsg detail =
                     ( detail, Cmd.none )
 
         LastCurveActionMenuMsg actionMenuMsg ->
-            Debug.todo "implement"
+            ( detail, Cmd.none )
 
 
 updateReferencedPoint :
@@ -5053,7 +5044,7 @@ newFirstCurveFrom form pattern =
             Result.mapError FirstCubicForm getStartPoint
 
         FirstReferencedCurveForm stuff ->
-            Debug.todo ""
+            Err form
 
 
 newNextCurveFrom : NextCurveForm -> Pattern -> Result NextCurveForm NextCurve
@@ -5148,7 +5139,7 @@ newNextCurveFrom form pattern =
             Result.mapError NextCubicForm getStartControlPoint
 
         NextReferencedCurveForm stuff ->
-            Debug.todo ""
+            Err form
 
 
 checkNextCurve : Pattern -> NextCurveForm -> NextCurveForm
@@ -5174,7 +5165,7 @@ checkNextCurve pattern form =
                 }
 
         NextReferencedCurveForm stuff ->
-            Debug.todo ""
+            form
 
 
 newLastCurveFrom : LastCurveForm -> Pattern -> Result LastCurveForm LastCurve
@@ -5229,7 +5220,7 @@ newLastCurveFrom form pattern =
             Result.mapError LastCubicForm getStartControlPoint
 
         LastReferencedCurveForm stuff ->
-            Debug.todo ""
+            Err form
 
 
 checkLastCurve : Pattern -> LastCurveForm -> LastCurveForm
@@ -5250,7 +5241,7 @@ checkLastCurve pattern form =
                 }
 
         LastReferencedCurveForm stuff ->
-            Debug.todo ""
+            form
 
 
 newOtherPointFrom : OtherPointForm -> Pattern -> Result OtherPointForm (A Point)
@@ -5749,10 +5740,10 @@ editUpdate : Pattern -> EditMsg -> Edit -> EditResult
 editUpdate pattern msg ((Edit dialog) as edit) =
     case msg of
         UpdatePressed ->
-            Debug.todo "implement"
+            EditOpen ( edit, Cmd.none )
 
         EditPreviewPressed ->
-            Debug.todo "implement"
+            EditOpen ( edit, Cmd.none )
 
         EditCancelPressed ->
             EditCanceled

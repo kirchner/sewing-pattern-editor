@@ -403,7 +403,7 @@ update prefix key msg model =
                                         --            }
                                         --        )
                                         --    |> Result.fromMaybe "This is not a valid Seamly2D file."
-                                        Debug.todo "implement"
+                                        Err "not implemented"
                             }
                     in
                     ( { model
