@@ -381,29 +381,20 @@ drawPoint :
     -> A Point
     -> State Pattern (Svg msg)
 drawPoint preview center zoom aPoint =
-    let
-        selected =
-            False
-
-        _ =
-            \_ ->
-                Debug.todo "implement selected"
-    in
     Pattern.point2d aPoint
         |> StateResult.map
             (Point2d.scaleAbout center zoom
-                >> drawPointHelp preview selected aPoint
+                >> drawPointHelp preview aPoint
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
 drawPointHelp :
     Bool
-    -> Bool
     -> A Point
     -> Point2d
     -> Svg msg
-drawPointHelp preview selected aPoint point2d =
+drawPointHelp preview aPoint point2d =
     let
         pointRadius =
             if preview then
@@ -429,30 +420,12 @@ drawPointHelp preview selected aPoint point2d =
                     , Svg.Attributes.dy (String.fromFloat -10)
                     , Svg.Attributes.textAnchor "middle"
                     , fontNormal
-                    , Svg.Attributes.fill <|
-                        if selected then
-                            "green"
-
-                        else
-                            "black"
+                    , Svg.Attributes.fill "black"
                     ]
                     [ Svg.text name ]
     in
     Svg.g []
-        [ if selected then
-            Svg.g
-                []
-                [ Svg.circle2d
-                    [ stroke Green
-                    , Svg.Attributes.fill "none"
-                    , strokeWidthBold
-                    ]
-                    (Circle2d.withRadius 10 point2d)
-                ]
-
-          else
-            Svg.text ""
-        , Svg.circle2d
+        [ Svg.circle2d
             [ Svg.Attributes.fill "none"
             , stroke Black
             , if preview then
@@ -470,42 +443,26 @@ drawPointHelp preview selected aPoint point2d =
 
 drawAxis : Bool -> Point2d -> Float -> A Axis -> State Pattern (Svg msg)
 drawAxis preview center zoom aAxis =
-    let
-        selected =
-            False
-
-        _ =
-            \_ ->
-                Debug.todo "implement selected"
-    in
     Pattern.axis2d aAxis
         |> StateResult.map
             (Axis2d.scaleAbout center zoom
-                >> drawAxisHelp preview selected aAxis
+                >> drawAxisHelp preview aAxis
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
-drawAxisHelp : Bool -> Bool -> A Axis -> Axis2d -> Svg msg
-drawAxisHelp preview selected aAxis axis2d =
+drawAxisHelp : Bool -> A Axis -> Axis2d -> Svg msg
+drawAxisHelp preview aAxis axis2d =
     Svg.lineSegment2d
-        (if selected then
-            [ stroke Green
-            , Svg.Attributes.opacity "1"
-            , strokeWidthBold
-            ]
+        [ stroke Black
+        , Svg.Attributes.opacity "0.1"
+        , dashArrayNormal preview
+        , if preview then
+            strokeWidthThin
 
-         else
-            [ stroke Black
-            , Svg.Attributes.opacity "0.1"
-            , dashArrayNormal preview
-            , if preview then
-                strokeWidthThin
-
-              else
-                strokeWidthNormal
-            ]
-        )
+          else
+            strokeWidthNormal
+        ]
         (LineSegment2d.fromEndpoints
             ( Point2d.along axis2d -10000
             , Point2d.along axis2d 10000
@@ -515,24 +472,16 @@ drawAxisHelp preview selected aAxis axis2d =
 
 drawCircle : Bool -> Point2d -> Float -> A Circle -> State Pattern (Svg msg)
 drawCircle preview center zoom aCircle =
-    let
-        selected =
-            False
-
-        _ =
-            \_ ->
-                Debug.todo "implement selected"
-    in
     Pattern.circle2d aCircle
         |> StateResult.map
             (Circle2d.scaleAbout center zoom
-                >> drawCircleHelp preview selected aCircle
+                >> drawCircleHelp preview aCircle
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
-drawCircleHelp : Bool -> Bool -> A Circle -> Circle2d -> Svg msg
-drawCircleHelp preview selected aCircle circle2d =
+drawCircleHelp : Bool -> A Circle -> Circle2d -> Svg msg
+drawCircleHelp preview aCircle circle2d =
     Svg.circle2d
         [ stroke Black
         , Svg.Attributes.opacity "0.1"
@@ -545,24 +494,16 @@ drawCircleHelp preview selected aCircle circle2d =
 
 drawCurve : Bool -> Point2d -> Float -> A Curve -> State Pattern (Svg msg)
 drawCurve preview center zoom aCurve =
-    let
-        selected =
-            False
-
-        _ =
-            \_ ->
-                Debug.todo "implement selected"
-    in
     Pattern.curve2d aCurve
         |> StateResult.map
             (curve2dScaleAbout center zoom
-                >> drawCurveHelp preview selected aCurve
+                >> drawCurveHelp preview aCurve
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
-drawCurveHelp : Bool -> Bool -> A Curve -> Curve2d -> Svg msg
-drawCurveHelp preview selected aCurve curve2d =
+drawCurveHelp : Bool -> A Curve -> Curve2d -> Svg msg
+drawCurveHelp preview aCurve curve2d =
     let
         attributes =
             [ stroke Black
@@ -587,24 +528,16 @@ drawCurveHelp preview selected aCurve curve2d =
 
 drawDetail : Bool -> Point2d -> Float -> A Detail -> State Pattern (Svg msg)
 drawDetail preview center zoom aDetail =
-    let
-        selected =
-            False
-
-        _ =
-            \_ ->
-                Debug.todo "implement selected"
-    in
     Pattern.detail2d aDetail
         |> StateResult.map
             (detail2dScaleAbout center zoom
-                >> drawDetailHelp preview selected aDetail
+                >> drawDetailHelp preview aDetail
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
-drawDetailHelp : Bool -> Bool -> A Detail -> Detail2d -> Svg msg
-drawDetailHelp preview selected aDetail detail2d =
+drawDetailHelp : Bool -> A Detail -> Detail2d -> Svg msg
+drawDetailHelp preview aDetail detail2d =
     let
         step nextCurve2d =
             case nextCurve2d of
@@ -654,12 +587,7 @@ drawDetailHelp preview selected aDetail detail2d =
     Svg.path
         [ Svg.Attributes.fill "hsla(240, 2%, 80%, 0.5)"
         , strokeWidthNormal
-        , stroke <|
-            if selected then
-                Blue
-
-            else
-                Black
+        , stroke Black
         , Svg.Attributes.d <|
             String.join " "
                 [ "M " ++ coord detail2d.firstPoint
