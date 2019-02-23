@@ -968,7 +968,7 @@ curvesWith :
         , endPoint : Maybe (A Point)
         }
     -> List (A Curve)
-curvesWith (Pattern data) { startPoint, endPoint } =
+curvesWith (Pattern data) constraints =
     []
 
 
@@ -1732,6 +1732,45 @@ type Curve2d
     | CubicSpline2d CubicSpline2d
 
 
+startPoint : Curve2d -> Point2d
+startPoint curve =
+    case curve of
+        LineSegment2d lineSegment2d ->
+            LineSegment2d.startPoint lineSegment2d
+
+        QuadraticSpline2d quadraticSpline2d ->
+            QuadraticSpline2d.startPoint quadraticSpline2d
+
+        CubicSpline2d cubicSpline2d ->
+            CubicSpline2d.startPoint cubicSpline2d
+
+
+endPoint : Curve2d -> Point2d
+endPoint curve =
+    case curve of
+        LineSegment2d lineSegment2d ->
+            LineSegment2d.endPoint lineSegment2d
+
+        QuadraticSpline2d quadraticSpline2d ->
+            QuadraticSpline2d.endPoint quadraticSpline2d
+
+        CubicSpline2d cubicSpline2d ->
+            CubicSpline2d.endPoint cubicSpline2d
+
+
+reverseCurve : Curve2d -> Curve2d
+reverseCurve curve =
+    case curve of
+        LineSegment2d lineSegment2d ->
+            LineSegment2d (LineSegment2d.reverse lineSegment2d)
+
+        QuadraticSpline2d quadraticSpline2d ->
+            QuadraticSpline2d (QuadraticSpline2d.reverse quadraticSpline2d)
+
+        CubicSpline2d cubicSpline2d ->
+            CubicSpline2d (CubicSpline2d.reverse cubicSpline2d)
+
+
 curve2d : A Curve -> State Pattern (Result ComputeHelp Curve2d)
 curve2d aCurve =
     case aCurve of
@@ -1773,8 +1812,8 @@ computeCurve2d (Curve info) =
     case info of
         Straight stuff ->
             let
-                toCurve2d startPoint endPoint =
-                    LineSegment2d (LineSegment2d.from startPoint endPoint)
+                toCurve2d startPoint_ endPoint_ =
+                    LineSegment2d (LineSegment2d.from startPoint_ endPoint_)
             in
             StateResult.ok toCurve2d
                 |> StateResult.with (point2d stuff.startPoint)
@@ -1782,12 +1821,12 @@ computeCurve2d (Curve info) =
 
         Quadratic stuff ->
             let
-                toCurve2d startPoint controlPoint endPoint =
+                toCurve2d startPoint_ controlPoint endPoint_ =
                     QuadraticSpline2d <|
                         QuadraticSpline2d.with
-                            { startPoint = startPoint
+                            { startPoint = startPoint_
                             , controlPoint = controlPoint
-                            , endPoint = endPoint
+                            , endPoint = endPoint_
                             }
             in
             StateResult.ok toCurve2d
@@ -1797,13 +1836,13 @@ computeCurve2d (Curve info) =
 
         Cubic stuff ->
             let
-                toCurve2d startPoint startControlPoint endControlPoint endPoint =
+                toCurve2d startPoint_ startControlPoint endControlPoint endPoint_ =
                     CubicSpline2d <|
                         CubicSpline2d.with
-                            { startPoint = startPoint
+                            { startPoint = startPoint_
                             , startControlPoint = startControlPoint
                             , endControlPoint = endControlPoint
-                            , endPoint = endPoint
+                            , endPoint = endPoint_
                             }
             in
             StateResult.ok toCurve2d
@@ -1900,11 +1939,45 @@ computeDetail2d (Detail info) =
                     point2d stuff.startPoint
 
                 FirstReferencedCurve stuff ->
-                    StateResult.err NotComputableYet
+                    let
+                        toStartPoint curve maybeNextCurve maybeLastCurve =
+                            case
+                                startPointWith
+                                    { nextCurve = maybeNextCurve
+                                    , previousCurve = maybeLastCurve
+                                    }
+                                    curve
+                            of
+                                Nothing ->
+                                    Err DisconnectedCurves
+
+                                Just startPoint_ ->
+                                    Ok startPoint_
+                    in
+                    StateResult.ok toStartPoint
+                        |> StateResult.with (curve2d stuff.curve)
+                        |> StateResult.with
+                            (case info.nextCurves of
+                                (NextReferencedCurve nextStuff) :: _ ->
+                                    StateResult.map Just (curve2d nextStuff.curve)
+
+                                _ ->
+                                    StateResult.ok Nothing
+                            )
+                        |> StateResult.with
+                            (case info.lastCurve of
+                                LastReferencedCurve lastStuff ->
+                                    StateResult.map Just (curve2d lastStuff.curve)
+
+                                _ ->
+                                    StateResult.ok Nothing
+                            )
+                        |> StateResult.join
             )
         |> StateResult.with
-            (StateResult.ok (::)
-                |> StateResult.with (secondCurve2d info.firstCurve)
+            (StateResult.ok (\a b -> a :: List.reverse b)
+                |> StateResult.with
+                    (secondCurve2d info.firstCurve info.nextCurves info.lastCurve)
                 |> StateResult.with (StateResult.traverse nextCurve2d info.nextCurves)
             )
         |> StateResult.with
@@ -1934,28 +2007,105 @@ computeDetail2d (Detail info) =
                         |> StateResult.with (point2d stuff.endControlPoint)
 
                 LastReferencedCurve stuff ->
-                    StateResult.err NotComputableYet
+                    let
+                        toLastCurve maybePreviousCurve curve maybeFirstCurve =
+                            Maybe.map2
+                                (\actualStartPoint actualEndPoint ->
+                                    if
+                                        (actualStartPoint == startPoint curve)
+                                            && (actualEndPoint == endPoint curve)
+                                    then
+                                        Ok (toLastCurve2d curve)
+
+                                    else if
+                                        (actualStartPoint == endPoint curve)
+                                            && (actualEndPoint == startPoint curve)
+                                    then
+                                        Ok (toLastCurve2d (reverseCurve curve))
+
+                                    else
+                                        Err DisconnectedCurves
+                                )
+                                (startPointWith
+                                    { nextCurve = maybeFirstCurve
+                                    , previousCurve = maybePreviousCurve
+                                    }
+                                    curve
+                                )
+                                (endPointWith
+                                    { nextCurve = maybeFirstCurve
+                                    , previousCurve = maybePreviousCurve
+                                    }
+                                    curve
+                                )
+                                |> Maybe.withDefault (Err DisconnectedCurves)
+
+                        toLastCurve2d curve =
+                            case curve of
+                                LineSegment2d _ ->
+                                    LastLineSegment2d
+
+                                QuadraticSpline2d quadraticSpline2d ->
+                                    LastQuadraticSpline2d
+                                        { controlPoint =
+                                            QuadraticSpline2d.controlPoint
+                                                quadraticSpline2d
+                                        }
+
+                                CubicSpline2d cubicSpline2d ->
+                                    LastCubicSpline2d
+                                        { startControlPoint =
+                                            CubicSpline2d.startControlPoint
+                                                cubicSpline2d
+                                        , endControlPoint =
+                                            CubicSpline2d.endControlPoint
+                                                cubicSpline2d
+                                        }
+                    in
+                    StateResult.ok toLastCurve
+                        |> StateResult.with
+                            (case List.reverse info.nextCurves of
+                                (NextReferencedCurve nextStuff) :: _ ->
+                                    StateResult.map Just (curve2d nextStuff.curve)
+
+                                _ ->
+                                    StateResult.ok Nothing
+                            )
+                        |> StateResult.with (curve2d stuff.curve)
+                        |> StateResult.with
+                            (case info.firstCurve of
+                                FirstReferencedCurve firstStuff ->
+                                    StateResult.map Just (curve2d firstStuff.curve)
+
+                                _ ->
+                                    StateResult.ok Nothing
+                            )
+                        |> StateResult.join
             )
 
 
-secondCurve2d : FirstCurve -> State Pattern (Result ComputeHelp NextCurve2d)
-secondCurve2d firstCurve =
+secondCurve2d :
+    FirstCurve
+    -> List NextCurve
+    -> LastCurve
+    -> State Pattern (Result ComputeHelp NextCurve2d)
+secondCurve2d firstCurve nextCurves lastCurve =
     case firstCurve of
         FirstStraight stuff ->
             let
-                toCurve endPoint =
+                toCurve endPoint_ =
                     NextLineSegment2d
-                        { endPoint = endPoint }
+                        { endPoint = endPoint_ }
             in
             StateResult.ok toCurve
                 |> StateResult.with (point2d stuff.endPoint)
 
         FirstQuadratic stuff ->
             let
-                toCurve controlPoint endPoint =
+                toCurve controlPoint endPoint_ =
                     NextQuadraticSpline2d
                         { controlPoint = controlPoint
-                        , endPoint = endPoint
+                        , endPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -1964,11 +2114,11 @@ secondCurve2d firstCurve =
 
         FirstCubic stuff ->
             let
-                toCurve startControlPoint endControlPoint endPoint =
+                toCurve startControlPoint endControlPoint endPoint_ =
                     NextCubicSpline2d
                         { startControlPoint = startControlPoint
                         , endControlPoint = endControlPoint
-                        , endPoint = endPoint
+                        , endPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -1977,7 +2127,80 @@ secondCurve2d firstCurve =
                 |> StateResult.with (point2d stuff.endPoint)
 
         FirstReferencedCurve stuff ->
-            StateResult.err NotComputableYet
+            let
+                toFirstCurve curve maybeNextCurve maybeLastCurve =
+                    Maybe.map2
+                        (\actualStartPoint actualEndPoint ->
+                            if
+                                (actualStartPoint == startPoint curve)
+                                    && (actualEndPoint == endPoint curve)
+                            then
+                                Ok (toFirstCurve2d curve)
+
+                            else if
+                                (actualStartPoint == endPoint curve)
+                                    && (actualEndPoint == startPoint curve)
+                            then
+                                Ok (toFirstCurve2d (reverseCurve curve))
+
+                            else
+                                Err DisconnectedCurves
+                        )
+                        (startPointWith
+                            { nextCurve = maybeNextCurve
+                            , previousCurve = maybeLastCurve
+                            }
+                            curve
+                        )
+                        (endPointWith
+                            { nextCurve = maybeNextCurve
+                            , previousCurve = maybeLastCurve
+                            }
+                            curve
+                        )
+                        |> Maybe.withDefault (Err DisconnectedCurves)
+
+                toFirstCurve2d curve =
+                    case curve of
+                        LineSegment2d lineSegment2d ->
+                            NextLineSegment2d
+                                { endPoint = LineSegment2d.endPoint lineSegment2d }
+
+                        QuadraticSpline2d quadraticSpline2d ->
+                            NextQuadraticSpline2d
+                                { controlPoint =
+                                    QuadraticSpline2d.controlPoint quadraticSpline2d
+                                , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
+                                }
+
+                        CubicSpline2d cubicSpline2d ->
+                            NextCubicSpline2d
+                                { startControlPoint =
+                                    CubicSpline2d.startControlPoint cubicSpline2d
+                                , endControlPoint =
+                                    CubicSpline2d.endControlPoint cubicSpline2d
+                                , endPoint = CubicSpline2d.endPoint cubicSpline2d
+                                }
+            in
+            StateResult.ok toFirstCurve
+                |> StateResult.with (curve2d stuff.curve)
+                |> StateResult.with
+                    (case nextCurves of
+                        (NextReferencedCurve nextStuff) :: _ ->
+                            StateResult.map Just (curve2d nextStuff.curve)
+
+                        _ ->
+                            StateResult.ok Nothing
+                    )
+                |> StateResult.with
+                    (case lastCurve of
+                        LastReferencedCurve lastStuff ->
+                            StateResult.map Just (curve2d lastStuff.curve)
+
+                        _ ->
+                            StateResult.ok Nothing
+                    )
+                |> StateResult.join
 
 
 nextCurve2d : NextCurve -> State Pattern (Result ComputeHelp NextCurve2d)
@@ -1985,19 +2208,19 @@ nextCurve2d nextCurve =
     case nextCurve of
         NextStraight stuff ->
             let
-                toCurve endPoint =
+                toCurve endPoint_ =
                     NextLineSegment2d
-                        { endPoint = endPoint }
+                        { endPoint = endPoint_ }
             in
             StateResult.ok toCurve
                 |> StateResult.with (point2d stuff.endPoint)
 
         NextQuadratic stuff ->
             let
-                toCurve controlPoint endPoint =
+                toCurve controlPoint endPoint_ =
                     NextQuadraticSpline2d
                         { controlPoint = controlPoint
-                        , endPoint = endPoint
+                        , endPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2006,11 +2229,11 @@ nextCurve2d nextCurve =
 
         NextCubic stuff ->
             let
-                toCurve startControlPoint endControlPoint endPoint =
+                toCurve startControlPoint endControlPoint endPoint_ =
                     NextCubicSpline2d
                         { startControlPoint = startControlPoint
                         , endControlPoint = endControlPoint
-                        , endPoint = endPoint
+                        , endPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2019,7 +2242,140 @@ nextCurve2d nextCurve =
                 |> StateResult.with (point2d stuff.endPoint)
 
         NextReferencedCurve stuff ->
-            StateResult.err NotComputableYet
+            let
+                toNextCurve curve =
+                    toNextCurve2d curve
+
+                toNextCurve2d curve =
+                    case curve of
+                        LineSegment2d lineSegment2d ->
+                            NextLineSegment2d
+                                { endPoint = LineSegment2d.endPoint lineSegment2d }
+
+                        QuadraticSpline2d quadraticSpline2d ->
+                            NextQuadraticSpline2d
+                                { controlPoint =
+                                    QuadraticSpline2d.controlPoint quadraticSpline2d
+                                , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
+                                }
+
+                        CubicSpline2d cubicSpline2d ->
+                            NextCubicSpline2d
+                                { startControlPoint =
+                                    CubicSpline2d.startControlPoint cubicSpline2d
+                                , endControlPoint =
+                                    CubicSpline2d.endControlPoint cubicSpline2d
+                                , endPoint = CubicSpline2d.endPoint cubicSpline2d
+                                }
+            in
+            StateResult.ok toNextCurve
+                |> StateResult.with (curve2d stuff.curve)
+
+
+startPointWith :
+    { nextCurve : Maybe Curve2d
+    , previousCurve : Maybe Curve2d
+    }
+    -> Curve2d
+    -> Maybe Point2d
+startPointWith constraints curve =
+    let
+        connectedTo curve_ point =
+            (startPoint curve_ == point)
+                || (endPoint curve_ == point)
+    in
+    case ( constraints.nextCurve, constraints.previousCurve ) of
+        ( Nothing, Nothing ) ->
+            Just (startPoint curve)
+
+        ( Just nextCurve, Nothing ) ->
+            if endPoint curve |> connectedTo nextCurve then
+                Just (startPoint curve)
+
+            else if startPoint curve |> connectedTo nextCurve then
+                Just (endPoint curve)
+
+            else
+                Nothing
+
+        ( Nothing, Just previousCurve ) ->
+            if startPoint curve |> connectedTo previousCurve then
+                Just (startPoint curve)
+
+            else if endPoint curve |> connectedTo previousCurve then
+                Just (endPoint curve)
+
+            else
+                Nothing
+
+        ( Just nextCurve, Just previousCurve ) ->
+            if
+                (endPoint curve |> connectedTo nextCurve)
+                    && (startPoint curve |> connectedTo previousCurve)
+            then
+                Just (startPoint curve)
+
+            else if
+                (endPoint curve |> connectedTo previousCurve)
+                    && (startPoint curve |> connectedTo nextCurve)
+            then
+                Just (endPoint curve)
+
+            else
+                Nothing
+
+
+endPointWith :
+    { nextCurve : Maybe Curve2d
+    , previousCurve : Maybe Curve2d
+    }
+    -> Curve2d
+    -> Maybe Point2d
+endPointWith constraints curve =
+    let
+        connectedTo curve_ point =
+            (startPoint curve_ == point)
+                || (endPoint curve_ == point)
+    in
+    case ( constraints.nextCurve, constraints.previousCurve ) of
+        ( Nothing, Nothing ) ->
+            Just (endPoint curve)
+
+        ( Just nextCurve, Nothing ) ->
+            if endPoint curve |> connectedTo nextCurve then
+                Just (endPoint curve)
+
+            else if startPoint curve |> connectedTo nextCurve then
+                Just (startPoint curve)
+
+            else
+                Nothing
+
+        ( Nothing, Just previousCurve ) ->
+            if startPoint curve |> connectedTo previousCurve then
+                Just (endPoint curve)
+
+            else if endPoint curve |> connectedTo previousCurve then
+                Just (startPoint curve)
+
+            else
+                Nothing
+
+        ( Just nextCurve, Just previousCurve ) ->
+            if
+                (endPoint curve |> connectedTo nextCurve)
+                    && (startPoint curve |> connectedTo previousCurve)
+            then
+                Just (endPoint curve)
+
+            else if
+                (endPoint curve |> connectedTo previousCurve)
+                    && (startPoint curve |> connectedTo nextCurve)
+            then
+                Just (startPoint curve)
+
+            else
+                Nothing
 
 
 float : String -> State Pattern (Result ComputeHelp Float)
@@ -2294,6 +2650,7 @@ type ComputeHelp
     | AxisAndCircleDoNotIntersect
     | WhichMustBeBetween Int Int
     | ExprHelp ExprHelp
+    | DisconnectedCurves
     | NotComputableYet
 
 
@@ -3324,7 +3681,7 @@ encodeLastCurve lastCurve =
                 ]
 
         LastReferencedCurve stuff ->
-            withType "firstReferencedCurve"
+            withType "lastReferencedCurve"
                 [ ( "curve", encodeACurve stuff.curve ) ]
 
 
@@ -3639,6 +3996,10 @@ firstCurveDecoder =
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map FirstCubic
             |> ensureType "firstCubic"
+        , Decode.succeed FirstReferencedCurveStuff
+            |> Decode.required "curve" aCurveDecoder
+            |> Decode.map FirstReferencedCurve
+            |> ensureType "firstReferencedCurve"
         ]
 
 
@@ -3660,6 +4021,10 @@ nextCurveDecoder =
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map NextCubic
             |> ensureType "nextCubic"
+        , Decode.succeed NextReferencedCurveStuff
+            |> Decode.required "curve" aCurveDecoder
+            |> Decode.map NextReferencedCurve
+            |> ensureType "nextReferencedCurve"
         ]
 
 
@@ -3677,6 +4042,10 @@ lastCurveDecoder =
             |> Decode.required "endControlPoint" aPointDecoder
             |> Decode.map LastCubic
             |> ensureType "lastCubic"
+        , Decode.succeed LastReferencedCurveStuff
+            |> Decode.required "curve" aCurveDecoder
+            |> Decode.map LastReferencedCurve
+            |> ensureType "lastReferencedCurve"
         ]
 
 

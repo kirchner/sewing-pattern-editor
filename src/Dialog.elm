@@ -5878,6 +5878,9 @@ printComputeHelp computeHelp =
         ExprHelp exprHelp ->
             printExprHelp exprHelp
 
+        DisconnectedCurves ->
+            "Two curves are disconnected."
+
         NotComputableYet ->
             "This is not computable, yet."
 
