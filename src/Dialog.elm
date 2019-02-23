@@ -5485,8 +5485,13 @@ newFirstCurveFrom form pattern =
             in
             Result.mapError FirstCubicForm getStartPoint
 
-        FirstReferencedCurveForm stuff ->
-            Err form
+        FirstReferencedCurveForm { curve } ->
+            case curve.maybeACurve of
+                Nothing ->
+                    Err form
+
+                Just aCurve ->
+                    Ok (FirstReferencedCurve { curve = aCurve })
 
 
 newNextCurveFrom : NextCurveForm -> Pattern -> Result NextCurveForm NextCurve
@@ -5580,8 +5585,13 @@ newNextCurveFrom form pattern =
             in
             Result.mapError NextCubicForm getStartControlPoint
 
-        NextReferencedCurveForm stuff ->
-            Err form
+        NextReferencedCurveForm { curve } ->
+            case curve.maybeACurve of
+                Nothing ->
+                    Err form
+
+                Just aCurve ->
+                    Ok (NextReferencedCurve { curve = aCurve })
 
 
 checkNextCurve : Pattern -> NextCurveForm -> NextCurveForm
@@ -5661,8 +5671,13 @@ newLastCurveFrom form pattern =
             in
             Result.mapError LastCubicForm getStartControlPoint
 
-        LastReferencedCurveForm stuff ->
-            Err form
+        LastReferencedCurveForm { curve } ->
+            case curve.maybeACurve of
+                Nothing ->
+                    Err form
+
+                Just aCurve ->
+                    Ok (LastReferencedCurve { curve = aCurve })
 
 
 checkLastCurve : Pattern -> LastCurveForm -> LastCurveForm
