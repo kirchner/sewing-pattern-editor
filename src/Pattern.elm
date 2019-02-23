@@ -1381,28 +1381,46 @@ computePoint2d (Point info) =
                                 |> Result.fromMaybe AxesAreParallel
 
                         ( Axis2d axis, Circle2d circle ) ->
-                            Point2d.firstCircleAxis circle axis
-                                |> Result.fromMaybe AxisAndCircleDoNotIntersect
+                            case stuff.which of
+                                1 ->
+                                    Point2d.firstCircleAxis circle axis
+                                        |> Result.fromMaybe AxisAndCircleDoNotIntersect
+
+                                2 ->
+                                    Point2d.secondCircleAxis circle axis
+                                        |> Result.fromMaybe AxisAndCircleDoNotIntersect
+
+                                _ ->
+                                    Err (WhichMustBeBetween 1 2)
 
                         ( Axis2d axis, Curve2d curve ) ->
                             Err NotComputableYet
 
                         ( Circle2d circle, Axis2d axis ) ->
-                            Point2d.firstCircleAxis circle axis
-                                |> Result.fromMaybe AxisAndCircleDoNotIntersect
+                            case stuff.which of
+                                1 ->
+                                    Point2d.secondCircleAxis circle axis
+                                        |> Result.fromMaybe AxisAndCircleDoNotIntersect
+
+                                2 ->
+                                    Point2d.firstCircleAxis circle axis
+                                        |> Result.fromMaybe AxisAndCircleDoNotIntersect
+
+                                _ ->
+                                    Err (WhichMustBeBetween 1 2)
 
                         ( Circle2d circleA, Circle2d circleB ) ->
                             case stuff.which of
-                                0 ->
+                                1 ->
                                     Point2d.firstCircleCircle circleA circleB
                                         |> Result.fromMaybe CirclesDoNotIntersect
 
-                                1 ->
+                                2 ->
                                     Point2d.secondCircleCircle circleA circleB
                                         |> Result.fromMaybe CirclesDoNotIntersect
 
                                 _ ->
-                                    Err (WhichMustBeBetween 0 1)
+                                    Err (WhichMustBeBetween 1 2)
 
                         ( Circle2d circle, Curve2d curve ) ->
                             Err NotComputableYet
