@@ -9,6 +9,8 @@ module Pattern exposing
     , insertTransformation
     , insertVariable
     , InsertHelp(..)
+    , replacePoint, replaceAxis, replaceCircle, replaceCurve, replaceDetail
+    , ReplaceHelp(..)
     , removePoint, removeAxis, removeCircle, removeCurve, removeDetail
     , points, axes, circles, curves, details, transformations, variables
     , objects
@@ -74,6 +76,12 @@ module Pattern exposing
 @docs insertTransformation
 @docs insertVariable
 @docs InsertHelp
+
+
+# Replace
+
+@docs replacePoint, replaceAxis, replaceCircle, replaceCurve, replaceDetail
+@docs ReplaceHelp
 
 
 # Remove
@@ -327,6 +335,16 @@ name aObject =
             Nothing
 
 
+isThatWith : String -> A object -> Bool
+isThatWith name_ aObject =
+    case aObject of
+        That n ->
+            n == name_
+
+        This _ ->
+            False
+
+
 inlined : A object -> Bool
 inlined aObject =
     case aObject of
@@ -521,6 +539,196 @@ nameTaken name_ data =
         || Dict.member name_ data.details
         || Dict.member name_ data.transformations
         || Dict.member name_ data.variables
+
+
+
+---- REPLACE
+
+
+replacePoint : A Point -> Point -> Pattern -> Result ReplaceHelp Pattern
+replacePoint aPoint newPoint ((Pattern data) as pattern) =
+    case aPoint of
+        That name_ ->
+            let
+                circularDependency =
+                    objectsDependingOnPoint pattern (This newPoint)
+                        |> .points
+                        |> List.any (isThatWith name_)
+            in
+            if circularDependency then
+                Err CircularDependency
+
+            else
+                let
+                    ( result, newPattern ) =
+                        State.run
+                            (Pattern
+                                { data
+                                    | points = Dict.insert name_ newPoint data.points
+                                    , point2ds = Dict.remove name_ data.point2ds
+                                }
+                            )
+                            (point2d (That name_))
+                in
+                case result of
+                    Err computeHelp ->
+                        Err (BadNewObject computeHelp)
+
+                    Ok _ ->
+                        Ok (regenerateCaches newPattern)
+
+        This _ ->
+            Err ObjectDoesNotExist
+
+
+replaceAxis : A Axis -> Axis -> Pattern -> Result ReplaceHelp Pattern
+replaceAxis aAxis newAxis ((Pattern data) as pattern) =
+    case aAxis of
+        That name_ ->
+            let
+                circularDependency =
+                    objectsDependingOnAxis pattern (This newAxis)
+                        |> .points
+                        |> List.any (isThatWith name_)
+            in
+            if circularDependency then
+                Err CircularDependency
+
+            else
+                let
+                    ( result, newPattern ) =
+                        State.run
+                            (Pattern
+                                { data
+                                    | axes = Dict.insert name_ newAxis data.axes
+                                    , axis2ds = Dict.remove name_ data.axis2ds
+                                }
+                            )
+                            (point2d (That name_))
+                in
+                case result of
+                    Err computeHelp ->
+                        Err (BadNewObject computeHelp)
+
+                    Ok _ ->
+                        Ok (regenerateCaches newPattern)
+
+        This _ ->
+            Err ObjectDoesNotExist
+
+
+replaceCircle : A Circle -> Circle -> Pattern -> Result ReplaceHelp Pattern
+replaceCircle aCircle newCircle ((Pattern data) as pattern) =
+    case aCircle of
+        That name_ ->
+            let
+                circularDependency =
+                    objectsDependingOnCircle pattern (This newCircle)
+                        |> .circles
+                        |> List.any (isThatWith name_)
+            in
+            if circularDependency then
+                Err CircularDependency
+
+            else
+                let
+                    ( result, newPattern ) =
+                        State.run
+                            (Pattern
+                                { data
+                                    | circles = Dict.insert name_ newCircle data.circles
+                                    , circle2ds = Dict.remove name_ data.circle2ds
+                                }
+                            )
+                            (circle2d (That name_))
+                in
+                case result of
+                    Err computeHelp ->
+                        Err (BadNewObject computeHelp)
+
+                    Ok _ ->
+                        Ok (regenerateCaches newPattern)
+
+        This _ ->
+            Err ObjectDoesNotExist
+
+
+replaceCurve : A Curve -> Curve -> Pattern -> Result ReplaceHelp Pattern
+replaceCurve aCurve newCurve ((Pattern data) as pattern) =
+    case aCurve of
+        That name_ ->
+            let
+                circularDependency =
+                    objectsDependingOnCurve pattern (This newCurve)
+                        |> .curves
+                        |> List.any (isThatWith name_)
+            in
+            if circularDependency then
+                Err CircularDependency
+
+            else
+                let
+                    ( result, newPattern ) =
+                        State.run
+                            (Pattern
+                                { data
+                                    | curves = Dict.insert name_ newCurve data.curves
+                                    , curve2ds = Dict.remove name_ data.curve2ds
+                                }
+                            )
+                            (curve2d (That name_))
+                in
+                case result of
+                    Err computeHelp ->
+                        Err (BadNewObject computeHelp)
+
+                    Ok _ ->
+                        Ok (regenerateCaches newPattern)
+
+        This _ ->
+            Err ObjectDoesNotExist
+
+
+replaceDetail : A Detail -> Detail -> Pattern -> Result ReplaceHelp Pattern
+replaceDetail aDetail newDetail ((Pattern data) as pattern) =
+    case aDetail of
+        That name_ ->
+            let
+                circularDependency =
+                    objectsDependingOnDetail pattern (This newDetail)
+                        |> .details
+                        |> List.any (isThatWith name_)
+            in
+            if circularDependency then
+                Err CircularDependency
+
+            else
+                let
+                    ( result, newPattern ) =
+                        State.run
+                            (Pattern
+                                { data
+                                    | details = Dict.insert name_ newDetail data.details
+                                    , detail2ds = Dict.remove name_ data.detail2ds
+                                }
+                            )
+                            (detail2d (That name_))
+                in
+                case result of
+                    Err computeHelp ->
+                        Err (BadNewObject computeHelp)
+
+                    Ok _ ->
+                        Ok (regenerateCaches newPattern)
+
+        This _ ->
+            Err ObjectDoesNotExist
+
+
+type ReplaceHelp
+    = BadNewObject ComputeHelp
+    | CircularDependency
+    | ObjectDoesNotExist
 
 
 

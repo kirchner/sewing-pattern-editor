@@ -1346,7 +1346,10 @@ updateWithData key msg model =
                                 newStoredPattern =
                                     { storedPattern | pattern = newPattern }
                             in
-                            ( { model | maybeDialog = Nothing }
+                            ( { model
+                                | maybeDialog = Nothing
+                                , storedPattern = newStoredPattern
+                              }
                             , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
 

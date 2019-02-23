@@ -85,6 +85,7 @@ import Pattern
         , Pattern
         , Point
         , PointInfo(..)
+        , ReplaceHelp(..)
         )
 import Result.Extra as Result
 import State exposing (State)
@@ -105,17 +106,41 @@ type Create
         }
 
 
-{-| -}
-type Edit
-    = Edit Pattern.Objects Dialog
-
-
 type Dialog
     = DialogPoint PointForm
     | DialogAxis AxisForm
     | DialogCircle CircleForm
     | DialogCurve CurveForm
     | DialogDetail DetailForm
+
+
+{-| -}
+type Edit
+    = EditPoint
+        { aPoint : A Point
+        , objects : Pattern.Objects
+        , form : PointForm
+        }
+    | EditAxis
+        { aAxis : A Axis
+        , objects : Pattern.Objects
+        , form : AxisForm
+        }
+    | EditCircle
+        { aCircle : A Circle
+        , objects : Pattern.Objects
+        , form : CircleForm
+        }
+    | EditCurve
+        { aCurve : A Curve
+        , objects : Pattern.Objects
+        , form : CurveForm
+        }
+    | EditDetail
+        { aDetail : A Detail
+        , objects : Pattern.Objects
+        , form : DetailForm
+        }
 
 
 {-| -}
@@ -498,7 +523,15 @@ editPoint pattern aPoint =
         objects =
             Pattern.objectsNotDependingOnPoint pattern aPoint
     in
-    Maybe.map (Edit objects << DialogPoint) (initPointFormWith pattern aPoint)
+    Maybe.map
+        (\form ->
+            EditPoint
+                { aPoint = aPoint
+                , objects = objects
+                , form = form
+                }
+        )
+        (initPointFormWith pattern aPoint)
 
 
 initPointFormWith : Pattern -> A Point -> Maybe PointForm
@@ -595,7 +628,15 @@ editCurve pattern aCurve =
         objects =
             Pattern.objectsNotDependingOnCurve pattern aCurve
     in
-    Maybe.map (Edit objects << DialogCurve) (initCurveFormWith pattern aCurve)
+    Maybe.map
+        (\form ->
+            EditCurve
+                { aCurve = aCurve
+                , objects = objects
+                , form = form
+                }
+        )
+        (initCurveFormWith pattern aCurve)
 
 
 initCurveFormWith : Pattern -> A Curve -> Maybe CurveForm
@@ -1991,7 +2032,7 @@ editView :
     }
     -> Edit
     -> Element EditMsg
-editView { pattern, name } (Edit objects dialog) =
+editView { pattern, name } edit =
     let
         actions =
             Element.row
@@ -2020,49 +2061,49 @@ editView { pattern, name } (Edit objects dialog) =
         , Element.spacing Design.large
         , Element.padding Design.small
         ]
-        [ case dialog of
-            DialogPoint point ->
+        [ case edit of
+            EditPoint { objects, form } ->
                 Element.map EditPointMsg <|
                     elEditThe { thing = "point", name = name } <|
                         viewPointFormHelp pattern
                             objects
-                            { point = point
+                            { point = form
                             , id = "edit-point"
                             }
 
-            DialogAxis axis ->
+            EditAxis { objects, form } ->
                 Element.map EditAxisMsg <|
                     elEditThe { thing = "axis", name = name } <|
                         viewAxisFormHelp pattern
                             objects
-                            { axis = axis
+                            { axis = form
                             , id = "edit-axis"
                             }
 
-            DialogCircle circle ->
+            EditCircle { objects, form } ->
                 Element.map EditCircleMsg <|
                     elEditThe { thing = "circle", name = name } <|
                         viewCircleFormHelp pattern
                             objects
-                            { circle = circle
+                            { circle = form
                             , id = "edit-circle"
                             }
 
-            DialogCurve curve ->
+            EditCurve { objects, form } ->
                 Element.map EditCurveMsg <|
                     elEditThe { thing = "curve", name = name } <|
                         viewCurveFormHelp pattern
                             objects
-                            { curve = curve
+                            { curve = form
                             , id = "edit-curve"
                             }
 
-            DialogDetail detail ->
+            EditDetail { objects, form } ->
                 Element.map EditDetailMsg <|
                     elEditThe { thing = "detail", name = name } <|
                         viewDetailFormHelp pattern
                             objects
-                            { detail = detail
+                            { detail = form
                             , id = "edit-detail"
                             }
         , actions
@@ -5845,10 +5886,91 @@ type EditResult
 
 {-| -}
 editUpdate : Pattern -> EditMsg -> Edit -> EditResult
-editUpdate pattern msg ((Edit objects dialog) as edit) =
+editUpdate pattern msg edit =
     case msg of
         UpdatePressed ->
-            EditOpen ( edit, Cmd.none )
+            let
+                replaceWith replaceObject newObject =
+                    case replaceObject newObject pattern of
+                        Err replaceHelp ->
+                            case replaceHelp of
+                                BadNewObject _ ->
+                                    EditOpen ( edit, Cmd.none )
+
+                                CircularDependency ->
+                                    EditOpen ( edit, Cmd.none )
+
+                                ObjectDoesNotExist ->
+                                    EditOpen ( edit, Cmd.none )
+
+                        Ok newPattern ->
+                            EditSucceeded newPattern
+            in
+            case edit of
+                EditPoint stuff ->
+                    let
+                        addHelp formWithHelp =
+                            EditOpen
+                                ( EditPoint { stuff | form = formWithHelp }
+                                , Cmd.none
+                                )
+                    in
+                    newPointFrom (clearPointForm stuff.form) pattern
+                        |> Result.mapError addHelp
+                        |> Result.map (replaceWith (Pattern.replacePoint stuff.aPoint))
+                        |> Result.resolve
+
+                EditAxis stuff ->
+                    let
+                        addHelp formWithHelp =
+                            EditOpen
+                                ( EditAxis { stuff | form = formWithHelp }
+                                , Cmd.none
+                                )
+                    in
+                    newAxisFrom (clearAxisForm stuff.form) pattern
+                        |> Result.mapError addHelp
+                        |> Result.map (replaceWith (Pattern.replaceAxis stuff.aAxis))
+                        |> Result.resolve
+
+                EditCircle stuff ->
+                    let
+                        addHelp formWithHelp =
+                            EditOpen
+                                ( EditCircle { stuff | form = formWithHelp }
+                                , Cmd.none
+                                )
+                    in
+                    newCircleFrom (clearCircleForm stuff.form) pattern
+                        |> Result.mapError addHelp
+                        |> Result.map (replaceWith (Pattern.replaceCircle stuff.aCircle))
+                        |> Result.resolve
+
+                EditCurve stuff ->
+                    let
+                        addHelp formWithHelp =
+                            EditOpen
+                                ( EditCurve { stuff | form = formWithHelp }
+                                , Cmd.none
+                                )
+                    in
+                    newCurveFrom (clearCurveForm stuff.form) pattern
+                        |> Result.mapError addHelp
+                        |> Result.map (replaceWith (Pattern.replaceCurve stuff.aCurve))
+                        |> Result.resolve
+
+                EditDetail stuff ->
+                    let
+                        addHelp formWithHelp =
+                            EditOpen
+                                ( EditDetail { stuff | form = formWithHelp }
+                                , Cmd.none
+                                )
+                    in
+                    newDetailFrom (clearDetailForm stuff.form) pattern
+                        |> Result.mapError addHelp
+                        |> Result.map (replaceWith (Pattern.replaceDetail stuff.aDetail))
+                        |> Result.resolve
 
         EditPreviewPressed ->
             EditOpen ( edit, Cmd.none )
@@ -5857,14 +5979,14 @@ editUpdate pattern msg ((Edit objects dialog) as edit) =
             EditCanceled
 
         EditPointMsg pointMsg ->
-            case dialog of
-                DialogPoint point ->
+            case edit of
+                EditPoint stuff ->
                     let
-                        ( newPoint, pointCmd ) =
-                            updatePointForm pattern objects pointMsg point
+                        ( newForm, pointCmd ) =
+                            updatePointForm pattern stuff.objects pointMsg stuff.form
                     in
                     EditOpen
-                        ( Edit objects (DialogPoint newPoint)
+                        ( EditPoint { stuff | form = newForm }
                         , Cmd.map EditPointMsg pointCmd
                         )
 
@@ -5872,60 +5994,60 @@ editUpdate pattern msg ((Edit objects dialog) as edit) =
                     EditOpen ( edit, Cmd.none )
 
         EditAxisMsg axisMsg ->
-            case dialog of
-                DialogAxis axis ->
+            case edit of
+                EditAxis stuff ->
                     let
-                        ( newAxis, axisCmd ) =
-                            updateAxisForm pattern objects axisMsg axis
+                        ( newForm, pointCmd ) =
+                            updateAxisForm pattern stuff.objects axisMsg stuff.form
                     in
                     EditOpen
-                        ( Edit objects (DialogAxis newAxis)
-                        , Cmd.map EditAxisMsg axisCmd
+                        ( EditAxis { stuff | form = newForm }
+                        , Cmd.map EditAxisMsg pointCmd
                         )
 
                 _ ->
                     EditOpen ( edit, Cmd.none )
 
         EditCircleMsg circleMsg ->
-            case dialog of
-                DialogCircle circle ->
+            case edit of
+                EditCircle stuff ->
                     let
-                        ( newCircle, circleCmd ) =
-                            updateCircleForm pattern objects circleMsg circle
+                        ( newForm, pointCmd ) =
+                            updateCircleForm pattern stuff.objects circleMsg stuff.form
                     in
                     EditOpen
-                        ( Edit objects (DialogCircle newCircle)
-                        , Cmd.map EditCircleMsg circleCmd
+                        ( EditCircle { stuff | form = newForm }
+                        , Cmd.map EditCircleMsg pointCmd
                         )
 
                 _ ->
                     EditOpen ( edit, Cmd.none )
 
         EditCurveMsg curveMsg ->
-            case dialog of
-                DialogCurve curve ->
+            case edit of
+                EditCurve stuff ->
                     let
-                        ( newCurve, curveCmd ) =
-                            updateCurveForm pattern objects curveMsg curve
+                        ( newForm, pointCmd ) =
+                            updateCurveForm pattern stuff.objects curveMsg stuff.form
                     in
                     EditOpen
-                        ( Edit objects (DialogCurve newCurve)
-                        , Cmd.map EditCurveMsg curveCmd
+                        ( EditCurve { stuff | form = newForm }
+                        , Cmd.map EditCurveMsg pointCmd
                         )
 
                 _ ->
                     EditOpen ( edit, Cmd.none )
 
         EditDetailMsg detailMsg ->
-            case dialog of
-                DialogDetail detail ->
+            case edit of
+                EditDetail stuff ->
                     let
-                        ( newDetail, detailCmd ) =
-                            updateDetailForm pattern objects detailMsg detail
+                        ( newForm, pointCmd ) =
+                            updateDetailForm pattern stuff.objects detailMsg stuff.form
                     in
                     EditOpen
-                        ( Edit objects (DialogDetail newDetail)
-                        , Cmd.map EditDetailMsg detailCmd
+                        ( EditDetail { stuff | form = newForm }
+                        , Cmd.map EditDetailMsg pointCmd
                         )
 
                 _ ->
