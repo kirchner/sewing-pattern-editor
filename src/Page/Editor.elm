@@ -825,10 +825,6 @@ viewVariables pattern variablesVisible =
                             { label = "Name"
                             , recordToString = .name
                             }
-                        , View.Table.column
-                            { label = "Expression"
-                            , recordToString = .rawExpr
-                            }
                         , View.Table.columnFloat
                             { label = "Value"
                             , recordToFloat = Just << .value

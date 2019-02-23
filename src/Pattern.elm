@@ -1399,11 +1399,11 @@ computePoint2d (Point info) =
                         ( Circle2d circle, Axis2d axis ) ->
                             case stuff.which of
                                 1 ->
-                                    Point2d.secondCircleAxis circle axis
+                                    Point2d.firstCircleAxis circle axis
                                         |> Result.fromMaybe AxisAndCircleDoNotIntersect
 
                                 2 ->
-                                    Point2d.firstCircleAxis circle axis
+                                    Point2d.secondCircleAxis circle axis
                                         |> Result.fromMaybe AxisAndCircleDoNotIntersect
 
                                 _ ->
