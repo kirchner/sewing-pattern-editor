@@ -11,6 +11,7 @@ module Pattern exposing
     , InsertHelp(..)
     , removePoint, removeAxis, removeCircle, removeCurve, removeDetail
     , points, axes, circles, curves, details, transformations, variables
+    , objects
     , pointInfo, PointInfo(..)
     , axisInfo, AxisInfo(..)
     , circleInfo, CircleInfo(..)
@@ -25,7 +26,12 @@ module Pattern exposing
     , Detail2d, NextCurve2d(..), LastCurve2d(..)
     , Intersectable2d(..)
     , ComputeHelp(..)
-    , objectsDependingOnPoint
+    , Objects
+    , objectsDependingOnPoint, objectsNotDependingOnPoint
+    , objectsDependingOnAxis, objectsNotDependingOnAxis
+    , objectsDependingOnCircle, objectsNotDependingOnCircle
+    , objectsDependingOnCurve, objectsNotDependingOnCurve
+    , objectsDependingOnDetail, objectsNotDependingOnDetail
     , origin
     , fromOnePoint, FromOnePointHelp
     , betweenRatio, BetweenRatioHelp
@@ -79,6 +85,8 @@ module Pattern exposing
 
 @docs points, axes, circles, curves, details, transformations, variables
 
+@docs objects
+
 
 ## Info
 
@@ -112,7 +120,13 @@ module Pattern exposing
 
 # Dependencies
 
-@docs objectsDependingOnPoint
+@docs Objects
+
+@docs objectsDependingOnPoint, objectsNotDependingOnPoint
+@docs objectsDependingOnAxis, objectsNotDependingOnAxis
+@docs objectsDependingOnCircle, objectsNotDependingOnCircle
+@docs objectsDependingOnCurve, objectsNotDependingOnCurve
+@docs objectsDependingOnDetail, objectsNotDependingOnDetail
 
 
 # Construct
@@ -609,13 +623,13 @@ removeDetail aDetail pattern =
 
 
 removeObjects : Objects -> Pattern -> Pattern
-removeObjects objects (Pattern data) =
+removeObjects objects_ (Pattern data) =
     Pattern
         { data
             | points =
                 Dict.filter
                     (\thisName _ ->
-                        objects.points
+                        objects_.points
                             |> List.filterMap name
                             |> List.member thisName
                             |> not
@@ -698,6 +712,16 @@ transformations (Pattern data) =
 variables : Pattern -> List String
 variables (Pattern data) =
     Dict.keys data.variables
+
+
+objects : Pattern -> Objects
+objects pattern =
+    { points = points pattern
+    , axes = axes pattern
+    , circles = circles pattern
+    , curves = curves pattern
+    , details = details pattern
+    }
 
 
 
@@ -1986,7 +2010,7 @@ type ComputeHelp
 
 type alias Objects =
     { points : List (A Point)
-    , axes : List (A Point)
+    , axes : List (A Axis)
     , circles : List (A Circle)
     , curves : List (A Curve)
     , details : List (A Detail)
@@ -2017,6 +2041,12 @@ objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
                 |> objectsFromCollection
 
 
+objectsNotDependingOnPoint : Pattern -> A Point -> Objects
+objectsNotDependingOnPoint pattern aPoint =
+    objects pattern
+        |> withoutObjects (objectsDependingOnPoint pattern aPoint)
+
+
 objectsDependingOnAxis : Pattern -> A Axis -> Objects
 objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
     case name aAxis of
@@ -2029,6 +2059,12 @@ objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
                 |> State.traverse (collectObjectsDependingOnAxis data name_ noChains)
                 |> State.finalState emptyCollection
                 |> objectsFromCollection
+
+
+objectsNotDependingOnAxis : Pattern -> A Axis -> Objects
+objectsNotDependingOnAxis pattern aAxis =
+    objects pattern
+        |> withoutObjects (objectsDependingOnAxis pattern aAxis)
 
 
 objectsDependingOnCircle : Pattern -> A Circle -> Objects
@@ -2045,6 +2081,12 @@ objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
                 |> objectsFromCollection
 
 
+objectsNotDependingOnCircle : Pattern -> A Circle -> Objects
+objectsNotDependingOnCircle pattern aCircle =
+    objects pattern
+        |> withoutObjects (objectsDependingOnCircle pattern aCircle)
+
+
 objectsDependingOnCurve : Pattern -> A Curve -> Objects
 objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
     case name aCurve of
@@ -2059,6 +2101,12 @@ objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
                 |> objectsFromCollection
 
 
+objectsNotDependingOnCurve : Pattern -> A Curve -> Objects
+objectsNotDependingOnCurve pattern aCurve =
+    objects pattern
+        |> withoutObjects (objectsDependingOnCurve pattern aCurve)
+
+
 objectsDependingOnDetail : Pattern -> A Detail -> Objects
 objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
     case name aDetail of
@@ -2071,6 +2119,44 @@ objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
                 |> State.traverse (collectObjectsDependingOnDetail data name_ noChains)
                 |> State.finalState emptyCollection
                 |> objectsFromCollection
+
+
+objectsNotDependingOnDetail : Pattern -> A Detail -> Objects
+objectsNotDependingOnDetail pattern aDetail =
+    objects pattern
+        |> withoutObjects (objectsDependingOnDetail pattern aDetail)
+
+
+withoutObjects : Objects -> Objects -> Objects
+withoutObjects b a =
+    { points = a.points |> without b.points
+    , axes = a.axes |> without b.axes
+    , circles = a.circles |> without b.circles
+    , curves = a.curves |> without b.curves
+    , details = a.details |> without b.details
+    }
+
+
+without : List (A object) -> List (A object) -> List (A object)
+without bList aList =
+    let
+        containedInBList a =
+            case a of
+                That aName ->
+                    List.any (isReferenceTo aName) bList
+
+                This _ ->
+                    True
+
+        isReferenceTo aName b =
+            case b of
+                That bName ->
+                    aName == bName
+
+                This _ ->
+                    False
+    in
+    List.filter (not << containedInBList) aList
 
 
 type alias Collection =
