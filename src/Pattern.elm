@@ -4,6 +4,7 @@ module Pattern exposing
     , Intersectable
     , A, this, name, inlined, hash
     , intersectableAxis, intersectableCircle, intersectableCurve
+    , axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
     , whichSize, IntersectableTag(..), tagFromIntersectable
     , insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
     , insertTransformation
@@ -67,6 +68,7 @@ module Pattern exposing
 
 @docs A, this, name, inlined, hash
 @docs intersectableAxis, intersectableCircle, intersectableCurve
+@docs axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
 @docs whichSize, IntersectableTag, tagFromIntersectable
 
 
@@ -393,6 +395,60 @@ intersectableCurve aCurve =
 
         This curve ->
             This (IntersectableCurve curve)
+
+
+axisFromIntersectable : Pattern -> A Intersectable -> Maybe (A Axis)
+axisFromIntersectable pattern aIntersectable =
+    case aIntersectable of
+        That name_ ->
+            case tagFromIntersectable pattern aIntersectable of
+                Just IntersectableAxisTag ->
+                    Just (That name_)
+
+                _ ->
+                    Nothing
+
+        This (IntersectableAxis axis) ->
+            Just (This axis)
+
+        This _ ->
+            Nothing
+
+
+circleFromIntersectable : Pattern -> A Intersectable -> Maybe (A Circle)
+circleFromIntersectable pattern aIntersectable =
+    case aIntersectable of
+        That name_ ->
+            case tagFromIntersectable pattern aIntersectable of
+                Just IntersectableCircleTag ->
+                    Just (That name_)
+
+                _ ->
+                    Nothing
+
+        This (IntersectableCircle circle) ->
+            Just (This circle)
+
+        This _ ->
+            Nothing
+
+
+curveFromIntersectable : Pattern -> A Intersectable -> Maybe (A Curve)
+curveFromIntersectable pattern aIntersectable =
+    case aIntersectable of
+        That name_ ->
+            case tagFromIntersectable pattern aIntersectable of
+                Just IntersectableCurveTag ->
+                    Just (That name_)
+
+                _ ->
+                    Nothing
+
+        This (IntersectableCurve curve) ->
+            Just (This curve)
+
+        This _ ->
+            Nothing
 
 
 
@@ -1383,11 +1439,11 @@ computePoint2d (Point info) =
                         ( Axis2d axis, Circle2d circle ) ->
                             case stuff.which of
                                 1 ->
-                                    Point2d.firstCircleAxis circle axis
+                                    Point2d.secondCircleAxis circle axis
                                         |> Result.fromMaybe AxisAndCircleDoNotIntersect
 
                                 2 ->
-                                    Point2d.secondCircleAxis circle axis
+                                    Point2d.firstCircleAxis circle axis
                                         |> Result.fromMaybe AxisAndCircleDoNotIntersect
 
                                 _ ->

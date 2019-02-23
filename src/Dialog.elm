@@ -68,7 +68,9 @@ import Pattern
     exposing
         ( A
         , Axis
+        , AxisInfo(..)
         , Circle
+        , CircleInfo(..)
         , ComputeHelp(..)
         , Curve
         , CurveInfo(..)
@@ -604,7 +606,19 @@ initPointFormWith pattern aPoint =
                         (initOtherPointFormWith pattern stuff.basePointB)
 
                 Intersection stuff ->
-                    Nothing
+                    let
+                        toForm objectA objectB =
+                            IntersectionForm
+                                { objectA = objectA
+                                , objectB = objectB
+                                , objectsHelp = Nothing
+                                , which = stuff.which
+                                , whichHelp = Nothing
+                                }
+                    in
+                    Maybe.map2 toForm
+                        (initOtherIntersectableFormWith pattern stuff.objectA)
+                        (initOtherIntersectableFormWith pattern stuff.objectB)
 
                 TransformedPoint stuff ->
                     Nothing
@@ -612,14 +626,108 @@ initPointFormWith pattern aPoint =
 
 {-| -}
 editAxis : Pattern -> A Pattern.Axis -> Maybe Edit
-editAxis pattern thatAxis =
-    Nothing
+editAxis pattern aAxis =
+    let
+        objects =
+            Pattern.objectsNotDependingOnAxis pattern aAxis
+    in
+    Maybe.map
+        (\form ->
+            EditAxis
+                { aAxis = aAxis
+                , objects = objects
+                , form = form
+                }
+        )
+        (initAxisFormWith pattern aAxis)
+
+
+initAxisFormWith : Pattern -> A Axis -> Maybe AxisForm
+initAxisFormWith pattern aAxis =
+    case Pattern.axisInfo aAxis pattern of
+        Nothing ->
+            Nothing
+
+        Just (ThroughOnePoint stuff) ->
+            let
+                toForm point =
+                    ThroughOnePointForm
+                        { point = point
+                        , orientation = stuff.orientation
+                        , orientationHelp = Nothing
+                        }
+            in
+            Maybe.map toForm (initOtherPointFormWith pattern stuff.point)
+
+        Just (ThroughTwoPoints stuff) ->
+            let
+                toForm pointA pointB =
+                    ThroughTwoPointsForm
+                        { pointA = pointA
+                        , pointB = pointB
+                        , pointsHelp = Nothing
+                        }
+            in
+            Maybe.map2 toForm
+                (initOtherPointFormWith pattern stuff.pointA)
+                (initOtherPointFormWith pattern stuff.pointB)
+
+        Just (TransformedAxis stuff) ->
+            Nothing
 
 
 {-| -}
 editCircle : Pattern -> A Pattern.Circle -> Maybe Edit
-editCircle pattern thatCircle =
-    Nothing
+editCircle pattern aCircle =
+    let
+        objects =
+            Pattern.objectsNotDependingOnCircle pattern aCircle
+    in
+    Maybe.map
+        (\form ->
+            EditCircle
+                { aCircle = aCircle
+                , objects = objects
+                , form = form
+                }
+        )
+        (initCircleFormWith pattern aCircle)
+
+
+initCircleFormWith : Pattern -> A Circle -> Maybe CircleForm
+initCircleFormWith pattern aCircle =
+    case Pattern.circleInfo aCircle pattern of
+        Nothing ->
+            Nothing
+
+        Just (WithRadius stuff) ->
+            let
+                toForm centerPoint =
+                    WithRadiusForm
+                        { centerPoint = centerPoint
+                        , radius = stuff.radius
+                        , radiusHelp = Nothing
+                        }
+            in
+            Maybe.map toForm (initOtherPointFormWith pattern stuff.centerPoint)
+
+        Just (ThroughThreePoints stuff) ->
+            let
+                toForm pointA pointB pointC =
+                    ThroughThreePointsForm
+                        { pointA = pointA
+                        , pointB = pointB
+                        , pointC = pointC
+                        , pointsHelp = Nothing
+                        }
+            in
+            Maybe.map3 toForm
+                (initOtherPointFormWith pattern stuff.pointA)
+                (initOtherPointFormWith pattern stuff.pointB)
+                (initOtherPointFormWith pattern stuff.pointC)
+
+        Just (TransformedCircle stuff) ->
+            Nothing
 
 
 {-| -}
@@ -720,6 +828,61 @@ initOtherPointFormWith pattern aPoint =
             ReferencedPointForm
                 { dropdown = Dropdown.init
                 , maybeAPoint = Just aPoint
+                , help = Nothing
+                }
+
+
+initOtherIntersectableFormWith :
+    Pattern
+    -> A Intersectable
+    -> Maybe OtherIntersectableForm
+initOtherIntersectableFormWith pattern aIntersectable =
+    if Pattern.inlined aIntersectable then
+        case Pattern.tagFromIntersectable pattern aIntersectable of
+            Just IntersectableAxisTag ->
+                let
+                    toForm axis =
+                        InlinedAxisForm
+                            { expanded = False
+                            , axis = axis
+                            }
+                in
+                Pattern.axisFromIntersectable pattern aIntersectable
+                    |> Maybe.andThen (initAxisFormWith pattern)
+                    |> Maybe.map toForm
+
+            Just IntersectableCircleTag ->
+                let
+                    toForm circle =
+                        InlinedCircleForm
+                            { expanded = False
+                            , circle = circle
+                            }
+                in
+                Pattern.circleFromIntersectable pattern aIntersectable
+                    |> Maybe.andThen (initCircleFormWith pattern)
+                    |> Maybe.map toForm
+
+            Just IntersectableCurveTag ->
+                let
+                    toForm curve =
+                        InlinedCurveForm
+                            { expanded = False
+                            , curve = curve
+                            }
+                in
+                Pattern.curveFromIntersectable pattern aIntersectable
+                    |> Maybe.andThen (initCurveFormWith pattern)
+                    |> Maybe.map toForm
+
+            Nothing ->
+                Nothing
+
+    else
+        Just <|
+            ReferencedIntersectableForm
+                { dropdown = Dropdown.init
+                , maybeAIntersectable = Just aIntersectable
                 , help = Nothing
                 }
 
