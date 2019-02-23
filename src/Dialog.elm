@@ -1821,109 +1821,120 @@ viewDetailFormHelp pattern objects { detail, id } =
                     , Element.spacing Design.xSmall
                     ]
                     [ curveLabel (id ++ "__first-curve-label") "1st curve"
-                    , segmentControl
-                        { selectionChanged = FirstCurveTypeChanged
-                        , tags = firstCurveTags
-                        , elementAppended =
-                            tagFromFirstCurveForm (Tuple.first detail.firstCurve)
-                                /= FirstReferencedCurveTag
-                        , selectedTag =
-                            tagFromFirstCurveForm (Tuple.first detail.firstCurve)
-                        }
-                    , case Tuple.first detail.firstCurve of
-                        FirstStraightForm stuff ->
-                            elInlined <|
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.map FirstCurveStartPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.startPoint
-                                            , id = id ++ "__first-straight--start-point"
-                                            , label = "Start point"
-                                            }
-                                    , Element.map FirstCurveEndPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.endPoint
-                                            , id = id ++ "__first-straight--end-point"
-                                            , label = "End point"
-                                            }
-                                    ]
+                    , Element.column
+                        [ Element.width Element.fill ]
+                        [ segmentControl
+                            { selectionChanged = FirstCurveTypeChanged
+                            , tags = firstCurveTags
+                            , elementAppended =
+                                tagFromFirstCurveForm (Tuple.first detail.firstCurve)
+                                    /= FirstReferencedCurveTag
+                            , selectedTag =
+                                tagFromFirstCurveForm (Tuple.first detail.firstCurve)
+                            }
+                        , case Tuple.first detail.firstCurve of
+                            FirstStraightForm stuff ->
+                                elInlined <|
+                                    Element.column
+                                        [ Element.width Element.fill
+                                        , Element.spacing Design.small
+                                        ]
+                                        [ Element.map FirstCurveStartPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.startPoint
+                                                , id = id ++ "__first-straight--start-point"
+                                                , label = "Start point"
+                                                }
+                                        , Element.map FirstCurveEndPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.endPoint
+                                                , id = id ++ "__first-straight--end-point"
+                                                , label = "End point"
+                                                }
+                                        ]
 
-                        FirstQuadraticForm stuff ->
-                            elInlined <|
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.map FirstCurveStartPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.startPoint
-                                            , id = id ++ "__first-quadratic--start-point"
-                                            , label = "Start point"
-                                            }
-                                    , Element.map FirstCurveControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.controlPoint
-                                            , id = id ++ "__first-quadratic--control-point"
-                                            , label = "Control point"
-                                            }
-                                    , Element.map FirstCurveEndPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.endPoint
-                                            , id = id ++ "__first-quadratic--end-point"
-                                            , label = "End point"
-                                            }
-                                    ]
+                            FirstQuadraticForm stuff ->
+                                elInlined <|
+                                    Element.column
+                                        [ Element.width Element.fill
+                                        , Element.spacing Design.small
+                                        ]
+                                        [ Element.map FirstCurveStartPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.startPoint
+                                                , id = id ++ "__first-quadratic--start-point"
+                                                , label = "Start point"
+                                                }
+                                        , Element.map FirstCurveControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.controlPoint
+                                                , id = id ++ "__first-quadratic--control-point"
+                                                , label = "Control point"
+                                                }
+                                        , Element.map FirstCurveEndPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.endPoint
+                                                , id = id ++ "__first-quadratic--end-point"
+                                                , label = "End point"
+                                                }
+                                        ]
 
-                        FirstCubicForm stuff ->
-                            elInlined <|
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.map FirstCurveStartPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.startPoint
-                                            , id = id ++ "__first-cubic--start-point"
-                                            , label = "Start point"
-                                            }
-                                    , Element.map FirstCurveStartControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.startControlPoint
-                                            , id =
-                                                id ++ "__first-cubic--start-control-point"
-                                            , label = "Start control point"
-                                            }
-                                    , Element.map FirstCurveEndControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.endControlPoint
-                                            , id = id ++ "__first-cubic--end-control-point"
-                                            , label = "End control point"
-                                            }
-                                    , Element.map FirstCurveEndPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.endPoint
-                                            , id = id ++ "__first-cubic--end-point"
-                                            , label = "End point"
-                                            }
-                                    ]
+                            FirstCubicForm stuff ->
+                                elInlined <|
+                                    Element.column
+                                        [ Element.width Element.fill
+                                        , Element.spacing Design.small
+                                        ]
+                                        [ Element.map FirstCurveStartPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.startPoint
+                                                , id = id ++ "__first-cubic--start-point"
+                                                , label = "Start point"
+                                                }
+                                        , Element.map FirstCurveStartControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.startControlPoint
+                                                , id =
+                                                    id ++ "__first-cubic--start-control-point"
+                                                , label = "Start control point"
+                                                }
+                                        , Element.map FirstCurveEndControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.endControlPoint
+                                                , id = id ++ "__first-cubic--end-control-point"
+                                                , label = "End control point"
+                                                }
+                                        , Element.map FirstCurveEndPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.endPoint
+                                                , id = id ++ "__first-cubic--end-point"
+                                                , label = "End point"
+                                                }
+                                        ]
 
-                        FirstReferencedCurveForm stuff ->
-                            Element.none
+                            FirstReferencedCurveForm { curve } ->
+                                View.Input.dropdownAppended (id ++ "__first-referenced-curve")
+                                    { lift = FirstCurveDropdownMsg
+                                    , entryToString = objectName
+                                    , entryToHash = Pattern.hash
+                                    , label = "First curve"
+                                    , options = objects.curves
+                                    , dropdown = curve.dropdown
+                                    , selection = curve.maybeACurve
+                                    }
+                        ]
                     ]
               ]
-            , List.indexedMap (viewNextCurve pattern objects) detail.nextCurves
+            , List.indexedMap (viewNextCurve pattern objects id) detail.nextCurves
             , [ View.Input.btnSecondary "add-curve-button"
                     { onPress = Just AddCurvePressed
                     , label = "Add Curve"
@@ -1933,58 +1944,69 @@ viewDetailFormHelp pattern objects { detail, id } =
                     , Element.spacing Design.xSmall
                     ]
                     [ curveLabel (id ++ "__last-curve-label") "Closing curve"
-                    , segmentControl
-                        { selectionChanged = LastCurveTypeChanged
-                        , tags = lastCurveTags
-                        , elementAppended =
-                            tagFromLastCurveForm (Tuple.first detail.lastCurve)
-                                /= LastReferencedCurveTag
-                        , selectedTag = tagFromLastCurveForm (Tuple.first detail.lastCurve)
-                        }
-                    , case Tuple.first detail.lastCurve of
-                        LastStraightForm ->
-                            Element.none
+                    , Element.column
+                        [ Element.width Element.fill ]
+                        [ segmentControl
+                            { selectionChanged = LastCurveTypeChanged
+                            , tags = lastCurveTags
+                            , elementAppended =
+                                tagFromLastCurveForm (Tuple.first detail.lastCurve)
+                                    /= LastReferencedCurveTag
+                            , selectedTag = tagFromLastCurveForm (Tuple.first detail.lastCurve)
+                            }
+                        , case Tuple.first detail.lastCurve of
+                            LastStraightForm ->
+                                Element.none
 
-                        LastQuadraticForm stuff ->
-                            elInlined <|
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.map LastCurveControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.controlPoint
-                                            , id = id ++ "__last-quadratic--control-point"
-                                            , label = "Control point"
-                                            }
-                                    ]
+                            LastQuadraticForm stuff ->
+                                elInlined <|
+                                    Element.column
+                                        [ Element.width Element.fill
+                                        , Element.spacing Design.small
+                                        ]
+                                        [ Element.map LastCurveControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.controlPoint
+                                                , id = id ++ "__last-quadratic--control-point"
+                                                , label = "Control point"
+                                                }
+                                        ]
 
-                        LastCubicForm stuff ->
-                            elInlined <|
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.map LastCurveStartControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.startControlPoint
-                                            , id =
-                                                id ++ "__last-cubic--start-control-point"
-                                            , label = "Start control point"
-                                            }
-                                    , Element.map LastCurveEndControlPointMsg <|
-                                        viewOtherPointForm pattern
-                                            objects
-                                            { otherPoint = stuff.endControlPoint
-                                            , id = id ++ "__last-cubic--end-control-point"
-                                            , label = "End control point"
-                                            }
-                                    ]
+                            LastCubicForm stuff ->
+                                elInlined <|
+                                    Element.column
+                                        [ Element.width Element.fill
+                                        , Element.spacing Design.small
+                                        ]
+                                        [ Element.map LastCurveStartControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.startControlPoint
+                                                , id =
+                                                    id ++ "__last-cubic--start-control-point"
+                                                , label = "Start control point"
+                                                }
+                                        , Element.map LastCurveEndControlPointMsg <|
+                                            viewOtherPointForm pattern
+                                                objects
+                                                { otherPoint = stuff.endControlPoint
+                                                , id = id ++ "__last-cubic--end-control-point"
+                                                , label = "End control point"
+                                                }
+                                        ]
 
-                        LastReferencedCurveForm stuff ->
-                            Element.none
+                            LastReferencedCurveForm { curve } ->
+                                View.Input.dropdownAppended (id ++ "__last-referenced-curve")
+                                    { lift = LastCurveDropdownMsg
+                                    , entryToString = objectName
+                                    , entryToHash = Pattern.hash
+                                    , label = "Last curve"
+                                    , options = objects.curves
+                                    , dropdown = curve.dropdown
+                                    , selection = curve.maybeACurve
+                                    }
+                        ]
                     ]
               ]
             ]
@@ -1994,90 +2016,106 @@ viewDetailFormHelp pattern objects { detail, id } =
 viewNextCurve :
     Pattern
     -> Pattern.Objects
+    -> String
     -> Int
     -> ( NextCurveForm, ActionMenu )
     -> Element DetailMsg
-viewNextCurve pattern objects index ( form, actionMenu ) =
+viewNextCurve pattern objects id index ( form, actionMenu ) =
+    let
+        actualId =
+            id ++ "__next-" ++ String.fromInt index
+    in
     Element.column
         [ Element.width Element.fill
         , Element.spacing Design.xSmall
         ]
-        [ curveLabel "next-curve-label" "Curve #..."
-        , segmentControl
-            { selectionChanged = NextCurveTypeChanged index
-            , tags = nextCurveTags
-            , elementAppended = tagFromNextCurveForm form /= NextReferencedCurveTag
-            , selectedTag = tagFromNextCurveForm form
-            }
-        , case form of
-            NextStraightForm stuff ->
-                elInlined <|
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        [ Element.map (NextCurveEndPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.endPoint
-                                , id = "__next-straight--end-point"
-                                , label = "End point"
-                                }
-                        ]
+        [ curveLabel "next-curve-label" (ordinalFromInt (index + 2) ++ " Curve")
+        , Element.column
+            [ Element.width Element.fill ]
+            [ segmentControl
+                { selectionChanged = NextCurveTypeChanged index
+                , tags = nextCurveTags
+                , elementAppended = tagFromNextCurveForm form /= NextReferencedCurveTag
+                , selectedTag = tagFromNextCurveForm form
+                }
+            , case form of
+                NextStraightForm stuff ->
+                    elInlined <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.small
+                            ]
+                            [ Element.map (NextCurveEndPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.endPoint
+                                    , id = actualId ++ "__next-straight--end-point"
+                                    , label = "End point"
+                                    }
+                            ]
 
-            NextQuadraticForm stuff ->
-                elInlined <|
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        [ Element.map (NextCurveControlPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.controlPoint
-                                , id = "__next-quadratic--control-point"
-                                , label = "Control point"
-                                }
-                        , Element.map (NextCurveEndPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.endPoint
-                                , id = "__next-quadratic--end-point"
-                                , label = "End point"
-                                }
-                        ]
+                NextQuadraticForm stuff ->
+                    elInlined <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.small
+                            ]
+                            [ Element.map (NextCurveControlPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.controlPoint
+                                    , id = actualId ++ "__next-quadratic--control-point"
+                                    , label = "Control point"
+                                    }
+                            , Element.map (NextCurveEndPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.endPoint
+                                    , id = actualId ++ "__next-quadratic--end-point"
+                                    , label = "End point"
+                                    }
+                            ]
 
-            NextCubicForm stuff ->
-                elInlined <|
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        [ Element.map (NextCurveStartControlPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.startControlPoint
-                                , id = "__next-cubic--start-control-point"
-                                , label = "Start control point"
-                                }
-                        , Element.map (NextCurveEndControlPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.endControlPoint
-                                , id = "__next-cubic--end-control-point"
-                                , label = "End control point"
-                                }
-                        , Element.map (NextCurveEndPointMsg index) <|
-                            viewOtherPointForm pattern
-                                objects
-                                { otherPoint = stuff.endPoint
-                                , id = "__next-cubic--end-point"
-                                , label = "End point"
-                                }
-                        ]
+                NextCubicForm stuff ->
+                    elInlined <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.small
+                            ]
+                            [ Element.map (NextCurveStartControlPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.startControlPoint
+                                    , id = actualId ++ "__next-cubic--start-control-point"
+                                    , label = "Start control point"
+                                    }
+                            , Element.map (NextCurveEndControlPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.endControlPoint
+                                    , id = actualId ++ "__next-cubic--end-control-point"
+                                    , label = "End control point"
+                                    }
+                            , Element.map (NextCurveEndPointMsg index) <|
+                                viewOtherPointForm pattern
+                                    objects
+                                    { otherPoint = stuff.endPoint
+                                    , id = actualId ++ "__next-cubic--end-point"
+                                    , label = "End point"
+                                    }
+                            ]
 
-            NextReferencedCurveForm stuff ->
-                Element.none
+                NextReferencedCurveForm { curve } ->
+                    View.Input.dropdownAppended (actualId ++ "__referenced-curve")
+                        { lift = NextCurveDropdownMsg index
+                        , entryToString = objectName
+                        , entryToHash = Pattern.hash
+                        , label = ordinalFromInt (index + 2) ++ " Curve"
+                        , options = objects.curves
+                        , dropdown = curve.dropdown
+                        , selection = curve.maybeACurve
+                        }
+            ]
         ]
 
 
@@ -3226,6 +3264,7 @@ type DetailMsg
     | FirstCurveControlPointMsg OtherPointMsg
     | FirstCurveEndControlPointMsg OtherPointMsg
     | FirstCurveEndPointMsg OtherPointMsg
+    | FirstCurveDropdownMsg (Dropdown.Msg (A Curve))
     | FirstCurveActionMenuMsg ActionMenuMsg
       -- NEXT CURVE
     | NextCurveTypeChanged Int NextCurveTag
@@ -3233,12 +3272,14 @@ type DetailMsg
     | NextCurveControlPointMsg Int OtherPointMsg
     | NextCurveEndControlPointMsg Int OtherPointMsg
     | NextCurveEndPointMsg Int OtherPointMsg
+    | NextCurveDropdownMsg Int (Dropdown.Msg (A Curve))
     | NextCurveActionMenuMsg Int ActionMenuMsg
       -- LAST CURVE
     | LastCurveTypeChanged LastCurveTag
     | LastCurveStartControlPointMsg OtherPointMsg
     | LastCurveControlPointMsg OtherPointMsg
     | LastCurveEndControlPointMsg OtherPointMsg
+    | LastCurveDropdownMsg (Dropdown.Msg (A Curve))
     | LastCurveActionMenuMsg ActionMenuMsg
 
 
@@ -4173,6 +4214,34 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstReferencedCurveForm stuff ->
                     ( detail, Cmd.none )
 
+        FirstCurveDropdownMsg dropdownMsg ->
+            case Tuple.first detail.firstCurve of
+                FirstReferencedCurveForm { curve } ->
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeACurve ) =
+                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
+                                (List.map Listbox.option objects.curves)
+                                dropdownMsg
+                                curve.dropdown
+                                curve.maybeACurve
+                    in
+                    ( { detail
+                        | firstCurve =
+                            ( FirstReferencedCurveForm
+                                { curve =
+                                    { dropdown = newDropdown
+                                    , maybeACurve = newMaybeACurve
+                                    }
+                                }
+                            , Tuple.second detail.firstCurve
+                            )
+                      }
+                    , Cmd.map FirstCurveDropdownMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( detail, Cmd.none )
+
         FirstCurveActionMenuMsg actionMenuMsg ->
             ( detail, Cmd.none )
 
@@ -4359,7 +4428,7 @@ updateDetailForm pattern objects detailMsg detail =
                                 (always
                                     ( NextQuadraticForm
                                         { stuff | endPoint = newOtherPoint }
-                                    , Tuple.second detail.firstCurve
+                                    , actionMenu
                                     )
                                 )
                                 detail.nextCurves
@@ -4377,7 +4446,7 @@ updateDetailForm pattern objects detailMsg detail =
                             List.updateAt index
                                 (always
                                     ( NextCubicForm { stuff | endPoint = newOtherPoint }
-                                    , Tuple.second detail.firstCurve
+                                    , actionMenu
                                     )
                                 )
                                 detail.nextCurves
@@ -4386,6 +4455,38 @@ updateDetailForm pattern objects detailMsg detail =
                     )
 
                 Just ( NextReferencedCurveForm _, _ ) ->
+                    ( detail, Cmd.none )
+
+        NextCurveDropdownMsg index dropdownMsg ->
+            case List.getAt index detail.nextCurves of
+                Just ( NextReferencedCurveForm { curve }, actionMenu ) ->
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeACurve ) =
+                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
+                                (List.map Listbox.option objects.curves)
+                                dropdownMsg
+                                curve.dropdown
+                                curve.maybeACurve
+                    in
+                    ( { detail
+                        | nextCurves =
+                            List.updateAt index
+                                (always
+                                    ( NextReferencedCurveForm
+                                        { curve =
+                                            { dropdown = newDropdown
+                                            , maybeACurve = newMaybeACurve
+                                            }
+                                        }
+                                    , actionMenu
+                                    )
+                                )
+                                detail.nextCurves
+                      }
+                    , Cmd.map (NextCurveDropdownMsg index) dropdownCmd
+                    )
+
+                _ ->
                     ( detail, Cmd.none )
 
         NextCurveActionMenuMsg index actionMenuMsg ->
@@ -4488,6 +4589,34 @@ updateDetailForm pattern objects detailMsg detail =
                     )
 
                 LastReferencedCurveForm stuff ->
+                    ( detail, Cmd.none )
+
+        LastCurveDropdownMsg dropdownMsg ->
+            case Tuple.first detail.lastCurve of
+                LastReferencedCurveForm { curve } ->
+                    let
+                        ( newDropdown, dropdownCmd, newMaybeACurve ) =
+                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
+                                (List.map Listbox.option objects.curves)
+                                dropdownMsg
+                                curve.dropdown
+                                curve.maybeACurve
+                    in
+                    ( { detail
+                        | lastCurve =
+                            ( LastReferencedCurveForm
+                                { curve =
+                                    { dropdown = newDropdown
+                                    , maybeACurve = newMaybeACurve
+                                    }
+                                }
+                            , Tuple.second detail.firstCurve
+                            )
+                      }
+                    , Cmd.map LastCurveDropdownMsg dropdownCmd
+                    )
+
+                _ ->
                     ( detail, Cmd.none )
 
         LastCurveActionMenuMsg actionMenuMsg ->
@@ -6642,3 +6771,30 @@ dropdownUpdateConfig entryToHash =
 objectName : A object -> String
 objectName =
     Pattern.name >> Maybe.withDefault "<unnamed>"
+
+
+ordinalFromInt : Int -> String
+ordinalFromInt int =
+    case int of
+        11 ->
+            "11th"
+
+        12 ->
+            "12th"
+
+        13 ->
+            "13th"
+
+        _ ->
+            case modBy 10 int of
+                1 ->
+                    String.fromInt int ++ "st"
+
+                2 ->
+                    String.fromInt int ++ "nd"
+
+                3 ->
+                    String.fromInt int ++ "rd"
+
+                _ ->
+                    String.fromInt int ++ "th"

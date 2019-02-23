@@ -13,7 +13,7 @@ module Pattern exposing
     , replacePoint, replaceAxis, replaceCircle, replaceCurve, replaceDetail
     , ReplaceHelp(..)
     , removePoint, removeAxis, removeCircle, removeCurve, removeDetail
-    , points, axes, circles, curves, details, transformations, variables
+    , points, axes, circles, curves, curvesWith, details, transformations, variables
     , objects
     , pointInfo, PointInfo(..)
     , axisInfo, AxisInfo(..)
@@ -93,7 +93,7 @@ module Pattern exposing
 
 # Query
 
-@docs points, axes, circles, curves, details, transformations, variables
+@docs points, axes, circles, curves, curvesWith, details, transformations, variables
 
 @docs objects
 
@@ -959,6 +959,17 @@ curves : Pattern -> List (A Curve)
 curves (Pattern data) =
     Dict.keys data.curves
         |> List.map That
+
+
+curvesWith :
+    Pattern
+    ->
+        { startPoint : Maybe (A Point)
+        , endPoint : Maybe (A Point)
+        }
+    -> List (A Curve)
+curvesWith (Pattern data) { startPoint, endPoint } =
+    []
 
 
 details : Pattern -> List (A Detail)
