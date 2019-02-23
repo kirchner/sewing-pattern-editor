@@ -69,6 +69,7 @@ import Pattern
         ( A
         , Axis
         , Circle
+        , ComputeHelp(..)
         , Curve
         , CurveInfo(..)
         , Detail
@@ -4567,8 +4568,8 @@ newPointFrom form pattern =
                             (\basePointWithHelp ->
                                 { stuff
                                     | basePoint = basePointWithHelp
-                                    , directionHelp = checkDirection stuff.direction
-                                    , distanceHelp = checkExpr stuff.distance
+                                    , directionHelp = checkDirection pattern stuff.direction
+                                    , distanceHelp = checkExpr pattern stuff.distance
                                 }
                             )
                         |> Result.andThen createNewPoint
@@ -4579,8 +4580,8 @@ newPointFrom form pattern =
 
                 addHelp help =
                     { stuff
-                        | directionHelp = Maybe.map printExprHelp help.parseDirection
-                        , distanceHelp = Maybe.map printExprHelp help.parseDistance
+                        | directionHelp = Maybe.map printComputeHelp help.computeDirection
+                        , distanceHelp = Maybe.map printComputeHelp help.computeDistance
                     }
             in
             getBasePoint
@@ -4597,7 +4598,7 @@ newPointFrom form pattern =
                                     , basePointB =
                                         checkOtherPoint pattern stuff.basePointB
                                     , twoPointsPosition =
-                                        checkTwoPointsPosition stuff.twoPointsPosition
+                                        checkTwoPointsPosition pattern stuff.twoPointsPosition
                                 }
                             )
                         |> Result.andThen getBasePointB
@@ -4609,7 +4610,7 @@ newPointFrom form pattern =
                                 { stuff
                                     | basePointB = basePointBWithHelp
                                     , twoPointsPosition =
-                                        checkTwoPointsPosition stuff.twoPointsPosition
+                                        checkTwoPointsPosition pattern stuff.twoPointsPosition
                                 }
                             )
                         |> Result.andThen (createNewPoint aPointA)
@@ -4702,7 +4703,7 @@ newAxisFrom form pattern =
                             (\pointWithHelp ->
                                 { stuff
                                     | point = pointWithHelp
-                                    , orientationHelp = checkOrientation stuff.orientation
+                                    , orientationHelp = checkOrientation pattern stuff.orientation
                                 }
                             )
                         |> Result.andThen createNewAxis
@@ -4712,7 +4713,7 @@ newAxisFrom form pattern =
                         |> Result.mapError addHelp
 
                 addHelp help =
-                    { stuff | orientationHelp = Maybe.map printExprHelp help.parseAngle }
+                    { stuff | orientationHelp = Maybe.map printComputeHelp help.computeAngle }
             in
             getPoint
                 |> Result.mapError ThroughOnePointForm
@@ -4761,7 +4762,7 @@ newCircleFrom form pattern =
                             (\centerPointWithHelp ->
                                 { stuff
                                     | centerPoint = centerPointWithHelp
-                                    , radiusHelp = checkExpr stuff.radius
+                                    , radiusHelp = checkExpr pattern stuff.radius
                                 }
                             )
                         |> Result.andThen createNewCircle
@@ -5478,56 +5479,56 @@ checkOtherIntersectableObject pattern otherIntersectable =
             otherIntersectable
 
 
-checkTwoPointsPosition : TwoPointsPosition -> TwoPointsPosition
-checkTwoPointsPosition twoPointsPosition =
+checkTwoPointsPosition : Pattern -> TwoPointsPosition -> TwoPointsPosition
+checkTwoPointsPosition pattern twoPointsPosition =
     case twoPointsPosition of
         TwoPointsPositionRatio stuff_ ->
-            case Pattern.checkExpr stuff_.ratio of
+            case Pattern.checkExpr pattern stuff_.ratio of
                 Nothing ->
                     twoPointsPosition
 
                 Just help ->
                     TwoPointsPositionRatio
-                        { stuff_ | ratioHelp = Just (printExprHelp help) }
+                        { stuff_ | ratioHelp = Just (printComputeHelp help) }
 
         TwoPointsPositionFromA stuff_ ->
-            case Pattern.checkExpr stuff_.distance of
+            case Pattern.checkExpr pattern stuff_.distance of
                 Nothing ->
                     twoPointsPosition
 
                 Just help ->
                     TwoPointsPositionFromA
-                        { stuff_ | distanceHelp = Just (printExprHelp help) }
+                        { stuff_ | distanceHelp = Just (printComputeHelp help) }
 
         TwoPointsPositionFromB stuff_ ->
-            case Pattern.checkExpr stuff_.distance of
+            case Pattern.checkExpr pattern stuff_.distance of
                 Nothing ->
                     twoPointsPosition
 
                 Just help ->
                     TwoPointsPositionFromB
-                        { stuff_ | distanceHelp = Just (printExprHelp help) }
+                        { stuff_ | distanceHelp = Just (printComputeHelp help) }
 
 
-checkDirection : Direction -> Maybe String
-checkDirection direction =
+checkDirection : Pattern -> Direction -> Maybe String
+checkDirection pattern direction =
     case direction of
         DirectionAngle angle ->
-            Pattern.checkExpr angle
-                |> Maybe.map printExprHelp
+            Pattern.checkExpr pattern angle
+                |> Maybe.map printComputeHelp
 
         _ ->
             Nothing
 
 
-checkExpr : String -> Maybe String
-checkExpr =
-    Pattern.checkExpr
-        >> Maybe.map printExprHelp
+checkExpr : Pattern -> String -> Maybe String
+checkExpr pattern =
+    Pattern.checkExpr pattern
+        >> Maybe.map printComputeHelp
 
 
-checkOrientation : Orientation -> Maybe String
-checkOrientation orientation =
+checkOrientation : Pattern -> Orientation -> Maybe String
+checkOrientation pattern orientation =
     case orientation of
         Horizontal ->
             Nothing
@@ -5536,8 +5537,42 @@ checkOrientation orientation =
             Nothing
 
         OrientationAngle angle ->
-            Pattern.checkExpr angle
-                |> Maybe.map printExprHelp
+            Pattern.checkExpr pattern angle
+                |> Maybe.map printComputeHelp
+
+
+printComputeHelp : ComputeHelp -> String
+printComputeHelp computeHelp =
+    case computeHelp of
+        MissingObject name ->
+            "The object " ++ name ++ " does not exist."
+
+        MissingVariable name ->
+            "The variable " ++ name ++ " does not exist."
+
+        PointsCoincide ->
+            "Two points coincide."
+
+        PointsAreColinear ->
+            "Some points are colinear."
+
+        AxesAreParallel ->
+            "Two axes are parallel."
+
+        CirclesDoNotIntersect ->
+            "Two circles do not intersect."
+
+        AxisAndCircleDoNotIntersect ->
+            "An axis and a circle do not intersect."
+
+        WhichMustBeBetween from to ->
+            "The intersection does not exist."
+
+        ExprHelp exprHelp ->
+            printExprHelp exprHelp
+
+        NotComputableYet ->
+            "This is not computable, yet."
 
 
 printExprHelp : ExprHelp -> String
@@ -5559,15 +5594,15 @@ printExprHelp exprHelp =
 addTwoPointsPositionRatioHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionRatio stuff_ ->
-            case help.parseRatio of
+            case help.computeRatio of
                 Nothing ->
                     stuff
 
-                Just exprHelp ->
+                Just computeHelp ->
                     { stuff
                         | twoPointsPosition =
                             TwoPointsPositionRatio
-                                { stuff_ | ratioHelp = Just (printExprHelp exprHelp) }
+                                { stuff_ | ratioHelp = Just (printComputeHelp computeHelp) }
                     }
 
         _ ->
@@ -5577,15 +5612,15 @@ addTwoPointsPositionRatioHelp help stuff =
 addTwoPointsPositionFromAHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionFromA stuff_ ->
-            case help.parseDistance of
+            case help.computeDistance of
                 Nothing ->
                     stuff
 
-                Just exprHelp ->
+                Just computeHelp ->
                     { stuff
                         | twoPointsPosition =
                             TwoPointsPositionFromA
-                                { stuff_ | distanceHelp = Just (printExprHelp exprHelp) }
+                                { stuff_ | distanceHelp = Just (printComputeHelp computeHelp) }
                     }
 
         _ ->
@@ -5595,15 +5630,15 @@ addTwoPointsPositionFromAHelp help stuff =
 addTwoPointsPositionFromBHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionFromB stuff_ ->
-            case help.parseDistance of
+            case help.computeDistance of
                 Nothing ->
                     stuff
 
-                Just exprHelp ->
+                Just computeHelp ->
                     { stuff
                         | twoPointsPosition =
                             TwoPointsPositionFromB
-                                { stuff_ | distanceHelp = Just (printExprHelp exprHelp) }
+                                { stuff_ | distanceHelp = Just (printComputeHelp computeHelp) }
                     }
 
         _ ->
@@ -5627,12 +5662,12 @@ addPointsCoincideHelp help stuff =
 
 
 addRadiusHelp help stuff =
-    case help.parseRadius of
+    case help.computeRadius of
         Nothing ->
             stuff
 
-        Just exprHelp ->
-            { stuff | radiusHelp = Just (printExprHelp exprHelp) }
+        Just computeHelp ->
+            { stuff | radiusHelp = Just (printComputeHelp computeHelp) }
 
 
 

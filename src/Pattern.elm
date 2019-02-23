@@ -2575,8 +2575,8 @@ fromOnePoint :
     -> Result FromOnePointHelp Point
 fromOnePoint aBasePoint direction distance pattern =
     Ok FromOnePointHelp
-        |> collectMaybe (checkDirection direction)
-        |> collectMaybe (checkExpr distance)
+        |> collectMaybe (checkDirection pattern direction)
+        |> collectMaybe (checkExpr pattern distance)
         |> Result.map
             (always <|
                 Point <|
@@ -2589,15 +2589,15 @@ fromOnePoint aBasePoint direction distance pattern =
 
 
 type alias FromOnePointHelp =
-    { parseDirection : Maybe ExprHelp
-    , parseDistance : Maybe ExprHelp
+    { computeDirection : Maybe ComputeHelp
+    , computeDistance : Maybe ComputeHelp
     }
 
 
 betweenRatio : A Point -> A Point -> String -> Pattern -> Result BetweenRatioHelp Point
 betweenRatio aBasePointA aBasePointB ratio pattern =
     Ok BetweenRatioHelp
-        |> collectMaybe (checkExpr ratio)
+        |> collectMaybe (checkExpr pattern ratio)
         |> collectBool (checkObjectsCoincidence aBasePointA aBasePointB)
         |> Result.map
             (always <|
@@ -2611,7 +2611,7 @@ betweenRatio aBasePointA aBasePointB ratio pattern =
 
 
 type alias BetweenRatioHelp =
-    { parseRatio : Maybe ExprHelp
+    { computeRatio : Maybe ComputeHelp
     , basePointsCoincide : Bool
     }
 
@@ -2625,7 +2625,7 @@ betweenLength :
     -> Result BetweenLengthHelp Point
 betweenLength aBasePointA aBasePointB distance from pattern =
     Ok BetweenLengthHelp
-        |> collectMaybe (checkExpr distance)
+        |> collectMaybe (checkExpr pattern distance)
         |> collectBool (checkObjectsCoincidence aBasePointA aBasePointB)
         |> Result.map
             (always <|
@@ -2640,7 +2640,7 @@ betweenLength aBasePointA aBasePointB distance from pattern =
 
 
 type alias BetweenLengthHelp =
-    { parseDistance : Maybe ExprHelp
+    { computeDistance : Maybe ComputeHelp
     , basePointsCoincide : Bool
     }
 
@@ -2741,7 +2741,7 @@ transformedPoint aPoint aTransformation pattern =
 throughOnePoint : A Point -> Orientation -> Pattern -> Result ThroughOnePointHelp Axis
 throughOnePoint aPoint orientation pattern =
     Ok ThroughOnePointHelp
-        |> collectMaybe (checkOrientation orientation)
+        |> collectMaybe (checkOrientation pattern orientation)
         |> Result.map
             (always <|
                 Axis <|
@@ -2753,7 +2753,7 @@ throughOnePoint aPoint orientation pattern =
 
 
 type alias ThroughOnePointHelp =
-    { parseAngle : Maybe ExprHelp
+    { computeAngle : Maybe ComputeHelp
     }
 
 
@@ -2784,7 +2784,7 @@ transformedAxis aAxis aTransformation pattern =
 withRadius : String -> A Point -> Pattern -> Result WithRadiusHelp Circle
 withRadius radius aCenterPoint pattern =
     Ok WithRadiusHelp
-        |> collectMaybe (checkExpr radius)
+        |> collectMaybe (checkExpr pattern radius)
         |> Result.map
             (always <|
                 Circle <|
@@ -2796,7 +2796,7 @@ withRadius radius aCenterPoint pattern =
 
 
 type alias WithRadiusHelp =
-    { parseRadius : Maybe ExprHelp
+    { computeRadius : Maybe ComputeHelp
     }
 
 
@@ -2967,18 +2967,18 @@ type ExprHelp
     | CannotComputeFunction String
 
 
-checkExpr : String -> Maybe ExprHelp
-checkExpr rawExpr =
-    case Expr.parse reservedWords rawExpr of
+checkExpr : Pattern -> String -> Maybe ComputeHelp
+checkExpr pattern rawExpr =
+    case State.finalValue pattern (computeExpr rawExpr) of
         Ok _ ->
             Nothing
 
-        Err syntaxHelp ->
-            Just (SyntaxHelp syntaxHelp)
+        Err computeHelp ->
+            Just computeHelp
 
 
-checkDirection : Direction -> Maybe ExprHelp
-checkDirection direction =
+checkDirection : Pattern -> Direction -> Maybe ComputeHelp
+checkDirection pattern direction =
     case direction of
         Leftward ->
             Nothing
@@ -2993,11 +2993,11 @@ checkDirection direction =
             Nothing
 
         DirectionAngle rawExpr ->
-            checkExpr rawExpr
+            checkExpr pattern rawExpr
 
 
-checkOrientation : Orientation -> Maybe ExprHelp
-checkOrientation orientation =
+checkOrientation : Pattern -> Orientation -> Maybe ComputeHelp
+checkOrientation pattern orientation =
     case orientation of
         Horizontal ->
             Nothing
@@ -3006,7 +3006,7 @@ checkOrientation orientation =
             Nothing
 
         OrientationAngle rawAngle ->
-            checkExpr rawAngle
+            checkExpr pattern rawAngle
 
 
 checkObjectsCoincidence : A object -> A object -> Bool
