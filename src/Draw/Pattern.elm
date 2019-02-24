@@ -41,11 +41,15 @@ import Pattern
         , CurveInfo(..)
         , Detail
         , Detail2d
+        , DetailInfo
         , Direction(..)
+        , FirstCurve(..)
         , Intersectable
         , Intersectable2d(..)
         , IntersectableInfo(..)
+        , LastCurve(..)
         , LastCurve2d(..)
+        , NextCurve(..)
         , NextCurve2d(..)
         , OneInTwo(..)
         , Pattern
@@ -114,6 +118,9 @@ draw { preview, zoom, objectHovered, hoveredObject } =
                             Just (HoveredCurve aCurve) ->
                                 drawHoveredCurve preview center zoom aCurve
 
+                            Just (HoveredDetail aDetail) ->
+                                drawHoveredDetail preview center zoom aDetail
+
                             Just _ ->
                                 State.state (Svg.g [] [])
                          ]
@@ -121,7 +128,11 @@ draw { preview, zoom, objectHovered, hoveredObject } =
                                     []
 
                                 else
-                                    [ Pattern.curves pattern
+                                    [ Pattern.details pattern
+                                        |> State.traverse
+                                            (msgAreaDetail objectHovered center zoom)
+                                        |> State.map (Svg.g [])
+                                    , Pattern.curves pattern
                                         |> State.traverse
                                             (msgAreaCurve objectHovered center zoom)
                                         |> State.map (Svg.g [])
@@ -162,6 +173,21 @@ drawHoveredCurve preview center zoom aCurve =
     StateResult.ok toSvg
         |> StateResult.with (State.map Ok (drawCurveInfo center zoom aCurve))
         |> StateResult.with (Pattern.curve2d aCurve)
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawHoveredDetail : Bool -> Point2d -> Float -> A Detail -> State Pattern (Svg msg)
+drawHoveredDetail preview center zoom aDetail =
+    let
+        toSvg info2d detail2d =
+            Svg.g []
+                [ info2d
+                , svgHoveredDetail center zoom detail2d
+                ]
+    in
+    StateResult.ok toSvg
+        |> StateResult.with (State.map Ok (drawDetailInfo center zoom aDetail))
+        |> StateResult.with (Pattern.detail2d aDetail)
         |> StateResult.withDefault (Svg.g [] [])
 
 
@@ -257,6 +283,15 @@ drawCurveInfo center zoom aCurve =
             )
 
 
+drawDetailInfo : Point2d -> Float -> A Detail -> State Pattern (Svg msg)
+drawDetailInfo center zoom aDetail =
+    State.embed (Pattern.detailInfo aDetail)
+        |> State.andThen
+            (Maybe.map (drawDetailInfoHelp center zoom)
+                >> Maybe.withDefault (State.state (Svg.g [] []))
+            )
+
+
 drawIntersectableInfo : Point2d -> Float -> A Intersectable -> State Pattern (Svg msg)
 drawIntersectableInfo center zoom aIntersectable =
     State.embed (Pattern.intersectableInfo aIntersectable)
@@ -343,6 +378,84 @@ drawCurveInfoHelp center zoom info =
             State.state (Svg.g [] [])
 
 
+drawDetailInfoHelp : Point2d -> Float -> DetailInfo -> State Pattern (Svg msg)
+drawDetailInfoHelp center zoom info =
+    let
+        pointsFirstCurve =
+            case info.firstCurve of
+                FirstStraight stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.startPoint
+                        , stuff.endPoint
+                        ]
+
+                FirstQuadratic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.startPoint
+                        , stuff.controlPoint
+                        , stuff.endPoint
+                        ]
+
+                FirstCubic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.startPoint
+                        , stuff.startControlPoint
+                        , stuff.endControlPoint
+                        , stuff.endPoint
+                        ]
+
+                FirstReferencedCurve stuff ->
+                    [ drawReferencedCurve center zoom stuff.curve ]
+
+        pointsNextCurves =
+            List.concatMap pointsNextCurve info.nextCurves
+
+        pointsNextCurve nextCurve =
+            case nextCurve of
+                NextStraight stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.endPoint
+                        ]
+
+                NextQuadratic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.controlPoint
+                        , stuff.endPoint
+                        ]
+
+                NextCubic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.startControlPoint
+                        , stuff.endControlPoint
+                        , stuff.endPoint
+                        ]
+
+                NextReferencedCurve stuff ->
+                    [ drawReferencedCurve center zoom stuff.curve ]
+
+        pointsLastCurve =
+            case info.lastCurve of
+                LastStraight ->
+                    []
+
+                LastQuadratic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.controlPoint ]
+
+                LastCubic stuff ->
+                    List.map (drawReferencedPoint center zoom)
+                        [ stuff.startControlPoint
+                        , stuff.endControlPoint
+                        ]
+
+                LastReferencedCurve stuff ->
+                    [ drawReferencedCurve center zoom stuff.curve ]
+    in
+    (pointsFirstCurve ++ pointsNextCurves ++ pointsLastCurve)
+        |> State.combine
+        |> State.map (Svg.g [])
+
+
 drawReferencedPoint : Point2d -> Float -> A Point -> State Pattern (Svg msg)
 drawReferencedPoint center zoom aPoint =
     let
@@ -362,6 +475,28 @@ drawReferencedPoint center zoom aPoint =
                 StateResult.ok (Svg.g [] [])
             )
         |> StateResult.with (Pattern.point2d aPoint)
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+drawReferencedCurve : Point2d -> Float -> A Curve -> State Pattern (Svg msg)
+drawReferencedCurve center zoom aCurve =
+    let
+        toSvg info2d curve2d =
+            Svg.g []
+                [ svgReferencedCurve center zoom curve2d
+                , info2d
+                ]
+    in
+    StateResult.ok toSvg
+        |> StateResult.with
+            (if Pattern.inlined aCurve then
+                drawCurveInfo center zoom aCurve
+                    |> State.map Ok
+
+             else
+                StateResult.ok (Svg.g [] [])
+            )
+        |> StateResult.with (Pattern.curve2d aCurve)
         |> StateResult.withDefault (Svg.g [] [])
 
 
@@ -440,6 +575,29 @@ msgAreaCurve objectHovered center zoom aCurve =
     in
     Pattern.curve2d aCurve
         |> StateResult.map (curve2dScaleAbout center zoom >> msgAreaCurveHelp)
+        |> StateResult.withDefault (Svg.g [] [])
+
+
+msgAreaDetail :
+    (Maybe HoveredObject -> msg)
+    -> Point2d
+    -> Float
+    -> A Detail
+    -> State Pattern (Svg msg)
+msgAreaDetail objectHovered center zoom aDetail =
+    let
+        attributes =
+            [ Svg.Attributes.stroke "transparent"
+            , Svg.Attributes.fill "transparent"
+            , Svg.Events.onMouseOver (objectHovered (Just (HoveredDetail aDetail)))
+            , Svg.Events.onMouseOut (objectHovered Nothing)
+            ]
+    in
+    Pattern.detail2d aDetail
+        |> StateResult.map
+            (detail2dScaleAbout center zoom
+                >> drawDetailHelp attributes False
+            )
         |> StateResult.withDefault (Svg.g [] [])
 
 
@@ -600,13 +758,18 @@ drawDetail preview center zoom aDetail =
     Pattern.detail2d aDetail
         |> StateResult.map
             (detail2dScaleAbout center zoom
-                >> drawDetailHelp preview aDetail
+                >> drawDetailHelp
+                    [ Svg.Attributes.fill "rgba(239,238,234,0.5)"
+                    , strokeWidthNormal
+                    , stroke Black
+                    ]
+                    preview
             )
         |> StateResult.withDefault (Svg.g [] [])
 
 
-drawDetailHelp : Bool -> A Detail -> Detail2d -> Svg msg
-drawDetailHelp preview aDetail detail2d =
+drawDetailHelp : List (Svg.Attribute msg) -> Bool -> Detail2d -> Svg msg
+drawDetailHelp attrs preview detail2d =
     let
         step nextCurve2d =
             case nextCurve2d of
@@ -654,16 +817,15 @@ drawDetailHelp preview aDetail detail2d =
             String.fromFloat x ++ " " ++ String.fromFloat y
     in
     Svg.path
-        [ Svg.Attributes.fill "rgba(239,238,234,0.5)"
-        , strokeWidthNormal
-        , stroke Black
-        , Svg.Attributes.d <|
+        ((Svg.Attributes.d <|
             String.join " "
                 [ "M " ++ coord detail2d.firstPoint
                 , String.join " " (List.map step detail2d.nextCurves)
                 , " " ++ lastStep
                 ]
-        ]
+         )
+            :: attrs
+        )
         []
 
 
@@ -782,6 +944,17 @@ svgHoveredCurve center zoom curve2d =
                 )
 
 
+svgHoveredDetail : Point2d -> Float -> Detail2d -> Svg msg
+svgHoveredDetail center zoom detail2d =
+    drawDetailHelp
+        [ stroke Blue
+        , Svg.Attributes.stroke "none"
+        , Svg.Attributes.fill "rgba(220,134,63,0.1)"
+        ]
+        False
+        (detail2dScaleAbout center zoom detail2d)
+
+
 svgReferencedPoint : Point2d -> Float -> Point2d -> Svg msg
 svgReferencedPoint center zoom point2d =
     Svg.circle2d
@@ -791,6 +964,40 @@ svgReferencedPoint center zoom point2d =
         (Circle2d.withRadius 3 <|
             Point2d.scaleAbout center zoom point2d
         )
+
+
+svgReferencedCurve : Point2d -> Float -> Curve2d -> Svg msg
+svgReferencedCurve center zoom curve2d =
+    case curve2d of
+        LineSegment2d lineSegment2d ->
+            Svg.lineSegment2d
+                [ stroke Blue
+                , Svg.Attributes.strokeWidth "2"
+                , Svg.Attributes.fill "none"
+                ]
+                (LineSegment2d.scaleAbout center zoom <|
+                    lineSegment2d
+                )
+
+        QuadraticSpline2d quadraticSpline2d ->
+            Svg.quadraticSpline2d
+                [ stroke Blue
+                , Svg.Attributes.strokeWidth "2"
+                , Svg.Attributes.fill "none"
+                ]
+                (QuadraticSpline2d.scaleAbout center zoom <|
+                    quadraticSpline2d
+                )
+
+        CubicSpline2d cubicSpline2d ->
+            Svg.cubicSpline2d
+                [ stroke Blue
+                , Svg.Attributes.strokeWidth "2"
+                , Svg.Attributes.fill "none"
+                ]
+                (CubicSpline2d.scaleAbout center zoom <|
+                    cubicSpline2d
+                )
 
 
 svgReferencedIntersectable : Point2d -> Float -> Intersectable2d -> Svg msg
