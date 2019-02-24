@@ -450,6 +450,12 @@ viewEditor prefix storedPattern model =
                 , label = View.Icon.faBrandLarge "github"
                 }
             ]
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height (Element.px Design.xxxSmall)
+            , Background.color Design.primary
+            ]
+            Element.none
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
@@ -480,6 +486,12 @@ viewEditor prefix storedPattern model =
                 (viewWorkspace storedPattern model)
             , viewRightToolbar pattern model
             ]
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height (Element.px Design.xxSmall)
+            , Background.color Design.primary
+            ]
+            Element.none
         ]
 
 
