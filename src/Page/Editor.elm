@@ -429,15 +429,8 @@ viewEditor prefix storedPattern model =
             [ Element.width Element.fill
             , Element.padding Design.small
             , Element.spacing Design.xSmall
-            , Border.widthEach
-                { top = 0
-                , bottom = 1
-                , left = 0
-                , right = 0
-                }
             , Font.size Design.small
-            , Background.color Design.white
-            , Border.color Design.black
+            , Background.color Design.secondary
             , Font.color Design.black
             ]
             [ View.Navigation.link
@@ -497,13 +490,6 @@ viewLeftToolbar prefix pattern maybeDialog =
         , Element.height Element.fill
         , Element.scrollbarY
         , Background.color Design.white
-        , Border.widthEach
-            { left = 0
-            , right = 1
-            , top = 0
-            , bottom = 0
-            }
-        , Border.color Design.black
         ]
         [ case maybeDialog of
             Nothing ->
@@ -630,16 +616,10 @@ viewRightToolbar pattern model =
             [ Element.height Element.fill
             , Element.padding 5
             , Font.color Design.black
-            , Border.widthEach
-                { left = 1
-                , right = 0
-                , top = 0
-                , bottom = 0
-                }
-            , Border.color Design.black
             , Element.mouseOver
                 [ Font.color Design.primaryDark
                 , Border.color Design.primaryDark
+                , Background.color Design.secondary
                 ]
             ]
             { onPress = Just ToolbarToggleClicked

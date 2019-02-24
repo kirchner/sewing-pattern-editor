@@ -4,6 +4,8 @@ module Design exposing
     , sansSerif, monospace
     , primary, primaryDark
     , secondary, secondaryDark
+    , complementary, complementaryDark
+    , neutral, neutralDark
     , danger, dangerDark
     , success
     , grayDark
@@ -32,6 +34,8 @@ module Design exposing
 
 @docs primary, primaryDark
 @docs secondary, secondaryDark
+@docs complementary, complementaryDark
+@docs neutral, neutralDark
 @docs danger, dangerDark
 @docs success
 
@@ -171,6 +175,22 @@ secondary =
 
 secondaryDark =
     Element.rgb255 217 215 205
+
+
+complementary =
+    Element.rgb255 220 134 63
+
+
+complementaryDark =
+    Element.rgb255 180 95 25
+
+
+neutral =
+    Element.rgb255 220 166 63
+
+
+neutralDark =
+    Element.rgb255 180 127 25
 
 
 danger =

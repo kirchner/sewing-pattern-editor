@@ -137,8 +137,8 @@ drawHoveredPoint preview center zoom aPoint =
     let
         toSvg info2d point2d =
             Svg.g []
-                [ svgHoveredPoint center zoom point2d
-                , info2d
+                [ info2d
+                , svgHoveredPoint center zoom point2d
                 ]
     in
     StateResult.ok toSvg
@@ -585,7 +585,7 @@ drawDetailHelp preview aDetail detail2d =
             String.fromFloat x ++ " " ++ String.fromFloat y
     in
     Svg.path
-        [ Svg.Attributes.fill "hsla(240, 2%, 80%, 0.5)"
+        [ Svg.Attributes.fill "rgba(239,238,234,0.5)"
         , strokeWidthNormal
         , stroke Black
         , Svg.Attributes.d <|
@@ -671,8 +671,8 @@ detail2dScaleAbout center zoom detail =
 svgHoveredPoint : Point2d -> Float -> Point2d -> Svg msg
 svgHoveredPoint center zoom point2d =
     Svg.circle2d
-        [ fill Blue
-        , stroke Blue
+        [ Svg.Attributes.fill "rgb(217,215,205)"
+        , stroke Black
         ]
         (Circle2d.withRadius 6 <|
             Point2d.scaleAbout center zoom point2d
@@ -853,7 +853,7 @@ stroke color =
     Svg.Attributes.stroke <|
         case color of
             Blue ->
-                "blue"
+                "rgb(220,134,63)"
 
             Black ->
                 "black"
@@ -866,7 +866,7 @@ fill color =
     Svg.Attributes.fill <|
         case color of
             Blue ->
-                "blue"
+                "rgb(220,134,63)"
 
             Black ->
                 "black"
