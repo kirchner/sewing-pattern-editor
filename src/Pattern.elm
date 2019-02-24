@@ -22,6 +22,7 @@ module Pattern exposing
     , detailInfo, DetailInfo, FirstCurve(..), NextCurve(..), LastCurve(..)
     , transformationInfo, TransformationInfo(..)
     , variableInfo
+    , intersectableInfo, IntersectableInfo(..)
     , Direction(..), Orientation(..), OneInTwo(..)
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
@@ -107,6 +108,7 @@ module Pattern exposing
 @docs detailInfo, DetailInfo, FirstCurve, NextCurve, LastCurve
 @docs transformationInfo, TransformationInfo
 @docs variableInfo
+@docs intersectableInfo, IntersectableInfo
 
 
 ## Shared types
@@ -1338,6 +1340,46 @@ type alias TransformedObjects =
 variableInfo : String -> Pattern -> Maybe String
 variableInfo variable (Pattern data) =
     Dict.get variable data.variables
+
+
+type IntersectableInfo
+    = AxisInfo AxisInfo
+    | CircleInfo CircleInfo
+    | CurveInfo CurveInfo
+
+
+intersectableInfo : A Intersectable -> Pattern -> Maybe IntersectableInfo
+intersectableInfo aIntersectable (Pattern data) =
+    let
+        or maybeB maybeA =
+            case maybeA of
+                Nothing ->
+                    maybeB
+
+                Just _ ->
+                    maybeA
+    in
+    case aIntersectable of
+        That name_ ->
+            Dict.get name_ data.axes
+                |> Maybe.map (\(Axis info) -> AxisInfo info)
+                |> or
+                    (Dict.get name_ data.circles
+                        |> Maybe.map (\(Circle info) -> CircleInfo info)
+                    )
+                |> or
+                    (Dict.get name_ data.curves
+                        |> Maybe.map (\(Curve info) -> CurveInfo info)
+                    )
+
+        This (IntersectableAxis (Axis info)) ->
+            Just (AxisInfo info)
+
+        This (IntersectableCircle (Circle info)) ->
+            Just (CircleInfo info)
+
+        This (IntersectableCurve (Curve info)) ->
+            Just (CurveInfo info)
 
 
 
