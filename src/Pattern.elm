@@ -1228,6 +1228,7 @@ type alias FirstCubicStuff =
 
 type alias FirstReferencedCurveStuff =
     { curve : A Curve
+    , reversed : Bool
     }
 
 
@@ -1258,6 +1259,7 @@ type alias NextCubicStuff =
 
 type alias NextReferencedCurveStuff =
     { curve : A Curve
+    , reversed : Bool
     }
 
 
@@ -1281,6 +1283,7 @@ type alias LastCubicStuff =
 
 type alias LastReferencedCurveStuff =
     { curve : A Curve
+    , reversed : Bool
     }
 
 
@@ -1771,6 +1774,15 @@ reverseCurve curve =
             CubicSpline2d (CubicSpline2d.reverse cubicSpline2d)
 
 
+reverseIf : Bool -> Curve2d -> Curve2d
+reverseIf bool curve =
+    if bool then
+        reverseCurve curve
+
+    else
+        curve
+
+
 curve2d : A Curve -> State Pattern (Result ComputeHelp Curve2d)
 curve2d aCurve =
     case aCurve of
@@ -1946,7 +1958,7 @@ computeDetail2d (Detail info) =
                                     { nextCurve = maybeNextCurve
                                     , previousCurve = maybeLastCurve
                                     }
-                                    curve
+                                    (curve |> reverseIf stuff.reversed)
                             of
                                 Nothing ->
                                     Err DisconnectedCurves
@@ -1959,7 +1971,11 @@ computeDetail2d (Detail info) =
                         |> StateResult.with
                             (case info.nextCurves of
                                 (NextReferencedCurve nextStuff) :: _ ->
-                                    StateResult.map Just (curve2d nextStuff.curve)
+                                    StateResult.map Just
+                                        (curve2d nextStuff.curve
+                                            |> StateResult.map
+                                                (reverseIf nextStuff.reversed)
+                                        )
 
                                 _ ->
                                     StateResult.ok Nothing
@@ -1967,7 +1983,11 @@ computeDetail2d (Detail info) =
                         |> StateResult.with
                             (case info.lastCurve of
                                 LastReferencedCurve lastStuff ->
-                                    StateResult.map Just (curve2d lastStuff.curve)
+                                    StateResult.map Just
+                                        (curve2d lastStuff.curve
+                                            |> StateResult.map
+                                                (reverseIf lastStuff.reversed)
+                                        )
 
                                 _ ->
                                     StateResult.ok Nothing
@@ -2030,13 +2050,13 @@ computeDetail2d (Detail info) =
                                     { nextCurve = maybeFirstCurve
                                     , previousCurve = maybePreviousCurve
                                     }
-                                    curve
+                                    (reverseIf stuff.reversed curve)
                                 )
                                 (endPointWith
                                     { nextCurve = maybeFirstCurve
                                     , previousCurve = maybePreviousCurve
                                     }
-                                    curve
+                                    (reverseIf stuff.reversed curve)
                                 )
                                 |> Maybe.withDefault (Err DisconnectedCurves)
 
@@ -2066,7 +2086,11 @@ computeDetail2d (Detail info) =
                         |> StateResult.with
                             (case List.reverse info.nextCurves of
                                 (NextReferencedCurve nextStuff) :: _ ->
-                                    StateResult.map Just (curve2d nextStuff.curve)
+                                    StateResult.map Just
+                                        (curve2d nextStuff.curve
+                                            |> StateResult.map
+                                                (reverseIf nextStuff.reversed)
+                                        )
 
                                 _ ->
                                     StateResult.ok Nothing
@@ -2075,7 +2099,11 @@ computeDetail2d (Detail info) =
                         |> StateResult.with
                             (case info.firstCurve of
                                 FirstReferencedCurve firstStuff ->
-                                    StateResult.map Just (curve2d firstStuff.curve)
+                                    StateResult.map Just
+                                        (curve2d firstStuff.curve
+                                            |> StateResult.map
+                                                (reverseIf firstStuff.reversed)
+                                        )
 
                                 _ ->
                                     StateResult.ok Nothing
@@ -2183,11 +2211,17 @@ secondCurve2d firstCurve nextCurves lastCurve =
                                 }
             in
             StateResult.ok toFirstCurve
-                |> StateResult.with (curve2d stuff.curve)
+                |> StateResult.with
+                    (curve2d stuff.curve
+                        |> StateResult.map (reverseIf stuff.reversed)
+                    )
                 |> StateResult.with
                     (case nextCurves of
                         (NextReferencedCurve nextStuff) :: _ ->
-                            StateResult.map Just (curve2d nextStuff.curve)
+                            StateResult.map Just
+                                (curve2d nextStuff.curve
+                                    |> StateResult.map (reverseIf nextStuff.reversed)
+                                )
 
                         _ ->
                             StateResult.ok Nothing
@@ -2195,7 +2229,10 @@ secondCurve2d firstCurve nextCurves lastCurve =
                 |> StateResult.with
                     (case lastCurve of
                         LastReferencedCurve lastStuff ->
-                            StateResult.map Just (curve2d lastStuff.curve)
+                            StateResult.map Just
+                                (curve2d lastStuff.curve
+                                    |> StateResult.map (reverseIf lastStuff.reversed)
+                                )
 
                         _ ->
                             StateResult.ok Nothing
@@ -2269,7 +2306,10 @@ nextCurve2d nextCurve =
                                 }
             in
             StateResult.ok toNextCurve
-                |> StateResult.with (curve2d stuff.curve)
+                |> StateResult.with
+                    (curve2d stuff.curve
+                        |> StateResult.map (reverseIf stuff.reversed)
+                    )
 
 
 startPointWith :
@@ -3636,7 +3676,9 @@ encodeFirstCurve firstCurve =
 
         FirstReferencedCurve stuff ->
             withType "firstReferencedCurve"
-                [ ( "curve", encodeACurve stuff.curve ) ]
+                [ ( "curve", encodeACurve stuff.curve )
+                , ( "reversed", Encode.bool stuff.reversed )
+                ]
 
 
 encodeNextCurve : NextCurve -> Value
@@ -3661,7 +3703,9 @@ encodeNextCurve nextCurve =
 
         NextReferencedCurve stuff ->
             withType "nextReferencedCurve"
-                [ ( "curve", encodeACurve stuff.curve ) ]
+                [ ( "curve", encodeACurve stuff.curve )
+                , ( "reversed", Encode.bool stuff.reversed )
+                ]
 
 
 encodeLastCurve : LastCurve -> Value
@@ -3682,7 +3726,9 @@ encodeLastCurve lastCurve =
 
         LastReferencedCurve stuff ->
             withType "lastReferencedCurve"
-                [ ( "curve", encodeACurve stuff.curve ) ]
+                [ ( "curve", encodeACurve stuff.curve )
+                , ( "reversed", Encode.bool stuff.reversed )
+                ]
 
 
 encodeTransformation : Transformation -> Value
@@ -3998,6 +4044,7 @@ firstCurveDecoder =
             |> ensureType "firstCubic"
         , Decode.succeed FirstReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
+            |> Decode.required "reversed" Decode.bool
             |> Decode.map FirstReferencedCurve
             |> ensureType "firstReferencedCurve"
         ]
@@ -4023,6 +4070,7 @@ nextCurveDecoder =
             |> ensureType "nextCubic"
         , Decode.succeed NextReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
+            |> Decode.required "reversed" Decode.bool
             |> Decode.map NextReferencedCurve
             |> ensureType "nextReferencedCurve"
         ]
@@ -4044,6 +4092,7 @@ lastCurveDecoder =
             |> ensureType "lastCubic"
         , Decode.succeed LastReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
+            |> Decode.required "reversed" Decode.bool
             |> Decode.map LastReferencedCurve
             |> ensureType "lastReferencedCurve"
         ]

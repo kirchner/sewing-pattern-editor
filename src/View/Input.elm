@@ -8,6 +8,7 @@ module View.Input exposing
     , btnPrimary
     , btnSecondary
     , btnSecondaryWide
+    , checkbox
     , dropdown
     , dropdownAppended
     , dropdownWithMenu
@@ -419,6 +420,89 @@ lineNumbers lineCount =
                     Element.none
                 )
             ]
+
+
+
+---- CHECKBOX
+
+
+checkbox { onChange, checked, label } =
+    Input.checkbox
+        [ Element.width Element.fill
+        , Element.padding Design.xxSmall
+        ]
+        { onChange = onChange
+        , icon = checkboxIcon
+        , checked = checked
+        , label =
+            Input.labelRight
+                [ Font.size 14
+                , Font.color Design.black
+                ]
+                (Element.text label)
+        }
+
+
+checkboxIcon checked =
+    Element.el
+        [ Element.width (Element.px 14)
+        , Element.height (Element.px 14)
+        , Font.color Design.white
+        , Element.centerY
+        , Font.size 9
+        , Font.center
+        , Border.rounded 3
+        , Border.color <|
+            if checked then
+                Element.rgb (59 / 255) (153 / 255) (252 / 255)
+
+            else
+                Element.rgb (211 / 255) (211 / 255) (211 / 255)
+        , Border.shadow <|
+            { offset = ( 0, 0 )
+            , blur = 1
+            , size = 1
+            , color =
+                if checked then
+                    Element.rgba (238 / 255) (238 / 255) (238 / 255) 0
+
+                else
+                    Element.rgb (238 / 255) (238 / 255) (238 / 255)
+            }
+        , Background.color <|
+            if checked then
+                Design.primary
+
+            else
+                Design.white
+        , Border.width <|
+            if checked then
+                0
+
+            else
+                1
+        ]
+        (if checked then
+            Element.el
+                [ Border.color Design.white
+                , Element.height (Element.px 6)
+                , Element.width (Element.px 9)
+                , Element.rotate (degrees -45)
+                , Element.centerX
+                , Element.centerY
+                , Element.moveUp 1
+                , Border.widthEach
+                    { top = 0
+                    , left = 2
+                    , bottom = 2
+                    , right = 0
+                    }
+                ]
+                Element.none
+
+         else
+            Element.none
+        )
 
 
 

@@ -363,6 +363,7 @@ type FirstCurveForm
         }
     | FirstReferencedCurveForm
         { curve : OtherCurveForm
+        , reversed : Bool
         }
 
 
@@ -381,6 +382,7 @@ type NextCurveForm
         }
     | NextReferencedCurveForm
         { curve : OtherCurveForm
+        , reversed : Bool
         }
 
 
@@ -395,6 +397,7 @@ type LastCurveForm
         }
     | LastReferencedCurveForm
         { curve : OtherCurveForm
+        , reversed : Bool
         }
 
 
@@ -889,6 +892,7 @@ initFirstCurveFormWith pattern firstCurve =
                         { dropdown = Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
+                    , reversed = stuff.reversed
                     }
 
 
@@ -961,6 +965,7 @@ nextCurveFormWith pattern nextCurve =
                         { dropdown = Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
+                    , reversed = stuff.reversed
                     }
 
 
@@ -997,6 +1002,7 @@ initLastCurveFormWith pattern lastCurve =
                         { dropdown = Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
+                    , reversed = stuff.reversed
                     }
 
 
@@ -1244,6 +1250,7 @@ initFirstReferencedCurveForm : FirstCurveForm
 initFirstReferencedCurveForm =
     FirstReferencedCurveForm
         { curve = initOtherCurveForm
+        , reversed = False
         }
 
 
@@ -1273,7 +1280,9 @@ initNextCubicForm =
 initNextReferencedCurveForm : NextCurveForm
 initNextReferencedCurveForm =
     NextReferencedCurveForm
-        { curve = initOtherCurveForm }
+        { curve = initOtherCurveForm
+        , reversed = False
+        }
 
 
 initLastStraightForm : LastCurveForm
@@ -1299,6 +1308,7 @@ initLastReferencedCurveForm : LastCurveForm
 initLastReferencedCurveForm =
     LastReferencedCurveForm
         { curve = initOtherCurveForm
+        , reversed = False
         }
 
 
@@ -2110,16 +2120,26 @@ viewDetailFormHelp pattern objects { detail, id } =
                                                 }
                                         ]
 
-                            FirstReferencedCurveForm { curve } ->
-                                View.Input.dropdownAppended (id ++ "__first-referenced-curve")
-                                    { lift = FirstCurveDropdownMsg
-                                    , entryToString = objectName
-                                    , entryToHash = Pattern.hash
-                                    , label = "First curve"
-                                    , options = objects.curves
-                                    , dropdown = curve.dropdown
-                                    , selection = curve.maybeACurve
-                                    }
+                            FirstReferencedCurveForm { curve, reversed } ->
+                                Element.column
+                                    [ Element.width Element.fill
+                                    , Element.spacing Design.xSmall
+                                    ]
+                                    [ View.Input.dropdownAppended (id ++ "__first-referenced-curve")
+                                        { lift = FirstCurveDropdownMsg
+                                        , entryToString = objectName
+                                        , entryToHash = Pattern.hash
+                                        , label = "First curve"
+                                        , options = objects.curves
+                                        , dropdown = curve.dropdown
+                                        , selection = curve.maybeACurve
+                                        }
+                                    , View.Input.checkbox
+                                        { onChange = FirstCurveReverseChanged
+                                        , checked = reversed
+                                        , label = "Reverse curve"
+                                        }
+                                    ]
                         ]
                     ]
               ]
@@ -2185,16 +2205,26 @@ viewDetailFormHelp pattern objects { detail, id } =
                                                 }
                                         ]
 
-                            LastReferencedCurveForm { curve } ->
-                                View.Input.dropdownAppended (id ++ "__last-referenced-curve")
-                                    { lift = LastCurveDropdownMsg
-                                    , entryToString = objectName
-                                    , entryToHash = Pattern.hash
-                                    , label = "Last curve"
-                                    , options = objects.curves
-                                    , dropdown = curve.dropdown
-                                    , selection = curve.maybeACurve
-                                    }
+                            LastReferencedCurveForm { curve, reversed } ->
+                                Element.column
+                                    [ Element.width Element.fill
+                                    , Element.spacing Design.xSmall
+                                    ]
+                                    [ View.Input.dropdownAppended (id ++ "__last-referenced-curve")
+                                        { lift = LastCurveDropdownMsg
+                                        , entryToString = objectName
+                                        , entryToHash = Pattern.hash
+                                        , label = "Last curve"
+                                        , options = objects.curves
+                                        , dropdown = curve.dropdown
+                                        , selection = curve.maybeACurve
+                                        }
+                                    , View.Input.checkbox
+                                        { onChange = LastCurveReverseChanged
+                                        , checked = reversed
+                                        , label = "Reverse curve"
+                                        }
+                                    ]
                         ]
                     ]
               ]
@@ -2294,16 +2324,26 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                                     }
                             ]
 
-                NextReferencedCurveForm { curve } ->
-                    View.Input.dropdownAppended (actualId ++ "__referenced-curve")
-                        { lift = NextCurveDropdownMsg index
-                        , entryToString = objectName
-                        , entryToHash = Pattern.hash
-                        , label = ordinalFromInt (index + 2) ++ " Curve"
-                        , options = objects.curves
-                        , dropdown = curve.dropdown
-                        , selection = curve.maybeACurve
-                        }
+                NextReferencedCurveForm { curve, reversed } ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing Design.xSmall
+                        ]
+                        [ View.Input.dropdownAppended (actualId ++ "__referenced-curve")
+                            { lift = NextCurveDropdownMsg index
+                            , entryToString = objectName
+                            , entryToHash = Pattern.hash
+                            , label = ordinalFromInt (index + 2) ++ " Curve"
+                            , options = objects.curves
+                            , dropdown = curve.dropdown
+                            , selection = curve.maybeACurve
+                            }
+                        , View.Input.checkbox
+                            { onChange = NextCurveReverseChanged index
+                            , checked = reversed
+                            , label = "Reverse curve"
+                            }
+                        ]
             ]
         ]
 
@@ -3454,6 +3494,7 @@ type DetailMsg
     | FirstCurveEndControlPointMsg OtherPointMsg
     | FirstCurveEndPointMsg OtherPointMsg
     | FirstCurveDropdownMsg (Dropdown.Msg (A Curve))
+    | FirstCurveReverseChanged Bool
     | FirstCurveActionMenuMsg ActionMenuMsg
       -- NEXT CURVE
     | NextCurveTypeChanged Int NextCurveTag
@@ -3462,6 +3503,7 @@ type DetailMsg
     | NextCurveEndControlPointMsg Int OtherPointMsg
     | NextCurveEndPointMsg Int OtherPointMsg
     | NextCurveDropdownMsg Int (Dropdown.Msg (A Curve))
+    | NextCurveReverseChanged Int Bool
     | NextCurveActionMenuMsg Int ActionMenuMsg
       -- LAST CURVE
     | LastCurveTypeChanged LastCurveTag
@@ -3469,6 +3511,7 @@ type DetailMsg
     | LastCurveControlPointMsg OtherPointMsg
     | LastCurveEndControlPointMsg OtherPointMsg
     | LastCurveDropdownMsg (Dropdown.Msg (A Curve))
+    | LastCurveReverseChanged Bool
     | LastCurveActionMenuMsg ActionMenuMsg
 
 
@@ -4405,27 +4448,43 @@ updateDetailForm pattern objects detailMsg detail =
 
         FirstCurveDropdownMsg dropdownMsg ->
             case Tuple.first detail.firstCurve of
-                FirstReferencedCurveForm { curve } ->
+                FirstReferencedCurveForm stuff ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
                             Dropdown.update (dropdownUpdateConfig Pattern.hash)
                                 (List.map Listbox.option objects.curves)
                                 dropdownMsg
-                                curve.dropdown
-                                curve.maybeACurve
+                                stuff.curve.dropdown
+                                stuff.curve.maybeACurve
                     in
                     ( { detail
                         | firstCurve =
                             ( FirstReferencedCurveForm
-                                { curve =
-                                    { dropdown = newDropdown
-                                    , maybeACurve = newMaybeACurve
-                                    }
+                                { stuff
+                                    | curve =
+                                        { dropdown = newDropdown
+                                        , maybeACurve = newMaybeACurve
+                                        }
                                 }
                             , Tuple.second detail.firstCurve
                             )
                       }
                     , Cmd.map FirstCurveDropdownMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( detail, Cmd.none )
+
+        FirstCurveReverseChanged newValue ->
+            case Tuple.first detail.firstCurve of
+                FirstReferencedCurveForm stuff ->
+                    ( { detail
+                        | firstCurve =
+                            ( FirstReferencedCurveForm { stuff | reversed = newValue }
+                            , Tuple.second detail.firstCurve
+                            )
+                      }
+                    , Cmd.none
                     )
 
                 _ ->
@@ -4648,24 +4707,25 @@ updateDetailForm pattern objects detailMsg detail =
 
         NextCurveDropdownMsg index dropdownMsg ->
             case List.getAt index detail.nextCurves of
-                Just ( NextReferencedCurveForm { curve }, actionMenu ) ->
+                Just ( NextReferencedCurveForm stuff, actionMenu ) ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
                             Dropdown.update (dropdownUpdateConfig Pattern.hash)
                                 (List.map Listbox.option objects.curves)
                                 dropdownMsg
-                                curve.dropdown
-                                curve.maybeACurve
+                                stuff.curve.dropdown
+                                stuff.curve.maybeACurve
                     in
                     ( { detail
                         | nextCurves =
                             List.updateAt index
                                 (always
                                     ( NextReferencedCurveForm
-                                        { curve =
-                                            { dropdown = newDropdown
-                                            , maybeACurve = newMaybeACurve
-                                            }
+                                        { stuff
+                                            | curve =
+                                                { dropdown = newDropdown
+                                                , maybeACurve = newMaybeACurve
+                                                }
                                         }
                                     , actionMenu
                                     )
@@ -4673,6 +4733,25 @@ updateDetailForm pattern objects detailMsg detail =
                                 detail.nextCurves
                       }
                     , Cmd.map (NextCurveDropdownMsg index) dropdownCmd
+                    )
+
+                _ ->
+                    ( detail, Cmd.none )
+
+        NextCurveReverseChanged index newValue ->
+            case List.getAt index detail.nextCurves of
+                Just ( NextReferencedCurveForm stuff, actionMenu ) ->
+                    ( { detail
+                        | nextCurves =
+                            List.updateAt index
+                                (always
+                                    ( NextReferencedCurveForm { stuff | reversed = newValue }
+                                    , actionMenu
+                                    )
+                                )
+                                detail.nextCurves
+                      }
+                    , Cmd.none
                     )
 
                 _ ->
@@ -4782,27 +4861,43 @@ updateDetailForm pattern objects detailMsg detail =
 
         LastCurveDropdownMsg dropdownMsg ->
             case Tuple.first detail.lastCurve of
-                LastReferencedCurveForm { curve } ->
+                LastReferencedCurveForm stuff ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
                             Dropdown.update (dropdownUpdateConfig Pattern.hash)
                                 (List.map Listbox.option objects.curves)
                                 dropdownMsg
-                                curve.dropdown
-                                curve.maybeACurve
+                                stuff.curve.dropdown
+                                stuff.curve.maybeACurve
                     in
                     ( { detail
                         | lastCurve =
                             ( LastReferencedCurveForm
-                                { curve =
-                                    { dropdown = newDropdown
-                                    , maybeACurve = newMaybeACurve
-                                    }
+                                { stuff
+                                    | curve =
+                                        { dropdown = newDropdown
+                                        , maybeACurve = newMaybeACurve
+                                        }
                                 }
                             , Tuple.second detail.firstCurve
                             )
                       }
                     , Cmd.map LastCurveDropdownMsg dropdownCmd
+                    )
+
+                _ ->
+                    ( detail, Cmd.none )
+
+        LastCurveReverseChanged newValue ->
+            case Tuple.first detail.lastCurve of
+                LastReferencedCurveForm stuff ->
+                    ( { detail
+                        | lastCurve =
+                            ( LastReferencedCurveForm { stuff | reversed = newValue }
+                            , Tuple.second detail.lastCurve
+                            )
+                      }
+                    , Cmd.none
                     )
 
                 _ ->
@@ -5674,13 +5769,17 @@ newFirstCurveFrom form pattern =
             in
             Result.mapError FirstCubicForm getStartPoint
 
-        FirstReferencedCurveForm { curve } ->
-            case curve.maybeACurve of
+        FirstReferencedCurveForm stuff ->
+            case stuff.curve.maybeACurve of
                 Nothing ->
                     Err form
 
                 Just aCurve ->
-                    Ok (FirstReferencedCurve { curve = aCurve })
+                    Ok <|
+                        FirstReferencedCurve
+                            { curve = aCurve
+                            , reversed = stuff.reversed
+                            }
 
 
 newNextCurveFrom : NextCurveForm -> Pattern -> Result NextCurveForm NextCurve
@@ -5774,13 +5873,17 @@ newNextCurveFrom form pattern =
             in
             Result.mapError NextCubicForm getStartControlPoint
 
-        NextReferencedCurveForm { curve } ->
-            case curve.maybeACurve of
+        NextReferencedCurveForm stuff ->
+            case stuff.curve.maybeACurve of
                 Nothing ->
                     Err form
 
                 Just aCurve ->
-                    Ok (NextReferencedCurve { curve = aCurve })
+                    Ok <|
+                        NextReferencedCurve
+                            { curve = aCurve
+                            , reversed = stuff.reversed
+                            }
 
 
 checkNextCurve : Pattern -> NextCurveForm -> NextCurveForm
@@ -5860,13 +5963,17 @@ newLastCurveFrom form pattern =
             in
             Result.mapError LastCubicForm getStartControlPoint
 
-        LastReferencedCurveForm { curve } ->
-            case curve.maybeACurve of
+        LastReferencedCurveForm stuff ->
+            case stuff.curve.maybeACurve of
                 Nothing ->
                     Err form
 
                 Just aCurve ->
-                    Ok (LastReferencedCurve { curve = aCurve })
+                    Ok <|
+                        LastReferencedCurve
+                            { curve = aCurve
+                            , reversed = stuff.reversed
+                            }
 
 
 checkLastCurve : Pattern -> LastCurveForm -> LastCurveForm
