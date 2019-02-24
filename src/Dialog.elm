@@ -807,8 +807,197 @@ initCurveFormWith pattern aCurve =
 
 {-| -}
 editDetail : Pattern -> A Pattern.Detail -> Maybe Edit
-editDetail pattern thatDetail =
-    Nothing
+editDetail pattern aDetail =
+    case Pattern.detailInfo aDetail pattern of
+        Nothing ->
+            Nothing
+
+        Just info ->
+            let
+                toForm firstCurve nextCurves lastCurve =
+                    EditDetail
+                        { aDetail = aDetail
+                        , form =
+                            { firstCurve = ( firstCurve, Closed )
+                            , nextCurves = List.map close nextCurves
+                            , lastCurve = ( lastCurve, Closed )
+                            }
+                        , objects = objects
+                        }
+
+                close nextCurve =
+                    ( nextCurve, Closed )
+
+                objects =
+                    Pattern.objectsNotDependingOnDetail pattern aDetail
+            in
+            Maybe.map3 toForm
+                (initFirstCurveFormWith pattern info.firstCurve)
+                (initNextCurvesFormWith pattern info.nextCurves)
+                (initLastCurveFormWith pattern info.lastCurve)
+
+
+initFirstCurveFormWith : Pattern -> FirstCurve -> Maybe FirstCurveForm
+initFirstCurveFormWith pattern firstCurve =
+    case firstCurve of
+        FirstStraight stuff ->
+            let
+                toForm startPoint endPoint =
+                    FirstStraightForm
+                        { startPoint = startPoint
+                        , endPoint = endPoint
+                        }
+            in
+            Maybe.map2 toForm
+                (initOtherPointFormWith pattern stuff.startPoint)
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        FirstQuadratic stuff ->
+            let
+                toForm startPoint controlPoint endPoint =
+                    FirstQuadraticForm
+                        { startPoint = startPoint
+                        , controlPoint = controlPoint
+                        , endPoint = endPoint
+                        }
+            in
+            Maybe.map3 toForm
+                (initOtherPointFormWith pattern stuff.startPoint)
+                (initOtherPointFormWith pattern stuff.controlPoint)
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        FirstCubic stuff ->
+            let
+                toForm startPoint startControlPoint endControlPoint endPoint =
+                    FirstCubicForm
+                        { startPoint = startPoint
+                        , startControlPoint = startControlPoint
+                        , endControlPoint = endControlPoint
+                        , endPoint = endPoint
+                        }
+            in
+            Maybe.map4 toForm
+                (initOtherPointFormWith pattern stuff.startPoint)
+                (initOtherPointFormWith pattern stuff.startControlPoint)
+                (initOtherPointFormWith pattern stuff.endControlPoint)
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        FirstReferencedCurve stuff ->
+            Just <|
+                FirstReferencedCurveForm
+                    { curve =
+                        { dropdown = Dropdown.init
+                        , maybeACurve = Just stuff.curve
+                        }
+                    }
+
+
+initNextCurvesFormWith : Pattern -> List NextCurve -> Maybe (List NextCurveForm)
+initNextCurvesFormWith pattern nextCurves =
+    initNextCurvesFormWithHelp pattern nextCurves []
+
+
+initNextCurvesFormWithHelp :
+    Pattern
+    -> List NextCurve
+    -> List NextCurveForm
+    -> Maybe (List NextCurveForm)
+initNextCurvesFormWithHelp pattern nextCurves collected =
+    case nextCurves of
+        [] ->
+            Just (List.reverse collected)
+
+        nextCurve :: rest ->
+            case nextCurveFormWith pattern nextCurve of
+                Nothing ->
+                    Nothing
+
+                Just nextCurveForm ->
+                    initNextCurvesFormWithHelp pattern rest (nextCurveForm :: collected)
+
+
+nextCurveFormWith : Pattern -> NextCurve -> Maybe NextCurveForm
+nextCurveFormWith pattern nextCurve =
+    case nextCurve of
+        NextStraight stuff ->
+            let
+                toForm endPoint =
+                    NextStraightForm
+                        { endPoint = endPoint }
+            in
+            Maybe.map toForm
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        NextQuadratic stuff ->
+            let
+                toForm controlPoint endPoint =
+                    NextQuadraticForm
+                        { controlPoint = controlPoint
+                        , endPoint = endPoint
+                        }
+            in
+            Maybe.map2 toForm
+                (initOtherPointFormWith pattern stuff.controlPoint)
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        NextCubic stuff ->
+            let
+                toForm startControlPoint endControlPoint endPoint =
+                    NextCubicForm
+                        { startControlPoint = startControlPoint
+                        , endControlPoint = endControlPoint
+                        , endPoint = endPoint
+                        }
+            in
+            Maybe.map3 toForm
+                (initOtherPointFormWith pattern stuff.startControlPoint)
+                (initOtherPointFormWith pattern stuff.endControlPoint)
+                (initOtherPointFormWith pattern stuff.endPoint)
+
+        NextReferencedCurve stuff ->
+            Just <|
+                NextReferencedCurveForm
+                    { curve =
+                        { dropdown = Dropdown.init
+                        , maybeACurve = Just stuff.curve
+                        }
+                    }
+
+
+initLastCurveFormWith : Pattern -> LastCurve -> Maybe LastCurveForm
+initLastCurveFormWith pattern lastCurve =
+    case lastCurve of
+        LastStraight ->
+            Just LastStraightForm
+
+        LastQuadratic stuff ->
+            let
+                toForm controlPoint =
+                    LastQuadraticForm { controlPoint = controlPoint }
+            in
+            Maybe.map toForm
+                (initOtherPointFormWith pattern stuff.controlPoint)
+
+        LastCubic stuff ->
+            let
+                toForm startControlPoint endControlPoint =
+                    LastCubicForm
+                        { startControlPoint = startControlPoint
+                        , endControlPoint = endControlPoint
+                        }
+            in
+            Maybe.map2 toForm
+                (initOtherPointFormWith pattern stuff.startControlPoint)
+                (initOtherPointFormWith pattern stuff.endControlPoint)
+
+        LastReferencedCurve stuff ->
+            Just <|
+                LastReferencedCurveForm
+                    { curve =
+                        { dropdown = Dropdown.init
+                        , maybeACurve = Just stuff.curve
+                        }
+                    }
 
 
 initOtherPointFormWith : Pattern -> A Point -> Maybe OtherPointForm
@@ -5297,7 +5486,7 @@ newDetailFrom form pattern =
         getNextCurves firstCurve =
             form.nextCurves
                 |> List.foldl getNextCurve (Ok ( [], [] ))
-                |> Result.map Tuple.first
+                |> Result.map (Tuple.first >> List.reverse)
                 |> Result.mapError
                     (\nextCurvesWithHelp ->
                         { form

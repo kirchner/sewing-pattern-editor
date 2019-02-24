@@ -1975,7 +1975,7 @@ computeDetail2d (Detail info) =
                         |> StateResult.join
             )
         |> StateResult.with
-            (StateResult.ok (\a b -> a :: List.reverse b)
+            (StateResult.ok (::)
                 |> StateResult.with
                     (secondCurve2d info.firstCurve info.nextCurves info.lastCurve)
                 |> StateResult.with (StateResult.traverse nextCurve2d info.nextCurves)
