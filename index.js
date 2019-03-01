@@ -26,9 +26,9 @@ if (module.hot) {
 
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js")
+  navigator.serviceWorker.register("./service-worker.js")
     .then(function(registration) {
-      console.log("Successfully registered service worker.");
+      console.log("Successfully registered service worker, scope is: ", registration.scope);
 
       if (registration.active) {
         console.log("Service worker already active.");

@@ -31,21 +31,21 @@ import StoredPattern
 
 getPatterns onReceived =
     Http.get
-        { url = "/patterns"
+        { url = "/api/patterns"
         , expect = Http.expectJson onReceived (Decode.list StoredPattern.decoder)
         }
 
 
 getPattern onReceived slug =
     Http.get
-        { url = "/patterns/" ++ slug
+        { url = "/api/patterns/" ++ slug
         , expect = Http.expectJson onReceived StoredPattern.decoder
         }
 
 
 createPattern onCreateResponse storedPattern =
     Http.post
-        { url = "/patterns"
+        { url = "/api/patterns"
         , body = Http.jsonBody (StoredPattern.encode storedPattern)
         , expect = Http.expectWhatever onCreateResponse
         }
@@ -55,7 +55,7 @@ updatePattern onUpdateResponse storedPattern =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "/patterns"
+        , url = "/api/patterns"
         , body = Http.jsonBody (StoredPattern.encode storedPattern)
         , expect = Http.expectWhatever onUpdateResponse
         , timeout = Nothing
@@ -67,7 +67,7 @@ deletePattern onDeleteResponse slug =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = "/patterns/" ++ slug
+        , url = "/api/patterns/" ++ slug
         , body = Http.emptyBody
         , expect = Http.expectWhatever onDeleteResponse
         , timeout = Nothing

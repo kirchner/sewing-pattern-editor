@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import idb from 'idb';
+import { Elm } from './src/Worker.elm';
 
 
 self.addEventListener("install", event => {
@@ -26,35 +27,127 @@ self.addEventListener("activate", event => {
 });
 
 
-self.addEventListener("fetch", event => {
-  var method = event.request.method;
+self.addEventListener("fetch", function(event) {
   var url = new URL(event.request.url);
   var segments = url.pathname.split("/");
-  segments.shift();
 
-  if (method === "GET" && segments.length === 1 && segments[0] === "patterns") {
+  if (segments[1] !== "api") {
+    event.respondWith(fetch(event.request));
+  } else {
     event.respondWith(
-      getPatterns()
-    );
-  } else if (method === "GET" && segments.length === 2 && segments[0] === "patterns") {
-    event.respondWith(
-      getPattern(segments[1])
-    );
-  } else if (method === "POST" && segments.length === 1 && segments[0] === "patterns") {
-    event.respondWith(
-      event.request.json().then(storePattern)
-    );
-  } else if (method === "PUT" && segments.length === 1 && segments[0] === "patterns") {
-    event.respondWith(
-      event.request.json().then(updatePattern)
-    );
-  } else if (method === "DELETE" && segments.length === 2 && segments[0] === "patterns") {
-    event.respondWith(
-      deletePattern(segments[1])
+      event.request.text().then(body => {
+        const crypto = self.crypto || self.msCrypto;
+        const randInts = getRandomInts(5);
+
+        var worker = Elm.Worker.init({
+          flags: {
+            "seed": randInts[0],
+            "seedExtension": randInts.slice(1)
+          }
+        });
+
+        worker.ports.log.subscribe(line => {
+          console.log(line);
+        });
+
+
+        worker.ports.dbGetAll.subscribe(dbRequest => {
+          dbPromise.then(db => {
+            return db.transaction(dbRequest.storeNames)
+              .objectStore(dbRequest.objectStore)
+              .getAll();
+          })
+          .then(payload =>
+            worker.ports.onDbResponse.send({
+              "uuid": dbRequest.uuid,
+              "data": payload
+            }))
+          .catch(err => console.error(err));
+        });
+
+        worker.ports.dbGet.subscribe(dbRequest => {
+          dbPromise.then(db => {
+            return db.transaction(dbRequest.storeNames)
+              .objectStore(dbRequest.objectStore)
+              .get(dbRequest.key);
+          })
+          .then(payload =>
+            worker.ports.onDbResponse.send({
+              "uuid": dbRequest.uuid,
+              "data": payload
+            }))
+          .catch(err => console.error(err));
+        });
+
+        worker.ports.dbAdd.subscribe(dbRequest => {
+          dbPromise.then(db => {
+            return db.transaction(dbRequest.storeNames, "readwrite")
+              .objectStore(dbRequest.objectStore)
+              .add(dbRequest.data);
+          })
+          .then(payload =>
+            worker.ports.onDbResponse.send({
+              "uuid": dbRequest.uuid,
+              "data": payload
+            }))
+          .catch(err => console.error(err));
+        });
+
+        worker.ports.dbPut.subscribe(dbRequest => {
+          dbPromise.then(db => {
+            return db.transaction(dbRequest.storeNames, "readwrite")
+              .objectStore(dbRequest.objectStore)
+              .put(dbRequest.data);
+          })
+          .then(payload =>
+            worker.ports.onDbResponse.send({
+              "uuid": dbRequest.uuid,
+              "data": payload
+            }))
+          .catch(err => console.error(err));
+        });
+
+        worker.ports.dbDelete.subscribe(dbRequest => {
+          dbPromise.then(db => {
+            return db.transaction(dbRequest.storeNames, "readwrite")
+              .objectStore(dbRequest.objectStore)
+              .delete(dbRequest.key);
+          })
+          .then(payload =>
+            worker.ports.onDbResponse.send({
+              "uuid": dbRequest.uuid,
+              "data": payload
+            }))
+          .catch(err => console.error(err));
+        });
+
+
+        return new Promise(resolve => {
+          worker.ports.sendJsonResponse.subscribe(response => {
+            resolve(
+              new Response(
+                new Blob(
+                  [JSON.stringify(response.payload)],
+                  { type: "application/json" }
+                ), {
+                  status: response.statusCode,
+                  statusText: response.statusText
+                }
+              )
+            );
+          });
+
+          worker.ports.onRequest.send({
+            "url": event.request.url,
+            "method": event.request.method,
+            "body": body
+          });
+        });
+      })
+      .catch(err => console.error(err))
     );
   }
 });
-
 
 //----
 
@@ -62,120 +155,8 @@ const dbPromise = idb.open("sewing-pattern-editor", 1, upgradeDB => {
   upgradeDB.createObjectStore("patterns", { keyPath: "slug" });
 });
 
-const getPatterns = () =>
-  dbPromise.then(db => {
-    return db.transaction("patterns")
-      .objectStore("patterns")
-      .getAll();
-  })
-  .then(patterns => {
-    return new Response(
-      new Blob(
-        [JSON.stringify(patterns)],
-        { type: "application/json" }
-      ),
-      {
-        status: 200,
-        statusText: "OK"
-      }
-    );
-  });
-
-const getPattern = slug =>
-  dbPromise.then(db => {
-    return db.transaction("patterns")
-      .objectStore("patterns")
-      .get(slug);
-  })
-  .then(pattern => {
-    return new Response(
-      new Blob(
-        [JSON.stringify(pattern)],
-        { type: "application/json" }
-      ),
-      {
-        status: 200,
-        statusText: "OK"
-      }
-    )
-  });
-
-const storePattern = data =>
-  dbPromise.then(db => {
-    return db.transaction("patterns", "readwrite")
-      .objectStore("patterns")
-      .add(data);
-  })
-  .then(id => {
-    return new Response(
-      new Blob(
-        [JSON.stringify({ id: id })],
-        { type: "application/json" }
-      ),
-      {
-        status: 201,
-        statusText: "Created"
-      }
-    );
-  })
-  .catch(error => {
-    return new Response(
-      new Blob(
-        [JSON.stringify({ error: error.message })],
-        { type: "application/json" }
-      ),
-      {
-        status: 403,
-        statusText: "Forbidden"
-      }
-    );
-  });
-
-const updatePattern = data =>
-  dbPromise.then(db => {
-    const tx = db.transaction("patterns", "readwrite");
-    tx.objectStore("patterns")
-      .put(data);
-    return tx.complete;
-  })
-  .then(id => {
-    return new Response(
-      new Blob(
-        [JSON.stringify({ id: id })],
-        { type: "application/json" }
-      ),
-      {
-        status: 200,
-        statusText: "OK"
-      }
-    );
-  })
-  .catch(error => {
-    console.log(error);
-    return new Response(
-      new Blob(
-        [JSON.stringify({ error: error.message })],
-        { type: "application/json" }
-      ),
-      {
-        status: 403,
-        statusText: "Forbidden"
-      }
-    );
-  });
-
-const deletePattern = slug =>
-  dbPromise.then(db => {
-    return db.transaction("patterns", "readwrite")
-      .objectStore("patterns")
-      .delete(slug);
-  })
-  .then(() => {
-    return new Response(
-      null,
-      {
-        status: 200,
-        statusText: "OK"
-      }
-    );
-  });
+const getRandomInts = (n) => {
+  const randInts = new Uint32Array(n);
+  crypto.getRandomValues(randInts);
+  return Array.from(randInts);
+};
