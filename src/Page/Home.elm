@@ -46,6 +46,7 @@ import Element.Region as Region
 import File exposing (File)
 import File.Select
 import Frame2d
+import Geometry.Svg as Svg
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -55,6 +56,7 @@ import Json.Encode as Encode
 import List.Extra as List
 import List.Nonempty as Nonempty
 import Pattern exposing (Pattern)
+import Point2d
 import Ports
 import Random.Pcg.Extended as Random
 import RemoteData exposing (RemoteData(..), WebData)
@@ -67,6 +69,7 @@ import Svg.Lazy
 import Task
 import Those
 import Uuid
+import Vector2d
 import View.Icon
 import View.Input
 import View.Modal
@@ -921,7 +924,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                 (Element.link []
                     { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
                     , label =
-                        Element.el
+                        Element.paragraph
                             [ Design.fontXLarge
                             , Font.bold
                             , Font.color Design.primary
@@ -929,7 +932,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                             , Element.mouseOver
                                 [ Font.color Design.primaryDark ]
                             ]
-                            (Element.text storedPattern.name)
+                            [ Element.text storedPattern.name ]
                     }
                 )
             ]
@@ -982,38 +985,6 @@ viewPattern device prefix ({ pattern } as storedPattern) =
 
 viewPatternHelp class pattern =
     let
-        viewBox =
-            String.join " "
-                [ String.fromFloat
-                    (BoundingBox2d.minX boundingBox
-                        - max 0 ((max width height - width) / 2)
-                    )
-                , String.fromFloat
-                    (BoundingBox2d.minY boundingBox
-                        - max 0 ((max width height - height) / 2)
-                    )
-                , String.fromFloat (max width height)
-                , String.fromFloat (max width height)
-                ]
-
-        ( width, height ) =
-            BoundingBox2d.dimensions boundingBox
-
-        boundingBox =
-            State.finalValue pattern
-                (State.traverse Pattern.point2d (Pattern.points pattern))
-                |> List.filterMap Result.toMaybe
-                |> BoundingBox2d.containingPoints
-                |> Maybe.map scale
-                |> Maybe.withDefault
-                    (BoundingBox2d.fromExtrema
-                        { minX = 0
-                        , maxX = maxX
-                        , minY = 0
-                        , maxY = maxY
-                        }
-                    )
-
         ( maxX, maxY ) =
             case class of
                 Phone ->
@@ -1028,15 +999,34 @@ viewPatternHelp class pattern =
                 BigDesktop ->
                     ( 330, 280 )
 
-        scale box =
-            let
-                centerPoint =
-                    BoundingBox2d.centerPoint box
-            in
-            BoundingBox2d.scaleAbout centerPoint 1.1 box
+        viewBox =
+            Debug.log "viewBox" <|
+                String.join " "
+                    [ String.fromFloat (maxX / -2)
+                    , String.fromFloat (maxY / -2)
+                    , String.fromFloat maxX
+                    , String.fromFloat maxY
+                    ]
+
+        ( width, height ) =
+            BoundingBox2d.dimensions boundingBox
+
+        boundingBox =
+            State.finalValue pattern
+                (State.traverse Pattern.point2d (Pattern.points pattern))
+                |> List.filterMap Result.toMaybe
+                |> BoundingBox2d.containingPoints
+                |> Maybe.withDefault
+                    (BoundingBox2d.fromExtrema
+                        { minX = 0
+                        , maxX = maxX
+                        , minY = 0
+                        , maxY = maxY
+                        }
+                    )
 
         zoom =
-            130 / max width height
+            0.9 * min maxX maxY / max width height
     in
     Element.el
         [ Border.rounded 4
@@ -1051,13 +1041,19 @@ viewPatternHelp class pattern =
                 , Html.Events.preventDefaultOn "dragstart" <|
                     Decode.succeed ( NoOp, True )
                 ]
-                [ State.finalValue pattern <|
-                    Pattern.draw
-                        { preview = True
-                        , zoom = zoom
-                        , objectHovered = always NoOp
-                        , hoveredObject = Nothing
-                        }
+                [ Svg.translateBy
+                    (Vector2d.scaleBy zoom <|
+                        Vector2d.from (BoundingBox2d.centerPoint boundingBox)
+                            Point2d.origin
+                    )
+                    (State.finalValue pattern <|
+                        Pattern.draw
+                            { preview = True
+                            , zoom = zoom
+                            , objectHovered = always NoOp
+                            , hoveredObject = Nothing
+                            }
+                    )
                 ]
         )
 
