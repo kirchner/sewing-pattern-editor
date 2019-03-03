@@ -1032,13 +1032,12 @@ viewPatternHelp class pattern =
                     ( 330, 280 )
 
         viewBox =
-            Debug.log "viewBox" <|
-                String.join " "
-                    [ String.fromFloat (maxX / -2)
-                    , String.fromFloat (maxY / -2)
-                    , String.fromFloat maxX
-                    , String.fromFloat maxY
-                    ]
+            String.join " "
+                [ String.fromFloat (maxX / -2)
+                , String.fromFloat (maxY / -2)
+                , String.fromFloat maxX
+                , String.fromFloat maxY
+                ]
 
         ( width, height ) =
             BoundingBox2d.dimensions boundingBox
