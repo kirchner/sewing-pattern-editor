@@ -1,5 +1,6 @@
 port module Ports exposing
-    ( requestSeed
+    ( onNewWorker
+    , requestSeed
     , seedReceived
     , selectAllTextIn
     )
@@ -12,3 +13,6 @@ port seedReceived : (( Int, List Int ) -> msg) -> Sub msg
 
 
 port selectAllTextIn : String -> Cmd msg
+
+
+port onNewWorker : (() -> msg) -> Sub msg

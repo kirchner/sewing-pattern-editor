@@ -509,30 +509,18 @@ subscriptions model =
         ]
 
 
-view : String -> Model -> Html Msg
-view prefix model =
-    Element.layoutWith
-        { options =
-            [ Element.focusStyle
-                { borderColor = Nothing
-                , backgroundColor = Nothing
-                , shadow = Nothing
-                }
-            ]
+view :
+    String
+    -> Model
+    ->
+        { title : String
+        , body : Element Msg
+        , dialog : Maybe (Element Msg)
         }
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Font.family
-            [ Font.external
-                { name = "Roboto"
-                , url = "https://fonts.googleapis.com/css?family=Roboto"
-                }
-            , Font.sansSerif
-            ]
-        , Element.inFront <|
-            viewDialog model model.dialog
-        ]
-        (Element.column
+view prefix model =
+    { title = "Patterns"
+    , body =
+        Element.column
             [ Element.width
                 (case model.device.class of
                     Phone ->
@@ -657,111 +645,115 @@ view prefix model =
                     }
                 ]
             ]
-        )
+    , dialog = viewDialog model model.dialog
+    }
 
 
-viewDialog : Model -> Dialog -> Element Msg
+viewDialog : Model -> Dialog -> Maybe (Element Msg)
 viewDialog model dialog =
     case dialog of
         NoDialog ->
-            Element.none
+            Nothing
 
         CreatePattern name ->
-            View.Modal.small
-                { onCancelPress = NewPatternCancelClicked
-                , title = "Create new pattern"
-                , content =
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        [ Element.text "Create a new pattern"
-                        , View.Input.text "name-input"
-                            { onChange = NewPatternNameChanged
-                            , text = name
-                            , label = "Pick a name"
-                            , help = Nothing
+            Just <|
+                View.Modal.small
+                    { onCancelPress = NewPatternCancelClicked
+                    , title = "Create new pattern"
+                    , content =
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Design.small
+                            ]
+                            [ Element.text "Create a new pattern"
+                            , View.Input.text "name-input"
+                                { onChange = NewPatternNameChanged
+                                , text = name
+                                , label = "Pick a name"
+                                , help = Nothing
+                                }
+                            ]
+                    , actions =
+                        [ View.Input.btnPrimary
+                            { onPress = Just NewPatternCreateClicked
+                            , label = "Create"
                             }
+                        , Element.el [ Element.alignRight ] <|
+                            View.Input.btnCancel
+                                { onPress = Just NewPatternCancelClicked
+                                , label = "Cancel"
+                                }
                         ]
-                , actions =
-                    [ View.Input.btnPrimary
-                        { onPress = Just NewPatternCreateClicked
-                        , label = "Create"
-                        }
-                    , Element.el [ Element.alignRight ] <|
-                        View.Input.btnCancel
-                            { onPress = Just NewPatternCancelClicked
-                            , label = "Cancel"
-                            }
-                    ]
-                }
+                    }
 
         RenamePattern slug name ->
             case Maybe.map .name (getPattern model slug) of
                 Nothing ->
-                    Element.none
+                    Nothing
 
                 Just oldName ->
-                    View.Modal.small
-                        { onCancelPress = RenamePatternCancelClicked
-                        , title = "Rename the pattern «" ++ oldName ++ "»?"
-                        , content =
-                            Element.column
-                                [ Element.width Element.fill
-                                , Element.spacing Design.small
-                                ]
-                                [ Element.text <|
-                                    "What do you want to rename the pattern «"
-                                        ++ oldName
-                                        ++ "» to?"
-                                , View.Input.text "name-input"
-                                    { onChange = RenamePatternNameChanged
-                                    , text = name
-                                    , label = "Pick a new name"
-                                    , help = Nothing
+                    Just <|
+                        View.Modal.small
+                            { onCancelPress = RenamePatternCancelClicked
+                            , title = "Rename the pattern «" ++ oldName ++ "»?"
+                            , content =
+                                Element.column
+                                    [ Element.width Element.fill
+                                    , Element.spacing Design.small
+                                    ]
+                                    [ Element.text <|
+                                        "What do you want to rename the pattern «"
+                                            ++ oldName
+                                            ++ "» to?"
+                                    , View.Input.text "name-input"
+                                        { onChange = RenamePatternNameChanged
+                                        , text = name
+                                        , label = "Pick a new name"
+                                        , help = Nothing
+                                        }
+                                    ]
+                            , actions =
+                                [ View.Input.btnPrimary
+                                    { onPress = Just RenamePatternRenameClicked
+                                    , label = "Rename"
                                     }
+                                , Element.el [ Element.alignRight ] <|
+                                    View.Input.btnCancel
+                                        { onPress = Just RenamePatternCancelClicked
+                                        , label = "Cancel"
+                                        }
                                 ]
-                        , actions =
-                            [ View.Input.btnPrimary
-                                { onPress = Just RenamePatternRenameClicked
-                                , label = "Rename"
-                                }
-                            , Element.el [ Element.alignRight ] <|
-                                View.Input.btnCancel
-                                    { onPress = Just RenamePatternCancelClicked
-                                    , label = "Cancel"
-                                    }
-                            ]
-                        }
+                            }
 
         DeletePattern slug name ->
-            View.Modal.small
-                { onCancelPress = DeletePatternCancelClicked
-                , title = "Delete «" ++ name ++ "»?"
-                , content =
-                    Element.paragraph
-                        [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                        , Element.width Element.fill
-                        , Element.padding Design.small
-                        , Background.color Design.white
-                        ]
-                        [ Element.text "Do you want to delete the pattern "
-                        , Element.el [ Font.bold ]
-                            (Element.text ("«" ++ name ++ "»"))
-                        , Element.text "?"
-                        ]
-                , actions =
-                    [ View.Input.btnDanger
-                        { onPress = Just DeletePatternDeleteClicked
-                        , label = "Delete pattern"
-                        }
-                    , Element.el [ Element.alignRight ] <|
-                        View.Input.btnCancel
-                            { onPress = Just DeletePatternCancelClicked
-                            , label = "Cancel"
+            Just <|
+                View.Modal.small
+                    { onCancelPress = DeletePatternCancelClicked
+                    , title = "Delete «" ++ name ++ "»?"
+                    , content =
+                        Element.paragraph
+                            [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                            , Element.width Element.fill
+                            , Element.padding Design.small
+                            , Background.color Design.white
+                            ]
+                            [ Element.text "Do you want to delete the pattern "
+                            , Element.el [ Font.bold ]
+                                (Element.text ("«" ++ name ++ "»"))
+                            , Element.text "?"
+                            ]
+                    , actions =
+                        [ View.Input.btnDanger
+                            { onPress = Just DeletePatternDeleteClicked
+                            , label = "Delete pattern"
                             }
-                    ]
-                }
+                        , Element.el [ Element.alignRight ] <|
+                            View.Input.btnCancel
+                                { onPress = Just DeletePatternCancelClicked
+                                , label = "Cancel"
+                                }
+                        ]
+                    }
 
         ImportPatterns { hover, previews } ->
             let
@@ -834,58 +826,59 @@ viewDialog model dialog =
                                 ]
                         )
             in
-            View.Modal.wide
-                { onCancelPress = ImportPatternsCancelClicked
-                , title = "Import patterns"
-                , content =
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        [ Element.column
+            Just <|
+                View.Modal.wide
+                    { onCancelPress = ImportPatternsCancelClicked
+                    , title = "Import patterns"
+                    , content =
+                        Element.column
                             [ Element.width Element.fill
-                            , Element.spacing Design.xSmall
+                            , Element.spacing Design.small
                             ]
-                            (List.map viewFile previews)
-                        , Element.el
-                            ([ Element.width Element.fill
-                             , Element.height (Element.px 200)
-                             , Border.width 2
-                             , Border.rounded Design.xSmall
-                             , Border.dashed
-                             , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
-                             , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
-                             , hijackOn "dragleave" (Decode.succeed ImportPatternsDragLeave)
-                             , hijackOn "drop"
-                                (Decode.at [ "dataTransfer", "files" ]
-                                    (Decode.oneOrMore ImportPatternsGotFiles File.decoder)
-                                )
-                             ]
-                                |> hoverAttributes
-                            )
-                            (Element.el
-                                [ Element.centerX
-                                , Element.centerY
+                            [ Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.xSmall
                                 ]
-                                (View.Input.btnSecondary "upload-file-button"
-                                    { onPress = Just ImportPatternsPick
-                                    , label = "Upload file"
-                                    }
+                                (List.map viewFile previews)
+                            , Element.el
+                                ([ Element.width Element.fill
+                                 , Element.height (Element.px 200)
+                                 , Border.width 2
+                                 , Border.rounded Design.xSmall
+                                 , Border.dashed
+                                 , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
+                                 , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
+                                 , hijackOn "dragleave" (Decode.succeed ImportPatternsDragLeave)
+                                 , hijackOn "drop"
+                                    (Decode.at [ "dataTransfer", "files" ]
+                                        (Decode.oneOrMore ImportPatternsGotFiles File.decoder)
+                                    )
+                                 ]
+                                    |> hoverAttributes
                                 )
-                            )
-                        ]
-                , actions =
-                    [ View.Input.btnPrimary
-                        { onPress = Just ImportPatternsImportClicked
-                        , label = "Import"
-                        }
-                    , Element.el [ Element.alignRight ] <|
-                        View.Input.btnCancel
-                            { onPress = Just ImportPatternsCancelClicked
-                            , label = "Cancel"
+                                (Element.el
+                                    [ Element.centerX
+                                    , Element.centerY
+                                    ]
+                                    (View.Input.btnSecondary "upload-file-button"
+                                        { onPress = Just ImportPatternsPick
+                                        , label = "Upload file"
+                                        }
+                                    )
+                                )
+                            ]
+                    , actions =
+                        [ View.Input.btnPrimary
+                            { onPress = Just ImportPatternsImportClicked
+                            , label = "Import"
                             }
-                    ]
-                }
+                        , Element.el [ Element.alignRight ] <|
+                            View.Input.btnCancel
+                                { onPress = Just ImportPatternsCancelClicked
+                                , label = "Cancel"
+                                }
+                        ]
+                    }
 
 
 hijackOn event decoder =

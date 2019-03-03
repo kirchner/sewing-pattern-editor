@@ -1,7 +1,8 @@
 port module Worker exposing (main)
 
-import Json.Decode as Decode exposing (Decoder, Value)
+import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
+import Json.Encode as Encode exposing (Value)
 import Random.Pcg.Extended as Random
 import StoredPattern
 import Url exposing (Protocol(..), Url)
@@ -25,59 +26,12 @@ type alias Request =
 port sendJsonResponse :
     { statusCode : Int
     , statusText : String
-    , payload : Value
+    , payload : String
     }
     -> Cmd msg
 
 
 port ignoreRequest : () -> Cmd msg
-
-
-port dbGetAll :
-    { uuid : String
-    , storeNames : List String
-    , objectStore : String
-    }
-    -> Cmd msg
-
-
-port dbGet :
-    { uuid : String
-    , storeNames : List String
-    , objectStore : String
-    , key : String
-    }
-    -> Cmd msg
-
-
-port dbAdd :
-    { uuid : String
-    , storeNames : List String
-    , objectStore : String
-    , data : Value
-    }
-    -> Cmd msg
-
-
-port dbPut :
-    { uuid : String
-    , storeNames : List String
-    , objectStore : String
-    , data : Value
-    }
-    -> Cmd msg
-
-
-port dbDelete :
-    { uuid : String
-    , storeNames : List String
-    , objectStore : String
-    , key : String
-    }
-    -> Cmd msg
-
-
-port onDbResponse : ({ uuid : String, data : Value } -> msg) -> Sub msg
 
 
 onRequestDecoder : Decoder Request
@@ -147,7 +101,7 @@ type alias Flags =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( Initialized (Random.initialSeed flags.seed flags.seedExtension)
-    , log "elm worker started"
+    , Cmd.none
     )
 
 
@@ -157,7 +111,7 @@ init flags =
 
 type Msg
     = OnRequest Value
-    | OnDbResponse { uuid : String, data : Value }
+    | OnDbResponse Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -178,52 +132,59 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        OnDbResponse payload ->
-            case model of
-                Handling method route uuid ->
-                    if Uuid.toString uuid == payload.uuid then
-                        let
-                            ( statusCode, statusText ) =
-                                case ( method, route ) of
-                                    ( "GET", Patterns ) ->
-                                        ( 200, "OK" )
+        OnDbResponse value ->
+            case Decode.decodeValue dbResponseDecoder value of
+                Err error ->
+                    ( model
+                    , log (Decode.errorToString error)
+                    )
 
-                                    ( "GET", Pattern _ ) ->
-                                        ( 200, "OK" )
+                Ok payload ->
+                    case model of
+                        Handling method route uuid ->
+                            if Uuid.toString uuid == payload.uuid then
+                                let
+                                    ( statusCode, statusText ) =
+                                        case ( method, route ) of
+                                            ( "GET", Patterns ) ->
+                                                ( 200, "OK" )
 
-                                    ( "POST", Patterns ) ->
-                                        ( 201, "Created" )
+                                            ( "GET", Pattern _ ) ->
+                                                ( 200, "OK" )
 
-                                    ( "PUT", Patterns ) ->
-                                        ( 200, "Updated" )
+                                            ( "POST", Patterns ) ->
+                                                ( 201, "Created" )
 
-                                    ( "DELETE", Pattern slug ) ->
-                                        ( 200, "Deleted" )
+                                            ( "PUT", Patterns ) ->
+                                                ( 200, "Updated" )
 
-                                    _ ->
-                                        ( 500, "Internal server error" )
-                        in
-                        ( Finished
-                        , Cmd.batch
-                            [ log <|
-                                String.join " "
-                                    [ "finished request"
-                                    , String.fromInt statusCode
-                                    , statusText
+                                            ( "DELETE", Pattern slug ) ->
+                                                ( 200, "Deleted" )
+
+                                            _ ->
+                                                ( 500, "Internal server error" )
+                                in
+                                ( Finished
+                                , Cmd.batch
+                                    [ log <|
+                                        String.join " "
+                                            [ "finished request"
+                                            , String.fromInt statusCode
+                                            , statusText
+                                            ]
+                                    , sendJsonResponse
+                                        { statusCode = statusCode
+                                        , statusText = statusText
+                                        , payload = payload.data
+                                        }
                                     ]
-                            , sendJsonResponse
-                                { statusCode = statusCode
-                                , statusText = statusText
-                                , payload = payload.data
-                                }
-                            ]
-                        )
+                                )
 
-                    else
-                        ( model, Cmd.none )
+                            else
+                                ( model, Cmd.none )
 
-                _ ->
-                    ( model, Cmd.none )
+                        _ ->
+                            ( model, Cmd.none )
 
 
 type Route
@@ -256,16 +217,20 @@ handle seed request =
             )
 
         Just route ->
+            let
+                dbActionInfo =
+                    { uuid = uuid
+                    , storeNames = [ "patterns" ]
+                    , objectStore = "patterns"
+                    , keyPath = "slug"
+                    }
+            in
             case ( request.method, route ) of
                 ( "GET", Patterns ) ->
                     ( Handling request.method route uuid
                     , Cmd.batch
                         [ log (request.method ++ " " ++ request.url.path)
-                        , dbGetAll
-                            { uuid = Uuid.toString uuid
-                            , storeNames = [ "patterns" ]
-                            , objectStore = "patterns"
-                            }
+                        , dbGetAll dbActionInfo
                         ]
                     )
 
@@ -273,12 +238,7 @@ handle seed request =
                     ( Handling request.method route uuid
                     , Cmd.batch
                         [ log (request.method ++ " " ++ request.url.path)
-                        , dbGet
-                            { uuid = Uuid.toString uuid
-                            , storeNames = [ "patterns" ]
-                            , objectStore = "patterns"
-                            , key = slug
-                            }
+                        , dbGet dbActionInfo slug
                         ]
                     )
 
@@ -293,12 +253,8 @@ handle seed request =
                             ( Handling request.method route uuid
                             , Cmd.batch
                                 [ log (request.method ++ " " ++ request.url.path)
-                                , dbAdd
-                                    { uuid = Uuid.toString uuid
-                                    , storeNames = [ "patterns" ]
-                                    , objectStore = "patterns"
-                                    , data = StoredPattern.encode storedPattern
-                                    }
+                                , dbAdd dbActionInfo
+                                    (StoredPattern.encode storedPattern)
                                 ]
                             )
 
@@ -313,12 +269,8 @@ handle seed request =
                             ( Handling request.method route uuid
                             , Cmd.batch
                                 [ log (request.method ++ " " ++ request.url.path)
-                                , dbPut
-                                    { uuid = Uuid.toString uuid
-                                    , storeNames = [ "patterns" ]
-                                    , objectStore = "patterns"
-                                    , data = StoredPattern.encode storedPattern
-                                    }
+                                , dbPut dbActionInfo
+                                    (StoredPattern.encode storedPattern)
                                 ]
                             )
 
@@ -326,12 +278,7 @@ handle seed request =
                     ( Handling request.method route uuid
                     , Cmd.batch
                         [ log (request.method ++ " " ++ request.url.path)
-                        , dbDelete
-                            { uuid = Uuid.toString uuid
-                            , storeNames = [ "patterns" ]
-                            , objectStore = "patterns"
-                            , key = slug
-                            }
+                        , dbDelete dbActionInfo slug
                         ]
                     )
 
@@ -350,3 +297,113 @@ subscriptions model =
         [ onRequest OnRequest
         , onDbResponse OnDbResponse
         ]
+
+
+
+---- DATABASE
+
+
+port dbRequest : Value -> Cmd msg
+
+
+port onDbResponse : (Value -> msg) -> Sub msg
+
+
+dbGetAll : DbActionInfo -> Cmd msg
+dbGetAll info =
+    dbRequest (encodeDbAction (DbGetAll info))
+
+
+dbGet : DbActionInfo -> String -> Cmd msg
+dbGet info key =
+    dbRequest (encodeDbAction (DbGet info key))
+
+
+dbAdd : DbActionInfo -> Value -> Cmd msg
+dbAdd info data =
+    dbRequest (encodeDbAction (DbAdd info data))
+
+
+dbPut : DbActionInfo -> Value -> Cmd msg
+dbPut info data =
+    dbRequest (encodeDbAction (DbPut info data))
+
+
+dbDelete : DbActionInfo -> String -> Cmd msg
+dbDelete info key =
+    dbRequest (encodeDbAction (DbDelete info key))
+
+
+type DbAction
+    = DbGetAll DbActionInfo
+    | DbGet DbActionInfo String
+    | DbAdd DbActionInfo Value
+    | DbPut DbActionInfo Value
+    | DbDelete DbActionInfo String
+
+
+type alias DbActionInfo =
+    { uuid : Uuid
+    , storeNames : List String
+    , objectStore : String
+    , keyPath : String
+    }
+
+
+encodeDbAction : DbAction -> Value
+encodeDbAction dbAction =
+    case dbAction of
+        DbGetAll info ->
+            Encode.object
+                [ ( "method", Encode.string "getAll" )
+                , ( "info", encodeDbActionInfo info )
+                ]
+
+        DbGet info key ->
+            Encode.object
+                [ ( "method", Encode.string "get" )
+                , ( "info", encodeDbActionInfo info )
+                , ( "key", Encode.string key )
+                ]
+
+        DbAdd info data ->
+            Encode.object
+                [ ( "method", Encode.string "add" )
+                , ( "info", encodeDbActionInfo info )
+                , ( "data", data )
+                ]
+
+        DbPut info data ->
+            Encode.object
+                [ ( "method", Encode.string "put" )
+                , ( "info", encodeDbActionInfo info )
+                , ( "data", data )
+                ]
+
+        DbDelete info key ->
+            Encode.object
+                [ ( "method", Encode.string "delete" )
+                , ( "info", encodeDbActionInfo info )
+                , ( "key", Encode.string key )
+                ]
+
+
+encodeDbActionInfo : DbActionInfo -> Value
+encodeDbActionInfo info =
+    Encode.object
+        [ ( "uuid", Encode.string (Uuid.toString info.uuid) )
+        , ( "storeNames", Encode.list Encode.string info.storeNames )
+        , ( "objectStore", Encode.string info.objectStore )
+        , ( "keyPath", Encode.string info.keyPath )
+        ]
+
+
+type alias DbResponse =
+    { uuid : String, data : String }
+
+
+dbResponseDecoder : Decoder DbResponse
+dbResponseDecoder =
+    Decode.succeed DbResponse
+        |> Decode.required "uuid" Decode.string
+        |> Decode.required "data" Decode.string

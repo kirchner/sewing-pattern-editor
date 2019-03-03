@@ -20,8 +20,13 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Navigation
+import Design
 import Dict exposing (Dict)
-import Html
+import Element exposing (Element)
+import Element.Background as Background
+import Element.Font as Font
+import Html exposing (Html)
+import Html.Attributes
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
@@ -29,9 +34,12 @@ import Json.Encode as Encode exposing (Value)
 import Page.Editor as Editor
 import Page.Home as Home
 import Pattern exposing (Pattern)
+import Ports
 import Route exposing (Route)
 import StoredPattern exposing (StoredPattern)
 import Url exposing (Url)
+import View.Input
+import View.Modal
 
 
 main : Program {} Model Msg
@@ -54,6 +62,7 @@ type alias Model =
     { prefix : String
     , key : Navigation.Key
     , page : Page
+    , newWorkerModal : Bool
     }
 
 
@@ -74,6 +83,7 @@ init _ url key =
         { prefix = Route.prefixFromUrl url
         , key = key
         , page = NotFound
+        , newWorkerModal = False
         }
 
 
@@ -90,21 +100,92 @@ view model =
             }
 
         Home homeModel ->
-            { title = "Sewing pattern editor"
-            , body =
-                [ Html.map HomeMsg <|
+            let
+                { title, body, dialog } =
                     Home.view model.prefix homeModel
+            in
+            { title = title
+            , body =
+                [ viewHelp (Element.map HomeMsg body) <|
+                    if model.newWorkerModal then
+                        Just viewNewWorkerDialog
+
+                    else
+                        Maybe.map (Element.map HomeMsg) dialog
                 ]
             }
 
         Editor editorModel ->
             let
-                { title, body } =
+                { title, body, dialog } =
                     Editor.view model.prefix editorModel
             in
             { title = title
-            , body = List.map (Html.map EditorMsg) body
+            , body =
+                [ viewHelp (Element.map EditorMsg body) <|
+                    if model.newWorkerModal then
+                        Just viewNewWorkerDialog
+
+                    else
+                        Maybe.map (Element.map EditorMsg) dialog
+                ]
             }
+
+
+viewHelp : Element msg -> Maybe (Element msg) -> Html msg
+viewHelp body dialog =
+    Element.layoutWith
+        { options =
+            [ Element.focusStyle
+                { borderColor = Nothing
+                , backgroundColor = Nothing
+                , shadow = Nothing
+                }
+            ]
+        }
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Font.family
+            [ Font.external
+                { name = "Roboto"
+                , url = "https://fonts.googleapis.com/css?family=Roboto"
+                }
+            , Font.sansSerif
+            ]
+        , Element.inFront (Maybe.withDefault Element.none dialog)
+        ]
+        body
+
+
+viewNewWorkerDialog : Element Msg
+viewNewWorkerDialog =
+    View.Modal.small
+        { onCancelPress = NewWorkerDialogCancelPressed
+        , title = "New version available"
+        , content =
+            Element.el
+                [ Element.spacing Design.small
+                , Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                , Element.width Element.fill
+                , Element.padding Design.small
+                , Background.color Design.white
+                ]
+                (Element.paragraph []
+                    [ Element.text "A new version is available. You have to reload to activate it."
+                    ]
+                )
+        , actions =
+            [ View.Input.btnPrimary
+                { onPress = Just NewWorkerDialogReloadPressed
+                , label = "Reload"
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just NewWorkerDialogCancelPressed
+                    , label = "Cancel"
+                    }
+            ]
+        }
 
 
 
@@ -118,6 +199,10 @@ type Msg
       -- PAGES
     | HomeMsg Home.Msg
     | EditorMsg Editor.Msg
+      -- SERVICE WORKER
+    | OnNewWorker ()
+    | NewWorkerDialogCancelPressed
+    | NewWorkerDialogReloadPressed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -169,6 +254,22 @@ update msg model =
         ( EditorMsg _, _ ) ->
             ( model, Cmd.none )
 
+        -- SERVICE WORKER
+        ( OnNewWorker _, _ ) ->
+            ( { model | newWorkerModal = True }
+            , Cmd.none
+            )
+
+        ( NewWorkerDialogCancelPressed, _ ) ->
+            ( { model | newWorkerModal = False }
+            , Cmd.none
+            )
+
+        ( NewWorkerDialogReloadPressed, _ ) ->
+            ( { model | newWorkerModal = False }
+            , Navigation.reload
+            )
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -207,13 +308,16 @@ changeRouteTo maybeRoute model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.page of
-        NotFound ->
-            Sub.none
+    Sub.batch
+        [ Ports.onNewWorker OnNewWorker
+        , case model.page of
+            NotFound ->
+                Sub.none
 
-        -- PAGES
-        Home homeModel ->
-            Sub.map HomeMsg (Home.subscriptions homeModel)
+            -- PAGES
+            Home homeModel ->
+                Sub.map HomeMsg (Home.subscriptions homeModel)
 
-        Editor editorModel ->
-            Sub.map EditorMsg (Editor.subscriptions editorModel)
+            Editor editorModel ->
+                Sub.map EditorMsg (Editor.subscriptions editorModel)
+        ]

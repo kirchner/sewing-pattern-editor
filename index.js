@@ -25,45 +25,52 @@ if (module.hot) {
 }
 
 
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js")
-    .then(function(registration) {
-      console.log("Successfully registered service worker, scope is: ", registration.scope);
+  .then(registration => {
+    console.log("[registration] scope: ", registration.scope);
 
-      if (registration.active) {
-        console.log("Service worker already active.");
+    if (registration.installing) {
+      console.log("[registration] installing worker found");
 
-        initElm();
-      } else {
-        console.log("Service worker not active, yet.");
+      registration.installing.addEventListener("statechange", () => {
+        if (registration.active) {
+          console.log(
+            "[installing worker] [statechange] worker installed, state: ",
+            registration.active.state
+          );
 
-        registration.onupdatefound = () => {
-          const newWorker = registration.installing;
+          if (registration.active.state == "activated") {
+            window.location.reload();
+          }
+        }
+      });
+    } else if (registration.active) {
+      console.log("[registration] active worker found");
 
-          console.log("A new service worker is being installed");
-          console.log(newWorker);
+      const app = initElm();
 
-          newWorker.addEventListener("statechange", () => {
-            console.log("State changed.");
+      registration.addEventListener("updatefound", () => {
+        console.log("[registration] [updatefound]");
 
-            if (newWorker.state === "activated") {
-              console.log("Service worker is active now.")
+        const newWorker = registration.installing;
 
-              location.reload();
-            }
-          });
-        };
-      }
-    })
-    .catch(function(error) {
-      console.log("Registration failed with " + error);
-    });
+        newWorker.addEventListener("statechange", () => {
+          console.log("[new worker] [statechange] state: ", newWorker.state);
+
+          if (newWorker.state === "installed") {
+            app.ports.onNewWorker.send(null);
+          }
+        });
+      });
+    }
+  })
+  .catch(err => console.error("[registration] failed: ", err));
 }
 
 
 const initElm = () => {
-  console.log("Initializing Elm application.");
-
   var app = Elm.Main.init({
     flags: {}
   });
@@ -84,6 +91,8 @@ const initElm = () => {
       }
     });
   });
+
+  return app;
 };
 
 const getRandomInts = (n) => {

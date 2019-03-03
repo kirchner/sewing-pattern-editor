@@ -168,102 +168,42 @@ type VariableDialog
 ---- VIEW
 
 
-view : String -> Model -> Document Msg
+view :
+    String
+    -> Model
+    ->
+        { title : String
+        , body : Element Msg
+        , dialog : Maybe (Element Msg)
+        }
 view prefix model =
     case model of
         Loading ->
             { title = "Loading pattern.."
             , body =
-                [ Element.layoutWith
-                    { options =
-                        [ Element.focusStyle
-                            { borderColor = Nothing
-                            , backgroundColor = Nothing
-                            , shadow = Nothing
-                            }
-                        ]
-                    }
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Font.family
-                        [ Font.external
-                            { name = "Roboto"
-                            , url = "https://fonts.googleapis.com/css?family=Roboto"
-                            }
-                        , Font.sansSerif
-                        ]
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
                     ]
-                    (Element.el
-                        [ Element.centerX
-                        , Element.centerY
-                        ]
-                        (Element.text "Loading pattern..")
-                    )
-                ]
+                    (Element.text "Loading pattern..")
+            , dialog = Nothing
             }
 
         Error ->
             { title = "Something went wrong."
             , body =
-                [ Element.layoutWith
-                    { options =
-                        [ Element.focusStyle
-                            { borderColor = Nothing
-                            , backgroundColor = Nothing
-                            , shadow = Nothing
-                            }
-                        ]
-                    }
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Font.family
-                        [ Font.external
-                            { name = "Roboto"
-                            , url = "https://fonts.googleapis.com/css?family=Roboto"
-                            }
-                        , Font.sansSerif
-                        ]
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
                     ]
-                    (Element.el
-                        [ Element.centerX
-                        , Element.centerY
-                        ]
-                        (Element.text "Loading pattern..")
-                    )
-                ]
+                    (Element.text "Loading pattern..")
+            , dialog = Nothing
             }
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body =
-                [ Element.layoutWith
-                    { options =
-                        [ Element.focusStyle
-                            { borderColor = Nothing
-                            , backgroundColor = Nothing
-                            , shadow = Nothing
-                            }
-                        ]
-                    }
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Font.family
-                        [ Font.external
-                            { name = "Roboto"
-                            , url = "https://fonts.googleapis.com/css?family=Roboto"
-                            }
-                        , Font.sansSerif
-                        ]
-                    , Element.inFront <|
-                        case data.maybeModal of
-                            Nothing ->
-                                Element.none
-
-                            Just modal ->
-                                viewModal data.storedPattern.pattern modal
-                    ]
-                    (viewEditor prefix data.storedPattern data)
-                ]
+            , body = viewEditor prefix data.storedPattern data
+            , dialog = Maybe.map (viewModal data.storedPattern.pattern) data.maybeModal
             }
 
 
