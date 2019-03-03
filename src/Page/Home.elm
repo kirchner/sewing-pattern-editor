@@ -232,7 +232,10 @@ update prefix key msg model =
                         ( uuid, newSeed ) =
                             Random.step Uuid.generator model.seed
                     in
-                    ( { model | dialog = NoDialog }
+                    ( { model
+                        | dialog = NoDialog
+                        , seed = newSeed
+                      }
                     , Api.createPattern PatternCreateResponse <|
                         StoredPattern.init (Uuid.toString uuid) name
                     )
@@ -619,8 +622,14 @@ view prefix model =
                                 ]
                                 (List.map
                                     (List.map (viewPattern model.device prefix)
-                                        >> List.intersperse
-                                            (Element.el [ Element.width Element.fill ] Element.none)
+                                        >> (\row ->
+                                                List.intersperse
+                                                    (Element.el [ Element.width Element.fill ] Element.none)
+                                                    (row
+                                                        ++ List.repeat (3 - List.length row)
+                                                            (viewPatternEmpty model.device.class)
+                                                    )
+                                           )
                                         >> Element.row [ Element.width Element.fill ]
                                     )
                                     (slice columnCount storedPatterns)
@@ -924,7 +933,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                 (Element.link []
                     { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
                     , label =
-                        Element.paragraph
+                        Element.el
                             [ Design.fontXLarge
                             , Font.bold
                             , Font.color Design.primary
@@ -932,7 +941,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                             , Element.mouseOver
                                 [ Font.color Design.primaryDark ]
                             ]
-                            [ Element.text storedPattern.name ]
+                            (Element.text storedPattern.name)
                     }
                 )
             ]
@@ -981,6 +990,29 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                             }
             ]
         ]
+
+
+viewPatternEmpty class =
+    let
+        ( maxX, maxY ) =
+            case class of
+                Phone ->
+                    ( 330, 280 )
+
+                Tablet ->
+                    ( 270 - 2 * Design.small, 220 )
+
+                Desktop ->
+                    ( 330, 280 )
+
+                BigDesktop ->
+                    ( 330, 280 )
+    in
+    Element.el
+        [ Element.width (Element.px maxX)
+        , Element.height (Element.px maxY)
+        ]
+        Element.none
 
 
 viewPatternHelp class pattern =
