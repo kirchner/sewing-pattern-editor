@@ -549,11 +549,11 @@ viewZoom model =
         , Element.spacing 10
         ]
         [ View.Input.btnIconLarge
-            { onPress = Just ZoomPlusClicked
+            { onPress = Just ZoomPlusPressed
             , icon = "search-plus"
             }
         , View.Input.btnIconLarge
-            { onPress = Just ZoomMinusClicked
+            { onPress = Just ZoomMinusPressed
             , icon = "search-minus"
             }
         ]
@@ -574,7 +574,7 @@ viewRightToolbar pattern model =
                 , Background.color Design.secondary
                 ]
             ]
-            { onPress = Just ToolbarToggleClicked
+            { onPress = Just ToolbarTogglePressed
             , label =
                 Element.column
                     [ Element.height Element.fill
@@ -665,12 +665,12 @@ viewVariable name value =
             ]
             [ Element.el [ Element.alignLeft ] <|
                 View.Input.btnPrimary
-                    { onPress = Just VariableCreateSubmitClicked
+                    { onPress = Just VariableCreateSubmitPressed
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
                 View.Input.btnCancel
-                    { onPress = Just VariableDialogCancelClicked
+                    { onPress = Just VariableDialogCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -720,7 +720,7 @@ viewToolSelector prefix =
 viewVariables : Pattern -> Bool -> Element Msg
 viewVariables pattern variablesVisible =
     View.Navigation.accordion
-        { onPress = VariablesRulerClicked
+        { onPress = VariablesRulerPressed
         , label = "Variables"
         , open = variablesVisible
         , content =
@@ -769,7 +769,7 @@ viewVariables pattern variablesVisible =
                     }
                 , Element.el [ Element.alignRight ] <|
                     View.Input.btnSecondary "create-variable--button"
-                        { onPress = Just VariableCreateClicked
+                        { onPress = Just VariableCreatePressed
                         , label = "Create variable"
                         }
                 ]
@@ -779,7 +779,7 @@ viewVariables pattern variablesVisible =
 viewPoints : Pattern -> Bool -> Element Msg
 viewPoints pattern pointsVisible =
     View.Navigation.accordion
-        { onPress = PointsRulerClicked
+        { onPress = PointsRulerPressed
         , label = "Points"
         , open = pointsVisible
         , content =
@@ -820,7 +820,7 @@ viewPoints pattern pointsVisible =
 viewAxes : Pattern -> Bool -> Element Msg
 viewAxes pattern axesVisible =
     View.Navigation.accordion
-        { onPress = AxesRulerClicked
+        { onPress = AxesRulerPressed
         , label = "Axes"
         , open = axesVisible
         , content =
@@ -845,7 +845,7 @@ viewAxes pattern axesVisible =
 viewCircles : Pattern -> Bool -> Element Msg
 viewCircles pattern circlesVisible =
     View.Navigation.accordion
-        { onPress = CirclesRulerClicked
+        { onPress = CirclesRulerPressed
         , label = "Circles"
         , open = circlesVisible
         , content =
@@ -894,7 +894,7 @@ viewCircles pattern circlesVisible =
 viewCurves : Pattern -> Bool -> Element Msg
 viewCurves pattern curvesVisible =
     View.Navigation.accordion
-        { onPress = CurvesRulerClicked
+        { onPress = CurvesRulerPressed
         , label = "Curves"
         , open = curvesVisible
         , content =
@@ -919,7 +919,7 @@ viewCurves pattern curvesVisible =
 viewDetails : Pattern -> Bool -> Element Msg
 viewDetails pattern curvesVisible =
     View.Navigation.accordion
-        { onPress = DetailsRulerClicked
+        { onPress = DetailsRulerPressed
         , label = "Details"
         , open = curvesVisible
         , content =
@@ -957,8 +957,8 @@ type Msg
     | WindowResized
     | PatternContainerViewportRequested
     | PatternContainerViewportReceived (Result Browser.Dom.Error Browser.Dom.Viewport)
-    | ZoomPlusClicked
-    | ZoomMinusClicked
+    | ZoomPlusPressed
+    | ZoomMinusPressed
     | MouseDown Position
     | MouseMove Position
     | MouseUp Position
@@ -973,29 +973,29 @@ type Msg
     | DialogCreateMsg Dialog.CreateMsg
     | DialogEditMsg Dialog.EditMsg
       -- RIGHT TOOLBAR
-    | ToolbarToggleClicked
-    | VariablesRulerClicked
-    | VariableCreateClicked
-    | PointsRulerClicked
+    | ToolbarTogglePressed
+    | VariablesRulerPressed
+    | VariableCreatePressed
+    | PointsRulerPressed
     | PointEditPressed (A Point)
     | PointDeletePressed (A Point)
-    | AxesRulerClicked
+    | AxesRulerPressed
     | AxisEditPressed (A Axis)
     | AxisDeletePressed (A Axis)
-    | CirclesRulerClicked
+    | CirclesRulerPressed
     | CircleEditPressed (A Circle)
     | CircleDeletePressed (A Circle)
-    | CurvesRulerClicked
+    | CurvesRulerPressed
     | CurveEditPressed (A Curve)
     | CurveDeletePressed (A Curve)
-    | DetailsRulerClicked
+    | DetailsRulerPressed
     | DetailEditPressed (A Detail)
     | DetailDeletePressed (A Detail)
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
-    | VariableCreateSubmitClicked
-    | VariableDialogCancelClicked
+    | VariableCreateSubmitPressed
+    | VariableDialogCancelPressed
       -- MODALS
     | PointDeleteModalDeletePressed
     | AxisDeleteModalDeletePressed
@@ -1125,7 +1125,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        ZoomPlusClicked ->
+        ZoomPlusPressed ->
             let
                 newStoredPattern =
                     { storedPattern
@@ -1137,7 +1137,7 @@ updateWithData key msg model =
             , Api.updatePattern PatternUpdateReceived newStoredPattern
             )
 
-        ZoomMinusClicked ->
+        ZoomMinusPressed ->
             let
                 newStoredPattern =
                     { storedPattern
@@ -1293,7 +1293,7 @@ updateWithData key msg model =
             )
 
         -- RIGHT TOOLBAR
-        ToolbarToggleClicked ->
+        ToolbarTogglePressed ->
             ( { model
                 | rightToolbarVisible = not model.rightToolbarVisible
                 , patternContainerDimensions = Nothing
@@ -1302,12 +1302,12 @@ updateWithData key msg model =
                 |> Task.attempt PatternContainerViewportReceived
             )
 
-        VariablesRulerClicked ->
+        VariablesRulerPressed ->
             ( { model | variablesVisible = not model.variablesVisible }
             , Cmd.none
             )
 
-        VariableCreateClicked ->
+        VariableCreatePressed ->
             ( { model
                 | maybeVariableDialog =
                     Just <|
@@ -1349,7 +1349,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        VariableCreateSubmitClicked ->
+        VariableCreateSubmitPressed ->
             case model.maybeVariableDialog of
                 Nothing ->
                     ( model, Cmd.none )
@@ -1385,13 +1385,13 @@ updateWithData key msg model =
                             , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
 
-        VariableDialogCancelClicked ->
+        VariableDialogCancelPressed ->
             ( { model | maybeVariableDialog = Nothing }
             , Cmd.none
             )
 
         -- POINTS
-        PointsRulerClicked ->
+        PointsRulerPressed ->
             ( { model | pointsVisible = not model.pointsVisible }
             , Cmd.none
             )
@@ -1412,7 +1412,7 @@ updateWithData key msg model =
             )
 
         -- AXES
-        AxesRulerClicked ->
+        AxesRulerPressed ->
             ( { model | axesVisible = not model.axesVisible }
             , Cmd.none
             )
@@ -1433,7 +1433,7 @@ updateWithData key msg model =
             )
 
         -- CIRCLES
-        CirclesRulerClicked ->
+        CirclesRulerPressed ->
             ( { model | circlesVisible = not model.circlesVisible }
             , Cmd.none
             )
@@ -1454,7 +1454,7 @@ updateWithData key msg model =
             )
 
         -- CURVES
-        CurvesRulerClicked ->
+        CurvesRulerPressed ->
             ( { model | curvesVisible = not model.curvesVisible }
             , Cmd.none
             )
@@ -1475,7 +1475,7 @@ updateWithData key msg model =
             )
 
         -- DETAILS
-        DetailsRulerClicked ->
+        DetailsRulerPressed ->
             ( { model | detailsVisible = not model.detailsVisible }
             , Cmd.none
             )
