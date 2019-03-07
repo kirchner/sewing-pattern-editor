@@ -1063,7 +1063,6 @@ viewPatternHelp class pattern =
         [ Border.rounded 4
         , Element.width (Element.px maxX)
         , Element.height (Element.px maxY)
-        , Background.color Design.secondary
         ]
         (Element.html <|
             Svg.svg

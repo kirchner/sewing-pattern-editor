@@ -11,8 +11,10 @@ module Pattern exposing
     , insertVariable
     , InsertHelp(..)
     , replacePoint, replaceAxis, replaceCircle, replaceCurve, replaceDetail
+    , replaceVariable
     , ReplaceHelp(..)
     , removePoint, removeAxis, removeCircle, removeCurve, removeDetail
+    , removeVariable
     , points, axes, circles, curves, curvesWith, details, transformations, variables
     , objects
     , pointInfo, PointInfo(..)
@@ -84,12 +86,14 @@ module Pattern exposing
 # Replace
 
 @docs replacePoint, replaceAxis, replaceCircle, replaceCurve, replaceDetail
+@docs replaceVariable
 @docs ReplaceHelp
 
 
 # Remove
 
 @docs removePoint, removeAxis, removeCircle, removeCurve, removeDetail
+@docs removeVariable
 
 
 # Query
@@ -783,6 +787,37 @@ replaceDetail aDetail newDetail ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+replaceVariable : String -> String -> Pattern -> Result ReplaceHelp Pattern
+replaceVariable variable newValue ((Pattern data) as pattern) =
+    let
+        circularDependency =
+            objectsDependingOnVariable pattern variable
+                |> .variables
+                |> List.member variable
+    in
+    if circularDependency then
+        Err CircularDependency
+
+    else
+        let
+            ( result, newPattern ) =
+                State.run
+                    (Pattern
+                        { data
+                            | variables = Dict.insert variable newValue data.variables
+                            , variablesCache = Dict.remove variable data.variablesCache
+                        }
+                    )
+                    (float variable)
+        in
+        case result of
+            Err computeHelp ->
+                Err (BadNewObject computeHelp)
+
+            Ok _ ->
+                Ok (regenerateCaches newPattern)
+
+
 type ReplaceHelp
     = BadNewObject ComputeHelp
     | CircularDependency
@@ -886,6 +921,20 @@ removeDetail aDetail pattern =
 
         This _ ->
             pattern
+
+
+removeVariable : String -> Pattern -> Pattern
+removeVariable variable pattern =
+    let
+        (Pattern data) =
+            removeObjects (objectsDependingOnVariable pattern variable) pattern
+    in
+    regenerateCaches <|
+        Pattern
+            { data
+                | variables = Dict.remove variable data.variables
+                , variablesCache = Dict.empty
+            }
 
 
 removeObjects : Objects -> Pattern -> Pattern
@@ -998,6 +1047,7 @@ objects pattern =
     , circles = circles pattern
     , curves = curves pattern
     , details = details pattern
+    , variables = variables pattern
     }
 
 
@@ -2746,6 +2796,7 @@ type alias Objects =
     , circles : List (A Circle)
     , curves : List (A Curve)
     , details : List (A Detail)
+    , variables : List String
     }
 
 
@@ -2756,6 +2807,7 @@ noObjects =
     , circles = []
     , curves = []
     , details = []
+    , variables = []
     }
 
 
@@ -2859,6 +2911,15 @@ objectsNotDependingOnDetail pattern aDetail =
         |> withoutObjects (objectsDependingOnDetail pattern aDetail)
 
 
+objectsDependingOnVariable : Pattern -> String -> Objects
+objectsDependingOnVariable ((Pattern data) as pattern) variable =
+    pattern
+        |> variables
+        |> State.traverse (collectObjectsDependingOnVariable data variable noChains)
+        |> State.finalState emptyCollection
+        |> objectsFromCollection
+
+
 withoutObjects : Objects -> Objects -> Objects
 withoutObjects b a =
     { points = a.points |> without b.points
@@ -2866,6 +2927,9 @@ withoutObjects b a =
     , circles = a.circles |> without b.circles
     , curves = a.curves |> without b.curves
     , details = a.details |> without b.details
+    , variables =
+        a.variables
+            |> List.filter (\varA -> not (List.member varA b.variables))
     }
 
 
@@ -2897,11 +2961,13 @@ type alias Collection =
     , checkedCircles : Set String
     , checkedCurves : Set String
     , checkedDetails : Set String
+    , checkedVariables : Set String
     , dependingPoints : Set String
     , dependingAxes : Set String
     , dependingCircles : Set String
     , dependingCurves : Set String
     , dependingDetails : Set String
+    , dependingVariables : Set String
     }
 
 
@@ -2912,11 +2978,13 @@ emptyCollection =
     , checkedCircles = Set.empty
     , checkedCurves = Set.empty
     , checkedDetails = Set.empty
+    , checkedVariables = Set.empty
     , dependingPoints = Set.empty
     , dependingAxes = Set.empty
     , dependingCircles = Set.empty
     , dependingCurves = Set.empty
     , dependingDetails = Set.empty
+    , dependingVariables = Set.empty
     }
 
 
@@ -2927,6 +2995,7 @@ objectsFromCollection collection =
     , circles = List.map That (Set.toList collection.dependingCircles)
     , curves = List.map That (Set.toList collection.dependingCurves)
     , details = List.map That (Set.toList collection.dependingDetails)
+    , variables = Set.toList collection.dependingVariables
     }
 
 
@@ -3034,6 +3103,16 @@ collectObjectsDependingOnDetail :
     -> A Detail
     -> State Collection ()
 collectObjectsDependingOnDetail data pointName chains aDetail =
+    State.state ()
+
+
+collectObjectsDependingOnVariable :
+    PatternData
+    -> String
+    -> Chains
+    -> String
+    -> State Collection ()
+collectObjectsDependingOnVariable data pointName chains variable =
     State.state ()
 
 

@@ -154,12 +154,17 @@ type Modal
     | CircleDeleteConfirm (A Circle)
     | CurveDeleteConfirm (A Curve)
     | DetailDeleteConfirm (A Detail)
+    | VariableDeleteConfirm String
 
 
 type VariableDialog
     = VariableDialogCreate
         { name : String
         , nameHelp : Maybe String
+        , value : String
+        }
+    | VariableDialogEdit
+        { name : String
         , value : String
         }
 
@@ -323,6 +328,13 @@ viewModal pattern modal =
                 { name = objectName aDetail
                 , kind = "detail"
                 , onDeletePress = DetailDeleteModalDeletePressed
+                }
+
+        VariableDeleteConfirm variable ->
+            viewDeleteModal
+                { name = variable
+                , kind = "variable"
+                , onDeletePress = VariableDeleteModalDeletePressed
                 }
 
 
@@ -615,6 +627,9 @@ viewRightToolbar pattern model =
 
                     Just (VariableDialogCreate stuff) ->
                         [ viewVariable stuff.name stuff.value ]
+
+                    Just (VariableDialogEdit stuff) ->
+                        [ viewEditVariable stuff.name stuff.value ]
                 )
 
           else
@@ -667,6 +682,46 @@ viewVariable name value =
                 View.Input.btnPrimary
                     { onPress = Just VariableCreateSubmitPressed
                     , label = "Create"
+                    }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just VariableDialogCancelPressed
+                    , label = "Cancel"
+                    }
+            ]
+        ]
+
+
+viewEditVariable : String -> String -> Element Msg
+viewEditVariable name value =
+    Element.column
+        [ Element.width Element.fill
+        , Element.padding 15
+        , Element.spacing 15
+        ]
+        [ Element.paragraph
+            [ Font.size 12
+            , Font.color Design.black
+            ]
+            [ Element.text "Edit the variable "
+            , Element.el
+                [ Font.bold ]
+                (Element.text name)
+            ]
+        , View.Input.formula "variable-value--input"
+            { onChange = VariableValueChanged
+            , text = value
+            , label = "Value"
+            , help = Nothing
+            }
+        , Element.row
+            [ Element.width Element.fill
+            , Element.spacing 5
+            ]
+            [ Element.el [ Element.alignLeft ] <|
+                View.Input.btnPrimary
+                    { onPress = Just VariableEditUpdatePressed
+                    , label = "Update"
                     }
             , Element.el [ Element.alignRight ] <|
                 View.Input.btnCancel
@@ -762,8 +817,8 @@ viewVariables pattern variablesVisible =
                             , recordToFloat = Just << .value
                             }
                         , View.Table.columnActions
-                            { onEditPress = always Nothing
-                            , onRemovePress = always Nothing
+                            { onEditPress = Just << VariableEditPressed << .name
+                            , onRemovePress = Just << VariableRemovePressed << .name
                             }
                         ]
                     }
@@ -976,6 +1031,8 @@ type Msg
     | ToolbarTogglePressed
     | VariablesRulerPressed
     | VariableCreatePressed
+    | VariableEditPressed String
+    | VariableRemovePressed String
     | PointsRulerPressed
     | PointEditPressed (A Point)
     | PointDeletePressed (A Point)
@@ -995,6 +1052,7 @@ type Msg
     | VariableNameChanged String
     | VariableValueChanged String
     | VariableCreateSubmitPressed
+    | VariableEditUpdatePressed
     | VariableDialogCancelPressed
       -- MODALS
     | PointDeleteModalDeletePressed
@@ -1002,6 +1060,7 @@ type Msg
     | CircleDeleteModalDeletePressed
     | CurveDeleteModalDeletePressed
     | DetailDeleteModalDeletePressed
+    | VariableDeleteModalDeletePressed
     | ModalCancelPressed
 
 
@@ -1321,11 +1380,31 @@ updateWithData key msg model =
                 |> Task.attempt (\_ -> NoOp)
             )
 
+        VariableEditPressed variable ->
+            ( { model
+                | maybeVariableDialog =
+                    case Pattern.variableInfo variable pattern of
+                        Nothing ->
+                            Nothing
+
+                        Just value ->
+                            Just <|
+                                VariableDialogEdit
+                                    { name = variable
+                                    , value = value
+                                    }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        VariableRemovePressed variable ->
+            ( { model | maybeModal = Just (VariableDeleteConfirm variable) }
+            , Cmd.none
+            )
+
         VariableNameChanged newName ->
             case model.maybeVariableDialog of
-                Nothing ->
-                    ( model, Cmd.none )
-
                 Just (VariableDialogCreate data) ->
                     ( { model
                         | maybeVariableDialog =
@@ -1334,6 +1413,9 @@ updateWithData key msg model =
                       }
                     , Cmd.none
                     )
+
+                _ ->
+                    ( model, Cmd.none )
 
         VariableValueChanged newValue ->
             case model.maybeVariableDialog of
@@ -1349,11 +1431,17 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
+                Just (VariableDialogEdit data) ->
+                    ( { model
+                        | maybeVariableDialog =
+                            Just <|
+                                VariableDialogEdit { data | value = newValue }
+                      }
+                    , Cmd.none
+                    )
+
         VariableCreateSubmitPressed ->
             case model.maybeVariableDialog of
-                Nothing ->
-                    ( model, Cmd.none )
-
                 Just (VariableDialogCreate data) ->
                     case
                         Pattern.insertVariable data.name
@@ -1384,6 +1472,31 @@ updateWithData key msg model =
                               }
                             , Api.updatePattern PatternUpdateReceived newStoredPattern
                             )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        VariableEditUpdatePressed ->
+            case model.maybeVariableDialog of
+                Just (VariableDialogEdit data) ->
+                    case Pattern.replaceVariable data.name data.value pattern of
+                        Err _ ->
+                            ( model, Cmd.none )
+
+                        Ok newPattern ->
+                            let
+                                newStoredPattern =
+                                    { storedPattern | pattern = newPattern }
+                            in
+                            ( { model
+                                | maybeVariableDialog = Nothing
+                                , storedPattern = newStoredPattern
+                              }
+                            , Api.updatePattern PatternUpdateReceived newStoredPattern
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
 
         VariableDialogCancelPressed ->
             ( { model | maybeVariableDialog = Nothing }
@@ -1582,6 +1695,26 @@ updateWithData key msg model =
                     let
                         newPattern =
                             Pattern.removeDetail aDetail pattern
+
+                        newStoredPattern =
+                            { storedPattern | pattern = newPattern }
+                    in
+                    ( { model
+                        | maybeModal = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        VariableDeleteModalDeletePressed ->
+            case model.maybeModal of
+                Just (VariableDeleteConfirm variable) ->
+                    let
+                        newPattern =
+                            Pattern.removeVariable variable pattern
 
                         newStoredPattern =
                             { storedPattern | pattern = newPattern }
