@@ -1969,13 +1969,6 @@ fill-range@^4.0.0:
     repeat-string "^1.6.1"
     to-regex-range "^2.1.0"
 
-find-elm-dependencies@2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/find-elm-dependencies/-/find-elm-dependencies-2.0.0.tgz#435aa05a6544a0ecf54c5d1ac85cc1ca1044e4e4"
-  dependencies:
-    firstline "1.2.0"
-    lodash "4.17.10"
-
 find-elm-dependencies@2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/find-elm-dependencies/-/find-elm-dependencies-2.0.1.tgz#802e4e58379ad7ee7f30e048f8695ab732cf8132"
@@ -2735,10 +2728,6 @@ lodash.uniq@^4.5.0:
   version "4.5.0"
   resolved "https://registry.yarnpkg.com/lodash.uniq/-/lodash.uniq-4.5.0.tgz#d0225373aeb652adc1bc82e4945339a842754773"
 
-lodash@4.17.10:
-  version "4.17.10"
-  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.10.tgz#1b7793cf7259ea38fb3661d4d38b3260af8ae4e7"
-
 lodash@4.17.11, lodash@^4.13.1, lodash@^4.17.10, lodash@^4.17.4:
   version "4.17.11"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.11.tgz#b39ea6229ef607ecd89e2c8df12536891cac9b8d"
@@ -2954,15 +2943,6 @@ node-elm-compiler@5.0.3:
     cross-spawn "4.0.0"
     find-elm-dependencies "2.0.1"
     lodash "4.17.11"
-    temp "^0.8.3"
-
-node-elm-compiler@^5.0.1:
-  version "5.0.1"
-  resolved "https://registry.yarnpkg.com/node-elm-compiler/-/node-elm-compiler-5.0.1.tgz#d62094ee72d6aad616ebaa71397b6cfac90381f6"
-  dependencies:
-    cross-spawn "4.0.0"
-    find-elm-dependencies "2.0.0"
-    lodash "4.17.10"
     temp "^0.8.3"
 
 node-forge@^0.7.1:
