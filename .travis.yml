@@ -1,5 +1,8 @@
 language: elm
 
+install:
+  npm install -g elm-xref
+
 script:
   - elm-format --validate ./src
   - elm-format --validate ./tests
