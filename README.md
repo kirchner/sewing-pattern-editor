@@ -1,5 +1,7 @@
 # sewing-pattern-editor
 
+[![Build Status](https://travis-ci.org/kirchner/sewing-pattern-editor.svg?branch=master)](https://travis-ci.org/kirchner/sewing-pattern-editor)
+
 Create sewing patterns in your browser. [Live
 Demo](https://sewing-pattern-editor.herokuapp.com)
 
