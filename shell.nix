@@ -12,6 +12,7 @@ let
 
   elmiToJson = (import elmiToJsonNixpkgs {}).pkgs.elmPackages.elmi-to-json;
 
+
 in
 
 stdenv.mkDerivation {
@@ -22,6 +23,7 @@ stdenv.mkDerivation {
   ];
 
   shellHook = ''
+    yarn
     rm ./node_modules/elmi-to-json/unpacked_bin/elmi-to-json
     ln -s ${elmiToJson}/bin/elmi-to-json ./node_modules/elmi-to-json/unpacked_bin/
   '';

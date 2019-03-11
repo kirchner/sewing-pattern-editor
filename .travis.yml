@@ -1,0 +1,5 @@
+language: elm
+
+script:
+  - elm-format --validate .
+  - elm-test
