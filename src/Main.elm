@@ -32,7 +32,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Editor as Editor
-import Page.Home as Home
+import Page.Patterns as Patterns
 import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
@@ -73,7 +73,7 @@ type alias Model =
 type Page
     = NotFound
       -- PAGES
-    | Home Home.Model
+    | Patterns Patterns.Model
     | Editor Editor.Model
 
 
@@ -99,19 +99,19 @@ view model =
             , body = [ Html.text "We are sorry, this page does not exist." ]
             }
 
-        Home homeModel ->
+        Patterns patternsModel ->
             let
                 { title, body, dialog } =
-                    Home.view model.prefix homeModel
+                    Patterns.view model.prefix patternsModel
             in
             { title = title
             , body =
-                [ viewHelp (Element.map HomeMsg body) <|
+                [ viewHelp (Element.map PatternsMsg body) <|
                     if model.newWorkerModal then
                         Just viewNewWorkerDialog
 
                     else
-                        Maybe.map (Element.map HomeMsg) dialog
+                        Maybe.map (Element.map PatternsMsg) dialog
                 ]
             }
 
@@ -197,7 +197,7 @@ type Msg
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
       -- PAGES
-    | HomeMsg Home.Msg
+    | PatternsMsg Patterns.Msg
     | EditorMsg Editor.Msg
       -- SERVICE WORKER
     | OnNewWorker ()
@@ -230,16 +230,16 @@ update msg model =
         ( _, NotFound ) ->
             ( model, Cmd.none )
 
-        ( HomeMsg homeMsg, Home homeModel ) ->
+        ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
             let
-                ( newHomeModel, homeCmd ) =
-                    Home.update model.prefix model.key homeMsg homeModel
+                ( newPatternsModel, patternsCmd ) =
+                    Patterns.update model.prefix model.key patternsMsg patternsModel
             in
-            ( { model | page = Home newHomeModel }
-            , Cmd.map HomeMsg homeCmd
+            ( { model | page = Patterns newPatternsModel }
+            , Cmd.map PatternsMsg patternsCmd
             )
 
-        ( HomeMsg _, _ ) ->
+        ( PatternsMsg _, _ ) ->
             ( model, Cmd.none )
 
         ( EditorMsg patternMsg, Editor editorModel ) ->
@@ -283,13 +283,13 @@ changeRouteTo maybeRoute model =
 
                 Just newRoute ->
                     case newRoute of
-                        Route.Home ->
+                        Route.Patterns ->
                             let
-                                ( home, homeCmd ) =
-                                    Home.init
+                                ( patterns, patternsCmd ) =
+                                    Patterns.init
                             in
-                            ( { model | page = Home home }
-                            , Cmd.map HomeMsg homeCmd
+                            ( { model | page = Patterns patterns }
+                            , Cmd.map PatternsMsg patternsCmd
                             )
 
                         Route.Editor patternSlug maybePoint ->
@@ -315,8 +315,8 @@ subscriptions model =
                 Sub.none
 
             -- PAGES
-            Home homeModel ->
-                Sub.map HomeMsg (Home.subscriptions homeModel)
+            Patterns patternsModel ->
+                Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
 
             Editor editorModel ->
                 Sub.map EditorMsg (Editor.subscriptions editorModel)

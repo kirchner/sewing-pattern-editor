@@ -50,7 +50,7 @@ small :
     }
     -> Element msg
 small =
-    custom 400
+    custom 500
 
 
 custom :
@@ -71,6 +71,7 @@ custom width { onCancelPress, title, content, actions } =
         (Element.column
             [ Element.centerX
             , Element.centerY
+            , Element.moveUp Design.xLarge
             , Element.width (Element.px width)
             , Border.width 1
             , Border.rounded 4

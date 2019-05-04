@@ -30,7 +30,7 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string, top)
 
 
 type Route
-    = Home
+    = Patterns
     | Editor String (Maybe Point)
 
 
@@ -43,8 +43,8 @@ toString : String -> Route -> String
 toString prefix route =
     prefix
         ++ (case route of
-                Home ->
-                    "/"
+                Patterns ->
+                    "/patterns"
 
                 Editor patternSlug maybePoint ->
                     case maybePoint of
@@ -75,7 +75,8 @@ parser : Parser (Route -> a) a
 parser =
     oneOf [ top, s "sewing-pattern-editor" ]
         </> oneOf
-                [ Parser.map Home top
+                [ Parser.map Patterns top
+                , Parser.map Patterns (s "patterns")
                 , Parser.map Editor
                     (s "editor"
                         </> string

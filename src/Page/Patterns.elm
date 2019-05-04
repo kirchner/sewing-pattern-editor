@@ -1,4 +1,4 @@
-module Page.Home exposing
+module Page.Patterns exposing
     ( Model
     , Msg
     , init
@@ -9,7 +9,7 @@ module Page.Home exposing
 
 {-
    Sewing pattern editor
-   Copyright (C) 2018  Fabian Kirchner <kirchner@posteo.de>
+   Copyright (C) 2019  Fabian Kirchner <kirchner@posteo.de>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU Affero General Public License as published by
@@ -24,37 +24,30 @@ module Page.Home exposing
    You should have received a copy of the GNU Affero General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
---import Seamly2D.V0_6_0 as Seamly2D
 
 import Api
 import BoundingBox2d
 import Browser.Dom
 import Browser.Events
-import Browser.Navigation as Navigation
-import Color
+import Browser.Navigation
 import Design
-import Dict exposing (Dict)
 import Draw.Pattern as Pattern
-import Element exposing (DeviceClass(..), Element)
+import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
-import Element.Input as Input
 import Element.Lazy as Element
 import Element.Region as Region
 import File exposing (File)
 import File.Select
-import Frame2d
 import Geometry.Svg as Svg
-import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import List.Extra as List
-import List.Nonempty as Nonempty
 import Pattern exposing (Pattern)
 import Point2d
 import Ports
@@ -63,11 +56,9 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import State
 import StoredPattern exposing (StoredPattern)
-import Svg exposing (Svg)
+import Svg
 import Svg.Attributes
-import Svg.Lazy
 import Task
-import Those
 import Uuid
 import Vector2d
 import View.Icon
@@ -77,8 +68,7 @@ import View.Navigation
 
 
 type alias Model =
-    { device : Element.Device
-    , seed : Random.Seed
+    { seed : Random.Seed
     , storedPatterns : WebData (List StoredPattern)
     , dialog : Dialog
     }
@@ -103,33 +93,19 @@ type alias Preview =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { device =
-            { class = Element.Desktop
-            , orientation = Element.Landscape
-            }
-      , seed = Random.initialSeed 0 []
+    ( { seed = Random.initialSeed 0 []
       , storedPatterns = Loading
       , dialog = NoDialog
       }
     , Cmd.batch
         [ Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
         , Ports.requestSeed ()
-        , Task.perform
-            (\{ viewport } ->
-                DeviceChanged <|
-                    Element.classifyDevice
-                        { width = Basics.floor viewport.width
-                        , height = Basics.floor viewport.height
-                        }
-            )
-            Browser.Dom.getViewport
         ]
     )
 
 
 type Msg
     = NoOp
-    | DeviceChanged Element.Device
     | SeedReceived Int (List Int)
     | PatternsReceived (WebData (List StoredPattern))
     | PatternCreateResponse (Result Http.Error ())
@@ -162,20 +138,11 @@ type Msg
     | ImportPatternsImportClicked
 
 
-update : String -> Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
+update : String -> Browser.Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
 update prefix key msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
-
-        DeviceChanged newDevice ->
-            if model.device == newDevice then
-                ( model, Cmd.none )
-
-            else
-                ( { model | device = newDevice }
-                , Cmd.none
-                )
 
         SeedReceived seed seedExtension ->
             ( { model | seed = Random.initialSeed seed seedExtension }
@@ -201,7 +168,7 @@ update prefix key msg model =
 
         PatternCardClicked slug ->
             ( model
-            , Navigation.pushUrl key <|
+            , Browser.Navigation.pushUrl key <|
                 Route.toString prefix (Route.Editor slug Nothing)
             )
 
@@ -487,14 +454,6 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Ports.seedReceived (\( seed, seedExtension ) -> SeedReceived seed seedExtension)
-        , Browser.Events.onResize
-            (\width height ->
-                DeviceChanged <|
-                    Element.classifyDevice
-                        { width = width
-                        , height = height
-                        }
-            )
         , case model.dialog of
             NoDialog ->
                 Sub.none
@@ -526,136 +485,15 @@ view :
 view prefix model =
     { title = "Patterns"
     , body =
-        Element.column
-            [ Element.width
-                (case model.device.class of
-                    Phone ->
-                        Element.fill
-
-                    Tablet ->
-                        Element.fill |> Element.maximum 580
-
-                    Desktop ->
-                        Element.fill |> Element.maximum 1200
-
-                    BigDesktop ->
-                        Element.fill |> Element.maximum 1200
-                )
+        Element.row
+            [ Element.width Element.fill
             , Element.height Element.fill
-            , Element.paddingXY 0 Design.large
-            , Element.centerX
-            , Element.spacing Design.normal
             ]
-            [ Element.row
-                [ Element.width Element.fill ]
-                [ Element.el
-                    [ Design.fontXXLarge
-                    , Font.color Design.primary
-                    , Font.bold
-                    , Element.alignLeft
-                    ]
-                    (Element.text "Patterns")
-                , Element.row
-                    [ Element.spacing Design.xSmall
-                    , Element.alignRight
-                    ]
-                    [ View.Input.btnSecondary "create-new-pattern"
-                        { onPress = Just AddPatternClicked
-                        , label = "Create new pattern"
-                        }
-                    , View.Input.btnSecondary "import-patterns"
-                        { onPress = Just ImportPatternsClicked
-                        , label = "Import patterns"
-                        }
-                    ]
-                ]
-            , case model.storedPatterns of
-                NotAsked ->
-                    Element.none
-
-                Loading ->
-                    Element.el
-                        [ Element.width Element.fill
-                        , Element.padding Design.xLarge
-                        ]
-                        (Element.el [ Element.centerX ]
-                            (Element.text "Loading patterns..")
-                        )
-
-                Failure error ->
-                    Element.el
-                        [ Element.width Element.fill
-                        , Element.padding Design.xLarge
-                        ]
-                        (Element.el [ Element.centerX ]
-                            (Element.text "There was an error while loading your patterns:")
-                        )
-
-                Success storedPatterns ->
-                    case model.device.class of
-                        Phone ->
-                            Element.column
-                                [ Element.centerX
-                                , Element.spacing Design.normal
-                                ]
-                                (List.map (viewPattern model.device prefix) storedPatterns)
-
-                        _ ->
-                            let
-                                columnCount =
-                                    case model.device.class of
-                                        Phone ->
-                                            1
-
-                                        Tablet ->
-                                            2
-
-                                        Desktop ->
-                                            3
-
-                                        BigDesktop ->
-                                            3
-                            in
-                            Element.column
-                                [ Element.width Element.fill
-                                , Element.spacing Design.large
-                                ]
-                                (List.map
-                                    (List.map (viewPattern model.device prefix)
-                                        >> (\row ->
-                                                List.intersperse
-                                                    (Element.el [ Element.width Element.fill ] Element.none)
-                                                    (row
-                                                        ++ List.repeat (3 - List.length row)
-                                                            (viewPatternEmpty model.device.class)
-                                                    )
-                                           )
-                                        >> Element.row [ Element.width Element.fill ]
-                                    )
-                                    (slice columnCount storedPatterns)
-                                )
-            , Element.row
-                [ Element.width Element.fill
-                , Element.paddingXY 0 Design.large
-                , Element.spacing 5
-                ]
-                [ Element.newTabLink
-                    [ Element.alignRight
-                    , Font.color Design.black
-                    , Font.size Design.small
-                    , Element.mouseOver
-                        [ Font.color Design.primaryDark ]
-                    ]
-                    { url = "https://github.com/kirchner/sewing-pattern-editor"
-                    , label =
-                        Element.row
-                            [ Element.spacing Design.xSmall ]
-                            [ Element.el [ Font.underline ]
-                                (Element.text "Check out the source code")
-                            , View.Icon.faBrandLarge "github"
-                            ]
-                    }
-                ]
+            [ viewSidebar
+            , model.storedPatterns
+                |> RemoteData.toMaybe
+                |> Maybe.map (viewBody prefix)
+                |> Maybe.withDefault Element.none
             ]
     , dialog = viewDialog model model.dialog
     }
@@ -902,11 +740,191 @@ hijack msg =
     ( msg, True )
 
 
-viewPattern : Element.Device -> String -> StoredPattern -> Element Msg
-viewPattern device prefix ({ pattern } as storedPattern) =
+headerHeight =
+    Design.xLarge
+
+
+
+--+ Design.normal
+
+
+viewSidebar =
+    Element.column
+        [ Element.height Element.fill ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.height (Element.px headerHeight)
+            , Background.color Design.primary
+            ]
+            Element.none
+        , viewNavigation
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            , Background.color Design.primary
+            ]
+            Element.none
+        ]
+
+
+viewNavigation : Element msg
+viewNavigation =
+    let
+        viewEntry { url, label, icon, selected } =
+            Element.link
+                [ Element.width Element.fill
+                , Element.paddingEach
+                    { top = Design.small
+                    , bottom = Design.small
+                    , left = Design.normal
+                    , right = Design.large
+                    }
+                , Font.color <|
+                    if selected then
+                        Design.primaryDark
+
+                    else
+                        Design.white
+                , Background.color <|
+                    if selected then
+                        Design.white
+
+                    else
+                        Design.primary
+                , Element.mouseOver
+                    [ Background.color <|
+                        if selected then
+                            Design.white
+
+                        else
+                            Design.primaryDark
+                    ]
+                ]
+                { url = url
+                , label =
+                    Element.row
+                        [ Element.spacing Design.small
+                        , Font.size 16
+                        ]
+                        [ View.Icon.fa icon
+                        , Element.text label
+                        ]
+                }
+    in
+    Element.column
+        []
+        [ viewEntry
+            { url = "/patterns"
+            , icon = "tshirt"
+            , label = "Patterns"
+            , selected = True
+            }
+        , viewEntry
+            { url = "/measurements"
+            , icon = "ruler"
+            , label = "Measurements"
+            , selected = False
+            }
+        , viewEntry
+            { url = "/persons"
+            , icon = "users"
+            , label = "Persons"
+            , selected = False
+            }
+        ]
+
+
+viewBody : String -> List StoredPattern -> Element Msg
+viewBody prefix storedPatterns =
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+
+        -- FIXME this seems to be a bug, c.f.
+        -- https://github.com/mdgriffith/elm-ui/issues/12
+        , Element.clip
+        , Element.htmlAttribute <|
+            Html.Attributes.style "flex-shrink" "1"
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.height (Element.px headerHeight)
+            , Element.paddingXY Design.large Design.normal
+            , Background.color Design.secondary
+            , Border.widthEach
+                { top = 0
+                , bottom = 2
+                , left = 0
+                , right = 0
+                }
+            , Border.color Design.primary
+            ]
+            [ Element.el
+                [ Font.color Design.primaryDark
+                , Font.size 52
+                ]
+                (Element.text "Patterns")
+            , Element.row
+                [ Element.alignRight
+                , Element.spacing Design.small
+                ]
+                [ View.Input.btnPrimary
+                    { onPress = Just AddPatternClicked
+                    , label = "Create new pattern"
+                    }
+                , View.Input.btnPrimary
+                    { onPress = Just ImportPatternsClicked
+                    , label = "Import pattern"
+                    }
+                ]
+            ]
+        , viewPatterns prefix storedPatterns
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height (Element.px Design.xxSmall)
+            , Background.color Design.primary
+            ]
+            Element.none
+        ]
+
+
+viewPatterns : String -> List StoredPattern -> Element Msg
+viewPatterns prefix storedPatterns =
+    let
+        columnCount =
+            3
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.scrollbarY
+        ]
+        (Element.column
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            , Element.spacing Design.large
+            , Element.paddingXY Design.large Design.normal
+            ]
+            (List.map
+                (List.map (viewPattern prefix)
+                    >> (\row ->
+                            List.intersperse
+                                (Element.el [ Element.width Element.fill ] Element.none)
+                                (row ++ List.repeat (3 - List.length row) viewPatternEmpty)
+                       )
+                    >> Element.row [ Element.width Element.fill ]
+                )
+                (slice columnCount storedPatterns)
+            )
+        )
+
+
+viewPattern : String -> StoredPattern -> Element Msg
+viewPattern prefix ({ pattern } as storedPattern) =
     Element.column
         [ Border.width 1
-        , Border.rounded 4
+
+        --, Border.rounded 4
         , Border.color Design.primary
         , Element.padding Design.small
         , Element.spacing Design.normal
@@ -925,7 +943,7 @@ viewPattern device prefix ({ pattern } as storedPattern) =
             , Element.pointer
             , Events.onClick (PatternCardClicked storedPattern.slug)
             ]
-            [ Element.lazy2 viewPatternHelp device.class pattern
+            [ Element.lazy viewPatternHelp pattern
             , Element.el
                 [ Region.heading 2
                 , Element.alignLeft
@@ -972,64 +990,21 @@ viewPattern device prefix ({ pattern } as storedPattern) =
                 , filename = storedPattern.slug ++ ".json"
                 }
             , Element.el [ Element.alignRight ] <|
-                case device.class of
-                    Tablet ->
-                        View.Input.btnDangerIcon
-                            { onPress =
-                                Just <|
-                                    DeletePatternPressed storedPattern.slug storedPattern.name
-                            , icon = "trash"
-                            }
-
-                    _ ->
-                        View.Input.btnDanger
-                            { onPress =
-                                Just <|
-                                    DeletePatternPressed storedPattern.slug storedPattern.name
-                            , label = "Delete"
-                            }
+                View.Input.btnDanger
+                    { onPress =
+                        Just <|
+                            DeletePatternPressed storedPattern.slug storedPattern.name
+                    , label = "Delete"
+                    }
             ]
         ]
 
 
-viewPatternEmpty class =
+viewPatternHelp : Pattern -> Element Msg
+viewPatternHelp pattern =
     let
         ( maxX, maxY ) =
-            case class of
-                Phone ->
-                    ( 330, 280 )
-
-                Tablet ->
-                    ( 270 - 2 * Design.small, 220 )
-
-                Desktop ->
-                    ( 330, 280 )
-
-                BigDesktop ->
-                    ( 330, 280 )
-    in
-    Element.el
-        [ Element.width (Element.px maxX)
-        , Element.height (Element.px maxY)
-        ]
-        Element.none
-
-
-viewPatternHelp class pattern =
-    let
-        ( maxX, maxY ) =
-            case class of
-                Phone ->
-                    ( 330, 280 )
-
-                Tablet ->
-                    ( 270 - 2 * Design.small, 220 )
-
-                Desktop ->
-                    ( 330, 280 )
-
-                BigDesktop ->
-                    ( 330, 280 )
+            ( 360, 280 )
 
         viewBox =
             String.join " "
@@ -1088,16 +1063,17 @@ viewPatternHelp class pattern =
         )
 
 
-noSelections =
-    { points = Those.fromList []
-    , lines = Those.fromList []
-    , lineSegments = Those.fromList []
-    , details = Those.fromList []
-    }
-
-
-
----- HELPER
+viewPatternEmpty : Element msg
+viewPatternEmpty =
+    let
+        ( maxX, maxY ) =
+            ( 360, 280 )
+    in
+    Element.el
+        [ Element.width (Element.px maxX)
+        , Element.height (Element.px maxY)
+        ]
+        Element.none
 
 
 slice : Int -> List a -> List (List a)

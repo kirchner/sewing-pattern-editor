@@ -386,7 +386,7 @@ viewEditor prefix storedPattern model =
             , Font.color Design.black
             ]
             [ View.Navigation.link
-                { url = "/"
+                { url = "/patterns"
                 , label = "Patterns"
                 }
             , Element.el [] (View.Icon.fa "angle-right")
