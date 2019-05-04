@@ -70,8 +70,8 @@ custom width { onCancelPress, title, content, actions } =
         ]
         (Element.column
             [ Element.centerX
-            , Element.centerY
-            , Element.moveUp Design.xLarge
+            , Element.alignTop
+            , Element.moveDown (Design.large + Design.normal)
             , Element.width (Element.px width)
             , Border.width 1
             , Border.rounded 4
