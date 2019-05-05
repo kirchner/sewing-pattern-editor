@@ -173,15 +173,8 @@ type VariableDialog
 ---- VIEW
 
 
-view :
-    String
-    -> Model
-    ->
-        { title : String
-        , body : Element Msg
-        , dialog : Maybe (Element Msg)
-        }
-view prefix model =
+view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view model =
     case model of
         Loading ->
             { title = "Loading pattern.."
@@ -207,7 +200,7 @@ view prefix model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body = viewEditor prefix data.storedPattern data
+            , body = viewEditor data.storedPattern data
             , dialog = Maybe.map (viewModal data.storedPattern.pattern) data.maybeModal
             }
 
@@ -368,7 +361,8 @@ viewDeleteModal { name, kind, onDeletePress } =
         }
 
 
-viewEditor prefix storedPattern model =
+viewEditor : StoredPattern -> LoadedData -> Element Msg
+viewEditor storedPattern model =
     let
         { pattern, name } =
             storedPattern
@@ -418,10 +412,7 @@ viewEditor prefix storedPattern model =
             , Element.htmlAttribute <|
                 Html.Attributes.style "flex-shrink" "1"
             ]
-            [ Element.lazy3 viewLeftToolbar
-                prefix
-                pattern
-                model.maybeDialog
+            [ Element.lazy2 viewLeftToolbar pattern model.maybeDialog
             , Element.el
                 [ Element.htmlAttribute <|
                     Html.Attributes.id "pattern-container"
@@ -447,8 +438,8 @@ viewEditor prefix storedPattern model =
         ]
 
 
-viewLeftToolbar : String -> Pattern -> Maybe Dialog -> Element Msg
-viewLeftToolbar prefix pattern maybeDialog =
+viewLeftToolbar : Pattern -> Maybe Dialog -> Element Msg
+viewLeftToolbar pattern maybeDialog =
     Element.column
         [ Element.width (Element.maximum 400 Element.fill)
         , Element.height Element.fill
@@ -457,7 +448,7 @@ viewLeftToolbar prefix pattern maybeDialog =
         ]
         [ case maybeDialog of
             Nothing ->
-                Element.lazy viewToolSelector prefix
+                viewToolSelector
 
             Just (CreateObject dialog) ->
                 Element.map DialogCreateMsg <|
@@ -736,8 +727,8 @@ viewEditVariable name value =
 -- TOOL SELECTOR
 
 
-viewToolSelector : String -> Element Msg
-viewToolSelector prefix =
+viewToolSelector : Element Msg
+viewToolSelector =
     let
         button msg id label =
             View.Input.btnCallToAction (id ++ "-button")

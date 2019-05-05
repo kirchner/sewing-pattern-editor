@@ -32,7 +32,9 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Editor as Editor
+import Page.Measurements as Measurements
 import Page.Patterns as Patterns
+import Page.Persons as Persons
 import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
@@ -59,8 +61,7 @@ main =
 
 
 type alias Model =
-    { prefix : String
-    , key : Navigation.Key
+    { key : Navigation.Key
     , page : Page
     , newWorkerModal : Bool
     }
@@ -74,14 +75,15 @@ type Page
     = NotFound
       -- PAGES
     | Patterns Patterns.Model
+    | Measurements Measurements.Model
+    | Persons Persons.Model
     | Editor Editor.Model
 
 
 init : {} -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     changeRouteTo (Route.fromUrl url)
-        { prefix = Route.prefixFromUrl url
-        , key = key
+        { key = key
         , page = NotFound
         , newWorkerModal = False
         }
@@ -102,7 +104,7 @@ view model =
         Patterns patternsModel ->
             let
                 { title, body, dialog } =
-                    Patterns.view model.prefix patternsModel
+                    Patterns.view patternsModel
             in
             { title = title
             , body =
@@ -115,10 +117,42 @@ view model =
                 ]
             }
 
+        Measurements measurementsModel ->
+            let
+                { title, body, dialog } =
+                    Measurements.view measurementsModel
+            in
+            { title = title
+            , body =
+                [ viewHelp (Element.map MeasurementsMsg body) <|
+                    if model.newWorkerModal then
+                        Just viewNewWorkerDialog
+
+                    else
+                        Maybe.map (Element.map MeasurementsMsg) dialog
+                ]
+            }
+
+        Persons personsModel ->
+            let
+                { title, body, dialog } =
+                    Persons.view personsModel
+            in
+            { title = title
+            , body =
+                [ viewHelp (Element.map PersonsMsg body) <|
+                    if model.newWorkerModal then
+                        Just viewNewWorkerDialog
+
+                    else
+                        Maybe.map (Element.map PersonsMsg) dialog
+                ]
+            }
+
         Editor editorModel ->
             let
                 { title, body, dialog } =
-                    Editor.view model.prefix editorModel
+                    Editor.view editorModel
             in
             { title = title
             , body =
@@ -198,6 +232,8 @@ type Msg
     | UrlChanged Url
       -- PAGES
     | PatternsMsg Patterns.Msg
+    | MeasurementsMsg Measurements.Msg
+    | PersonsMsg Persons.Msg
     | EditorMsg Editor.Msg
       -- SERVICE WORKER
     | OnNewWorker ()
@@ -233,13 +269,37 @@ update msg model =
         ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
             let
                 ( newPatternsModel, patternsCmd ) =
-                    Patterns.update model.prefix model.key patternsMsg patternsModel
+                    Patterns.update model.key patternsMsg patternsModel
             in
             ( { model | page = Patterns newPatternsModel }
             , Cmd.map PatternsMsg patternsCmd
             )
 
         ( PatternsMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( MeasurementsMsg measurementsMsg, Measurements measurementsModel ) ->
+            let
+                ( newMeasurementsModel, measurementsCmd ) =
+                    Measurements.update model.key measurementsMsg measurementsModel
+            in
+            ( { model | page = Measurements newMeasurementsModel }
+            , Cmd.map MeasurementsMsg measurementsCmd
+            )
+
+        ( MeasurementsMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( PersonsMsg personsMsg, Persons personsModel ) ->
+            let
+                ( newPersonsModel, personsCmd ) =
+                    Persons.update model.key personsMsg personsModel
+            in
+            ( { model | page = Persons newPersonsModel }
+            , Cmd.map PersonsMsg personsCmd
+            )
+
+        ( PersonsMsg _, _ ) ->
             ( model, Cmd.none )
 
         ( EditorMsg patternMsg, Editor editorModel ) ->
@@ -292,6 +352,24 @@ changeRouteTo maybeRoute model =
                             , Cmd.map PatternsMsg patternsCmd
                             )
 
+                        Route.Measurements ->
+                            let
+                                ( measurements, measurementsCmd ) =
+                                    Measurements.init
+                            in
+                            ( { model | page = Measurements measurements }
+                            , Cmd.map MeasurementsMsg measurementsCmd
+                            )
+
+                        Route.Persons ->
+                            let
+                                ( persons, personsCmd ) =
+                                    Persons.init
+                            in
+                            ( { model | page = Persons persons }
+                            , Cmd.map PersonsMsg personsCmd
+                            )
+
                         Route.Editor patternSlug maybePoint ->
                             let
                                 ( editor, editorCmd ) =
@@ -317,6 +395,12 @@ subscriptions model =
             -- PAGES
             Patterns patternsModel ->
                 Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
+
+            Measurements measurementsModel ->
+                Sub.map MeasurementsMsg (Measurements.subscriptions measurementsModel)
+
+            Persons personsModel ->
+                Sub.map PersonsMsg (Persons.subscriptions personsModel)
 
             Editor editorModel ->
                 Sub.map EditorMsg (Editor.subscriptions editorModel)

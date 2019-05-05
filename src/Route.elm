@@ -2,7 +2,6 @@ module Route exposing
     ( Point(..)
     , Route(..)
     , fromUrl
-    , prefixFromUrl
     , toString
     )
 
@@ -31,6 +30,8 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string, top)
 
 type Route
     = Patterns
+    | Measurements
+    | Persons
     | Editor String (Maybe Point)
 
 
@@ -39,50 +40,55 @@ type Point
     | NewRightOf
 
 
-toString : String -> Route -> String
-toString prefix route =
-    prefix
-        ++ (case route of
-                Patterns ->
-                    "/patterns"
+toString : Route -> String
+toString route =
+    case route of
+        Patterns ->
+            "/patterns"
 
-                Editor patternSlug maybePoint ->
-                    case maybePoint of
-                        Nothing ->
-                            Builder.absolute
-                                [ "editor"
-                                , patternSlug
-                                ]
-                                []
+        Measurements ->
+            "/measurements"
 
-                        Just point ->
-                            Builder.absolute
-                                [ "editor"
-                                , patternSlug
-                                , "points"
-                                , case point of
-                                    NewLeftOf ->
-                                        "new-left-of"
+        Persons ->
+            "/persons"
 
-                                    NewRightOf ->
-                                        "new-right-of"
-                                ]
-                                []
-           )
+        Editor patternSlug maybePoint ->
+            case maybePoint of
+                Nothing ->
+                    Builder.absolute
+                        [ "editor"
+                        , patternSlug
+                        ]
+                        []
+
+                Just point ->
+                    Builder.absolute
+                        [ "editor"
+                        , patternSlug
+                        , "points"
+                        , case point of
+                            NewLeftOf ->
+                                "new-left-of"
+
+                            NewRightOf ->
+                                "new-right-of"
+                        ]
+                        []
 
 
 parser : Parser (Route -> a) a
 parser =
-    oneOf [ top, s "sewing-pattern-editor" ]
-        </> oneOf
-                [ Parser.map Patterns top
-                , Parser.map Patterns (s "patterns")
-                , Parser.map Editor
-                    (s "editor"
-                        </> string
-                        </> pointParser
-                    )
-                ]
+    oneOf
+        [ Parser.map Patterns top
+        , Parser.map Patterns (s "patterns")
+        , Parser.map Measurements (s "measurements")
+        , Parser.map Persons (s "persons")
+        , Parser.map Editor
+            (s "editor"
+                </> string
+                </> pointParser
+            )
+        ]
 
 
 pointParser : Parser (Maybe Point -> a) a
@@ -97,17 +103,3 @@ pointParser =
 fromUrl : Url -> Maybe Route
 fromUrl =
     Parser.parse parser
-
-
-prefixFromUrl : Url -> String
-prefixFromUrl url =
-    case String.split "/" url.path of
-        _ :: first :: _ ->
-            if first == "sewing-pattern-editor" then
-                "/sewing-pattern-editor"
-
-            else
-                ""
-
-        _ ->
-            ""

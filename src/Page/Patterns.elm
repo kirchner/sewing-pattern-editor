@@ -42,6 +42,7 @@ import Element.Region as Region
 import File exposing (File)
 import File.Select
 import Geometry.Svg as Svg
+import Header
 import Html.Attributes
 import Html.Events
 import Http
@@ -54,6 +55,7 @@ import Ports
 import Random.Pcg.Extended as Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
+import Sidebar
 import State
 import StoredPattern exposing (StoredPattern)
 import Svg
@@ -138,8 +140,8 @@ type Msg
     | ImportPatternsImportClicked
 
 
-update : String -> Browser.Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
-update prefix key msg model =
+update : Browser.Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
+update key msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -169,7 +171,7 @@ update prefix key msg model =
         PatternCardClicked slug ->
             ( model
             , Browser.Navigation.pushUrl key <|
-                Route.toString prefix (Route.Editor slug Nothing)
+                Route.toString (Route.Editor slug Nothing)
             )
 
         PatternCardMenuClicked slug ->
@@ -474,26 +476,24 @@ subscriptions model =
         ]
 
 
-view :
-    String
-    -> Model
-    ->
-        { title : String
-        , body : Element Msg
-        , dialog : Maybe (Element Msg)
-        }
-view prefix model =
+headerHeight : Int
+headerHeight =
+    Design.large + Design.normal
+
+
+view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view model =
     { title = "Patterns"
     , body =
         Element.row
             [ Element.width Element.fill
             , Element.height Element.fill
             ]
-            [ viewSidebar
-            , model.storedPatterns
-                |> RemoteData.toMaybe
-                |> Maybe.map (viewBody prefix)
-                |> Maybe.withDefault Element.none
+            [ Sidebar.view
+                { headerHeight = headerHeight
+                , currentPage = Sidebar.Patterns
+                }
+            , viewBody model
             ]
     , dialog = viewDialog model model.dialog
     }
@@ -740,102 +740,8 @@ hijack msg =
     ( msg, True )
 
 
-headerHeight =
-    Design.xLarge
-
-
-
---+ Design.normal
-
-
-viewSidebar =
-    Element.column
-        [ Element.height Element.fill ]
-        [ Element.el
-            [ Element.width Element.fill
-            , Element.height (Element.px headerHeight)
-            , Background.color Design.primary
-            ]
-            Element.none
-        , viewNavigation
-        , Element.el
-            [ Element.width Element.fill
-            , Element.height Element.fill
-            , Background.color Design.primary
-            ]
-            Element.none
-        ]
-
-
-viewNavigation : Element msg
-viewNavigation =
-    let
-        viewEntry { url, label, icon, selected } =
-            Element.link
-                [ Element.width Element.fill
-                , Element.paddingEach
-                    { top = Design.small
-                    , bottom = Design.small
-                    , left = Design.normal
-                    , right = Design.large
-                    }
-                , Font.color <|
-                    if selected then
-                        Design.primaryDark
-
-                    else
-                        Design.white
-                , Background.color <|
-                    if selected then
-                        Design.white
-
-                    else
-                        Design.primary
-                , Element.mouseOver
-                    [ Background.color <|
-                        if selected then
-                            Design.white
-
-                        else
-                            Design.primaryDark
-                    ]
-                ]
-                { url = url
-                , label =
-                    Element.row
-                        [ Element.spacing Design.small
-                        , Font.size 16
-                        ]
-                        [ View.Icon.fa icon
-                        , Element.text label
-                        ]
-                }
-    in
-    Element.column
-        []
-        [ viewEntry
-            { url = "/patterns"
-            , icon = "tshirt"
-            , label = "Patterns"
-            , selected = True
-            }
-        , viewEntry
-            { url = "/measurements"
-            , icon = "ruler"
-            , label = "Measurements"
-            , selected = False
-            }
-        , viewEntry
-            { url = "/persons"
-            , icon = "users"
-            , label = "Persons"
-            , selected = False
-            }
-        ]
-
-
-viewBody : String -> List StoredPattern -> Element Msg
-viewBody prefix storedPatterns =
+viewBody : Model -> Element Msg
+viewBody model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -846,39 +752,32 @@ viewBody prefix storedPatterns =
         , Element.htmlAttribute <|
             Html.Attributes.style "flex-shrink" "1"
         ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.height (Element.px headerHeight)
-            , Element.paddingXY Design.large Design.normal
-            , Background.color Design.secondary
-            , Border.widthEach
-                { top = 0
-                , bottom = 2
-                , left = 0
-                , right = 0
-                }
-            , Border.color Design.primary
-            ]
-            [ Element.el
-                [ Font.color Design.primaryDark
-                , Font.size 52
-                ]
-                (Element.text "Patterns")
-            , Element.row
-                [ Element.alignRight
-                , Element.spacing Design.small
-                ]
-                [ View.Input.btnPrimary
-                    { onPress = Just AddPatternClicked
-                    , label = "Create new pattern"
-                    }
-                , View.Input.btnPrimary
-                    { onPress = Just ImportPatternsClicked
-                    , label = "Import pattern"
-                    }
-                ]
-            ]
-        , viewPatterns prefix storedPatterns
+        [ Header.view
+            { headerHeight = headerHeight
+            , label = "Patterns"
+            , actions =
+                Element.row
+                    [ Element.spacing Design.small ]
+                    [ View.Input.btnPrimary
+                        { onPress = Just AddPatternClicked
+                        , label = "Create new pattern"
+                        }
+                    , View.Input.btnPrimary
+                        { onPress = Just ImportPatternsClicked
+                        , label = "Import pattern"
+                        }
+                    ]
+            }
+        , model.storedPatterns
+            |> RemoteData.toMaybe
+            |> Maybe.map viewPatterns
+            |> Maybe.withDefault
+                (Element.el
+                    [ Element.height Element.fill
+                    , Element.width Element.fill
+                    ]
+                    Element.none
+                )
         , Element.el
             [ Element.width Element.fill
             , Element.height (Element.px Design.xxSmall)
@@ -888,8 +787,8 @@ viewBody prefix storedPatterns =
         ]
 
 
-viewPatterns : String -> List StoredPattern -> Element Msg
-viewPatterns prefix storedPatterns =
+viewPatterns : List StoredPattern -> Element Msg
+viewPatterns storedPatterns =
     let
         columnCount =
             3
@@ -906,7 +805,7 @@ viewPatterns prefix storedPatterns =
             , Element.paddingXY Design.large Design.normal
             ]
             (List.map
-                (List.map (viewPattern prefix)
+                (List.map viewPattern
                     >> (\row ->
                             List.intersperse
                                 (Element.el [ Element.width Element.fill ] Element.none)
@@ -919,8 +818,8 @@ viewPatterns prefix storedPatterns =
         )
 
 
-viewPattern : String -> StoredPattern -> Element Msg
-viewPattern prefix ({ pattern } as storedPattern) =
+viewPattern : StoredPattern -> Element Msg
+viewPattern ({ pattern } as storedPattern) =
     Element.column
         [ Border.width 1
 
@@ -949,7 +848,7 @@ viewPattern prefix ({ pattern } as storedPattern) =
                 , Element.alignLeft
                 ]
                 (Element.link []
-                    { url = Route.toString prefix (Route.Editor storedPattern.slug Nothing)
+                    { url = Route.toString (Route.Editor storedPattern.slug Nothing)
                     , label =
                         Element.el
                             [ Design.fontXLarge
