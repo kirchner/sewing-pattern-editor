@@ -63,7 +63,7 @@ main =
 type alias Model =
     { key : Navigation.Key
     , page : Page
-    , newWorkerModal : Bool
+    , newWorkerModal : Maybe View.Modal.State
     }
 
 
@@ -85,7 +85,7 @@ init _ url key =
     changeRouteTo (Route.fromUrl url)
         { key = key
         , page = NotFound
-        , newWorkerModal = False
+        , newWorkerModal = Nothing
         }
 
 
@@ -109,11 +109,12 @@ view model =
             { title = title
             , body =
                 [ viewHelp (Element.map PatternsMsg body) <|
-                    if model.newWorkerModal then
-                        Just viewNewWorkerDialog
+                    case model.newWorkerModal of
+                        Nothing ->
+                            Maybe.map (Element.map PatternsMsg) dialog
 
-                    else
-                        Maybe.map (Element.map PatternsMsg) dialog
+                        Just state ->
+                            Just (viewNewWorkerDialog state)
                 ]
             }
 
@@ -125,11 +126,12 @@ view model =
             { title = title
             , body =
                 [ viewHelp (Element.map MeasurementsMsg body) <|
-                    if model.newWorkerModal then
-                        Just viewNewWorkerDialog
+                    case model.newWorkerModal of
+                        Nothing ->
+                            Maybe.map (Element.map MeasurementsMsg) dialog
 
-                    else
-                        Maybe.map (Element.map MeasurementsMsg) dialog
+                        Just state ->
+                            Just (viewNewWorkerDialog state)
                 ]
             }
 
@@ -141,11 +143,12 @@ view model =
             { title = title
             , body =
                 [ viewHelp (Element.map PersonsMsg body) <|
-                    if model.newWorkerModal then
-                        Just viewNewWorkerDialog
+                    case model.newWorkerModal of
+                        Nothing ->
+                            Maybe.map (Element.map PersonsMsg) dialog
 
-                    else
-                        Maybe.map (Element.map PersonsMsg) dialog
+                        Just state ->
+                            Just (viewNewWorkerDialog state)
                 ]
             }
 
@@ -157,11 +160,12 @@ view model =
             { title = title
             , body =
                 [ viewHelp (Element.map EditorMsg body) <|
-                    if model.newWorkerModal then
-                        Just viewNewWorkerDialog
+                    case model.newWorkerModal of
+                        Nothing ->
+                            Maybe.map (Element.map EditorMsg) dialog
 
-                    else
-                        Maybe.map (Element.map EditorMsg) dialog
+                        Just state ->
+                            Just (viewNewWorkerDialog state)
                 ]
             }
 
@@ -191,10 +195,11 @@ viewHelp body dialog =
         body
 
 
-viewNewWorkerDialog : Element Msg
-viewNewWorkerDialog =
-    View.Modal.small
+viewNewWorkerDialog : View.Modal.State -> Element Msg
+viewNewWorkerDialog state =
+    View.Modal.small state
         { onCancelPress = NewWorkerDialogCancelPressed
+        , onClosed = ModalClosed
         , title = "New version available"
         , content =
             Element.el
@@ -239,6 +244,8 @@ type Msg
     | OnNewWorker ()
     | NewWorkerDialogCancelPressed
     | NewWorkerDialogReloadPressed
+    | ModalStateChanged View.Modal.State
+    | ModalClosed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -316,17 +323,27 @@ update msg model =
 
         -- SERVICE WORKER
         ( OnNewWorker _, _ ) ->
-            ( { model | newWorkerModal = True }
+            ( { model | newWorkerModal = Just View.Modal.Opening }
             , Cmd.none
             )
 
         ( NewWorkerDialogCancelPressed, _ ) ->
-            ( { model | newWorkerModal = False }
+            ( { model | newWorkerModal = Just View.Modal.Closing }
             , Cmd.none
             )
 
         ( NewWorkerDialogReloadPressed, _ ) ->
-            ( { model | newWorkerModal = False }
+            ( { model | newWorkerModal = Just View.Modal.Closing }
+            , Cmd.none
+            )
+
+        ( ModalStateChanged newState, _ ) ->
+            ( { model | newWorkerModal = Just newState }
+            , Cmd.none
+            )
+
+        ( ModalClosed, _ ) ->
+            ( { model | newWorkerModal = Nothing }
             , Navigation.reload
             )
 
@@ -388,6 +405,12 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Ports.onNewWorker OnNewWorker
+        , case model.newWorkerModal of
+            Nothing ->
+                Sub.none
+
+            Just state ->
+                Sub.map ModalStateChanged (View.Modal.subscriptions state)
         , case model.page of
             NotFound ->
                 Sub.none

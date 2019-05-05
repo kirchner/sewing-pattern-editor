@@ -1,5 +1,7 @@
 module View.Modal exposing
-    ( small
+    ( State(..)
+    , small
+    , subscriptions
     , wide
     )
 
@@ -21,33 +23,65 @@ module View.Modal exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Browser.Events
 import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
 import View.Icon
 import View.Input
 
 
+type State
+    = Opening
+    | Open
+    | Closing
+
+
+subscriptions : State -> Sub State
+subscriptions state =
+    case state of
+        Opening ->
+            Browser.Events.onAnimationFrame (\_ -> Open)
+
+        Open ->
+            Sub.none
+
+        Closing ->
+            Sub.none
+
+
+
+---- VIEWS
+
+
 wide :
-    { onCancelPress : msg
-    , title : String
-    , content : Element msg
-    , actions : List (Element msg)
-    }
+    State
+    ->
+        { onCancelPress : msg
+        , onClosed : msg
+        , title : String
+        , content : Element msg
+        , actions : List (Element msg)
+        }
     -> Element msg
 wide =
     custom 600
 
 
 small :
-    { onCancelPress : msg
-    , title : String
-    , content : Element msg
-    , actions : List (Element msg)
-    }
+    State
+    ->
+        { onCancelPress : msg
+        , onClosed : msg
+        , title : String
+        , content : Element msg
+        , actions : List (Element msg)
+        }
     -> Element msg
 small =
     custom 500
@@ -55,40 +89,78 @@ small =
 
 custom :
     Int
+    -> State
     ->
         { onCancelPress : msg
+        , onClosed : msg
         , title : String
         , content : Element msg
         , actions : List (Element msg)
         }
     -> Element msg
-custom width { onCancelPress, title, content, actions } =
+custom width state config =
+    let
+        backdropAttrs attrs =
+            case state of
+                Opening ->
+                    style "opacity" "0"
+                        :: attrs
+
+                Open ->
+                    style "opacity" "1"
+                        :: style "transition" "opacity 0.3s"
+                        :: attrs
+
+                Closing ->
+                    style "opacity" "0"
+                        :: style "transition" "opacity 0.1s"
+                        :: onTransitionEnd config.onClosed
+                        :: attrs
+
+        modalAttrs attrs =
+            case state of
+                Opening ->
+                    Element.moveDown 0
+                        :: attrs
+
+                Open ->
+                    Element.moveDown (Design.large + Design.normal)
+                        :: style "transition" "transform 0.3s"
+                        :: attrs
+
+                Closing ->
+                    Element.moveDown (Design.large + Design.normal)
+                        :: attrs
+    in
     Element.el
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Background.color Design.grayDark
-        ]
+        ([ Element.width Element.fill
+         , Element.height Element.fill
+         , Background.color Design.grayDark
+         ]
+            |> backdropAttrs
+        )
         (Element.column
-            [ Element.centerX
-            , Element.alignTop
-            , Element.moveDown (Design.large + Design.normal)
-            , Element.width (Element.px width)
-            , Border.width 1
-            , Border.rounded 4
-            , Border.color Design.black
-            , Design.fontNormal
-            , Background.color Design.white
-            , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
-            , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
-            , Element.htmlAttribute <|
+            ([ Element.centerX
+             , Element.alignTop
+             , Element.width (Element.px width)
+             , Border.width 1
+             , Border.rounded 4
+             , Border.color Design.black
+             , Design.fontNormal
+             , Background.color Design.white
+             , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
+             , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
+             , Element.htmlAttribute <|
                 Html.Attributes.attribute "aria-labelledby" "dialog--title"
-            , Element.htmlAttribute <|
+             , Element.htmlAttribute <|
                 Html.Attributes.attribute "aria-describedby" "dialog--body"
 
-            -- TODO: fix display error in Chromium with scale-factor=1.5
-            , Element.htmlAttribute (Html.Attributes.style "padding-left" "1px")
-            , Element.htmlAttribute (Html.Attributes.style "padding-right" "1px")
-            ]
+             -- TODO: fix display error in Chromium with scale-factor=1.5
+             , Element.htmlAttribute (Html.Attributes.style "padding-left" "1px")
+             , Element.htmlAttribute (Html.Attributes.style "padding-right" "1px")
+             ]
+                |> modalAttrs
+            )
             [ Element.row
                 [ Element.width Element.fill
                 , Element.padding Design.small
@@ -105,10 +177,10 @@ custom width { onCancelPress, title, content, actions } =
                     , Element.centerX
                     , Font.bold
                     ]
-                    (Element.text title)
+                    (Element.text config.title)
                 , Element.el [ Element.alignRight ] <|
                     View.Input.btnIcon
-                        { onPress = Just onCancelPress
+                        { onPress = Just config.onCancelPress
                         , icon = "times"
                         }
                 ]
@@ -116,7 +188,7 @@ custom width { onCancelPress, title, content, actions } =
                 [ Element.width Element.fill
                 , Element.padding Design.small
                 ]
-                content
+                config.content
             , Element.row
                 [ Element.width Element.fill
                 , Element.padding Design.small
@@ -128,6 +200,18 @@ custom width { onCancelPress, title, content, actions } =
                     }
                 , Border.color Design.secondary
                 ]
-                actions
+                config.actions
             ]
         )
+
+
+style : String -> String -> Element.Attribute msg
+style name value =
+    Element.htmlAttribute <|
+        Html.Attributes.style name value
+
+
+onTransitionEnd : msg -> Element.Attribute msg
+onTransitionEnd msg =
+    Element.htmlAttribute <|
+        Html.Events.on "transitionend" (Decode.succeed msg)

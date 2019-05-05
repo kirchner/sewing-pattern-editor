@@ -46,7 +46,7 @@ import Header
 import Html.Attributes
 import Html.Events
 import Http
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import List.Extra as List
 import Pattern exposing (Pattern)
@@ -72,19 +72,21 @@ import View.Navigation
 type alias Model =
     { seed : Random.Seed
     , storedPatterns : WebData (List StoredPattern)
-    , dialog : Dialog
+    , dialog : Maybe ( Dialog, View.Modal.State )
     }
 
 
 type Dialog
-    = NoDialog
-    | CreatePattern String
+    = CreatePattern String
     | RenamePattern String String
     | DeletePattern String String
-    | ImportPatterns
-        { hover : Bool
-        , previews : List Preview
-        }
+    | ImportPatterns ImportPatternsData
+
+
+type alias ImportPatternsData =
+    { hover : Bool
+    , previews : List Preview
+    }
 
 
 type alias Preview =
@@ -97,7 +99,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { seed = Random.initialSeed 0 []
       , storedPatterns = Loading
-      , dialog = NoDialog
+      , dialog = Nothing
       }
     , Cmd.batch
         [ Api.getPatterns (RemoteData.fromResult >> PatternsReceived)
@@ -117,17 +119,14 @@ type Msg
     | AddPatternClicked
     | NewPatternNameChanged String
     | NewPatternCreateClicked
-    | NewPatternCancelClicked
       -- RENAME PATTERN
     | RenamePatternPressed String
     | RenamePatternNameChanged String
     | RenamePatternRenameClicked
-    | RenamePatternCancelClicked
     | PatternUpdateReceived (Result Http.Error ())
       -- DELETE PATTERN
     | DeletePatternPressed String String
     | DeletePatternDeleteClicked
-    | DeletePatternCancelClicked
     | PatternDeleteResponse (Result Http.Error ())
       -- IMPORT PATTERNS
     | ImportPatternsPick
@@ -136,8 +135,11 @@ type Msg
     | ImportPatternsGotFiles File (List File)
     | ImportPatternsGotPreview String String
     | ImportPatternsClicked
-    | ImportPatternsCancelClicked
     | ImportPatternsImportClicked
+      -- MODALS
+    | ModalStateChanged View.Modal.State
+    | ModalCancelClicked
+    | ModalClosed
 
 
 update : Browser.Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
@@ -179,15 +181,15 @@ update key msg model =
 
         -- ADD PATTERN
         AddPatternClicked ->
-            ( { model | dialog = CreatePattern "" }
+            ( { model | dialog = Just ( CreatePattern "", View.Modal.Opening ) }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             )
 
         NewPatternNameChanged newName ->
             case model.dialog of
-                CreatePattern _ ->
-                    ( { model | dialog = CreatePattern newName }
+                Just ( CreatePattern _, state ) ->
+                    ( { model | dialog = Just ( CreatePattern newName, state ) }
                     , Cmd.none
                     )
 
@@ -196,13 +198,13 @@ update key msg model =
 
         NewPatternCreateClicked ->
             case model.dialog of
-                CreatePattern name ->
+                Just ( CreatePattern name, state ) ->
                     let
                         ( uuid, newSeed ) =
                             Random.step Uuid.generator model.seed
                     in
                     ( { model
-                        | dialog = NoDialog
+                        | dialog = Just ( CreatePattern name, View.Modal.Closing )
                         , seed = newSeed
                       }
                     , Api.createPattern PatternCreateResponse <|
@@ -212,19 +214,20 @@ update key msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        NewPatternCancelClicked ->
-            ( { model | dialog = NoDialog }
-            , Cmd.none
-            )
-
         -- RENAME PATTERN
         RenamePatternPressed slug ->
-            case getPattern model slug of
+            case getStoredPattern model slug of
                 Nothing ->
                     ( model, Cmd.none )
 
                 Just storedPattern ->
-                    ( { model | dialog = RenamePattern slug storedPattern.name }
+                    ( { model
+                        | dialog =
+                            Just
+                                ( RenamePattern slug storedPattern.name
+                                , View.Modal.Opening
+                                )
+                      }
                     , Cmd.batch
                         [ Browser.Dom.focus "name-input"
                             |> Task.attempt (\_ -> NoOp)
@@ -234,8 +237,8 @@ update key msg model =
 
         RenamePatternNameChanged newName ->
             case model.dialog of
-                RenamePattern slug _ ->
-                    ( { model | dialog = RenamePattern slug newName }
+                Just ( RenamePattern slug _, state ) ->
+                    ( { model | dialog = Just ( RenamePattern slug newName, state ) }
                     , Cmd.none
                     )
 
@@ -244,10 +247,16 @@ update key msg model =
 
         RenamePatternRenameClicked ->
             case model.dialog of
-                RenamePattern slug newName ->
-                    case getPattern model slug of
+                Just ( RenamePattern slug newName, state ) ->
+                    case getStoredPattern model slug of
                         Just storedPattern ->
-                            ( { model | dialog = NoDialog }
+                            ( { model
+                                | dialog =
+                                    Just
+                                        ( RenamePattern slug newName
+                                        , View.Modal.Closing
+                                        )
+                              }
                             , Api.updatePattern PatternUpdateReceived
                                 { storedPattern | name = newName }
                             )
@@ -257,11 +266,6 @@ update key msg model =
 
                 _ ->
                     ( model, Cmd.none )
-
-        RenamePatternCancelClicked ->
-            ( { model | dialog = NoDialog }
-            , Cmd.none
-            )
 
         PatternUpdateReceived result ->
             case result of
@@ -277,22 +281,25 @@ update key msg model =
 
         -- DELETE PATTERNS
         DeletePatternPressed slug name ->
-            ( { model | dialog = DeletePattern slug name }
+            ( { model | dialog = Just ( DeletePattern slug name, View.Modal.Opening ) }
             , Cmd.none
             )
 
         DeletePatternDeleteClicked ->
             case model.dialog of
-                DeletePattern slug name ->
-                    ( { model | dialog = NoDialog }
+                Just ( DeletePattern slug name, _ ) ->
+                    ( { model
+                        | dialog =
+                            Just
+                                ( DeletePattern slug name
+                                , View.Modal.Closing
+                                )
+                      }
                     , Api.deletePattern PatternDeleteResponse slug
                     )
 
                 _ ->
                     ( model, Cmd.none )
-
-        DeletePatternCancelClicked ->
-            ( { model | dialog = NoDialog }, Cmd.none )
 
         PatternDeleteResponse result ->
             case result of
@@ -314,8 +321,14 @@ update key msg model =
 
         ImportPatternsDragEnter ->
             case model.dialog of
-                ImportPatterns data ->
-                    ( { model | dialog = ImportPatterns { data | hover = True } }
+                Just ( ImportPatterns data, state ) ->
+                    ( { model
+                        | dialog =
+                            Just
+                                ( ImportPatterns { data | hover = True }
+                                , state
+                                )
+                      }
                     , Cmd.none
                     )
 
@@ -324,8 +337,14 @@ update key msg model =
 
         ImportPatternsDragLeave ->
             case model.dialog of
-                ImportPatterns data ->
-                    ( { model | dialog = ImportPatterns { data | hover = False } }
+                Just ( ImportPatterns data, state ) ->
+                    ( { model
+                        | dialog =
+                            Just
+                                ( ImportPatterns { data | hover = False }
+                                , state
+                                )
+                      }
                     , Cmd.none
                     )
 
@@ -334,8 +353,14 @@ update key msg model =
 
         ImportPatternsGotFiles firstFile files ->
             case model.dialog of
-                ImportPatterns data ->
-                    ( { model | dialog = ImportPatterns { data | hover = False } }
+                Just ( ImportPatterns data, state ) ->
+                    ( { model
+                        | dialog =
+                            Just
+                                ( ImportPatterns { data | hover = False }
+                                , state
+                                )
+                      }
                     , Cmd.batch <|
                         List.map
                             (\file ->
@@ -350,7 +375,7 @@ update key msg model =
 
         ImportPatternsGotPreview name content ->
             case model.dialog of
-                ImportPatterns data ->
+                Just ( ImportPatterns data, state ) ->
                     let
                         newPreview =
                             { fileName = name
@@ -383,8 +408,11 @@ update key msg model =
                     in
                     ( { model
                         | dialog =
-                            ImportPatterns
-                                { data | previews = newPreview :: data.previews }
+                            Just
+                                ( ImportPatterns
+                                    { data | previews = newPreview :: data.previews }
+                                , state
+                                )
                       }
                     , Cmd.none
                     )
@@ -395,25 +423,23 @@ update key msg model =
         ImportPatternsClicked ->
             ( { model
                 | dialog =
-                    ImportPatterns
-                        { hover = False
-                        , previews = []
-                        }
+                    Just
+                        ( ImportPatterns
+                            { hover = False
+                            , previews = []
+                            }
+                        , View.Modal.Opening
+                        )
               }
-            , Cmd.none
-            )
-
-        ImportPatternsCancelClicked ->
-            ( { model | dialog = NoDialog }
             , Cmd.none
             )
 
         ImportPatternsImportClicked ->
             case model.dialog of
-                ImportPatterns { previews } ->
+                Just ( ImportPatterns data, _ ) ->
                     let
                         ( allCmds, newSeed ) =
-                            List.foldl createPattern ( [], model.seed ) previews
+                            List.foldl createPattern ( [], model.seed ) data.previews
 
                         createPattern { content } ( cmds, seed ) =
                             case content of
@@ -433,7 +459,7 @@ update key msg model =
                     in
                     ( { model
                         | seed = newSeed
-                        , dialog = NoDialog
+                        , dialog = Just ( ImportPatterns data, View.Modal.Closing )
                       }
                     , Cmd.batch allCmds
                     )
@@ -441,8 +467,35 @@ update key msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        -- MODALS
+        ModalStateChanged newState ->
+            case model.dialog of
+                Nothing ->
+                    ( model, Cmd.none )
 
-getPattern model slug =
+                Just ( dialog, _ ) ->
+                    ( { model | dialog = Just ( dialog, newState ) }
+                    , Cmd.none
+                    )
+
+        ModalCancelClicked ->
+            case model.dialog of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just ( dialog, _ ) ->
+                    ( { model | dialog = Just ( dialog, View.Modal.Closing ) }
+                    , Cmd.none
+                    )
+
+        ModalClosed ->
+            ( { model | dialog = Nothing }
+            , Cmd.none
+            )
+
+
+getStoredPattern : Model -> String -> Maybe StoredPattern
+getStoredPattern model slug =
     let
         withSlug pattern =
             pattern.slug == slug
@@ -457,22 +510,25 @@ subscriptions model =
     Sub.batch
         [ Ports.seedReceived (\( seed, seedExtension ) -> SeedReceived seed seedExtension)
         , case model.dialog of
-            NoDialog ->
+            Nothing ->
                 Sub.none
 
-            _ ->
-                Browser.Events.onKeyDown
-                    (Decode.field "key" Decode.string
-                        |> Decode.andThen
-                            (\key ->
-                                case key of
-                                    "Escape" ->
-                                        Decode.succeed NewPatternCancelClicked
+            Just ( _, state ) ->
+                Sub.batch
+                    [ Sub.map ModalStateChanged (View.Modal.subscriptions state)
+                    , Browser.Events.onKeyDown
+                        (Decode.field "key" Decode.string
+                            |> Decode.andThen
+                                (\key ->
+                                    case key of
+                                        "Escape" ->
+                                            Decode.succeed ModalCancelClicked
 
-                                    _ ->
-                                        Decode.fail "not handling that key here"
-                            )
-                    )
+                                        _ ->
+                                            Decode.fail "not handling that key here"
+                                )
+                        )
+                    ]
         ]
 
 
@@ -495,249 +551,280 @@ view model =
                 }
             , viewBody model
             ]
-    , dialog = viewDialog model model.dialog
+    , dialog = Maybe.map (viewDialog model) model.dialog
     }
 
 
-viewDialog : Model -> Dialog -> Maybe (Element Msg)
-viewDialog model dialog =
-    case dialog of
-        NoDialog ->
-            Nothing
 
+---- DIALOGS
+
+
+viewDialog : Model -> ( Dialog, View.Modal.State ) -> Element Msg
+viewDialog model ( dialog, state ) =
+    case dialog of
         CreatePattern name ->
-            Just <|
-                View.Modal.small
-                    { onCancelPress = NewPatternCancelClicked
-                    , title = "Create new pattern"
-                    , content =
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing Design.small
-                            ]
-                            [ Element.text "Create a new pattern"
-                            , View.Input.text "name-input"
-                                { onChange = NewPatternNameChanged
-                                , text = name
-                                , label = "Pick a name"
-                                , help = Nothing
-                                }
-                            ]
-                    , actions =
-                        [ View.Input.btnPrimary
-                            { onPress = Just NewPatternCreateClicked
-                            , label = "Create"
-                            }
-                        , Element.el [ Element.alignRight ] <|
-                            View.Input.btnCancel
-                                { onPress = Just NewPatternCancelClicked
-                                , label = "Cancel"
-                                }
-                        ]
-                    }
+            viewCreatePatternDialog state name
 
         RenamePattern slug name ->
-            case Maybe.map .name (getPattern model slug) of
-                Nothing ->
-                    Nothing
-
-                Just oldName ->
-                    Just <|
-                        View.Modal.small
-                            { onCancelPress = RenamePatternCancelClicked
-                            , title = "Rename the pattern «" ++ oldName ++ "»?"
-                            , content =
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.small
-                                    ]
-                                    [ Element.text <|
-                                        "What do you want to rename the pattern «"
-                                            ++ oldName
-                                            ++ "» to?"
-                                    , View.Input.text "name-input"
-                                        { onChange = RenamePatternNameChanged
-                                        , text = name
-                                        , label = "Pick a new name"
-                                        , help = Nothing
-                                        }
-                                    ]
-                            , actions =
-                                [ View.Input.btnPrimary
-                                    { onPress = Just RenamePatternRenameClicked
-                                    , label = "Rename"
-                                    }
-                                , Element.el [ Element.alignRight ] <|
-                                    View.Input.btnCancel
-                                        { onPress = Just RenamePatternCancelClicked
-                                        , label = "Cancel"
-                                        }
-                                ]
-                            }
+            getStoredPattern model slug
+                |> Maybe.map .name
+                |> Maybe.map (viewRenamePatternDialog state slug name)
+                |> Maybe.withDefault Element.none
 
         DeletePattern slug name ->
-            Just <|
-                View.Modal.small
-                    { onCancelPress = DeletePatternCancelClicked
-                    , title = "Delete «" ++ name ++ "»?"
-                    , content =
-                        Element.paragraph
-                            [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                            , Element.width Element.fill
-                            , Element.padding Design.small
-                            , Background.color Design.white
-                            ]
-                            [ Element.text "Do you want to delete the pattern "
-                            , Element.el [ Font.bold ]
-                                (Element.text ("«" ++ name ++ "»"))
-                            , Element.text "?"
-                            ]
-                    , actions =
-                        [ View.Input.btnDanger
-                            { onPress = Just DeletePatternDeleteClicked
-                            , label = "Delete pattern"
-                            }
-                        , Element.el [ Element.alignRight ] <|
-                            View.Input.btnCancel
-                                { onPress = Just DeletePatternCancelClicked
-                                , label = "Cancel"
-                                }
-                        ]
+            viewDeletePatternDialog state slug name
+
+        ImportPatterns data ->
+            viewImportPatternsDialog state data
+
+
+viewCreatePatternDialog : View.Modal.State -> String -> Element Msg
+viewCreatePatternDialog state name =
+    View.Modal.small state
+        { onCancelPress = ModalCancelClicked
+        , onClosed = ModalClosed
+        , title = "Create new pattern"
+        , content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing Design.small
+                ]
+                [ Element.text "Create a new pattern"
+                , View.Input.text "name-input"
+                    { onChange = NewPatternNameChanged
+                    , text = name
+                    , label = "Pick a name"
+                    , help = Nothing
                     }
+                ]
+        , actions =
+            [ View.Input.btnPrimary
+                { onPress = Just NewPatternCreateClicked
+                , label = "Create"
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just ModalCancelClicked
+                    , label = "Cancel"
+                    }
+            ]
+        }
 
-        ImportPatterns { hover, previews } ->
-            let
-                hoverAttributes attrs =
-                    if hover then
-                        Border.color Design.primaryDark
-                            :: Background.color Design.secondary
-                            :: attrs
 
-                    else
-                        Border.color Design.primary
-                            :: attrs
+viewRenamePatternDialog : View.Modal.State -> String -> String -> String -> Element Msg
+viewRenamePatternDialog state slug name oldName =
+    View.Modal.small state
+        { onCancelPress = ModalCancelClicked
+        , onClosed = ModalClosed
+        , title = "Rename the pattern «" ++ oldName ++ "»?"
+        , content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing Design.small
+                ]
+                [ Element.paragraph
+                    [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                    , Element.width Element.fill
+                    , Background.color Design.white
+                    ]
+                    [ Element.text <|
+                        "What do you want to rename the pattern «"
+                            ++ oldName
+                            ++ "» to?"
+                    ]
+                , View.Input.text "name-input"
+                    { onChange = RenamePatternNameChanged
+                    , text = name
+                    , label = "Pick a new name"
+                    , help = Nothing
+                    }
+                ]
+        , actions =
+            [ View.Input.btnPrimary
+                { onPress = Just RenamePatternRenameClicked
+                , label = "Rename"
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just ModalCancelClicked
+                    , label = "Cancel"
+                    }
+            ]
+        }
 
-                viewFile { fileName, content } =
-                    Element.row
-                        [ Element.width Element.fill
-                        , Element.spacing Design.small
-                        ]
-                        (case content of
-                            Err error ->
-                                [ Element.el
-                                    [ Element.width Element.fill
-                                    , Element.clip
-                                    ]
-                                    (Element.text fileName)
-                                , Element.row
-                                    [ Element.width (Element.fillPortion 1)
-                                    , Element.spacing Design.xxSmall
-                                    , Font.bold
-                                    , Font.color Design.danger
-                                    ]
-                                    [ View.Icon.fa "exclamation-circle"
-                                    , Element.text <|
-                                        "This is not a valid pattern file: "
-                                            ++ error
-                                    ]
-                                , Element.el [ Element.alignRight ]
-                                    (View.Input.btnSecondary "remove-file-button"
-                                        { onPress = Nothing
-                                        , label = "Remove"
-                                        }
-                                    )
-                                ]
 
-                            Ok _ ->
-                                [ Element.el
-                                    [ Element.width Element.fill
-                                    , Element.clip
-                                    ]
-                                    (View.Navigation.newTabLink
-                                        { url = ""
-                                        , label = fileName
-                                        }
-                                    )
-                                , Element.row
-                                    [ Element.width (Element.fillPortion 1)
-                                    , Element.spacing Design.xxSmall
-                                    , Font.bold
-                                    , Font.color Design.success
-                                    ]
-                                    [ View.Icon.fa "check-circle"
-                                    , Element.text "File can be imported."
-                                    ]
-                                , Element.el [ Element.alignRight ]
-                                    (View.Input.btnSecondary "remove-file-button"
-                                        { onPress = Nothing
-                                        , label = "Remove"
-                                        }
-                                    )
-                                ]
-                        )
-            in
-            Just <|
-                View.Modal.wide
-                    { onCancelPress = ImportPatternsCancelClicked
-                    , title = "Import patterns"
-                    , content =
-                        Element.column
+viewDeletePatternDialog : View.Modal.State -> String -> String -> Element Msg
+viewDeletePatternDialog state slug name =
+    View.Modal.small state
+        { onCancelPress = ModalCancelClicked
+        , onClosed = ModalClosed
+        , title = "Delete «" ++ name ++ "»?"
+        , content =
+            Element.paragraph
+                [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
+                , Element.width Element.fill
+                , Element.padding Design.small
+                , Background.color Design.white
+                ]
+                [ Element.text "Do you want to delete the pattern "
+                , Element.el [ Font.bold ]
+                    (Element.text ("«" ++ name ++ "»"))
+                , Element.text "?"
+                ]
+        , actions =
+            [ View.Input.btnDanger
+                { onPress = Just DeletePatternDeleteClicked
+                , label = "Delete pattern"
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just ModalCancelClicked
+                    , label = "Cancel"
+                    }
+            ]
+        }
+
+
+viewImportPatternsDialog : View.Modal.State -> ImportPatternsData -> Element Msg
+viewImportPatternsDialog state { hover, previews } =
+    let
+        hoverAttributes attrs =
+            if hover then
+                Border.color Design.primaryDark
+                    :: Background.color Design.secondary
+                    :: attrs
+
+            else
+                Border.color Design.primary
+                    :: attrs
+
+        viewFile { fileName, content } =
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing Design.small
+                ]
+                (case content of
+                    Err error ->
+                        [ Element.el
                             [ Element.width Element.fill
-                            , Element.spacing Design.small
+                            , Element.clip
                             ]
-                            [ Element.column
-                                [ Element.width Element.fill
-                                , Element.spacing Design.xSmall
-                                ]
-                                (List.map viewFile previews)
-                            , Element.el
-                                ([ Element.width Element.fill
-                                 , Element.height (Element.px 200)
-                                 , Border.width 2
-                                 , Border.rounded Design.xSmall
-                                 , Border.dashed
-                                 , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
-                                 , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
-                                 , hijackOn "dragleave" (Decode.succeed ImportPatternsDragLeave)
-                                 , hijackOn "drop"
-                                    (Decode.at [ "dataTransfer", "files" ]
-                                        (Decode.oneOrMore ImportPatternsGotFiles File.decoder)
-                                    )
-                                 ]
-                                    |> hoverAttributes
-                                )
-                                (Element.el
-                                    [ Element.centerX
-                                    , Element.centerY
-                                    ]
-                                    (View.Input.btnSecondary "upload-file-button"
-                                        { onPress = Just ImportPatternsPick
-                                        , label = "Upload file"
-                                        }
-                                    )
-                                )
+                            (Element.text fileName)
+                        , Element.row
+                            [ Element.width (Element.fillPortion 1)
+                            , Element.spacing Design.xxSmall
+                            , Font.bold
+                            , Font.color Design.danger
                             ]
-                    , actions =
-                        [ View.Input.btnPrimary
-                            { onPress = Just ImportPatternsImportClicked
-                            , label = "Import"
-                            }
-                        , Element.el [ Element.alignRight ] <|
-                            View.Input.btnCancel
-                                { onPress = Just ImportPatternsCancelClicked
-                                , label = "Cancel"
+                            [ View.Icon.fa "exclamation-circle"
+                            , Element.text <|
+                                "This is not a valid pattern file: "
+                                    ++ error
+                            ]
+                        , Element.el [ Element.alignRight ]
+                            (View.Input.btnSecondary "remove-file-button"
+                                { onPress = Nothing
+                                , label = "Remove"
                                 }
+                            )
                         ]
+
+                    Ok _ ->
+                        [ Element.el
+                            [ Element.width Element.fill
+                            , Element.clip
+                            ]
+                            (View.Navigation.newTabLink
+                                { url = ""
+                                , label = fileName
+                                }
+                            )
+                        , Element.row
+                            [ Element.width (Element.fillPortion 1)
+                            , Element.spacing Design.xxSmall
+                            , Font.bold
+                            , Font.color Design.success
+                            ]
+                            [ View.Icon.fa "check-circle"
+                            , Element.text "File can be imported."
+                            ]
+                        , Element.el [ Element.alignRight ]
+                            (View.Input.btnSecondary "remove-file-button"
+                                { onPress = Nothing
+                                , label = "Remove"
+                                }
+                            )
+                        ]
+                )
+    in
+    View.Modal.wide state
+        { onCancelPress = ModalCancelClicked
+        , onClosed = ModalClosed
+        , title = "Import patterns"
+        , content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing Design.small
+                ]
+                [ Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Design.xSmall
+                    ]
+                    (List.map viewFile previews)
+                , Element.el
+                    ([ Element.width Element.fill
+                     , Element.height (Element.px 200)
+                     , Border.width 2
+                     , Border.rounded Design.xSmall
+                     , Border.dashed
+                     , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
+                     , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
+                     , hijackOn "dragleave" (Decode.succeed ImportPatternsDragLeave)
+                     , hijackOn "drop"
+                        (Decode.at [ "dataTransfer", "files" ]
+                            (Decode.oneOrMore ImportPatternsGotFiles File.decoder)
+                        )
+                     ]
+                        |> hoverAttributes
+                    )
+                    (Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (View.Input.btnSecondary "upload-file-button"
+                            { onPress = Just ImportPatternsPick
+                            , label = "Upload file"
+                            }
+                        )
+                    )
+                ]
+        , actions =
+            [ View.Input.btnPrimary
+                { onPress = Just ImportPatternsImportClicked
+                , label = "Import"
+                }
+            , Element.el [ Element.alignRight ] <|
+                View.Input.btnCancel
+                    { onPress = Just ModalCancelClicked
+                    , label = "Cancel"
                     }
+            ]
+        }
 
 
+hijackOn : String -> Decoder msg -> Element.Attribute msg
 hijackOn event decoder =
     Element.htmlAttribute <|
         Html.Events.preventDefaultOn event (Decode.map hijack decoder)
 
 
+hijack : msg -> ( msg, Bool )
 hijack msg =
     ( msg, True )
+
+
+
+---- BODY
 
 
 viewBody : Model -> Element Msg

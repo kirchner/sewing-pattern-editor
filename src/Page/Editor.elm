@@ -103,7 +103,7 @@ init slug =
 type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
-    , maybeModal : Maybe Modal
+    , maybeModal : Maybe ( Modal, View.Modal.State )
 
     -- PATTERN
     , storedPattern : StoredPattern
@@ -205,8 +205,8 @@ view model =
             }
 
 
-viewModal : Pattern -> Modal -> Element Msg
-viewModal pattern modal =
+viewModal : Pattern -> ( Modal, View.Modal.State ) -> Element Msg
+viewModal pattern ( modal, state ) =
     case modal of
         PointDeleteConfirm aPoint ->
             let
@@ -252,8 +252,9 @@ viewModal pattern modal =
                             )
                     ]
             in
-            View.Modal.small
+            View.Modal.small state
                 { onCancelPress = ModalCancelPressed
+                , onClosed = ModalClosed
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
                 , content =
                     Element.column
@@ -296,44 +297,53 @@ viewModal pattern modal =
                 }
 
         AxisDeleteConfirm aAxis ->
-            viewDeleteModal
+            viewDeleteModal state
                 { name = objectName aAxis
                 , kind = "axis"
                 , onDeletePress = AxisDeleteModalDeletePressed
                 }
 
         CircleDeleteConfirm aCircle ->
-            viewDeleteModal
+            viewDeleteModal state
                 { name = objectName aCircle
                 , kind = "circle"
                 , onDeletePress = CircleDeleteModalDeletePressed
                 }
 
         CurveDeleteConfirm aCurve ->
-            viewDeleteModal
+            viewDeleteModal state
                 { name = objectName aCurve
                 , kind = "curve"
                 , onDeletePress = CurveDeleteModalDeletePressed
                 }
 
         DetailDeleteConfirm aDetail ->
-            viewDeleteModal
+            viewDeleteModal state
                 { name = objectName aDetail
                 , kind = "detail"
                 , onDeletePress = DetailDeleteModalDeletePressed
                 }
 
         VariableDeleteConfirm variable ->
-            viewDeleteModal
+            viewDeleteModal state
                 { name = variable
                 , kind = "variable"
                 , onDeletePress = VariableDeleteModalDeletePressed
                 }
 
 
-viewDeleteModal { name, kind, onDeletePress } =
-    View.Modal.small
+viewDeleteModal :
+    View.Modal.State
+    ->
+        { name : String
+        , kind : String
+        , onDeletePress : Msg
+        }
+    -> Element Msg
+viewDeleteModal state { name, kind, onDeletePress } =
+    View.Modal.small state
         { onCancelPress = ModalCancelPressed
+        , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
         , content =
             Element.paragraph
@@ -1052,7 +1062,9 @@ type Msg
     | CurveDeleteModalDeletePressed
     | DetailDeleteModalDeletePressed
     | VariableDeleteModalDeletePressed
+    | ModalStateChanged View.Modal.State
     | ModalCancelPressed
+    | ModalClosed
 
 
 update :
@@ -1390,7 +1402,13 @@ updateWithData key msg model =
             )
 
         VariableRemovePressed variable ->
-            ( { model | maybeModal = Just (VariableDeleteConfirm variable) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( VariableDeleteConfirm variable
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
@@ -1511,7 +1529,13 @@ updateWithData key msg model =
             )
 
         PointDeletePressed aPoint ->
-            ( { model | maybeModal = Just (PointDeleteConfirm aPoint) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( PointDeleteConfirm aPoint
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
@@ -1532,7 +1556,13 @@ updateWithData key msg model =
             )
 
         AxisDeletePressed aAxis ->
-            ( { model | maybeModal = Just (AxisDeleteConfirm aAxis) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( AxisDeleteConfirm aAxis
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
@@ -1553,7 +1583,13 @@ updateWithData key msg model =
             )
 
         CircleDeletePressed aCircle ->
-            ( { model | maybeModal = Just (CircleDeleteConfirm aCircle) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( CircleDeleteConfirm aCircle
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
@@ -1574,7 +1610,13 @@ updateWithData key msg model =
             )
 
         CurveDeletePressed aCurve ->
-            ( { model | maybeModal = Just (CurveDeleteConfirm aCurve) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( CurveDeleteConfirm aCurve
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
@@ -1595,14 +1637,20 @@ updateWithData key msg model =
             )
 
         DetailDeletePressed aDetail ->
-            ( { model | maybeModal = Just (DetailDeleteConfirm aDetail) }
+            ( { model
+                | maybeModal =
+                    Just
+                        ( DetailDeleteConfirm aDetail
+                        , View.Modal.Opening
+                        )
+              }
             , Cmd.none
             )
 
         -- MODALS
         PointDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (PointDeleteConfirm aPoint) ->
+                Just ( PointDeleteConfirm aPoint, state ) ->
                     let
                         newPattern =
                             Pattern.removePoint aPoint pattern
@@ -1611,7 +1659,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( PointDeleteConfirm aPoint
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1622,7 +1674,7 @@ updateWithData key msg model =
 
         AxisDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (AxisDeleteConfirm aAxis) ->
+                Just ( AxisDeleteConfirm aAxis, state ) ->
                     let
                         newPattern =
                             Pattern.removeAxis aAxis pattern
@@ -1631,7 +1683,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( AxisDeleteConfirm aAxis
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1642,7 +1698,7 @@ updateWithData key msg model =
 
         CircleDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (CircleDeleteConfirm aCircle) ->
+                Just ( CircleDeleteConfirm aCircle, state ) ->
                     let
                         newPattern =
                             Pattern.removeCircle aCircle pattern
@@ -1651,7 +1707,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( CircleDeleteConfirm aCircle
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1662,7 +1722,7 @@ updateWithData key msg model =
 
         CurveDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (CurveDeleteConfirm aCurve) ->
+                Just ( CurveDeleteConfirm aCurve, state ) ->
                     let
                         newPattern =
                             Pattern.removeCurve aCurve pattern
@@ -1671,7 +1731,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( CurveDeleteConfirm aCurve
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1682,7 +1746,7 @@ updateWithData key msg model =
 
         DetailDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (DetailDeleteConfirm aDetail) ->
+                Just ( DetailDeleteConfirm aDetail, state ) ->
                     let
                         newPattern =
                             Pattern.removeDetail aDetail pattern
@@ -1691,7 +1755,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( DetailDeleteConfirm aDetail
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1702,7 +1770,7 @@ updateWithData key msg model =
 
         VariableDeleteModalDeletePressed ->
             case model.maybeModal of
-                Just (VariableDeleteConfirm variable) ->
+                Just ( VariableDeleteConfirm variable, state ) ->
                     let
                         newPattern =
                             Pattern.removeVariable variable pattern
@@ -1711,7 +1779,11 @@ updateWithData key msg model =
                             { storedPattern | pattern = newPattern }
                     in
                     ( { model
-                        | maybeModal = Nothing
+                        | maybeModal =
+                            Just
+                                ( VariableDeleteConfirm variable
+                                , View.Modal.Closing
+                                )
                         , storedPattern = newStoredPattern
                       }
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
@@ -1720,7 +1792,27 @@ updateWithData key msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ModalStateChanged newState ->
+            case model.maybeModal of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just ( modal, _ ) ->
+                    ( { model | maybeModal = Just ( modal, newState ) }
+                    , Cmd.none
+                    )
+
         ModalCancelPressed ->
+            case model.maybeModal of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just ( modal, state ) ->
+                    ( { model | maybeModal = Just ( modal, View.Modal.Closing ) }
+                    , Cmd.none
+                    )
+
+        ModalClosed ->
             ( { model | maybeModal = Nothing }
             , Cmd.none
             )
@@ -1741,7 +1833,13 @@ subscriptions model =
 
         Loaded data ->
             Sub.batch
-                [ case data.patternContainerDimensions of
+                [ case data.maybeModal of
+                    Nothing ->
+                        Sub.none
+
+                    Just ( _, state ) ->
+                        Sub.map ModalStateChanged (View.Modal.subscriptions state)
+                , case data.patternContainerDimensions of
                     Just _ ->
                         Sub.none
 
