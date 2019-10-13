@@ -4,6 +4,7 @@ module Ui.Atom exposing
     , btnIcon, btnIconDanger, btnIconLarge
     , checkbox
     , radioRow, radioColumn, option
+    , segmentControl
     , fa, faBody, faLarge
     )
 
@@ -21,6 +22,7 @@ module Ui.Atom exposing
 
 @docs checkbox
 @docs radioRow, radioColumn, option
+@docs segmentControl
 
 
 # Icons
@@ -32,11 +34,14 @@ module Ui.Atom exposing
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Html
-import Html.Attributes as Attributes
-import Html.Events as Events
+import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
+import List.Extra as List
 import Listbox
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Ui.Color
@@ -55,7 +60,7 @@ btnPrimary { onPress, label } =
         , Font.color Ui.Color.white
         , Background.color Ui.Color.primaryLight
         , Element.mouseOver [ Background.color Ui.Color.primary ]
-        , Element.htmlAttribute (Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
         ]
         { onPress = onPress
         , label = Ui.Typography.button label
@@ -70,12 +75,12 @@ btnSecondary =
 btnSecondaryHelp : Element.Length -> String -> { onPress : Maybe msg, label : String } -> Element msg
 btnSecondaryHelp width id { onPress, label } =
     Input.button
-        [ Element.htmlAttribute (Attributes.id id)
+        [ Element.htmlAttribute (Html.Attributes.id id)
         , Element.paddingXY Ui.Space.level3 Ui.Space.level2
         , Element.width width
         , Background.color Ui.Color.secondary
         , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-        , Element.htmlAttribute (Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
         ]
         { onPress = onPress
         , label = Ui.Typography.button label
@@ -89,7 +94,7 @@ btnDanger { onPress, label } =
         , Font.color Ui.Color.white
         , Background.color Ui.Color.danger
         , Element.mouseOver [ Background.color Ui.Color.dangerDark ]
-        , Element.htmlAttribute (Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
         ]
         { onPress = onPress
         , label = Ui.Typography.button label
@@ -116,13 +121,13 @@ btnCancel { onPress, label } =
 btnCallToAction : String -> { onPress : Maybe msg, label : String } -> Element msg
 btnCallToAction id { onPress, label } =
     Input.button
-        [ Element.htmlAttribute (Attributes.id id)
+        [ Element.htmlAttribute (Html.Attributes.id id)
         , Element.width Element.fill
         , Element.paddingXY Ui.Space.level3 Ui.Space.level2
         , Border.rounded Ui.Space.level1
         , Background.color Ui.Color.secondary
         , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-        , Element.htmlAttribute (Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
         ]
         { onPress = onPress
         , label =
@@ -279,7 +284,7 @@ checkboxIcon checked =
 
 radioRow id { onChange, options, selected, label } =
     Input.radioRow
-        [ Element.htmlAttribute (Attributes.id id)
+        [ Element.htmlAttribute (Html.Attributes.id id)
         , Element.width Element.fill
         , Element.spacing Ui.Space.level4
         , Font.size 16
@@ -304,7 +309,7 @@ radioRow id { onChange, options, selected, label } =
 
 radioColumn id { onChange, options, selected, label } =
     Input.radio
-        [ Element.htmlAttribute (Attributes.id id)
+        [ Element.htmlAttribute (Html.Attributes.id id)
         , Element.width Element.fill
         , Element.spacing Ui.Space.level2
         , Font.size 16
@@ -348,7 +353,7 @@ radioOptionCustom label status =
         setClass attrs =
             case status of
                 Input.Selected ->
-                    Element.htmlAttribute (Attributes.class "focusable")
+                    Element.htmlAttribute (Html.Attributes.class "focusable")
                         :: attrs
 
                 _ ->
@@ -392,10 +397,242 @@ radioOptionCustom label status =
         , Element.el
             [ Element.width Element.fill
             , Element.htmlAttribute <|
-                Attributes.class "unfocusable"
+                Html.Attributes.class "unfocusable"
             ]
             label
         ]
+
+
+
+---- SEGMENT CONTROL
+
+
+segmentControl :
+    { onChange : tag -> msg
+    , options : List ( tag, String )
+    , selected : tag
+    , elementAppended : Bool
+    }
+    -> Element msg
+segmentControl { onChange, options, selected, elementAppended } =
+    Element.row
+        [ Element.width Element.fill
+        , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+        , Element.htmlAttribute (Html.Attributes.tabindex 0)
+        , Element.htmlAttribute (Html.Attributes.class "segment-control")
+        , onKeyDown onChange (List.map Tuple.first options) selected
+        ]
+        (List.map (Element.map onChange) <|
+            segments (not elementAppended) options selected
+        )
+
+
+type Position
+    = First
+    | Middle
+    | Last
+
+
+segments : Bool -> List ( tag, String ) -> tag -> List (Element tag)
+segments borderRoundBottom tags selectedTag =
+    List.indexedMap
+        (\index ( tag, label ) ->
+            if index == 0 then
+                segment borderRoundBottom selectedTag tag First label
+
+            else if index == List.length tags - 1 then
+                segment borderRoundBottom selectedTag tag Last label
+
+            else
+                segment borderRoundBottom selectedTag tag Middle label
+        )
+        tags
+
+
+segment : Bool -> tag -> tag -> Position -> String -> Element tag
+segment borderRoundBottom selectedTag thisTag position label =
+    let
+        selected =
+            selectedTag == thisTag
+    in
+    Element.el
+        [ Element.htmlAttribute (Html.Attributes.attribute "role" "radio")
+        , Element.htmlAttribute <|
+            Html.Attributes.attribute "aria-checked" <|
+                if selected then
+                    "true"
+
+                else
+                    "false"
+        , Events.onClick thisTag
+        , Element.width Element.fill
+        , Element.paddingXY 0 7
+        , Border.color Ui.Color.primary
+        , Border.widthEach <|
+            case position of
+                First ->
+                    { left = 1
+                    , right = 1
+                    , top = 1
+                    , bottom =
+                        if borderRoundBottom then
+                            1
+
+                        else
+                            0
+                    }
+
+                Middle ->
+                    { left = 0
+                    , right = 1
+                    , top = 1
+                    , bottom =
+                        if borderRoundBottom then
+                            1
+
+                        else
+                            0
+                    }
+
+                Last ->
+                    { left = 0
+                    , right = 1
+                    , top = 1
+                    , bottom =
+                        if borderRoundBottom then
+                            1
+
+                        else
+                            0
+                    }
+        , case position of
+            First ->
+                Border.roundEach
+                    { topLeft = 3
+                    , topRight = 0
+                    , bottomLeft =
+                        if borderRoundBottom then
+                            3
+
+                        else
+                            0
+                    , bottomRight = 0
+                    }
+
+            Middle ->
+                Border.rounded 0
+
+            Last ->
+                Border.roundEach
+                    { topLeft = 0
+                    , topRight = 3
+                    , bottomLeft = 0
+                    , bottomRight =
+                        if borderRoundBottom then
+                            3
+
+                        else
+                            0
+                    }
+        , Background.color <|
+            if selected then
+                Ui.Color.primary
+
+            else
+                Ui.Color.secondary
+        , Font.color <|
+            if selected then
+                Ui.Color.white
+
+            else
+                Ui.Color.black
+        , Font.size 16
+        , Element.mouseOver <|
+            if selected then
+                []
+
+            else
+                [ Background.color Ui.Color.secondaryDark ]
+        , Element.htmlAttribute <|
+            Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
+        , Element.pointer
+        ]
+        (Element.el
+            ([ Element.centerX ] ++ userSelectNone)
+            (Element.text label)
+        )
+
+
+onKeyDown : (tag -> msg) -> List tag -> tag -> Element.Attribute msg
+onKeyDown toMsg tags selectedTag =
+    let
+        ( prevTag, nextTag ) =
+            case List.splitWhen (\thisTag -> thisTag == selectedTag) tags of
+                Nothing ->
+                    unchanged
+
+                Just ( start, end ) ->
+                    case ( List.last start, end ) of
+                        ( Nothing, _ :: next :: _ ) ->
+                            case List.last tags of
+                                Nothing ->
+                                    unchanged
+
+                                Just last ->
+                                    ( last, next )
+
+                        ( Just prev, _ :: next :: _ ) ->
+                            ( prev, next )
+
+                        ( Just prev, _ :: [] ) ->
+                            case List.head tags of
+                                Nothing ->
+                                    unchanged
+
+                                Just first ->
+                                    ( prev, first )
+
+                        _ ->
+                            unchanged
+
+        unchanged =
+            ( selectedTag, selectedTag )
+    in
+    Element.htmlAttribute <|
+        Html.Events.on "keydown"
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\key ->
+                        case key of
+                            "ArrowLeft" ->
+                                Decode.succeed (toMsg prevTag)
+
+                            "ArrowUp" ->
+                                Decode.succeed (toMsg prevTag)
+
+                            "ArrowRight" ->
+                                Decode.succeed (toMsg nextTag)
+
+                            "ArrowDown" ->
+                                Decode.succeed (toMsg nextTag)
+
+                            _ ->
+                                Decode.fail "not handling that key here"
+                    )
+            )
+
+
+userSelectNone : List (Element.Attribute msg)
+userSelectNone =
+    [ Element.htmlAttribute <|
+        Html.Attributes.style "-moz-user-select" "none"
+    , Element.htmlAttribute <|
+        Html.Attributes.style "-webkit-user-select" "none"
+    , Element.htmlAttribute <|
+        Html.Attributes.style "-ms-user-select" "none"
+    , Element.htmlAttribute <|
+        Html.Attributes.style "user-select" "none"
+    ]
 
 
 
@@ -430,13 +667,13 @@ faHelp size name =
         (Element.el [] <|
             Element.html <|
                 Html.i
-                    [ Attributes.class "fas"
-                    , Attributes.class ("fa-" ++ name)
-                    , Attributes.style "font-size" sizePx
-                    , Attributes.style "width" sizePx
-                    , Attributes.style "height" sizePx
-                    , Attributes.style "text-align" "center"
-                    , Attributes.style "color" "inherit"
+                    [ Html.Attributes.class "fas"
+                    , Html.Attributes.class ("fa-" ++ name)
+                    , Html.Attributes.style "font-size" sizePx
+                    , Html.Attributes.style "width" sizePx
+                    , Html.Attributes.style "height" sizePx
+                    , Html.Attributes.style "text-align" "center"
+                    , Html.Attributes.style "color" "inherit"
                     ]
                     []
         )

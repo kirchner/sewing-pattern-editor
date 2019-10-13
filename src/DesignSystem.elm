@@ -34,7 +34,8 @@ main =
 
 
 type alias Model =
-    { route : Route
+    { key : Key
+    , route : Route
     , deviceClass : DeviceClass
     , orientation : Orientation
     , showNavigation : Bool
@@ -42,6 +43,7 @@ type alias Model =
     , fruit : Maybe Fruit
     , dropdown : Dropdown
     , selection : Maybe Fruit
+    , position : Position
     }
 
 
@@ -70,6 +72,20 @@ fruitToString fruit =
 
         Orange ->
             "Orange"
+
+
+type Position
+    = Left
+    | Center
+    | Right
+
+
+positions : List ( Position, String )
+positions =
+    [ ( Left, "Left" )
+    , ( Center, "Center" )
+    , ( Right, "Right" )
+    ]
 
 
 type Route
@@ -165,7 +181,8 @@ init { width, height } url key =
                 }
     in
     changeRouteTo (routeFromUrl url)
-        { route = Typography
+        { key = key
+        , route = Typography
         , deviceClass = class
         , orientation = orientation
         , showNavigation = False
@@ -173,6 +190,7 @@ init { width, height } url key =
         , fruit = Nothing
         , dropdown = Ui.Atom.Dropdown.init
         , selection = Nothing
+        , position = Left
         }
 
 
@@ -342,7 +360,7 @@ navigation deviceClass currentRoute =
                     Element.fill
 
                 _ ->
-                    Element.px (4 * Ui.Space.level8)
+                    Element.px (5 * Ui.Space.level8)
     in
     Element.column
         [ Element.width width
@@ -589,6 +607,18 @@ content model =
                             model.dropdown
                             model.selection
                         )
+                    , Ui.Typography.headingThree "Segment Control"
+                    , Element.el
+                        [ Element.padding Ui.Space.level4
+                        , Element.width Element.fill
+                        ]
+                        (Ui.Atom.segmentControl
+                            { onChange = ChangedPosition
+                            , options = positions
+                            , selected = model.position
+                            , elementAppended = False
+                            }
+                        )
                     ]
 
             Icons ->
@@ -649,6 +679,7 @@ type Msg
     | CheckedCheckbox Bool
     | FruitChanged Fruit
     | DropdownMsg (Ui.Atom.Dropdown.Msg Fruit)
+    | ChangedPosition Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -716,6 +747,9 @@ update msg model =
               }
             , Cmd.map DropdownMsg dropdownCmd
             )
+
+        ChangedPosition position ->
+            ( { model | position = position }, Cmd.none )
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
