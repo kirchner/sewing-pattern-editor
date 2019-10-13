@@ -81,32 +81,33 @@ viewWithMenu :
     -> Maybe entry
     -> Element msg
 viewWithMenu menu config instance options dropdown selection =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Ui.Space.level2
-        ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.htmlAttribute (Attributes.id (instance.id ++ "-label"))
-                , Element.alignLeft
-                , Font.size 16
-                , Font.bold
-                ]
-                (Element.text instance.label)
-            , Element.el [ Element.alignRight ]
-                menu
+    Ui.Atom.focusable <|
+        Element.column
+            [ Element.width Element.fill
+            , Element.spacing Ui.Space.level2
             ]
-        , Dropdown.customView dropdownDomFunctions
-            (dropdownViewConfig False config.entryToString config.entryToHash)
-            { id = instance.id
-            , label = Listbox.labelledBy (instance.id ++ "-label")
-            , lift = instance.lift
-            }
-            (List.map Listbox.option options)
-            dropdown
-            selection
-        ]
+            [ Element.row
+                [ Element.width Element.fill ]
+                [ Element.el
+                    [ Element.htmlAttribute (Attributes.id (instance.id ++ "-label"))
+                    , Element.alignLeft
+                    , Font.size 16
+                    , Font.bold
+                    ]
+                    (Element.text instance.label)
+                , Element.el [ Element.alignRight ]
+                    menu
+                ]
+            , Dropdown.customView dropdownDomFunctions
+                (dropdownViewConfig False config.entryToString config.entryToHash)
+                { id = instance.id
+                , label = Listbox.labelledBy (instance.id ++ "-label")
+                , lift = instance.lift
+                }
+                (List.map Listbox.option options)
+                dropdown
+                selection
+            ]
 
 
 dropdownViewConfig :

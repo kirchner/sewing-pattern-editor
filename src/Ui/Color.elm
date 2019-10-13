@@ -6,6 +6,7 @@ module Ui.Color exposing
     , danger, dangerDark
     , success
     , grayDark
+    , transparent
     , black, white
     )
 
@@ -29,6 +30,8 @@ module Ui.Color exposing
 
 @docs white black
 @docs grayDark
+
+@docs transparent
 
 -}
 
@@ -107,3 +110,7 @@ black =
 
 grayDark =
     Element.rgba255 36 28 21 0.65
+
+
+transparent =
+    Element.rgba255 255 255 255 0

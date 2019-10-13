@@ -5,7 +5,9 @@ module Ui.Atom exposing
     , checkbox
     , radioRow, radioColumn, option
     , segmentControl
+    , inputText, inputFormula
     , fa, faBody, faLarge
+    , focusable
     )
 
 {-|
@@ -23,11 +25,14 @@ module Ui.Atom exposing
 @docs checkbox
 @docs radioRow, radioColumn, option
 @docs segmentControl
+@docs inputText, inputFormula
 
 
 # Icons
 
 @docs fa, faBody, faLarge
+
+@docs focusable
 
 -}
 
@@ -55,16 +60,17 @@ import Ui.Typography
 
 btnPrimary : { onPress : Maybe msg, label : String } -> Element msg
 btnPrimary { onPress, label } =
-    Input.button
-        [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
-        , Font.color Ui.Color.white
-        , Background.color Ui.Color.primaryLight
-        , Element.mouseOver [ Background.color Ui.Color.primary ]
-        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
-        ]
-        { onPress = onPress
-        , label = Ui.Typography.button label
-        }
+    focusable <|
+        Input.button
+            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Font.color Ui.Color.white
+            , Background.color Ui.Color.primaryLight
+            , Element.mouseOver [ Background.color Ui.Color.primary ]
+            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            ]
+            { onPress = onPress
+            , label = Ui.Typography.button label
+            }
 
 
 btnSecondary : String -> { onPress : Maybe msg, label : String } -> Element msg
@@ -74,44 +80,47 @@ btnSecondary =
 
 btnSecondaryHelp : Element.Length -> String -> { onPress : Maybe msg, label : String } -> Element msg
 btnSecondaryHelp width id { onPress, label } =
-    Input.button
-        [ Element.htmlAttribute (Html.Attributes.id id)
-        , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-        , Element.width width
-        , Background.color Ui.Color.secondary
-        , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
-        ]
-        { onPress = onPress
-        , label = Ui.Typography.button label
-        }
+    focusable <|
+        Input.button
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Element.width width
+            , Background.color Ui.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
+            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            ]
+            { onPress = onPress
+            , label = Ui.Typography.button label
+            }
 
 
 btnDanger : { onPress : Maybe msg, label : String } -> Element msg
 btnDanger { onPress, label } =
-    Input.button
-        [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
-        , Font.color Ui.Color.white
-        , Background.color Ui.Color.danger
-        , Element.mouseOver [ Background.color Ui.Color.dangerDark ]
-        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
-        ]
-        { onPress = onPress
-        , label = Ui.Typography.button label
-        }
+    focusable <|
+        Input.button
+            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Font.color Ui.Color.white
+            , Background.color Ui.Color.danger
+            , Element.mouseOver [ Background.color Ui.Color.dangerDark ]
+            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            ]
+            { onPress = onPress
+            , label = Ui.Typography.button label
+            }
 
 
 btnCancel : { onPress : Maybe msg, label : String } -> Element msg
 btnCancel { onPress, label } =
-    Input.button
-        [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
-        , Font.color Ui.Color.primary
-        , Font.underline
-        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
-        ]
-        { onPress = onPress
-        , label = Ui.Typography.button label
-        }
+    focusable <|
+        Input.button
+            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Font.color Ui.Color.primary
+            , Font.underline
+            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            ]
+            { onPress = onPress
+            , label = Ui.Typography.button label
+            }
 
 
 
@@ -120,25 +129,26 @@ btnCancel { onPress, label } =
 
 btnCallToAction : String -> { onPress : Maybe msg, label : String } -> Element msg
 btnCallToAction id { onPress, label } =
-    Input.button
-        [ Element.htmlAttribute (Html.Attributes.id id)
-        , Element.width Element.fill
-        , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-        , Border.rounded Ui.Space.level1
-        , Background.color Ui.Color.secondary
-        , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-        , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
-        ]
-        { onPress = onPress
-        , label =
-            Element.row
-                [ Element.width Element.fill
-                , Element.spacing Ui.Space.level4
-                ]
-                [ Ui.Typography.button label
-                , Element.el [ Element.alignRight ] (fa "chevron-right")
-                ]
-        }
+    focusable <|
+        Input.button
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.width Element.fill
+            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Border.rounded Ui.Space.level1
+            , Background.color Ui.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
+            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            ]
+            { onPress = onPress
+            , label =
+                Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing Ui.Space.level4
+                    ]
+                    [ Ui.Typography.button label
+                    , Element.el [ Element.alignRight ] (fa "chevron-right")
+                    ]
+            }
 
 
 
@@ -147,46 +157,49 @@ btnCallToAction id { onPress, label } =
 
 btnIcon : { onPress : Maybe msg, icon : String } -> Element msg
 btnIcon { onPress, icon } =
-    Input.button
-        [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
-        { onPress = onPress
-        , label =
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                ]
-                (fa icon)
-        }
+    focusable <|
+        Input.button
+            [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
+            { onPress = onPress
+            , label =
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (fa icon)
+            }
 
 
 btnIconDanger : { onPress : Maybe msg, icon : String } -> Element msg
 btnIconDanger { onPress, icon } =
-    Input.button
-        [ Font.color Ui.Color.danger
-        , Element.mouseOver [ Font.color Ui.Color.dangerDark ]
-        ]
-        { onPress = onPress
-        , label =
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                ]
-                (fa icon)
-        }
+    focusable <|
+        Input.button
+            [ Font.color Ui.Color.danger
+            , Element.mouseOver [ Font.color Ui.Color.dangerDark ]
+            ]
+            { onPress = onPress
+            , label =
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (fa icon)
+            }
 
 
 btnIconLarge : { onPress : Maybe msg, icon : String } -> Element msg
 btnIconLarge { onPress, icon } =
-    Input.button
-        [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
-        { onPress = onPress
-        , label =
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                ]
-                (faLarge icon)
-        }
+    focusable <|
+        Input.button
+            [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
+            { onPress = onPress
+            , label =
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (faLarge icon)
+            }
 
 
 
@@ -200,19 +213,20 @@ checkbox :
     }
     -> Element msg
 checkbox { onChange, checked, label } =
-    Input.checkbox
-        [ Element.width Element.fill ]
-        { onChange = onChange
-        , icon = checkboxIcon
-        , checked = checked
-        , label =
-            Input.labelRight
-                [ Font.size 16
-                , Element.centerY
-                , Element.paddingXY Ui.Space.level1 0
-                ]
-                (Element.text label)
-        }
+    focusable <|
+        Input.checkbox
+            [ Element.width Element.fill ]
+            { onChange = onChange
+            , icon = checkboxIcon
+            , checked = checked
+            , label =
+                Input.labelRight
+                    [ Font.size 16
+                    , Element.centerY
+                    , Element.paddingXY Ui.Space.level1 0
+                    ]
+                    (Element.text label)
+            }
 
 
 checkboxIcon : Bool -> Element msg
@@ -283,53 +297,55 @@ checkboxIcon checked =
 
 
 radioRow id { onChange, options, selected, label } =
-    Input.radioRow
-        [ Element.htmlAttribute (Html.Attributes.id id)
-        , Element.width Element.fill
-        , Element.spacing Ui.Space.level4
-        , Font.size 16
-        ]
-        { onChange = onChange
-        , options = options
-        , selected = selected
-        , label =
-            Input.labelAbove
-                [ Font.size 16
-                , Font.bold
-                , Element.paddingEach
-                    { top = 0
-                    , bottom = Ui.Space.level2
-                    , left = 0
-                    , right = 0
-                    }
-                ]
-                (Element.text label)
-        }
+    focusable <|
+        Input.radioRow
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.width Element.fill
+            , Element.spacing Ui.Space.level4
+            , Font.size 16
+            ]
+            { onChange = onChange
+            , options = options
+            , selected = selected
+            , label =
+                Input.labelAbove
+                    [ Font.size 16
+                    , Font.bold
+                    , Element.paddingEach
+                        { top = 0
+                        , bottom = Ui.Space.level2
+                        , left = 0
+                        , right = 0
+                        }
+                    ]
+                    (Element.text label)
+            }
 
 
 radioColumn id { onChange, options, selected, label } =
-    Input.radio
-        [ Element.htmlAttribute (Html.Attributes.id id)
-        , Element.width Element.fill
-        , Element.spacing Ui.Space.level2
-        , Font.size 16
-        ]
-        { onChange = onChange
-        , options = options
-        , selected = selected
-        , label =
-            Input.labelAbove
-                [ Font.size 16
-                , Font.bold
-                , Element.paddingEach
-                    { top = 0
-                    , bottom = Ui.Space.level2
-                    , left = 0
-                    , right = 0
-                    }
-                ]
-                (Element.text label)
-        }
+    focusable <|
+        Input.radio
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.width Element.fill
+            , Element.spacing Ui.Space.level2
+            , Font.size 16
+            ]
+            { onChange = onChange
+            , options = options
+            , selected = selected
+            , label =
+                Input.labelAbove
+                    [ Font.size 16
+                    , Font.bold
+                    , Element.paddingEach
+                        { top = 0
+                        , bottom = Ui.Space.level2
+                        , left = 0
+                        , right = 0
+                        }
+                    ]
+                    (Element.text label)
+            }
 
 
 option : value -> String -> Input.Option value msg
@@ -415,16 +431,17 @@ segmentControl :
     }
     -> Element msg
 segmentControl { onChange, options, selected, elementAppended } =
-    Element.row
-        [ Element.width Element.fill
-        , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
-        , Element.htmlAttribute (Html.Attributes.tabindex 0)
-        , Element.htmlAttribute (Html.Attributes.class "segment-control")
-        , onKeyDown onChange (List.map Tuple.first options) selected
-        ]
-        (List.map (Element.map onChange) <|
-            segments (not elementAppended) options selected
-        )
+    focusable <|
+        Element.row
+            [ Element.width Element.fill
+            , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+            , Element.htmlAttribute (Html.Attributes.tabindex 0)
+            , Element.htmlAttribute (Html.Attributes.class "segment-control")
+            , onKeyDown onChange (List.map Tuple.first options) selected
+            ]
+            (List.map (Element.map onChange) <|
+                segments (not elementAppended) options selected
+            )
 
 
 type Position
@@ -636,6 +653,212 @@ userSelectNone =
 
 
 
+---- TEXT
+
+
+inputText :
+    String
+    ->
+        { onChange : String -> msg
+        , text : String
+        , label : String
+        , help : Maybe String
+        }
+    -> Element msg
+inputText id data =
+    focusable
+        (Input.text
+            [ Element.htmlAttribute <|
+                Html.Attributes.id id
+            , Element.width Element.fill
+            , Element.paddingXY 6 10
+            , Font.size 16
+            , Background.color Ui.Color.white
+            , Border.rounded 3
+            , Border.width 1
+            , Border.color Ui.Color.black
+            ]
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label =
+                Input.labelAbove []
+                    (case data.help of
+                        Nothing ->
+                            Element.el
+                                [ Font.bold
+                                , Font.size 16
+                                , Element.paddingEach
+                                    { top = 0
+                                    , bottom = Ui.Space.level1
+                                    , left = 0
+                                    , right = 0
+                                    }
+                                ]
+                                (Element.text data.label)
+
+                        Just helpText ->
+                            Element.column
+                                [ Element.spacing Ui.Space.level1 ]
+                                [ Element.el
+                                    [ Font.bold
+                                    , Font.size 16
+                                    , Element.paddingEach
+                                        { top = 0
+                                        , bottom = Ui.Space.level1
+                                        , left = 0
+                                        , right = 0
+                                        }
+                                    ]
+                                    (Element.text data.label)
+                                , Element.row
+                                    [ Element.spacing Ui.Space.level2
+                                    , Element.paddingXY 0 Ui.Space.level1
+                                    , Font.color Ui.Color.danger
+                                    ]
+                                    [ fa "exclamation-circle"
+                                    , Element.text helpText
+                                    ]
+                                ]
+                    )
+            }
+        )
+
+
+inputFormula :
+    String
+    ->
+        { onChange : String -> msg
+        , text : String
+        , label : String
+        , help : Maybe String
+        }
+    -> Element msg
+inputFormula id data =
+    let
+        lineCount =
+            List.length (String.split "\n" data.text)
+
+        padding =
+            if lineCount == 1 then
+                Element.paddingXY 6 10
+
+            else
+                Element.paddingEach
+                    { left =
+                        if lineCount < 10 then
+                            30
+
+                        else
+                            40
+                    , right = 6
+                    , top = 10
+                    , bottom = 10
+                    }
+    in
+    focusable <|
+        Input.multiline
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.width Element.fill
+            , Element.inFront (lineNumbers lineCount)
+            , padding
+            , Element.spacing Ui.Space.level1
+            , Font.size 16
+            , Font.family
+                [ Font.monospace ]
+            , Background.color Ui.Color.white
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color Ui.Color.black
+            , Element.htmlAttribute (Html.Attributes.rows lineCount)
+            , Element.htmlAttribute (Html.Attributes.style "white-space" "pre")
+            , Element.clip
+            ]
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , spellcheck = False
+            , label =
+                Input.labelAbove []
+                    (case data.help of
+                        Nothing ->
+                            Element.el
+                                [ Font.bold
+                                , Font.size 16
+                                , Font.family
+                                    [ Font.external
+                                        { name = "Rubik"
+                                        , url = "https://fonts.googleapis.com/css?family=Rubik:300"
+                                        }
+                                    , Font.sansSerif
+                                    ]
+                                ]
+                                (Element.text data.label)
+
+                        Just helpText ->
+                            Element.column
+                                [ Element.spacing Ui.Space.level1 ]
+                                [ Element.el
+                                    [ Font.bold ]
+                                    (Element.text data.label)
+                                , Element.row
+                                    [ Element.spacing Ui.Space.level2
+                                    , Element.paddingEach
+                                        { left = 0
+                                        , right = 0
+                                        , top = Ui.Space.level1
+                                        , bottom = 0
+                                        }
+                                    , Font.color Ui.Color.danger
+                                    ]
+                                    [ fa "exclamation-circle"
+                                    , Element.text helpText
+                                    ]
+                                ]
+                    )
+            }
+
+
+lineNumbers : Int -> Element msg
+lineNumbers lineCount =
+    if lineCount == 1 then
+        Element.none
+
+    else
+        Element.row
+            [ Element.height Element.fill
+            , Element.paddingXY 5 0
+            , Element.spacing 5
+            ]
+            [ Element.column
+                [ Font.size 16
+                , Font.family
+                    [ Font.monospace ]
+                , Element.spacing Ui.Space.level1
+                ]
+                (List.range 1 lineCount
+                    |> List.map
+                        (\lineNumber ->
+                            Element.el
+                                [ Element.alignRight ]
+                                (Element.text (String.fromInt lineNumber))
+                        )
+                )
+            , Element.el
+                [ Element.paddingXY 0 5
+                , Element.height Element.fill
+                ]
+                (Element.el
+                    [ Element.height Element.fill
+                    , Element.width (Element.px 1)
+                    , Background.color Ui.Color.black
+                    ]
+                    Element.none
+                )
+            ]
+
+
+
 ---- ICONS
 
 
@@ -676,4 +899,26 @@ faHelp size name =
                     , Html.Attributes.style "color" "inherit"
                     ]
                     []
+        )
+
+
+
+---- FOCUSABLE
+
+
+focusable : Element msg -> Element msg
+focusable element =
+    Element.el
+        [ Border.width 3
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused
+            [ Border.color Ui.Color.primary ]
+        , Element.width Element.fill
+        ]
+        (Element.el
+            [ Element.padding 3
+            , Element.width Element.fill
+            ]
+            element
         )

@@ -44,6 +44,7 @@ type alias Model =
     , dropdown : Dropdown
     , selection : Maybe Fruit
     , position : Position
+    , formula : String
     }
 
 
@@ -191,6 +192,7 @@ init { width, height } url key =
         , dropdown = Ui.Atom.Dropdown.init
         , selection = Nothing
         , position = Left
+        , formula = ""
         }
 
 
@@ -619,6 +621,25 @@ content model =
                             , elementAppended = False
                             }
                         )
+                    , Ui.Typography.headingThree "Text"
+                    , Element.column
+                        [ Element.padding Ui.Space.level4
+                        , Element.spacing Ui.Space.level4
+                        , Element.width Element.fill
+                        ]
+                        [ Ui.Atom.inputText "input-text"
+                            { onChange = \_ -> NoOp
+                            , text = ""
+                            , label = "Text"
+                            , help = Nothing
+                            }
+                        , Ui.Atom.inputFormula "input-formula"
+                            { onChange = ChangedFormula
+                            , text = model.formula
+                            , label = "Formula"
+                            , help = Nothing
+                            }
+                        ]
                     ]
 
             Icons ->
@@ -680,6 +701,7 @@ type Msg
     | FruitChanged Fruit
     | DropdownMsg (Ui.Atom.Dropdown.Msg Fruit)
     | ChangedPosition Position
+    | ChangedFormula String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -750,6 +772,9 @@ update msg model =
 
         ChangedPosition position ->
             ( { model | position = position }, Cmd.none )
+
+        ChangedFormula formula ->
+            ( { model | formula = formula }, Cmd.none )
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
