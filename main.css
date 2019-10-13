@@ -21,6 +21,10 @@
   outline-offset: 1px !important;
 }
 
+.navigation-menu:focus {
+  outline: none !important;
+}
+
 .segment-control:focus {
   z-index: 1;
   position: relative;

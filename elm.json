@@ -28,7 +28,7 @@
             "ianmackenzie/elm-geometry-svg": "1.0.2",
             "jinjor/elm-xml-parser": "2.0.0",
             "krisajenkins/remotedata": "6.0.1",
-            "mdgriffith/elm-ui": "1.1.0",
+            "mdgriffith/elm-ui": "1.1.5",
             "mgold/elm-nonempty-list": "4.0.0",
             "tesk9/accessible-html": "4.0.0"
         },
