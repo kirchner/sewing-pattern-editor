@@ -192,7 +192,7 @@ init { width, height } url key =
         , dropdown = Ui.Atom.Dropdown.init
         , selection = Nothing
         , position = Left
-        , formula = ""
+        , formula = "distance(\n  A12,\n  B4\n)"
         }
 
 
@@ -319,34 +319,33 @@ navigation deviceClass currentRoute =
                     ]
                     (Element.text title)
                 , Element.column
-                    [ Element.spacing Ui.Space.level1
-                    , Element.width Element.fill
-                    ]
+                    [ Element.width Element.fill ]
                     links
                 ]
 
         link : Route -> Element msg
         link route =
-            Element.link
-                (if currentRoute == route then
-                    [ Element.width Element.fill
-                    , Background.color Ui.Color.primaryLight
-                    ]
-
-                 else
-                    [ Element.width Element.fill
-                    , Element.mouseOver
-                        [ Background.color Ui.Color.primaryBright ]
-                    ]
-                )
-                { url = routeToUrl route
-                , label =
-                    Element.el
-                        [ Element.padding Ui.Space.level2
-                        , Font.size fontSize
+            Ui.Atom.withFocusOutline <|
+                Element.link
+                    (if currentRoute == route then
+                        [ Element.width Element.fill
+                        , Background.color Ui.Color.primaryLight
                         ]
-                        (Element.text (routeToTitle route))
-                }
+
+                     else
+                        [ Element.width Element.fill
+                        , Element.mouseOver
+                            [ Background.color Ui.Color.primaryBright ]
+                        ]
+                    )
+                    { url = routeToUrl route
+                    , label =
+                        Element.el
+                            [ Element.padding Ui.Space.level2
+                            , Font.size fontSize
+                            ]
+                            (Element.text (routeToTitle route))
+                    }
 
         fontSize =
             case deviceClass of
@@ -367,7 +366,7 @@ navigation deviceClass currentRoute =
     Element.column
         [ Element.width width
         , Element.height Element.fill
-        , Element.padding Ui.Space.level3
+        , Element.padding 13
         , Element.spacing Ui.Space.level3
         ]
         [ group "foundations"

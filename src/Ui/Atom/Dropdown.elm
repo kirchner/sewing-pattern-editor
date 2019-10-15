@@ -139,12 +139,16 @@ dropdownViewConfig appended printOption hashOption =
                     , Border.color Ui.Color.black
                     , Background.color Ui.Color.white
                     , Element.mouseOver
-                        [ Border.color Ui.Color.primaryDark
-                        , Font.color Ui.Color.primaryDark
+                        [ Border.color Ui.Color.primary
                         ]
                     , Element.focused
-                        [ Border.color Ui.Color.primaryDark
-                        , Font.color Ui.Color.primaryDark
+                        [ Border.color Ui.Color.primary
+                        , Border.innerShadow
+                            { offset = ( 0, 0 )
+                            , size = 1
+                            , blur = 0
+                            , color = Ui.Color.primary
+                            }
                         ]
                     ]
                 , children =
@@ -170,29 +174,47 @@ dropdownViewConfig appended printOption hashOption =
                 )
             , Element.scrollbarY
             , Background.color Ui.Color.white
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color Ui.Color.black
+            , Element.inFront <|
+                Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Border.width 1
+                    , Border.rounded 3
+                    , Element.focused
+                        [ Border.color Ui.Color.primary
+                        , Border.innerShadow
+                            { offset = ( 0, 0 )
+                            , size = 1
+                            , blur = 0
+                            , color = Ui.Color.primary
+                            }
+                        ]
+                    , Element.htmlAttribute (Attributes.style "pointer-events" "none")
+                    ]
+                    Element.none
             ]
         , liOption =
             \{ focused, hovered } thatPoint ->
-                let
-                    defaultAttrs =
-                        [ Element.pointer
-                        , Element.padding Ui.Space.level2
-                        , Font.size 16
-                        , Element.width Element.fill
-                        ]
-                in
                 { attributes =
-                    if hovered then
-                        [ Background.color Ui.Color.secondaryDark ] ++ defaultAttrs
+                    [ Element.pointer
+                    , Element.padding Ui.Space.level2
+                    , Font.size 16
+                    , Element.width Element.fill
+                    , Border.width 2
+                    , Border.dashed
+                    , Border.color <|
+                        if focused then
+                            Ui.Color.primary
 
-                    else if focused then
-                        [ Background.color Ui.Color.secondary ] ++ defaultAttrs
+                        else
+                            Ui.Color.transparent
+                    , Background.color <|
+                        if hovered then
+                            Ui.Color.secondary
 
-                    else
-                        defaultAttrs
+                        else
+                            Ui.Color.transparent
+                    ]
                 , children =
                     [ Element.text (printOption thatPoint) ]
                 }

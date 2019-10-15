@@ -267,6 +267,15 @@ checkboxIcon checked =
 
             else
                 1
+        , Element.focused
+            [ Border.color Ui.Color.primary
+            , Border.innerShadow
+                { offset = ( 0, 0 )
+                , size = 1
+                , blur = 0
+                , color = Ui.Color.primary
+                }
+            ]
         ]
         (if checked then
             Element.el
@@ -658,18 +667,46 @@ inputText :
         }
     -> Element msg
 inputText id data =
+    let
+        withShadow attrs =
+            if data.help == Nothing then
+                [ Element.focused
+                    [ Border.color Ui.Color.primary
+                    , Border.innerShadow
+                        { offset = ( 0, 0 )
+                        , size = 1
+                        , blur = 0
+                        , color = Ui.Color.primary
+                        }
+                    ]
+                , Border.color Ui.Color.black
+                ]
+                    ++ attrs
+
+            else
+                [ Border.innerShadow
+                    { offset = ( 0, 0 )
+                    , size = 1
+                    , blur = 0
+                    , color = Ui.Color.danger
+                    }
+                , Border.color Ui.Color.danger
+                ]
+                    ++ attrs
+    in
     withFocusOutline <|
         Input.text
-            [ Element.htmlAttribute <|
-                Html.Attributes.id id
-            , Element.width Element.fill
-            , Element.padding 10
-            , Font.size 16
-            , Background.color Ui.Color.white
-            , Border.rounded 3
-            , Border.width 1
-            , Border.color Ui.Color.black
-            ]
+            (withShadow
+                [ Element.htmlAttribute <|
+                    Html.Attributes.id id
+                , Element.width Element.fill
+                , Element.padding 10
+                , Font.size 16
+                , Background.color Ui.Color.white
+                , Border.rounded 3
+                , Border.width 1
+                ]
+            )
             { onChange = data.onChange
             , text = data.text
             , placeholder = Nothing
@@ -703,7 +740,7 @@ inputText id data =
                                     , Font.color Ui.Color.danger
                                     ]
                                     [ fa "exclamation-circle"
-                                    , Element.text helpText
+                                    , Ui.Typography.bodyBold helpText
                                     ]
                                 ]
                     )
@@ -749,24 +786,51 @@ inputFormula id data =
                     }
                 , Font.sansSerif
                 ]
+
+        withShadow attrs =
+            if data.help == Nothing then
+                [ Element.focused
+                    [ Border.color Ui.Color.primary
+                    , Border.innerShadow
+                        { offset = ( 0, 0 )
+                        , size = 1
+                        , blur = 0
+                        , color = Ui.Color.primary
+                        }
+                    ]
+                , Border.color Ui.Color.black
+                ]
+                    ++ attrs
+
+            else
+                [ Border.innerShadow
+                    { offset = ( 0, 0 )
+                    , size = 1
+                    , blur = 0
+                    , color = Ui.Color.danger
+                    }
+                , Border.color Ui.Color.danger
+                ]
+                    ++ attrs
     in
     withFocusOutline <|
         Input.multiline
-            [ Element.htmlAttribute (Html.Attributes.id id)
-            , Element.width Element.fill
-            , Element.inFront (lineNumbers lineCount)
-            , padding
-            , Element.spacing Ui.Space.level1
-            , Font.size 16
-            , Font.family [ Font.monospace ]
-            , Background.color Ui.Color.white
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color Ui.Color.black
-            , Element.htmlAttribute (Html.Attributes.rows lineCount)
-            , Element.htmlAttribute (Html.Attributes.style "white-space" "pre")
-            , Element.clip
-            ]
+            (withShadow
+                [ Element.htmlAttribute (Html.Attributes.id id)
+                , Element.width Element.fill
+                , Element.inFront (lineNumbers lineCount)
+                , padding
+                , Element.spacing Ui.Space.level1
+                , Font.size 16
+                , Font.family [ Font.monospace ]
+                , Background.color Ui.Color.white
+                , Border.width 1
+                , Border.rounded 3
+                , Element.htmlAttribute (Html.Attributes.rows lineCount)
+                , Element.htmlAttribute (Html.Attributes.style "white-space" "pre")
+                , Element.clip
+                ]
+            )
             { onChange = data.onChange
             , text = data.text
             , placeholder = Nothing
@@ -810,7 +874,7 @@ inputFormula id data =
                                     , Font.color Ui.Color.danger
                                     ]
                                     [ fa "exclamation-circle"
-                                    , Ui.Typography.body helpText
+                                    , Ui.Typography.bodyBold helpText
                                     ]
                                 ]
                     )
@@ -915,7 +979,7 @@ withFocusOutline element =
         , Element.width Element.fill
         ]
         (Element.el
-            [ Element.padding 3
+            [ Element.padding 4
             , Element.width Element.fill
             ]
             element
