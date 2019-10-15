@@ -633,11 +633,23 @@ content model =
                             , label = "Text"
                             , help = Nothing
                             }
+                        , Ui.Atom.inputText "input-text"
+                            { onChange = \_ -> NoOp
+                            , text = ""
+                            , label = "Text"
+                            , help = Just "Help message"
+                            }
                         , Ui.Atom.inputFormula "input-formula"
                             { onChange = ChangedFormula
                             , text = model.formula
                             , label = "Formula"
                             , help = Nothing
+                            }
+                        , Ui.Atom.inputFormula "input-formula"
+                            { onChange = ChangedFormula
+                            , text = model.formula
+                            , label = "Formula"
+                            , help = Just "Help message"
                             }
                         ]
                     ]

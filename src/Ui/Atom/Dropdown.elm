@@ -25,6 +25,7 @@ import Listbox.Dropdown as Dropdown
 import Ui.Atom
 import Ui.Color
 import Ui.Space
+import Ui.Typography
 
 
 type alias Msg entry =
@@ -81,7 +82,7 @@ viewWithMenu :
     -> Maybe entry
     -> Element msg
 viewWithMenu menu config instance options dropdown selection =
-    Ui.Atom.focusable <|
+    Ui.Atom.withFocusOutline <|
         Element.column
             [ Element.width Element.fill
             , Element.spacing Ui.Space.level2
@@ -91,10 +92,8 @@ viewWithMenu menu config instance options dropdown selection =
                 [ Element.el
                     [ Element.htmlAttribute (Attributes.id (instance.id ++ "-label"))
                     , Element.alignLeft
-                    , Font.size 16
-                    , Font.bold
                     ]
-                    (Element.text instance.label)
+                    (Ui.Typography.bodyBold instance.label)
                 , Element.el [ Element.alignRight ]
                     menu
                 ]
@@ -140,6 +139,10 @@ dropdownViewConfig appended printOption hashOption =
                     , Border.color Ui.Color.black
                     , Background.color Ui.Color.white
                     , Element.mouseOver
+                        [ Border.color Ui.Color.primaryDark
+                        , Font.color Ui.Color.primaryDark
+                        ]
+                    , Element.focused
                         [ Border.color Ui.Color.primaryDark
                         , Font.color Ui.Color.primaryDark
                         ]

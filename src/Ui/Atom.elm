@@ -7,7 +7,7 @@ module Ui.Atom exposing
     , segmentControl
     , inputText, inputFormula
     , fa, faBody, faLarge
-    , focusable
+    , withFocusOutline
     )
 
 {-|
@@ -32,7 +32,7 @@ module Ui.Atom exposing
 
 @docs fa, faBody, faLarge
 
-@docs focusable
+@docs withFocusOutline
 
 -}
 
@@ -60,7 +60,7 @@ import Ui.Typography
 
 btnPrimary : { onPress : Maybe msg, label : String } -> Element msg
 btnPrimary { onPress, label } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.white
@@ -80,7 +80,7 @@ btnSecondary =
 
 btnSecondaryHelp : Element.Length -> String -> { onPress : Maybe msg, label : String } -> Element msg
 btnSecondaryHelp width id { onPress, label } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.htmlAttribute (Html.Attributes.id id)
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
@@ -96,7 +96,7 @@ btnSecondaryHelp width id { onPress, label } =
 
 btnDanger : { onPress : Maybe msg, label : String } -> Element msg
 btnDanger { onPress, label } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.white
@@ -111,7 +111,7 @@ btnDanger { onPress, label } =
 
 btnCancel : { onPress : Maybe msg, label : String } -> Element msg
 btnCancel { onPress, label } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.primary
@@ -129,7 +129,7 @@ btnCancel { onPress, label } =
 
 btnCallToAction : String -> { onPress : Maybe msg, label : String } -> Element msg
 btnCallToAction id { onPress, label } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.htmlAttribute (Html.Attributes.id id)
             , Element.width Element.fill
@@ -157,7 +157,7 @@ btnCallToAction id { onPress, label } =
 
 btnIcon : { onPress : Maybe msg, icon : String } -> Element msg
 btnIcon { onPress, icon } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
             { onPress = onPress
@@ -172,7 +172,7 @@ btnIcon { onPress, icon } =
 
 btnIconDanger : { onPress : Maybe msg, icon : String } -> Element msg
 btnIconDanger { onPress, icon } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Font.color Ui.Color.danger
             , Element.mouseOver [ Font.color Ui.Color.dangerDark ]
@@ -189,7 +189,7 @@ btnIconDanger { onPress, icon } =
 
 btnIconLarge : { onPress : Maybe msg, icon : String } -> Element msg
 btnIconLarge { onPress, icon } =
-    focusable <|
+    withFocusOutline <|
         Input.button
             [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
             { onPress = onPress
@@ -213,7 +213,7 @@ checkbox :
     }
     -> Element msg
 checkbox { onChange, checked, label } =
-    focusable <|
+    withFocusOutline <|
         Input.checkbox
             [ Element.width Element.fill ]
             { onChange = onChange
@@ -221,11 +221,10 @@ checkbox { onChange, checked, label } =
             , checked = checked
             , label =
                 Input.labelRight
-                    [ Font.size 16
-                    , Element.centerY
+                    [ Element.centerY
                     , Element.paddingXY Ui.Space.level1 0
                     ]
-                    (Element.text label)
+                    (Ui.Typography.body label)
             }
 
 
@@ -297,54 +296,48 @@ checkboxIcon checked =
 
 
 radioRow id { onChange, options, selected, label } =
-    focusable <|
+    withFocusOutline <|
         Input.radioRow
             [ Element.htmlAttribute (Html.Attributes.id id)
             , Element.width Element.fill
             , Element.spacing Ui.Space.level4
-            , Font.size 16
             ]
             { onChange = onChange
             , options = options
             , selected = selected
             , label =
                 Input.labelAbove
-                    [ Font.size 16
-                    , Font.bold
-                    , Element.paddingEach
+                    [ Element.paddingEach
                         { top = 0
                         , bottom = Ui.Space.level2
                         , left = 0
                         , right = 0
                         }
                     ]
-                    (Element.text label)
+                    (Ui.Typography.bodyBold label)
             }
 
 
 radioColumn id { onChange, options, selected, label } =
-    focusable <|
+    withFocusOutline <|
         Input.radio
             [ Element.htmlAttribute (Html.Attributes.id id)
             , Element.width Element.fill
             , Element.spacing Ui.Space.level2
-            , Font.size 16
             ]
             { onChange = onChange
             , options = options
             , selected = selected
             , label =
                 Input.labelAbove
-                    [ Font.size 16
-                    , Font.bold
-                    , Element.paddingEach
+                    [ Element.paddingEach
                         { top = 0
                         , bottom = Ui.Space.level2
                         , left = 0
                         , right = 0
                         }
                     ]
-                    (Element.text label)
+                    (Ui.Typography.bodyBold label)
             }
 
 
@@ -431,7 +424,7 @@ segmentControl :
     }
     -> Element msg
 segmentControl { onChange, options, selected, elementAppended } =
-    focusable <|
+    withFocusOutline <|
         Element.row
             [ Element.width Element.fill
             , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
@@ -563,7 +556,6 @@ segment borderRoundBottom selectedTag thisTag position label =
 
             else
                 Ui.Color.black
-        , Font.size 16
         , Element.mouseOver <|
             if selected then
                 []
@@ -576,7 +568,7 @@ segment borderRoundBottom selectedTag thisTag position label =
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
-            (Element.text label)
+            (Ui.Typography.body label)
         )
 
 
@@ -666,12 +658,12 @@ inputText :
         }
     -> Element msg
 inputText id data =
-    focusable
-        (Input.text
+    withFocusOutline <|
+        Input.text
             [ Element.htmlAttribute <|
                 Html.Attributes.id id
             , Element.width Element.fill
-            , Element.paddingXY 6 10
+            , Element.padding 10
             , Font.size 16
             , Background.color Ui.Color.white
             , Border.rounded 3
@@ -686,8 +678,18 @@ inputText id data =
                     (case data.help of
                         Nothing ->
                             Element.el
-                                [ Font.bold
-                                , Font.size 16
+                                [ Element.paddingEach
+                                    { top = 0
+                                    , bottom = Ui.Space.level1
+                                    , left = 0
+                                    , right = 0
+                                    }
+                                ]
+                                (Ui.Typography.bodyBold data.label)
+
+                        Just helpText ->
+                            Element.column
+                                [ Element.spacing Ui.Space.level2
                                 , Element.paddingEach
                                     { top = 0
                                     , bottom = Ui.Space.level1
@@ -695,25 +697,9 @@ inputText id data =
                                     , right = 0
                                     }
                                 ]
-                                (Element.text data.label)
-
-                        Just helpText ->
-                            Element.column
-                                [ Element.spacing Ui.Space.level1 ]
-                                [ Element.el
-                                    [ Font.bold
-                                    , Font.size 16
-                                    , Element.paddingEach
-                                        { top = 0
-                                        , bottom = Ui.Space.level1
-                                        , left = 0
-                                        , right = 0
-                                        }
-                                    ]
-                                    (Element.text data.label)
+                                [ Ui.Typography.bodyBold data.label
                                 , Element.row
-                                    [ Element.spacing Ui.Space.level2
-                                    , Element.paddingXY 0 Ui.Space.level1
+                                    [ Element.spacing Ui.Space.level1
                                     , Font.color Ui.Color.danger
                                     ]
                                     [ fa "exclamation-circle"
@@ -722,7 +708,6 @@ inputText id data =
                                 ]
                     )
             }
-        )
 
 
 inputFormula :
@@ -741,7 +726,7 @@ inputFormula id data =
 
         padding =
             if lineCount == 1 then
-                Element.paddingXY 6 10
+                Element.padding 10
 
             else
                 Element.paddingEach
@@ -751,12 +736,21 @@ inputFormula id data =
 
                         else
                             40
-                    , right = 6
+                    , right = 10
                     , top = 10
                     , bottom = 10
                     }
+
+        sansSerif =
+            Font.family
+                [ Font.external
+                    { name = "Rubik"
+                    , url = "https://fonts.googleapis.com/css?family=Rubik:300"
+                    }
+                , Font.sansSerif
+                ]
     in
-    focusable <|
+    withFocusOutline <|
         Input.multiline
             [ Element.htmlAttribute (Html.Attributes.id id)
             , Element.width Element.fill
@@ -764,8 +758,7 @@ inputFormula id data =
             , padding
             , Element.spacing Ui.Space.level1
             , Font.size 16
-            , Font.family
-                [ Font.monospace ]
+            , Font.family [ Font.monospace ]
             , Background.color Ui.Color.white
             , Border.width 1
             , Border.rounded 3
@@ -783,36 +776,41 @@ inputFormula id data =
                     (case data.help of
                         Nothing ->
                             Element.el
-                                [ Font.bold
-                                , Font.size 16
-                                , Font.family
-                                    [ Font.external
-                                        { name = "Rubik"
-                                        , url = "https://fonts.googleapis.com/css?family=Rubik:300"
-                                        }
-                                    , Font.sansSerif
-                                    ]
+                                [ sansSerif
+                                , Element.paddingEach
+                                    { top = 0
+                                    , bottom = Ui.Space.level1
+                                    , left = 0
+                                    , right = 0
+                                    }
                                 ]
-                                (Element.text data.label)
+                                (Ui.Typography.bodyBold data.label)
 
                         Just helpText ->
                             Element.column
-                                [ Element.spacing Ui.Space.level1 ]
-                                [ Element.el
-                                    [ Font.bold ]
-                                    (Element.text data.label)
+                                [ Element.spacing Ui.Space.level1
+                                , Element.paddingEach
+                                    { top = 0
+                                    , bottom = Ui.Space.level1
+                                    , left = 0
+                                    , right = 0
+                                    }
+                                ]
+                                [ Element.el [ sansSerif ]
+                                    (Ui.Typography.bodyBold data.label)
                                 , Element.row
-                                    [ Element.spacing Ui.Space.level2
+                                    [ Element.spacing Ui.Space.level1
                                     , Element.paddingEach
                                         { left = 0
                                         , right = 0
                                         , top = Ui.Space.level1
                                         , bottom = 0
                                         }
+                                    , sansSerif
                                     , Font.color Ui.Color.danger
                                     ]
                                     [ fa "exclamation-circle"
-                                    , Element.text helpText
+                                    , Ui.Typography.body helpText
                                     ]
                                 ]
                     )
@@ -903,11 +901,11 @@ faHelp size name =
 
 
 
----- FOCUSABLE
+---- WITH FOCUS OUTLINE
 
 
-focusable : Element msg -> Element msg
-focusable element =
+withFocusOutline : Element msg -> Element msg
+withFocusOutline element =
     Element.el
         [ Border.width 3
         , Border.dotted
