@@ -117,39 +117,16 @@ viewAppended :
     -> Maybe entry
     -> Element msg
 viewAppended config instance options dropdown selection =
-    Element.el
-        [ Border.widthEach
-            { top = 0
-            , bottom = 3
-            , left = 3
-            , right = 3
+    Ui.Atom.withFocusOutlineBottom <|
+        Dropdown.customView dropdownDomFunctions
+            (dropdownViewConfig True config.entryToString config.entryToHash)
+            { id = instance.id
+            , label = Listbox.labelledBy (instance.id ++ "-label")
+            , lift = instance.lift
             }
-        , Border.dotted
-        , Border.color Ui.Color.transparent
-        , Element.focused
-            [ Border.color Ui.Color.primary ]
-        , Element.width Element.fill
-        ]
-        (Element.el
-            [ Element.paddingEach
-                { top = 0
-                , bottom = 4
-                , left = 4
-                , right = 4
-                }
-            , Element.width Element.fill
-            ]
-            (Dropdown.customView dropdownDomFunctions
-                (dropdownViewConfig True config.entryToString config.entryToHash)
-                { id = instance.id
-                , label = Listbox.labelledBy (instance.id ++ "-label")
-                , lift = instance.lift
-                }
-                (List.map Listbox.option options)
-                dropdown
-                selection
-            )
-        )
+            (List.map Listbox.option options)
+            dropdown
+            selection
 
 
 dropdownViewConfig :

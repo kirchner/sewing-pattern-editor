@@ -772,6 +772,43 @@ content model =
                                 model.selectionAppended
                             ]
                         ]
+                    , Ui.Typography.headingThree "Segment Control + Text"
+                    , Element.column
+                        [ Element.padding Ui.Space.level1
+                        , Element.spacing Ui.Space.level4
+                        , Element.width Element.fill
+                        ]
+                        [ Element.column
+                            [ Element.width Element.fill ]
+                            [ Ui.Atom.segmentControl "position-text-segment-control"
+                                { label = Just "Position"
+                                , onChange = ChangedPositionAppended
+                                , options = positions
+                                , selected = model.positionAppended
+                                , elementAppended = True
+                                }
+                            , Ui.Atom.inputTextAppended "text-appended"
+                                { onChange = \_ -> NoOp
+                                , text = ""
+                                , label = "Text"
+                                }
+                            ]
+                        , Element.column
+                            [ Element.width Element.fill ]
+                            [ Ui.Atom.segmentControl "position-formula-segment-control"
+                                { label = Just "Position"
+                                , onChange = ChangedPositionAppended
+                                , options = positions
+                                , selected = model.positionAppended
+                                , elementAppended = True
+                                }
+                            , Ui.Atom.inputFormulaAppended "formula-appended"
+                                { onChange = ChangedFormula
+                                , text = model.formula
+                                , label = "Formula"
+                                }
+                            ]
+                        ]
                     ]
         ]
 

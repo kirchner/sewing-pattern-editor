@@ -5,9 +5,9 @@ module Ui.Atom exposing
     , checkbox
     , radioRow, radioColumn, option
     , segmentControl
-    , inputText, inputFormula
+    , inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge
-    , withFocusOutline
+    , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
     )
 
 {-|
@@ -25,14 +25,14 @@ module Ui.Atom exposing
 @docs checkbox
 @docs radioRow, radioColumn, option
 @docs segmentControl
-@docs inputText, inputFormula
+@docs inputText, inputTextAppended, inputFormula, inputFormulaAppended
 
 
 # Icons
 
 @docs fa, faBody, faLarge
 
-@docs withFocusOutline
+@docs withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
 
 -}
 
@@ -434,30 +434,7 @@ segmentControl :
     -> Element msg
 segmentControl id { label, onChange, options, selected, elementAppended } =
     (if elementAppended then
-        \element ->
-            Element.el
-                [ Element.width Element.fill
-                , Border.widthEach
-                    { top = 3
-                    , bottom = 0
-                    , left = 3
-                    , right = 3
-                    }
-                , Border.dotted
-                , Border.color Ui.Color.transparent
-                , Element.focused [ Border.color Ui.Color.primary ]
-                ]
-                (Element.el
-                    [ Element.paddingEach
-                        { top = 4
-                        , bottom = 0
-                        , left = 4
-                        , right = 4
-                        }
-                    , Element.width Element.fill
-                    ]
-                    element
-                )
+        withFocusOutlineTop
 
      else
         withFocusOutline
@@ -767,6 +744,48 @@ inputText id data =
             }
 
 
+inputTextAppended :
+    String
+    ->
+        { onChange : String -> msg
+        , text : String
+        , label : String
+        }
+    -> Element msg
+inputTextAppended id data =
+    withFocusOutlineBottom <|
+        Input.text
+            [ Element.htmlAttribute <|
+                Html.Attributes.id id
+            , Element.width Element.fill
+            , Element.padding 10
+            , Font.size 16
+            , Background.color Ui.Color.white
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 0
+                , bottomLeft = 3
+                , bottomRight = 3
+                }
+            , Border.widthEach
+                { top = 0
+                , bottom = 1
+                , left = 1
+                , right = 1
+                }
+            , Element.focused
+                [ Border.color Ui.Color.primary
+                , focusShadow
+                ]
+            , Border.color Ui.Color.black
+            ]
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label = Input.labelHidden data.label
+            }
+
+
 inputFormula :
     String
     ->
@@ -891,6 +910,84 @@ inputFormula id data =
             }
 
 
+inputFormulaAppended :
+    String
+    ->
+        { onChange : String -> msg
+        , text : String
+        , label : String
+        }
+    -> Element msg
+inputFormulaAppended id data =
+    let
+        lineCount =
+            List.length (String.split "\n" data.text)
+
+        padding =
+            if lineCount == 1 then
+                Element.padding 10
+
+            else
+                Element.paddingEach
+                    { left =
+                        if lineCount < 10 then
+                            30
+
+                        else
+                            40
+                    , right = 10
+                    , top = 10
+                    , bottom = 10
+                    }
+
+        sansSerif =
+            Font.family
+                [ Font.external
+                    { name = "Rubik"
+                    , url = "https://fonts.googleapis.com/css?family=Rubik:300"
+                    }
+                , Font.sansSerif
+                ]
+    in
+    withFocusOutlineBottom <|
+        Input.multiline
+            [ Element.htmlAttribute (Html.Attributes.id id)
+            , Element.width Element.fill
+            , Element.inFront (lineNumbers lineCount)
+            , padding
+            , Element.spacing Ui.Space.level1
+            , Font.size 16
+            , Font.family [ Font.monospace ]
+            , Background.color Ui.Color.white
+            , Border.widthEach
+                { top = 0
+                , bottom = 1
+                , left = 1
+                , right = 1
+                }
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 0
+                , bottomLeft = 3
+                , bottomRight = 3
+                }
+            , Element.focused
+                [ Border.color Ui.Color.primary
+                , focusShadow
+                ]
+            , Border.color Ui.Color.black
+            , Element.htmlAttribute (Html.Attributes.rows lineCount)
+            , Element.htmlAttribute (Html.Attributes.style "white-space" "pre")
+            , Element.clip
+            ]
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , spellcheck = False
+            , label = Input.labelHidden data.label
+            }
+
+
 lineNumbers : Int -> Element msg
 lineNumbers lineCount =
     if lineCount == 1 then
@@ -990,6 +1087,60 @@ withFocusOutline element =
         ]
         (Element.el
             [ Element.padding 4
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+withFocusOutlineTop : Element msg -> Element msg
+withFocusOutlineTop element =
+    Element.el
+        [ Element.width Element.fill
+        , Border.widthEach
+            { top = 3
+            , bottom = 0
+            , left = 3
+            , right = 3
+            }
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused [ Border.color Ui.Color.primary ]
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 4
+                , bottom = 0
+                , left = 4
+                , right = 4
+                }
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+withFocusOutlineBottom : Element msg -> Element msg
+withFocusOutlineBottom element =
+    Element.el
+        [ Element.width Element.fill
+        , Border.widthEach
+            { top = 0
+            , bottom = 3
+            , left = 3
+            , right = 3
+            }
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused [ Border.color Ui.Color.primary ]
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 0
+                , bottom = 4
+                , left = 4
+                , right = 4
+                }
             , Element.width Element.fill
             ]
             element
