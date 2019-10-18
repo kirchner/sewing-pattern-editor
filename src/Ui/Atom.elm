@@ -426,13 +426,16 @@ radioOptionCustom label status =
 
 
 segmentControl :
-    { onChange : tag -> msg
-    , options : List ( tag, String )
-    , selected : tag
-    , elementAppended : Bool
-    }
+    String
+    ->
+        { label : Maybe String
+        , onChange : tag -> msg
+        , options : List ( tag, String )
+        , selected : tag
+        , elementAppended : Bool
+        }
     -> Element msg
-segmentControl { onChange, options, selected, elementAppended } =
+segmentControl id { label, onChange, options, selected, elementAppended } =
     (if elementAppended then
         \element ->
             Element.el
@@ -463,41 +466,57 @@ segmentControl { onChange, options, selected, elementAppended } =
         withFocusOutline
     )
     <|
-        Element.el
+        Element.column
             [ Element.width Element.fill
-            , Element.height Element.fill
-            , if elementAppended then
-                Border.roundEach
-                    { topLeft = 3
-                    , topRight = 3
-                    , bottomLeft = 0
-                    , bottomRight = 0
-                    }
-
-              else
-                Border.rounded 3
-            , Border.width 1
-            , Border.color Ui.Color.primary
-            , Background.color Ui.Color.secondary
-            , Element.focused
-                [ Border.innerShadow
-                    { offset = ( 0, 0 )
-                    , size = 1
-                    , blur = 0
-                    , color = Ui.Color.primary
-                    }
-                ]
+            , Element.spacing Ui.Space.level2
             ]
-            (Element.row
+            [ case label of
+                Nothing ->
+                    Element.none
+
+                Just labelText ->
+                    Element.el
+                        [ Element.htmlAttribute (Html.Attributes.id (id ++ "-label"))
+                        , Element.width Element.fill
+                        ]
+                        (Ui.Typography.bodyBold labelText)
+            , Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
-                , Element.htmlAttribute (Html.Attributes.tabindex 0)
-                , Element.htmlAttribute (Html.Attributes.class "segment-control")
-                , onKeyDown onChange (List.map Tuple.first options) selected
+                , if elementAppended then
+                    Border.roundEach
+                        { topLeft = 3
+                        , topRight = 3
+                        , bottomLeft = 0
+                        , bottomRight = 0
+                        }
+
+                  else
+                    Border.rounded 3
+                , Border.width 1
+                , Border.color Ui.Color.primary
+                , Background.color Ui.Color.secondary
+                , Element.focused
+                    [ Border.innerShadow
+                        { offset = ( 0, 0 )
+                        , size = 1
+                        , blur = 0
+                        , color = Ui.Color.primary
+                        }
+                    ]
                 ]
-                (List.map (Element.map onChange) (segments options selected))
-            )
+                (Element.row
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+                    , Element.htmlAttribute (Html.Attributes.tabindex 0)
+                    , Element.htmlAttribute (Html.Attributes.class "segment-control")
+                    , Element.htmlAttribute (Html.Attributes.id (id ++ "-label"))
+                    , onKeyDown onChange (List.map Tuple.first options) selected
+                    ]
+                    (List.map (Element.map onChange) (segments options selected))
+                )
+            ]
 
 
 type Position

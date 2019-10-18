@@ -655,8 +655,9 @@ content model =
                         [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
-                        (Ui.Atom.segmentControl
-                            { onChange = ChangedPosition
+                        (Ui.Atom.segmentControl "position-segment-control"
+                            { label = Just "Position"
+                            , onChange = ChangedPosition
                             , options = positions
                             , selected = model.position
                             , elementAppended = False
@@ -751,8 +752,9 @@ content model =
                         ]
                         [ Element.column
                             [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl
-                                { onChange = ChangedPositionAppended
+                            [ Ui.Atom.segmentControl "position-segment-control"
+                                { label = Just "Position"
+                                , onChange = ChangedPositionAppended
                                 , options = positions
                                 , selected = model.positionAppended
                                 , elementAppended = True
