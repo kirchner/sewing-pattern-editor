@@ -21,7 +21,7 @@ import Element.Region as Region
 
 headingOne : String -> Element msg
 headingOne text =
-    Element.el
+    Element.paragraph
         [ Font.size 44
         , Font.family
             [ Font.external
@@ -31,7 +31,7 @@ headingOne text =
             ]
         , Region.heading 1
         ]
-        (Element.text text)
+        [ Element.text text ]
 
 
 headingTwo : String -> Element msg
@@ -51,11 +51,11 @@ headingFour text =
 
 heading : { level : Int, fontSize : Int } -> String -> Element msg
 heading { level, fontSize } text =
-    Element.el
+    Element.paragraph
         [ Font.size fontSize
         , Region.heading level
         ]
-        (Element.text text)
+        [ Element.text text ]
 
 
 bodyBold : String -> Element msg

@@ -178,7 +178,16 @@ dropdownViewConfig appended printOption hashOption =
 
                       else
                         Border.rounded 3
-                    , Border.width 1
+                    , if appended then
+                        Border.widthEach
+                            { top = 0
+                            , bottom = 1
+                            , left = 1
+                            , right = 1
+                            }
+
+                      else
+                        Border.width 1
                     , Border.color Ui.Color.black
                     , Background.color Ui.Color.white
                     , Element.mouseOver

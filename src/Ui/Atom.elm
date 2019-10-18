@@ -436,7 +436,8 @@ segmentControl { onChange, options, selected, elementAppended } =
     (if elementAppended then
         \element ->
             Element.el
-                [ Border.widthEach
+                [ Element.width Element.fill
+                , Border.widthEach
                     { top = 3
                     , bottom = 0
                     , left = 3
@@ -444,9 +445,7 @@ segmentControl { onChange, options, selected, elementAppended } =
                     }
                 , Border.dotted
                 , Border.color Ui.Color.transparent
-                , Element.focused
-                    [ Border.color Ui.Color.primary ]
-                , Element.width Element.fill
+                , Element.focused [ Border.color Ui.Color.primary ]
                 ]
                 (Element.el
                     [ Element.paddingEach
@@ -467,12 +466,19 @@ segmentControl { onChange, options, selected, elementAppended } =
         Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Border.roundEach
-                { topLeft = 3
-                , topRight = 3
-                , bottomLeft = 0
-                , bottomRight = 0
-                }
+            , if elementAppended then
+                Border.roundEach
+                    { topLeft = 3
+                    , topRight = 3
+                    , bottomLeft = 0
+                    , bottomRight = 0
+                    }
+
+              else
+                Border.rounded 3
+            , Border.width 1
+            , Border.color Ui.Color.primary
+            , Background.color Ui.Color.secondary
             , Element.focused
                 [ Border.innerShadow
                     { offset = ( 0, 0 )
@@ -489,16 +495,8 @@ segmentControl { onChange, options, selected, elementAppended } =
                 , Element.htmlAttribute (Html.Attributes.tabindex 0)
                 , Element.htmlAttribute (Html.Attributes.class "segment-control")
                 , onKeyDown onChange (List.map Tuple.first options) selected
-                , Border.roundEach
-                    { topLeft = 3
-                    , topRight = 3
-                    , bottomLeft = 0
-                    , bottomRight = 0
-                    }
                 ]
-                (List.map (Element.map onChange) <|
-                    segments (not elementAppended) options selected
-                )
+                (List.map (Element.map onChange) (segments options selected))
             )
 
 
@@ -508,24 +506,32 @@ type Position
     | Last
 
 
-segments : Bool -> List ( tag, String ) -> tag -> List (Element tag)
-segments borderRoundBottom tags selectedTag =
-    List.indexedMap
-        (\index ( tag, label ) ->
-            if index == 0 then
-                segment borderRoundBottom selectedTag tag First label
+segments : List ( tag, String ) -> tag -> List (Element tag)
+segments tags selectedTag =
+    tags
+        |> List.indexedMap
+            (\index ( tag, label ) ->
+                if index == 0 then
+                    segment selectedTag tag First label
 
-            else if index == List.length tags - 1 then
-                segment borderRoundBottom selectedTag tag Last label
+                else if index == List.length tags - 1 then
+                    segment selectedTag tag Last label
 
-            else
-                segment borderRoundBottom selectedTag tag Middle label
-        )
-        tags
+                else
+                    segment selectedTag tag Middle label
+            )
+        |> List.intersperse
+            (Element.el
+                [ Element.width (Element.px 1)
+                , Element.height Element.fill
+                , Background.color Ui.Color.primary
+                ]
+                Element.none
+            )
 
 
-segment : Bool -> tag -> tag -> Position -> String -> Element tag
-segment borderRoundBottom selectedTag thisTag position label =
+segment : tag -> tag -> Position -> String -> Element tag
+segment selectedTag thisTag position label =
     let
         selected =
             selectedTag == thisTag
@@ -540,81 +546,17 @@ segment borderRoundBottom selectedTag thisTag position label =
                 else
                     "false"
         , Events.onClick thisTag
+        , Element.pointer
         , Element.width Element.fill
         , Element.paddingXY 0 7
-        , Border.color Ui.Color.primary
-        , Border.widthEach <|
-            case position of
-                First ->
-                    { left = 1
-                    , right = 1
-                    , top = 1
-                    , bottom =
-                        if borderRoundBottom then
-                            1
-
-                        else
-                            0
-                    }
-
-                Middle ->
-                    { left = 0
-                    , right = 1
-                    , top = 1
-                    , bottom =
-                        if borderRoundBottom then
-                            1
-
-                        else
-                            0
-                    }
-
-                Last ->
-                    { left = 0
-                    , right = 1
-                    , top = 1
-                    , bottom =
-                        if borderRoundBottom then
-                            1
-
-                        else
-                            0
-                    }
-        , case position of
-            First ->
-                Border.roundEach
-                    { topLeft = 3
-                    , topRight = 0
-                    , bottomLeft =
-                        if borderRoundBottom then
-                            3
-
-                        else
-                            0
-                    , bottomRight = 0
-                    }
-
-            Middle ->
-                Border.rounded 0
-
-            Last ->
-                Border.roundEach
-                    { topLeft = 0
-                    , topRight = 3
-                    , bottomLeft = 0
-                    , bottomRight =
-                        if borderRoundBottom then
-                            3
-
-                        else
-                            0
-                    }
         , Background.color <|
             if selected then
                 Ui.Color.primary
 
             else
-                Ui.Color.secondary
+                Ui.Color.transparent
+        , Element.htmlAttribute <|
+            Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
         , Font.color <|
             if selected then
                 Ui.Color.white
@@ -627,9 +569,33 @@ segment borderRoundBottom selectedTag thisTag position label =
 
             else
                 [ Background.color Ui.Color.secondaryDark ]
-        , Element.htmlAttribute <|
-            Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
-        , Element.pointer
+        , case position of
+            First ->
+                Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 1
+                    , right = 0
+                    }
+
+            Middle ->
+                Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 0
+                    , right = 0
+                    }
+
+            Last ->
+                Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 0
+                    , right = 1
+                    }
+        , Border.color Ui.Color.transparent
+        , Element.focused
+            [ Border.color Ui.Color.primary ]
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)

@@ -282,7 +282,7 @@ body model =
                     Element.el
                         [ Element.width Element.fill
                         , Element.height Element.fill
-                        , Element.paddingXY Ui.Space.level4 Ui.Space.level8
+                        , Element.paddingXY Ui.Space.level2 Ui.Space.level2
                         , Element.scrollbarY
                         ]
                         (content model)
@@ -385,7 +385,7 @@ navigation deviceClass currentRoute =
         fontSize =
             case deviceClass of
                 Phone ->
-                    28
+                    24
 
                 _ ->
                     16
@@ -424,7 +424,7 @@ content : Model -> Element Msg
 content model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level8
+        , Element.spacing Ui.Space.level3
         , Element.alignTop
         ]
         [ Ui.Typography.headingOne (routeToTitle model.route)
@@ -548,7 +548,7 @@ content model =
                     [ Ui.Typography.headingThree "Standard"
                     , Element.wrappedRow
                         [ Element.spacing Ui.Space.level4
-                        , Element.padding Ui.Space.level4
+                        , Element.padding Ui.Space.level1
                         ]
                         [ Ui.Atom.btnPrimary
                             { onPress = Nothing
@@ -570,7 +570,7 @@ content model =
                     , Ui.Typography.headingThree "Call to Action"
                     , Element.wrappedRow
                         [ Element.spacing Ui.Space.level4
-                        , Element.padding Ui.Space.level4
+                        , Element.padding Ui.Space.level1
                         ]
                         [ Ui.Atom.btnCallToAction "call-to-action-button"
                             { onPress = Nothing
@@ -580,7 +580,7 @@ content model =
                     , Ui.Typography.headingThree "Icon"
                     , Element.wrappedRow
                         [ Element.spacing Ui.Space.level4
-                        , Element.padding Ui.Space.level4
+                        , Element.padding Ui.Space.level1
                         ]
                         [ Ui.Atom.btnIcon
                             { onPress = Nothing
@@ -599,12 +599,12 @@ content model =
 
             FormElements ->
                 Element.column
-                    [ Element.spacing Ui.Space.level4
+                    [ Element.spacing Ui.Space.level2
                     , Element.width Element.fill
                     ]
                     [ Ui.Typography.headingThree "Checkbox"
                     , Element.el
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
                         (Ui.Atom.checkbox
@@ -615,7 +615,7 @@ content model =
                         )
                     , Ui.Typography.headingThree "Radio Buttons"
                     , Element.el
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
                         (Ui.Atom.radioColumn "radio-column"
@@ -635,7 +635,7 @@ content model =
                         )
                     , Ui.Typography.headingThree "Dropdown"
                     , Element.el
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
                         (Ui.Atom.Dropdown.view
@@ -652,7 +652,7 @@ content model =
                         )
                     , Ui.Typography.headingThree "Segment Control"
                     , Element.el
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
                         (Ui.Atom.segmentControl
@@ -664,7 +664,7 @@ content model =
                         )
                     , Ui.Typography.headingThree "Text"
                     , Element.column
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.spacing Ui.Space.level4
                         , Element.width Element.fill
                         ]
@@ -745,7 +745,7 @@ content model =
                     ]
                     [ Ui.Typography.headingThree "Segment Control + Dropdown"
                     , Element.column
-                        [ Element.padding Ui.Space.level4
+                        [ Element.padding Ui.Space.level1
                         , Element.spacing Ui.Space.level4
                         , Element.width Element.fill
                         ]
