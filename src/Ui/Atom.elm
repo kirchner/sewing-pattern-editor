@@ -36,12 +36,12 @@ module Ui.Atom exposing
 
 -}
 
-import Element exposing (Decoration, Element)
+import Element exposing (Attr, Attribute, Decoration, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
-import Element.Input as Input
+import Element.Input as Input exposing (Label)
 import Html
 import Html.Attributes
 import Html.Events
@@ -58,62 +58,66 @@ import Ui.Typography
 ---- STANDARD
 
 
-btnPrimary : { onPress : Maybe msg, label : String } -> Element msg
-btnPrimary { onPress, label } =
+type alias BtnConfig msg =
+    { id : String
+    , onPress : Maybe msg
+    , label : String
+    }
+
+
+btnPrimary : BtnConfig msg -> Element msg
+btnPrimary { id, onPress, label } =
     withFocusOutline <|
         Input.button
-            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            [ attributeId id
+            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.white
             , Background.color Ui.Color.primaryLight
             , Element.mouseOver [ Background.color Ui.Color.primary ]
-            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            , backgroundColorEaseInOut
             ]
             { onPress = onPress
             , label = Ui.Typography.button label
             }
 
 
-btnSecondary : String -> { onPress : Maybe msg, label : String } -> Element msg
-btnSecondary =
-    btnSecondaryHelp Element.shrink
-
-
-btnSecondaryHelp : Element.Length -> String -> { onPress : Maybe msg, label : String } -> Element msg
-btnSecondaryHelp width id { onPress, label } =
+btnSecondary : BtnConfig msg -> Element msg
+btnSecondary { id, onPress, label } =
     withFocusOutline <|
         Input.button
-            [ Element.htmlAttribute (Html.Attributes.id id)
+            [ attributeId id
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Element.width width
             , Background.color Ui.Color.secondary
             , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            , backgroundColorEaseInOut
             ]
             { onPress = onPress
             , label = Ui.Typography.button label
             }
 
 
-btnDanger : { onPress : Maybe msg, label : String } -> Element msg
-btnDanger { onPress, label } =
+btnDanger : BtnConfig msg -> Element msg
+btnDanger { id, onPress, label } =
     withFocusOutline <|
         Input.button
-            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            [ attributeId id
+            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.white
             , Background.color Ui.Color.danger
             , Element.mouseOver [ Background.color Ui.Color.dangerDark ]
-            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            , backgroundColorEaseInOut
             ]
             { onPress = onPress
             , label = Ui.Typography.button label
             }
 
 
-btnCancel : { onPress : Maybe msg, label : String } -> Element msg
-btnCancel { onPress, label } =
+btnCancel : BtnConfig msg -> Element msg
+btnCancel { id, onPress, label } =
     withFocusOutline <|
         Input.button
-            [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            [ attributeId id
+            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Font.color Ui.Color.primary
             , Font.underline
             , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
@@ -127,17 +131,17 @@ btnCancel { onPress, label } =
 ---- CALL TO ACTION
 
 
-btnCallToAction : String -> { onPress : Maybe msg, label : String } -> Element msg
-btnCallToAction id { onPress, label } =
+btnCallToAction : BtnConfig msg -> Element msg
+btnCallToAction { id, onPress, label } =
     withFocusOutline <|
         Input.button
-            [ Element.htmlAttribute (Html.Attributes.id id)
+            [ attributeId id
             , Element.width Element.fill
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Border.rounded Ui.Space.level1
             , Background.color Ui.Color.secondary
             , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
-            , Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+            , backgroundColorEaseInOut
             ]
             { onPress = onPress
             , label =
@@ -155,67 +159,78 @@ btnCallToAction id { onPress, label } =
 ---- ICON BUTTONS
 
 
-btnIcon : { onPress : Maybe msg, icon : String } -> Element msg
-btnIcon { onPress, icon } =
+type alias IconBtnConfig msg =
+    { id : String
+    , onPress : Maybe msg
+    , icon : String
+    }
+
+
+btnIcon : IconBtnConfig msg -> Element msg
+btnIcon { id, onPress, icon } =
     withFocusOutline <|
         Input.button
-            [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
+            [ attributeId id
+            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            ]
             { onPress = onPress
-            , label =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (fa icon)
+            , label = btnIconLabel (fa icon)
             }
 
 
-btnIconDanger : { onPress : Maybe msg, icon : String } -> Element msg
-btnIconDanger { onPress, icon } =
+btnIconDanger : IconBtnConfig msg -> Element msg
+btnIconDanger { id, onPress, icon } =
     withFocusOutline <|
         Input.button
-            [ Font.color Ui.Color.danger
+            [ attributeId id
+            , Font.color Ui.Color.danger
             , Element.mouseOver [ Font.color Ui.Color.dangerDark ]
             ]
             { onPress = onPress
-            , label =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (fa icon)
+            , label = btnIconLabel (fa icon)
             }
 
 
-btnIconLarge : { onPress : Maybe msg, icon : String } -> Element msg
-btnIconLarge { onPress, icon } =
+btnIconLarge : IconBtnConfig msg -> Element msg
+btnIconLarge { id, onPress, icon } =
     withFocusOutline <|
         Input.button
-            [ Element.mouseOver [ Font.color Ui.Color.primaryDark ] ]
+            [ attributeId id
+            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            ]
             { onPress = onPress
-            , label =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (faLarge icon)
+            , label = btnIconLabel (faLarge icon)
             }
+
+
+btnIconLabel : Element msg -> Element msg
+btnIconLabel icon =
+    Element.el
+        [ Element.centerX
+        , Element.centerY
+        ]
+        icon
 
 
 
 ---- CHECKBOX
 
 
-checkbox :
-    { onChange : Bool -> msg
+type alias CheckboxConfig msg =
+    { id : String
+    , onChange : Bool -> msg
     , checked : Bool
     , label : String
     }
-    -> Element msg
-checkbox { onChange, checked, label } =
+
+
+checkbox : CheckboxConfig msg -> Element msg
+checkbox { id, onChange, checked, label } =
     withFocusOutline <|
         Input.checkbox
-            [ Element.width Element.fill ]
+            [ attributeId id
+            , Element.width Element.fill
+            ]
             { onChange = onChange
             , icon = checkboxIcon
             , checked = checked
@@ -283,19 +298,20 @@ checkboxIcon checked =
 ---- RADIOS
 
 
-radioRow :
-    String
-    ->
-        { onChange : value -> msg
-        , options : List (Input.Option value msg)
-        , selected : Maybe value
-        , label : String
-        }
-    -> Element msg
-radioRow id { onChange, options, selected, label } =
+type alias RadioConfig value msg =
+    { id : String
+    , onChange : value -> msg
+    , options : List (Input.Option value msg)
+    , selected : Maybe value
+    , label : String
+    }
+
+
+radioRow : RadioConfig value msg -> Element msg
+radioRow { id, onChange, options, selected, label } =
     withFocusOutline <|
         Input.radioRow
-            [ Element.htmlAttribute (Html.Attributes.id id)
+            [ attributeId id
             , Element.width Element.fill
             , Element.spacing Ui.Space.level4
             ]
@@ -315,19 +331,11 @@ radioRow id { onChange, options, selected, label } =
             }
 
 
-radioColumn :
-    String
-    ->
-        { onChange : value -> msg
-        , options : List (Input.Option value msg)
-        , selected : Maybe value
-        , label : String
-        }
-    -> Element msg
-radioColumn id { onChange, options, selected, label } =
+radioColumn : RadioConfig value msg -> Element msg
+radioColumn { id, onChange, options, selected, label } =
     withFocusOutline <|
         Input.radio
-            [ Element.htmlAttribute (Html.Attributes.id id)
+            [ attributeId id
             , Element.width Element.fill
             , Element.spacing Ui.Space.level2
             ]
@@ -411,8 +419,7 @@ radioOptionCustom label status =
             Element.none
         , Element.el
             [ Element.width Element.fill
-            , Element.htmlAttribute <|
-                Html.Attributes.class "unfocusable"
+            , Element.htmlAttribute (Html.Attributes.class "unfocusable")
             ]
             label
         ]
@@ -422,24 +429,27 @@ radioOptionCustom label status =
 ---- SEGMENT CONTROL
 
 
-segmentControl :
-    String
-    ->
-        { label : Maybe String
-        , onChange : tag -> msg
-        , options : List ( tag, String )
-        , selected : tag
-        , elementAppended : Bool
-        }
-    -> Element msg
-segmentControl id { label, onChange, options, selected, elementAppended } =
-    (if elementAppended then
-        withFocusOutlineTop
+type alias SegmentControlConfig tag msg =
+    { id : String
+    , label : Maybe String
+    , onChange : tag -> msg
+    , options : List ( tag, String )
+    , selected : tag
+    , elementAppended : Bool
+    }
 
-     else
-        withFocusOutline
-    )
-    <|
+
+segmentControl : SegmentControlConfig tag msg -> Element msg
+segmentControl { id, label, onChange, options, selected, elementAppended } =
+    let
+        focusOutline =
+            if elementAppended then
+                withFocusOutlineTop
+
+            else
+                withFocusOutline
+    in
+    focusOutline <|
         Element.column
             [ Element.width Element.fill
             , Element.spacing Ui.Space.level2
@@ -450,7 +460,7 @@ segmentControl id { label, onChange, options, selected, elementAppended } =
 
                 Just labelText ->
                     Element.el
-                        [ Element.htmlAttribute (Html.Attributes.id (id ++ "-label"))
+                        [ attributeId (id ++ "-label")
                         , Element.width Element.fill
                         ]
                         (Ui.Typography.bodyBold labelText)
@@ -472,12 +482,12 @@ segmentControl id { label, onChange, options, selected, elementAppended } =
                 , Background.color Ui.Color.secondary
                 ]
                 (Element.row
-                    [ Element.width Element.fill
+                    [ attributeId (id ++ "-label")
+                    , Element.width Element.fill
                     , Element.height Element.fill
                     , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
                     , Element.htmlAttribute (Html.Attributes.tabindex 0)
                     , Element.htmlAttribute (Html.Attributes.class "segment-control")
-                    , Element.htmlAttribute (Html.Attributes.id (id ++ "-label"))
                     , onKeyDown onChange (List.map Tuple.first options) selected
                     ]
                     (List.map (Element.map onChange) (segments options selected))
@@ -540,8 +550,7 @@ segment selectedTag thisTag position label =
 
             else
                 Ui.Color.transparent
-        , Element.htmlAttribute <|
-            Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s"
+        , backgroundColorEaseInOut
         , Font.color <|
             if selected then
                 Ui.Color.white
@@ -579,8 +588,7 @@ segment selectedTag thisTag position label =
                     , right = 1
                     }
         , Border.color Ui.Color.transparent
-        , Element.focused
-            [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.primary ]
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
@@ -664,16 +672,17 @@ userSelectNone =
 ---- TEXT
 
 
-inputText :
-    String
-    ->
-        { onChange : String -> msg
-        , text : String
-        , label : String
-        , help : Maybe String
-        }
-    -> Element msg
-inputText id data =
+type alias TextConfig msg =
+    { id : String
+    , onChange : String -> msg
+    , text : String
+    , label : String
+    , help : Maybe String
+    }
+
+
+inputText : TextConfig msg -> Element msg
+inputText data =
     let
         withShadow attrs =
             if data.help == Nothing then
@@ -694,8 +703,7 @@ inputText id data =
     withFocusOutline <|
         Input.text
             (withShadow
-                [ Element.htmlAttribute <|
-                    Html.Attributes.id id
+                [ attributeId data.id
                 , Element.width Element.fill
                 , Element.padding 10
                 , Font.size 16
@@ -708,39 +716,10 @@ inputText id data =
             , text = data.text
             , placeholder = Nothing
             , label =
-                Input.labelAbove []
-                    (case data.help of
-                        Nothing ->
-                            Element.el
-                                [ Element.paddingEach
-                                    { top = 0
-                                    , bottom = Ui.Space.level1
-                                    , left = 0
-                                    , right = 0
-                                    }
-                                ]
-                                (Ui.Typography.bodyBold data.label)
-
-                        Just helpText ->
-                            Element.column
-                                [ Element.spacing Ui.Space.level2
-                                , Element.paddingEach
-                                    { top = 0
-                                    , bottom = Ui.Space.level1
-                                    , left = 0
-                                    , right = 0
-                                    }
-                                ]
-                                [ Ui.Typography.bodyBold data.label
-                                , Element.row
-                                    [ Element.spacing Ui.Space.level1
-                                    , Font.color Ui.Color.danger
-                                    ]
-                                    [ fa "exclamation-circle"
-                                    , Ui.Typography.bodyBold helpText
-                                    ]
-                                ]
-                    )
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
             }
 
 
@@ -755,24 +734,13 @@ inputTextAppended :
 inputTextAppended id data =
     withFocusOutlineBottom <|
         Input.text
-            [ Element.htmlAttribute <|
-                Html.Attributes.id id
+            [ attributeId id
             , Element.width Element.fill
             , Element.padding 10
             , Font.size 16
             , Background.color Ui.Color.white
-            , Border.roundEach
-                { topLeft = 0
-                , topRight = 0
-                , bottomLeft = 3
-                , bottomRight = 3
-                }
-            , Border.widthEach
-                { top = 0
-                , bottom = 1
-                , left = 1
-                , right = 1
-                }
+            , borderWidthAppended
+            , borderRoundAppended
             , Element.focused
                 [ Border.color Ui.Color.primary
                 , focusShadow
@@ -786,16 +754,8 @@ inputTextAppended id data =
             }
 
 
-inputFormula :
-    String
-    ->
-        { onChange : String -> msg
-        , text : String
-        , label : String
-        , help : Maybe String
-        }
-    -> Element msg
-inputFormula id data =
+inputFormula : TextConfig msg -> Element msg
+inputFormula data =
     let
         lineCount =
             List.length (String.split "\n" data.text)
@@ -817,15 +777,6 @@ inputFormula id data =
                     , bottom = 10
                     }
 
-        sansSerif =
-            Font.family
-                [ Font.external
-                    { name = "Rubik"
-                    , url = "https://fonts.googleapis.com/css?family=Rubik:300"
-                    }
-                , Font.sansSerif
-                ]
-
         withShadow attrs =
             if data.help == Nothing then
                 [ Element.focused
@@ -845,7 +796,7 @@ inputFormula id data =
     withFocusOutline <|
         Input.multiline
             (withShadow
-                [ Element.htmlAttribute (Html.Attributes.id id)
+                [ attributeId data.id
                 , Element.width Element.fill
                 , Element.inFront (lineNumbers lineCount)
                 , padding
@@ -865,48 +816,10 @@ inputFormula id data =
             , placeholder = Nothing
             , spellcheck = False
             , label =
-                Input.labelAbove []
-                    (case data.help of
-                        Nothing ->
-                            Element.el
-                                [ sansSerif
-                                , Element.paddingEach
-                                    { top = 0
-                                    , bottom = Ui.Space.level1
-                                    , left = 0
-                                    , right = 0
-                                    }
-                                ]
-                                (Ui.Typography.bodyBold data.label)
-
-                        Just helpText ->
-                            Element.column
-                                [ Element.spacing Ui.Space.level1
-                                , Element.paddingEach
-                                    { top = 0
-                                    , bottom = Ui.Space.level1
-                                    , left = 0
-                                    , right = 0
-                                    }
-                                ]
-                                [ Element.el [ sansSerif ]
-                                    (Ui.Typography.bodyBold data.label)
-                                , Element.row
-                                    [ Element.spacing Ui.Space.level1
-                                    , Element.paddingEach
-                                        { left = 0
-                                        , right = 0
-                                        , top = Ui.Space.level1
-                                        , bottom = 0
-                                        }
-                                    , sansSerif
-                                    , Font.color Ui.Color.danger
-                                    ]
-                                    [ fa "exclamation-circle"
-                                    , Ui.Typography.bodyBold helpText
-                                    ]
-                                ]
-                    )
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
             }
 
 
@@ -939,19 +852,10 @@ inputFormulaAppended id data =
                     , top = 10
                     , bottom = 10
                     }
-
-        sansSerif =
-            Font.family
-                [ Font.external
-                    { name = "Rubik"
-                    , url = "https://fonts.googleapis.com/css?family=Rubik:300"
-                    }
-                , Font.sansSerif
-                ]
     in
     withFocusOutlineBottom <|
         Input.multiline
-            [ Element.htmlAttribute (Html.Attributes.id id)
+            [ attributeId id
             , Element.width Element.fill
             , Element.inFront (lineNumbers lineCount)
             , padding
@@ -959,18 +863,8 @@ inputFormulaAppended id data =
             , Font.size 16
             , Font.family [ Font.monospace ]
             , Background.color Ui.Color.white
-            , Border.widthEach
-                { top = 0
-                , bottom = 1
-                , left = 1
-                , right = 1
-                }
-            , Border.roundEach
-                { topLeft = 0
-                , topRight = 0
-                , bottomLeft = 3
-                , bottomRight = 3
-                }
+            , borderWidthAppended
+            , borderRoundAppended
             , Element.focused
                 [ Border.color Ui.Color.primary
                 , focusShadow
@@ -1078,12 +972,11 @@ faHelp size name =
 withFocusOutline : Element msg -> Element msg
 withFocusOutline element =
     Element.el
-        [ Border.width 3
+        [ Element.width Element.fill
+        , Border.width 3
         , Border.dotted
         , Border.color Ui.Color.transparent
-        , Element.focused
-            [ Border.color Ui.Color.primary ]
-        , Element.width Element.fill
+        , Element.focused [ Border.color Ui.Color.primary ]
         ]
         (Element.el
             [ Element.padding 4
@@ -1147,6 +1040,7 @@ withFocusOutlineBottom element =
         )
 
 
+focusShadow : Attr never msg
 focusShadow =
     Border.innerShadow
         { offset = ( 0, 0 )
@@ -1156,6 +1050,7 @@ focusShadow =
         }
 
 
+dangerShadow : Attr never msg
 dangerShadow =
     Border.innerShadow
         { offset = ( 0, 0 )
@@ -1163,3 +1058,73 @@ dangerShadow =
         , blur = 0
         , color = Ui.Color.danger
         }
+
+
+labelAbove : { label : String, help : Maybe String } -> Label msg
+labelAbove { label, help } =
+    Input.labelAbove [] <|
+        Element.column
+            [ sansSerif
+            , Element.spacing Ui.Space.level2
+            , Element.paddingEach
+                { top = 0
+                , bottom = Ui.Space.level1
+                , left = 0
+                , right = 0
+                }
+            ]
+            [ Ui.Typography.bodyBold label
+            , case help of
+                Nothing ->
+                    Element.none
+
+                Just helpText ->
+                    Element.row
+                        [ Element.spacing Ui.Space.level1
+                        , Font.color Ui.Color.danger
+                        ]
+                        [ fa "exclamation-circle"
+                        , Ui.Typography.bodyBold helpText
+                        ]
+            ]
+
+
+sansSerif : Attribute msg
+sansSerif =
+    Font.family
+        [ Font.external
+            { name = "Rubik"
+            , url = "https://fonts.googleapis.com/css?family=Rubik:300"
+            }
+        , Font.sansSerif
+        ]
+
+
+attributeId : String -> Attribute msg
+attributeId id =
+    Element.htmlAttribute (Html.Attributes.id id)
+
+
+borderWidthAppended : Attribute msg
+borderWidthAppended =
+    Border.widthEach
+        { top = 0
+        , bottom = 1
+        , left = 1
+        , right = 1
+        }
+
+
+borderRoundAppended : Attribute msg
+borderRoundAppended =
+    Border.roundEach
+        { topLeft = 0
+        , topRight = 0
+        , bottomLeft = 3
+        , bottomRight = 3
+        }
+
+
+backgroundColorEaseInOut : Attribute msg
+backgroundColorEaseInOut =
+    Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")

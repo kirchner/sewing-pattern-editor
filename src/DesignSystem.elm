@@ -551,19 +551,23 @@ content model =
                         , Element.padding Ui.Space.level1
                         ]
                         [ Ui.Atom.btnPrimary
-                            { onPress = Nothing
+                            { id = "primary-btn"
+                            , onPress = Nothing
                             , label = "Primary"
                             }
-                        , Ui.Atom.btnSecondary "secondary-button"
-                            { onPress = Nothing
+                        , Ui.Atom.btnSecondary
+                            { id = "secondary-btn"
+                            , onPress = Nothing
                             , label = "Secondary"
                             }
                         , Ui.Atom.btnDanger
-                            { onPress = Nothing
+                            { id = "danger-btn"
+                            , onPress = Nothing
                             , label = "Danger"
                             }
                         , Ui.Atom.btnCancel
-                            { onPress = Nothing
+                            { id = "cancel-btn"
+                            , onPress = Nothing
                             , label = "Cancel"
                             }
                         ]
@@ -572,8 +576,9 @@ content model =
                         [ Element.spacing Ui.Space.level4
                         , Element.padding Ui.Space.level1
                         ]
-                        [ Ui.Atom.btnCallToAction "call-to-action-button"
-                            { onPress = Nothing
+                        [ Ui.Atom.btnCallToAction
+                            { id = "call-to-action-button"
+                            , onPress = Nothing
                             , label = "Call to Action"
                             }
                         ]
@@ -583,15 +588,18 @@ content model =
                         , Element.padding Ui.Space.level1
                         ]
                         [ Ui.Atom.btnIcon
-                            { onPress = Nothing
+                            { id = "icon-btn"
+                            , onPress = Nothing
                             , icon = "thumbs-up"
                             }
                         , Ui.Atom.btnIconDanger
-                            { onPress = Nothing
+                            { id = "icon-danger-btn"
+                            , onPress = Nothing
                             , icon = "thumbs-down"
                             }
                         , Ui.Atom.btnIconLarge
-                            { onPress = Nothing
+                            { id = "icon-large-btn"
+                            , onPress = Nothing
                             , icon = "thumbs-up"
                             }
                         ]
@@ -608,7 +616,8 @@ content model =
                         , Element.width Element.fill
                         ]
                         (Ui.Atom.checkbox
-                            { onChange = CheckedCheckbox
+                            { id = "checkbox"
+                            , onChange = CheckedCheckbox
                             , checked = model.checked
                             , label = "Checkbox"
                             }
@@ -618,8 +627,9 @@ content model =
                         [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
-                        (Ui.Atom.radioColumn "radio-column"
-                            { onChange = FruitChanged
+                        (Ui.Atom.radioColumn
+                            { id = "radio-column"
+                            , onChange = FruitChanged
                             , options =
                                 [ Ui.Atom.option Apple "Apple"
                                 , Ui.Atom.option Banana "Banana"
@@ -655,8 +665,9 @@ content model =
                         [ Element.padding Ui.Space.level1
                         , Element.width Element.fill
                         ]
-                        (Ui.Atom.segmentControl "position-segment-control"
-                            { label = Just "Position"
+                        (Ui.Atom.segmentControl
+                            { id = "position-segment-control"
+                            , label = Just "Position"
                             , onChange = ChangedPosition
                             , options = positions
                             , selected = model.position
@@ -669,26 +680,30 @@ content model =
                         , Element.spacing Ui.Space.level4
                         , Element.width Element.fill
                         ]
-                        [ Ui.Atom.inputText "input-text"
-                            { onChange = \_ -> NoOp
+                        [ Ui.Atom.inputText
+                            { id = "input-text"
+                            , onChange = \_ -> NoOp
                             , text = ""
                             , label = "Text"
                             , help = Nothing
                             }
-                        , Ui.Atom.inputText "input-text"
-                            { onChange = \_ -> NoOp
+                        , Ui.Atom.inputText
+                            { id = "input-text"
+                            , onChange = \_ -> NoOp
                             , text = ""
                             , label = "Text"
                             , help = Just "Help message"
                             }
-                        , Ui.Atom.inputFormula "input-formula"
-                            { onChange = ChangedFormula
+                        , Ui.Atom.inputFormula
+                            { id = "input-formula"
+                            , onChange = ChangedFormula
                             , text = model.formula
                             , label = "Formula"
                             , help = Nothing
                             }
-                        , Ui.Atom.inputFormula "input-formula"
-                            { onChange = ChangedFormula
+                        , Ui.Atom.inputFormula
+                            { id = "input-formula"
+                            , onChange = ChangedFormula
                             , text = model.formula
                             , label = "Formula"
                             , help = Just "Help message"
@@ -752,8 +767,9 @@ content model =
                         ]
                         [ Element.column
                             [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl "position-segment-control"
-                                { label = Just "Position"
+                            [ Ui.Atom.segmentControl
+                                { id = "position-segment-control"
+                                , label = Just "Position"
                                 , onChange = ChangedPositionAppended
                                 , options = positions
                                 , selected = model.positionAppended
@@ -780,8 +796,9 @@ content model =
                         ]
                         [ Element.column
                             [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl "position-text-segment-control"
-                                { label = Just "Position"
+                            [ Ui.Atom.segmentControl
+                                { id = "position-text-segment-control"
+                                , label = Just "Position"
                                 , onChange = ChangedPositionAppended
                                 , options = positions
                                 , selected = model.positionAppended
@@ -795,8 +812,9 @@ content model =
                             ]
                         , Element.column
                             [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl "position-formula-segment-control"
-                                { label = Just "Position"
+                            [ Ui.Atom.segmentControl
+                                { id = "position-formula-segment-control"
+                                , label = Just "Position"
                                 , onChange = ChangedPositionAppended
                                 , options = positions
                                 , selected = model.positionAppended
