@@ -36,7 +36,7 @@ module Ui.Atom exposing
 
 -}
 
-import Element exposing (Element)
+import Element exposing (Decoration, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -240,41 +240,20 @@ checkboxIcon checked =
         , Border.rounded 3
         , Border.color <|
             if checked then
-                Element.rgb (59 / 255) (153 / 255) (252 / 255)
+                Ui.Color.primary
 
             else
-                Element.rgb (211 / 255) (211 / 255) (211 / 255)
-        , Border.shadow <|
-            { offset = ( 0, 0 )
-            , blur = 1
-            , size = 1
-            , color =
-                if checked then
-                    Element.rgba (238 / 255) (238 / 255) (238 / 255) 0
-
-                else
-                    Element.rgb (238 / 255) (238 / 255) (238 / 255)
-            }
+                Ui.Color.black
+        , Border.width 1
         , Background.color <|
             if checked then
                 Ui.Color.primary
 
             else
                 Ui.Color.white
-        , Border.width <|
-            if checked then
-                0
-
-            else
-                1
         , Element.focused
             [ Border.color Ui.Color.primary
-            , Border.innerShadow
-                { offset = ( 0, 0 )
-                , size = 1
-                , blur = 0
-                , color = Ui.Color.primary
-                }
+            , focusShadow
             ]
         ]
         (if checked then
@@ -304,6 +283,15 @@ checkboxIcon checked =
 ---- RADIOS
 
 
+radioRow :
+    String
+    ->
+        { onChange : value -> msg
+        , options : List (Input.Option value msg)
+        , selected : Maybe value
+        , label : String
+        }
+    -> Element msg
 radioRow id { onChange, options, selected, label } =
     withFocusOutline <|
         Input.radioRow
@@ -327,6 +315,15 @@ radioRow id { onChange, options, selected, label } =
             }
 
 
+radioColumn :
+    String
+    ->
+        { onChange : value -> msg
+        , options : List (Input.Option value msg)
+        , selected : Maybe value
+        , label : String
+        }
+    -> Element msg
 radioColumn id { onChange, options, selected, label } =
     withFocusOutline <|
         Input.radio
@@ -496,14 +493,6 @@ segmentControl id { label, onChange, options, selected, elementAppended } =
                 , Border.width 1
                 , Border.color Ui.Color.primary
                 , Background.color Ui.Color.secondary
-                , Element.focused
-                    [ Border.innerShadow
-                        { offset = ( 0, 0 )
-                        , size = 1
-                        , blur = 0
-                        , color = Ui.Color.primary
-                        }
-                    ]
                 ]
                 (Element.row
                     [ Element.width Element.fill
@@ -713,24 +702,14 @@ inputText id data =
             if data.help == Nothing then
                 [ Element.focused
                     [ Border.color Ui.Color.primary
-                    , Border.innerShadow
-                        { offset = ( 0, 0 )
-                        , size = 1
-                        , blur = 0
-                        , color = Ui.Color.primary
-                        }
+                    , focusShadow
                     ]
                 , Border.color Ui.Color.black
                 ]
                     ++ attrs
 
             else
-                [ Border.innerShadow
-                    { offset = ( 0, 0 )
-                    , size = 1
-                    , blur = 0
-                    , color = Ui.Color.danger
-                    }
+                [ dangerShadow
                 , Border.color Ui.Color.danger
                 ]
                     ++ attrs
@@ -832,24 +811,14 @@ inputFormula id data =
             if data.help == Nothing then
                 [ Element.focused
                     [ Border.color Ui.Color.primary
-                    , Border.innerShadow
-                        { offset = ( 0, 0 )
-                        , size = 1
-                        , blur = 0
-                        , color = Ui.Color.primary
-                        }
+                    , focusShadow
                     ]
                 , Border.color Ui.Color.black
                 ]
                     ++ attrs
 
             else
-                [ Border.innerShadow
-                    { offset = ( 0, 0 )
-                    , size = 1
-                    , blur = 0
-                    , color = Ui.Color.danger
-                    }
+                [ dangerShadow
                 , Border.color Ui.Color.danger
                 ]
                     ++ attrs
@@ -1025,3 +994,21 @@ withFocusOutline element =
             ]
             element
         )
+
+
+focusShadow =
+    Border.innerShadow
+        { offset = ( 0, 0 )
+        , size = 1
+        , blur = 0
+        , color = Ui.Color.primary
+        }
+
+
+dangerShadow =
+    Border.innerShadow
+        { offset = ( 0, 0 )
+        , size = 1
+        , blur = 0
+        , color = Ui.Color.danger
+        }
