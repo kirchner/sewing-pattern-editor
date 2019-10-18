@@ -1,6 +1,6 @@
 module Ui.Atom.Dropdown exposing
     ( Msg, Dropdown, Instance, init
-    , ViewConfig, view, viewAppended
+    , ViewConfig, view, viewAppendable
     , UpdateConfig, update, subscriptions
     )
 
@@ -8,7 +8,7 @@ module Ui.Atom.Dropdown exposing
 
 @docs Msg, Dropdown, Instance, init
 
-@docs ViewConfig, view, viewAppended
+@docs ViewConfig, view, viewAppendable
 @docs UpdateConfig, update, subscriptions
 
 -}
@@ -22,7 +22,7 @@ import Html.Attributes as Attributes
 import Html.Events as Events
 import Listbox
 import Listbox.Dropdown as Dropdown
-import Ui.Atom
+import Ui.Atom exposing (Appendable(..))
 import Ui.Color
 import Ui.Space
 import Ui.Typography
@@ -109,15 +109,15 @@ viewWithMenu menu config instance options dropdown selection =
             ]
 
 
-viewAppended :
+viewAppendable :
     ViewConfig entry
     -> Instance entry msg
     -> List entry
     -> Dropdown
     -> Maybe entry
-    -> Element msg
-viewAppended config instance options dropdown selection =
-    Ui.Atom.withFocusOutlineBottom <|
+    -> Appendable msg
+viewAppendable config instance options dropdown selection =
+    Appendable <|
         Dropdown.customView dropdownDomFunctions
             (dropdownViewConfig True config.entryToString config.entryToHash)
             { id = instance.id

@@ -48,6 +48,7 @@ type alias Model =
     , dropdownAppended : Dropdown
     , selectionAppended : Maybe Fruit
     , positionAppended : Position
+    , showFormula : Bool
     }
 
 
@@ -228,6 +229,7 @@ init { width, height } url key =
         , dropdownAppended = Ui.Atom.Dropdown.init
         , selectionAppended = Nothing
         , positionAppended = Left
+        , showFormula = True
         }
 
 
@@ -671,7 +673,7 @@ content model =
                             , onChange = ChangedPosition
                             , options = positions
                             , selected = model.position
-                            , elementAppended = False
+                            , appended = Nothing
                             }
                         )
                     , Ui.Typography.headingThree "Text"
@@ -765,28 +767,29 @@ content model =
                         , Element.spacing Ui.Space.level4
                         , Element.width Element.fill
                         ]
-                        [ Element.column
-                            [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl
-                                { id = "position-segment-control"
-                                , label = Just "Position"
-                                , onChange = ChangedPositionAppended
-                                , options = positions
-                                , selected = model.positionAppended
-                                , elementAppended = True
-                                }
-                            , Ui.Atom.Dropdown.viewAppended
-                                { entryToString = fruitToString
-                                , entryToHash = fruitToString
-                                }
-                                { id = "fruit-dropdown-appended"
-                                , lift = DropdownAppendedMsg
-                                , label = "Fruit"
-                                }
-                                fruits
-                                model.dropdownAppended
-                                model.selectionAppended
-                            ]
+                        [ Ui.Atom.segmentControl
+                            { id = "position-segment-control"
+                            , label = Just "Position"
+                            , onChange = ChangedPositionAppended
+                            , options = positions
+                            , selected = model.positionAppended
+                            , appended =
+                                Just <|
+                                    { appendable =
+                                        Ui.Atom.Dropdown.viewAppendable
+                                            { entryToString = fruitToString
+                                            , entryToHash = fruitToString
+                                            }
+                                            { id = "fruit-dropdown-appended"
+                                            , lift = DropdownAppendedMsg
+                                            , label = "Fruit"
+                                            }
+                                            fruits
+                                            model.dropdownAppended
+                                            model.selectionAppended
+                                    , disclosure = Nothing
+                                    }
+                            }
                         ]
                     , Ui.Typography.headingThree "Segment Control + Text"
                     , Element.column
@@ -794,38 +797,44 @@ content model =
                         , Element.spacing Ui.Space.level4
                         , Element.width Element.fill
                         ]
-                        [ Element.column
-                            [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl
-                                { id = "position-text-segment-control"
-                                , label = Just "Position"
-                                , onChange = ChangedPositionAppended
-                                , options = positions
-                                , selected = model.positionAppended
-                                , elementAppended = True
-                                }
-                            , Ui.Atom.inputTextAppended "text-appended"
-                                { onChange = \_ -> NoOp
-                                , text = ""
-                                , label = "Text"
-                                }
-                            ]
-                        , Element.column
-                            [ Element.width Element.fill ]
-                            [ Ui.Atom.segmentControl
-                                { id = "position-formula-segment-control"
-                                , label = Just "Position"
-                                , onChange = ChangedPositionAppended
-                                , options = positions
-                                , selected = model.positionAppended
-                                , elementAppended = True
-                                }
-                            , Ui.Atom.inputFormulaAppended "formula-appended"
-                                { onChange = ChangedFormula
-                                , text = model.formula
-                                , label = "Formula"
-                                }
-                            ]
+                        [ Ui.Atom.segmentControl
+                            { id = "position-text-segment-control"
+                            , label = Just "Position"
+                            , onChange = ChangedPositionAppended
+                            , options = positions
+                            , selected = model.positionAppended
+                            , appended =
+                                Just <|
+                                    { appendable =
+                                        Ui.Atom.inputTextAppendable "text-appended"
+                                            { onChange = \_ -> NoOp
+                                            , text = ""
+                                            , label = "Text"
+                                            }
+                                    , disclosure = Nothing
+                                    }
+                            }
+                        , Ui.Atom.segmentControl
+                            { id = "position-formula-segment-control"
+                            , label = Just "Position"
+                            , onChange = ChangedPositionAppended
+                            , options = positions
+                            , selected = model.positionAppended
+                            , appended =
+                                Just <|
+                                    { appendable =
+                                        Ui.Atom.inputFormulaAppendable "formula-appended"
+                                            { onChange = ChangedFormula
+                                            , text = model.formula
+                                            , label = "Formula"
+                                            }
+                                    , disclosure =
+                                        Just <|
+                                            { show = model.showFormula
+                                            , onPress = ClickedShowFormula
+                                            }
+                                    }
+                            }
                         ]
                     ]
         ]
@@ -848,6 +857,7 @@ type Msg
     | ChangedPosition Position
     | ChangedPositionAppended Position
     | ChangedFormula String
+    | ClickedShowFormula
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -941,6 +951,9 @@ update msg model =
 
         ChangedFormula formula ->
             ( { model | formula = formula }, Cmd.none )
+
+        ClickedShowFormula ->
+            ( { model | showFormula = not model.showFormula }, Cmd.none )
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )

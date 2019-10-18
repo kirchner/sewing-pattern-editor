@@ -4,8 +4,8 @@ module Ui.Atom exposing
     , btnIcon, btnIconDanger, btnIconLarge
     , checkbox
     , radioRow, radioColumn, option
-    , segmentControl
-    , inputText, inputTextAppended, inputFormula, inputFormulaAppended
+    , segmentControl, Appendable(..)
+    , inputText, inputTextAppendable, inputFormula, inputFormulaAppendable
     , fa, faBody, faLarge
     , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
     )
@@ -24,8 +24,8 @@ module Ui.Atom exposing
 
 @docs checkbox
 @docs radioRow, radioColumn, option
-@docs segmentControl
-@docs inputText, inputTextAppended, inputFormula, inputFormulaAppended
+@docs segmentControl, Appendable
+@docs inputText, inputTextAppendable, inputFormula, inputFormulaAppendable
 
 
 # Icons
@@ -435,64 +435,151 @@ type alias SegmentControlConfig tag msg =
     , onChange : tag -> msg
     , options : List ( tag, String )
     , selected : tag
-    , elementAppended : Bool
+    , appended :
+        Maybe
+            { appendable : Appendable msg
+            , disclosure :
+                Maybe
+                    { show : Bool
+                    , onPress : msg
+                    }
+            }
     }
 
 
+type Appendable msg
+    = Appendable (Element msg)
+
+
 segmentControl : SegmentControlConfig tag msg -> Element msg
-segmentControl { id, label, onChange, options, selected, elementAppended } =
+segmentControl { id, label, onChange, options, selected, appended } =
     let
-        focusOutline =
-            if elementAppended then
-                withFocusOutlineTop
+        segmentControlHelp =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing Ui.Space.level2
+                ]
+                [ case label of
+                    Nothing ->
+                        Element.none
 
-            else
-                withFocusOutline
-    in
-    focusOutline <|
-        Element.column
-            [ Element.width Element.fill
-            , Element.spacing Ui.Space.level2
-            ]
-            [ case label of
-                Nothing ->
-                    Element.none
+                    Just labelText ->
+                        Element.el
+                            [ attributeId (id ++ "-label")
+                            , Element.width Element.fill
+                            ]
+                            (Ui.Typography.bodyBold labelText)
+                , Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , if showAppended then
+                        Border.roundEach
+                            { topLeft = 3
+                            , topRight = 3
+                            , bottomLeft = 0
+                            , bottomRight = 0
+                            }
 
-                Just labelText ->
-                    Element.el
+                      else
+                        Border.rounded 3
+                    , Border.width 1
+                    , Border.color Ui.Color.primary
+                    , Background.color Ui.Color.secondary
+                    ]
+                    (Element.row
                         [ attributeId (id ++ "-label")
                         , Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+                        , Element.htmlAttribute (Html.Attributes.tabindex 0)
+                        , Element.htmlAttribute (Html.Attributes.class "segment-control")
+                        , onKeyDown onChange (List.map Tuple.first options) selected
                         ]
-                        (Ui.Typography.bodyBold labelText)
-            , Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , if elementAppended then
-                    Border.roundEach
-                        { topLeft = 3
-                        , topRight = 3
-                        , bottomLeft = 0
-                        , bottomRight = 0
-                        }
-
-                  else
-                    Border.rounded 3
-                , Border.width 1
-                , Border.color Ui.Color.primary
-                , Background.color Ui.Color.secondary
+                        (List.map (Element.map onChange) (segments options selected))
+                    )
                 ]
-                (Element.row
-                    [ attributeId (id ++ "-label")
-                    , Element.width Element.fill
-                    , Element.height Element.fill
-                    , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
-                    , Element.htmlAttribute (Html.Attributes.tabindex 0)
-                    , Element.htmlAttribute (Html.Attributes.class "segment-control")
-                    , onKeyDown onChange (List.map Tuple.first options) selected
+
+        showAppended =
+            case appended of
+                Nothing ->
+                    False
+
+                Just { disclosure } ->
+                    case disclosure of
+                        Nothing ->
+                            True
+
+                        Just { show } ->
+                            show
+    in
+    case appended of
+        Nothing ->
+            withFocusOutline segmentControlHelp
+
+        Just { appendable, disclosure } ->
+            if showAppended then
+                let
+                    (Appendable appendableElement) =
+                        appendable
+                in
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ Element.el
+                        [ Element.width Element.fill
+                        , Element.inFront (disclosureButton disclosure)
+                        ]
+                        (withFocusOutlineTop segmentControlHelp)
+                    , withFocusOutlineBottom appendableElement
                     ]
-                    (List.map (Element.map onChange) (segments options selected))
-                )
-            ]
+
+            else
+                Element.column
+                    [ Element.width Element.fill ]
+                    [ Element.el
+                        [ Element.width Element.fill
+                        , Element.inFront (disclosureButton disclosure)
+                        ]
+                        (withFocusOutline segmentControlHelp)
+                    ]
+
+
+disclosureButton : Maybe { show : Bool, onPress : msg } -> Element msg
+disclosureButton disclosure =
+    case disclosure of
+        Nothing ->
+            Element.none
+
+        Just { show, onPress } ->
+            Input.button
+                [ Element.mouseOver [ Font.color Ui.Color.primary ]
+                , Element.focused [ Font.color Ui.Color.primary ]
+                , Element.width Element.fill
+                , fontColorEaseInOut
+                ]
+                { onPress = Just onPress
+                , label =
+                    Element.el
+                        [ Element.alignRight
+                        , Element.padding 3
+                        ]
+                        (withFocusOutline <|
+                            Element.row
+                                [ Element.spacing Ui.Space.level1 ]
+                                [ Ui.Typography.button <|
+                                    if show then
+                                        "Minimize"
+
+                                    else
+                                        "Expand"
+                                , fa <|
+                                    if show then
+                                        "chevron-up"
+
+                                    else
+                                        "chevron-down"
+                                ]
+                        )
+                }
 
 
 type Position
@@ -723,16 +810,16 @@ inputText data =
             }
 
 
-inputTextAppended :
+inputTextAppendable :
     String
     ->
         { onChange : String -> msg
         , text : String
         , label : String
         }
-    -> Element msg
-inputTextAppended id data =
-    withFocusOutlineBottom <|
+    -> Appendable msg
+inputTextAppendable id data =
+    Appendable <|
         Input.text
             [ attributeId id
             , Element.width Element.fill
@@ -823,15 +910,15 @@ inputFormula data =
             }
 
 
-inputFormulaAppended :
+inputFormulaAppendable :
     String
     ->
         { onChange : String -> msg
         , text : String
         , label : String
         }
-    -> Element msg
-inputFormulaAppended id data =
+    -> Appendable msg
+inputFormulaAppendable id data =
     let
         lineCount =
             List.length (String.split "\n" data.text)
@@ -853,7 +940,7 @@ inputFormulaAppended id data =
                     , bottom = 10
                     }
     in
-    withFocusOutlineBottom <|
+    Appendable <|
         Input.multiline
             [ attributeId id
             , Element.width Element.fill
@@ -1128,3 +1215,8 @@ borderRoundAppended =
 backgroundColorEaseInOut : Attribute msg
 backgroundColorEaseInOut =
     Element.htmlAttribute (Html.Attributes.style "transition" "background-color 0.2s ease-in-out 0s")
+
+
+fontColorEaseInOut : Attribute msg
+fontColorEaseInOut =
+    Element.htmlAttribute (Html.Attributes.style "transition" "color 0.2s ease-in-out 0s")
