@@ -433,16 +433,72 @@ segmentControl :
     }
     -> Element msg
 segmentControl { onChange, options, selected, elementAppended } =
-    withFocusOutline <|
-        Element.row
+    (if elementAppended then
+        \element ->
+            Element.el
+                [ Border.widthEach
+                    { top = 3
+                    , bottom = 0
+                    , left = 3
+                    , right = 3
+                    }
+                , Border.dotted
+                , Border.color Ui.Color.transparent
+                , Element.focused
+                    [ Border.color Ui.Color.primary ]
+                , Element.width Element.fill
+                ]
+                (Element.el
+                    [ Element.paddingEach
+                        { top = 4
+                        , bottom = 0
+                        , left = 4
+                        , right = 4
+                        }
+                    , Element.width Element.fill
+                    ]
+                    element
+                )
+
+     else
+        withFocusOutline
+    )
+    <|
+        Element.el
             [ Element.width Element.fill
-            , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
-            , Element.htmlAttribute (Html.Attributes.tabindex 0)
-            , Element.htmlAttribute (Html.Attributes.class "segment-control")
-            , onKeyDown onChange (List.map Tuple.first options) selected
+            , Element.height Element.fill
+            , Border.roundEach
+                { topLeft = 3
+                , topRight = 3
+                , bottomLeft = 0
+                , bottomRight = 0
+                }
+            , Element.focused
+                [ Border.innerShadow
+                    { offset = ( 0, 0 )
+                    , size = 1
+                    , blur = 0
+                    , color = Ui.Color.primary
+                    }
+                ]
             ]
-            (List.map (Element.map onChange) <|
-                segments (not elementAppended) options selected
+            (Element.row
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+                , Element.htmlAttribute (Html.Attributes.tabindex 0)
+                , Element.htmlAttribute (Html.Attributes.class "segment-control")
+                , onKeyDown onChange (List.map Tuple.first options) selected
+                , Border.roundEach
+                    { topLeft = 3
+                    , topRight = 3
+                    , bottomLeft = 0
+                    , bottomRight = 0
+                    }
+                ]
+                (List.map (Element.map onChange) <|
+                    segments (not elementAppended) options selected
+                )
             )
 
 

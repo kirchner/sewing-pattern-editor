@@ -45,20 +45,31 @@ type alias Model =
     , selection : Maybe Fruit
     , position : Position
     , formula : String
+    , dropdownAppended : Dropdown
+    , selectionAppended : Maybe Fruit
+    , positionAppended : Position
     }
 
 
 type Fruit
     = Apple
     | Banana
-    | Orange
+    | Cherry
+    | Durian
+    | Elderberries
+    | Figs
+    | Grapefruit
 
 
 fruits : List Fruit
 fruits =
     [ Apple
     , Banana
-    , Orange
+    , Cherry
+    , Durian
+    , Elderberries
+    , Figs
+    , Grapefruit
     ]
 
 
@@ -71,8 +82,20 @@ fruitToString fruit =
         Banana ->
             "Banana"
 
-        Orange ->
-            "Orange"
+        Cherry ->
+            "Cherry"
+
+        Durian ->
+            "Durian"
+
+        Elderberries ->
+            "Elderberries"
+
+        Figs ->
+            "Figs"
+
+        Grapefruit ->
+            "Grapefruit"
 
 
 type Position
@@ -98,6 +121,8 @@ type Route
     | Buttons
     | FormElements
     | Icons
+      -- MOLECULES
+    | JoinedFormElements
 
 
 routeToTitle : Route -> String
@@ -121,6 +146,9 @@ routeToTitle route =
         Icons ->
             "Icons"
 
+        JoinedFormElements ->
+            "Joined Form Elements"
+
 
 routeToUrl : Route -> String
 routeToUrl route =
@@ -143,6 +171,9 @@ routeToUrl route =
         Icons ->
             "/icons"
 
+        JoinedFormElements ->
+            "/joined-form-elements"
+
 
 routeFromUrl : Url -> Maybe Route
 routeFromUrl url =
@@ -159,6 +190,7 @@ urlParser =
         , Url.Parser.map Buttons (Url.Parser.s "buttons")
         , Url.Parser.map FormElements (Url.Parser.s "form-elements")
         , Url.Parser.map Icons (Url.Parser.s "icons")
+        , Url.Parser.map JoinedFormElements (Url.Parser.s "joined-form-elements")
         ]
 
 
@@ -193,6 +225,9 @@ init { width, height } url key =
         , selection = Nothing
         , position = Left
         , formula = "distance(\n  A12,\n  B4\n)"
+        , dropdownAppended = Ui.Atom.Dropdown.init
+        , selectionAppended = Nothing
+        , positionAppended = Left
         }
 
 
@@ -378,6 +413,9 @@ navigation deviceClass currentRoute =
             [ link Buttons
             , link FormElements
             , link Icons
+            ]
+        , group "molecules"
+            [ link JoinedFormElements
             ]
         ]
 
@@ -585,7 +623,11 @@ content model =
                             , options =
                                 [ Ui.Atom.option Apple "Apple"
                                 , Ui.Atom.option Banana "Banana"
-                                , Ui.Atom.option Orange "Orange"
+                                , Ui.Atom.option Cherry "Cherry"
+                                , Ui.Atom.option Durian "Durian"
+                                , Ui.Atom.option Elderberries "Elderberries"
+                                , Ui.Atom.option Figs "Figs"
+                                , Ui.Atom.option Grapefruit "Grapefruit"
                                 ]
                             , selected = model.fruit
                             , label = "Select a fruit"
@@ -695,6 +737,40 @@ content model =
                         , Ui.Atom.faLarge "chevron-down"
                         ]
                     ]
+
+            JoinedFormElements ->
+                Element.column
+                    [ Element.spacing Ui.Space.level4
+                    , Element.width Element.fill
+                    ]
+                    [ Ui.Typography.headingThree "Segment Control + Dropdown"
+                    , Element.column
+                        [ Element.padding Ui.Space.level4
+                        , Element.spacing Ui.Space.level4
+                        , Element.width Element.fill
+                        ]
+                        [ Element.column
+                            [ Element.width Element.fill ]
+                            [ Ui.Atom.segmentControl
+                                { onChange = ChangedPositionAppended
+                                , options = positions
+                                , selected = model.positionAppended
+                                , elementAppended = True
+                                }
+                            , Ui.Atom.Dropdown.viewAppended
+                                { entryToString = fruitToString
+                                , entryToHash = fruitToString
+                                }
+                                { id = "fruit-dropdown-appended"
+                                , lift = DropdownAppendedMsg
+                                , label = "Fruit"
+                                }
+                                fruits
+                                model.dropdownAppended
+                                model.selectionAppended
+                            ]
+                        ]
+                    ]
         ]
 
 
@@ -711,7 +787,9 @@ type Msg
     | CheckedCheckbox Bool
     | FruitChanged Fruit
     | DropdownMsg (Ui.Atom.Dropdown.Msg Fruit)
+    | DropdownAppendedMsg (Ui.Atom.Dropdown.Msg Fruit)
     | ChangedPosition Position
+    | ChangedPositionAppended Position
     | ChangedFormula String
 
 
@@ -781,8 +859,28 @@ update msg model =
             , Cmd.map DropdownMsg dropdownCmd
             )
 
+        DropdownAppendedMsg dropdownMsg ->
+            let
+                ( newDropdown, dropdownCmd, newSelection ) =
+                    Ui.Atom.Dropdown.update
+                        { entryToHash = fruitToString }
+                        fruits
+                        dropdownMsg
+                        model.dropdownAppended
+                        model.selectionAppended
+            in
+            ( { model
+                | dropdownAppended = newDropdown
+                , selectionAppended = newSelection
+              }
+            , Cmd.map DropdownAppendedMsg dropdownCmd
+            )
+
         ChangedPosition position ->
             ( { model | position = position }, Cmd.none )
+
+        ChangedPositionAppended position ->
+            ( { model | positionAppended = position }, Cmd.none )
 
         ChangedFormula formula ->
             ( { model | formula = formula }, Cmd.none )
@@ -812,4 +910,5 @@ subscriptions model =
     Sub.batch
         [ Browser.Events.onResize ResizedBrowser
         , Sub.map DropdownMsg (Ui.Atom.Dropdown.subscriptions model.dropdown)
+        , Sub.map DropdownAppendedMsg (Ui.Atom.Dropdown.subscriptions model.dropdownAppended)
         ]

@@ -1,6 +1,6 @@
 module Ui.Atom.Dropdown exposing
     ( Msg, Dropdown, Instance, init
-    , ViewConfig, view
+    , ViewConfig, view, viewAppended
     , UpdateConfig, update, subscriptions
     )
 
@@ -8,7 +8,7 @@ module Ui.Atom.Dropdown exposing
 
 @docs Msg, Dropdown, Instance, init
 
-@docs ViewConfig, view
+@docs ViewConfig, view, viewAppended
 @docs UpdateConfig, update, subscriptions
 
 -}
@@ -109,6 +109,49 @@ viewWithMenu menu config instance options dropdown selection =
             ]
 
 
+viewAppended :
+    ViewConfig entry
+    -> Instance entry msg
+    -> List entry
+    -> Dropdown
+    -> Maybe entry
+    -> Element msg
+viewAppended config instance options dropdown selection =
+    Element.el
+        [ Border.widthEach
+            { top = 0
+            , bottom = 3
+            , left = 3
+            , right = 3
+            }
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused
+            [ Border.color Ui.Color.primary ]
+        , Element.width Element.fill
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 0
+                , bottom = 4
+                , left = 4
+                , right = 4
+                }
+            , Element.width Element.fill
+            ]
+            (Dropdown.customView dropdownDomFunctions
+                (dropdownViewConfig True config.entryToString config.entryToHash)
+                { id = instance.id
+                , label = Listbox.labelledBy (instance.id ++ "-label")
+                , lift = instance.lift
+                }
+                (List.map Listbox.option options)
+                dropdown
+                selection
+            )
+        )
+
+
 dropdownViewConfig :
     Bool
     -> (entry -> String)
@@ -139,8 +182,7 @@ dropdownViewConfig appended printOption hashOption =
                     , Border.color Ui.Color.black
                     , Background.color Ui.Color.white
                     , Element.mouseOver
-                        [ Border.color Ui.Color.primary
-                        ]
+                        [ Border.color Ui.Color.primary ]
                     , Element.focused
                         [ Border.color Ui.Color.primary
                         , Border.innerShadow
@@ -162,6 +204,10 @@ dropdownViewConfig appended printOption hashOption =
                     , Element.el
                         [ Element.alignRight
                         , Element.paddingXY Ui.Space.level1 0
+                        , Element.focused
+                            [ Font.color Ui.Color.primary ]
+                        , Element.mouseOver
+                            [ Font.color Ui.Color.primary ]
                         ]
                         (Ui.Atom.fa "chevron-down")
                     ]
@@ -172,44 +218,35 @@ dropdownViewConfig appended printOption hashOption =
                 (Element.fill
                     |> Element.maximum 200
                 )
+            , Element.moveDown Ui.Space.level2
+            , Border.rounded 3
+            , Border.shadow
+                { offset = ( 0, 0 )
+                , size = 0
+                , blur = 6
+                , color = Ui.Color.grayDark
+                }
             , Element.scrollbarY
             , Background.color Ui.Color.white
-            , Element.inFront <|
-                Element.el
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Border.width 1
-                    , Border.rounded 3
-                    , Element.focused
-                        [ Border.color Ui.Color.primary
-                        , Border.innerShadow
-                            { offset = ( 0, 0 )
-                            , size = 1
-                            , blur = 0
-                            , color = Ui.Color.primary
-                            }
-                        ]
-                    , Element.htmlAttribute (Attributes.style "pointer-events" "none")
-                    ]
-                    Element.none
             ]
         , liOption =
-            \{ focused, hovered } thatPoint ->
+            \{ focused, hovered, selected } thatPoint ->
                 { attributes =
                     [ Element.pointer
                     , Element.padding Ui.Space.level2
                     , Font.size 16
-                    , Element.width Element.fill
-                    , Border.width 2
-                    , Border.dashed
-                    , Border.color <|
-                        if focused then
-                            Ui.Color.primary
+                    , Font.color <|
+                        if selected then
+                            Ui.Color.white
 
                         else
-                            Ui.Color.transparent
+                            Ui.Color.black
+                    , Element.width Element.fill
                     , Background.color <|
-                        if hovered then
+                        if selected then
+                            Ui.Color.primary
+
+                        else if hovered || focused then
                             Ui.Color.secondary
 
                         else
@@ -300,7 +337,7 @@ dropdownUpdateConfig entryToHash =
         { uniqueId = entryToHash
         , behaviour =
             { jumpAtEnds = True
-            , separateFocus = True
+            , separateFocus = False
             , selectionFollowsFocus = False
             , handleHomeAndEnd = True
             , closeAfterMouseSelection = True
