@@ -1,11 +1,11 @@
-build:
-	nix-shell --run "yarn build"
+check-design-system:
+	unbuffer elm make --output=/dev/null src/DesignSystem.elm 2>&1 | less -r
 
-dev:
-	nix-shell --run "yarn dev"
+check-app:
+	unbuffer elm make --output=/dev/null src/Main.elm 2>&1 | less -r
 
-test-watch:
-	nix-shell --run "yarn elm-test --watch"
+serve-app:
+	yarn parcel serve index.html
 
-serve:
-	go run server.go
+test:
+	elm-test
