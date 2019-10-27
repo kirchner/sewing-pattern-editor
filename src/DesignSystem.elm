@@ -672,6 +672,7 @@ content model =
                         (Ui.Atom.segmentControl
                             { id = "position-segment-control"
                             , label = Just "Position"
+                            , help = Nothing
                             , onChange = ChangedPosition
                             , options = positions
                             , selected = model.position
@@ -772,6 +773,28 @@ content model =
                         [ Ui.Atom.segmentControl
                             { id = "position-segment-control"
                             , label = Just "Position"
+                            , help = Nothing
+                            , onChange = ChangedPositionAppended
+                            , options = positions
+                            , selected = model.positionAppended
+                            , child =
+                                Just <|
+                                    Ui.Atom.Dropdown.viewAppended
+                                        { entryToString = fruitToString
+                                        , entryToHash = fruitToString
+                                        }
+                                        { id = "fruit-dropdown-appended"
+                                        , lift = DropdownAppendedMsg
+                                        , label = "Fruit"
+                                        }
+                                        fruits
+                                        model.dropdownAppended
+                                        model.selectionAppended
+                            }
+                        , Ui.Atom.segmentControl
+                            { id = "position-segment-control"
+                            , label = Just "Position"
+                            , help = Just "Help message"
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
@@ -799,6 +822,7 @@ content model =
                         [ Ui.Atom.segmentControl
                             { id = "position-text-segment-control"
                             , label = Just "Position"
+                            , help = Nothing
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
@@ -813,6 +837,22 @@ content model =
                         , Ui.Atom.segmentControl
                             { id = "position-formula-segment-control"
                             , label = Just "Position"
+                            , help = Nothing
+                            , onChange = ChangedPositionAppended
+                            , options = positions
+                            , selected = model.positionAppended
+                            , child =
+                                Just <|
+                                    Ui.Atom.inputFormulaAppended "formula-appended"
+                                        { onChange = ChangedFormula
+                                        , text = model.formula
+                                        , label = "Formula"
+                                        }
+                            }
+                        , Ui.Atom.segmentControl
+                            { id = "position-formula-segment-control"
+                            , label = Just "Position"
+                            , help = Just "Help message"
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
@@ -834,6 +874,48 @@ content model =
                         [ Ui.Atom.segmentControl
                             { id = "position-nested-formula-segment-control"
                             , label = Just "Position"
+                            , help = Nothing
+                            , onChange = ChangedPositionNested
+                            , options = positions
+                            , selected = model.positionNested
+                            , child =
+                                case model.positionNested of
+                                    Left ->
+                                        Just <|
+                                            Ui.Atom.inputFormulaAppended "formula-appended"
+                                                { onChange = ChangedFormula
+                                                , text = model.formula
+                                                , label = "Formula"
+                                                }
+
+                                    Center ->
+                                        Just <|
+                                            Ui.Atom.nestedHideable
+                                                { show = model.showFormula
+                                                , onPress = ClickedShowFormula
+                                                , shown =
+                                                    Element.column
+                                                        [ Element.spacing Ui.Space.level4
+                                                        , Element.width Element.fill
+                                                        ]
+                                                        [ Ui.Atom.inputFormula
+                                                            { id = "input-formula"
+                                                            , onChange = ChangedFormula
+                                                            , text = model.formula
+                                                            , label = "Formula"
+                                                            , help = Nothing
+                                                            }
+                                                        ]
+                                                , hidden = Element.none
+                                                }
+
+                                    Right ->
+                                        Nothing
+                            }
+                        , Ui.Atom.segmentControl
+                            { id = "position-nested-formula-segment-control"
+                            , label = Just "Position"
+                            , help = Just "Help message"
                             , onChange = ChangedPositionNested
                             , options = positions
                             , selected = model.positionNested

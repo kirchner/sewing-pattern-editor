@@ -432,6 +432,7 @@ radioOptionCustom label status =
 type alias SegmentControlConfig tag msg =
     { id : String
     , label : Maybe String
+    , help : Maybe String
     , onChange : tag -> msg
     , options : List ( tag, String )
     , selected : tag
@@ -467,7 +468,7 @@ nestedHideable =
 
 
 segmentControl : SegmentControlConfig tag msg -> Element msg
-segmentControl { id, label, onChange, options, selected, child } =
+segmentControl { id, label, help, onChange, options, selected, child } =
     let
         header =
             case label of
@@ -501,6 +502,20 @@ segmentControl { id, label, onChange, options, selected, child } =
                     ]
                     (List.map (Element.map onChange) (segments options selected))
                 )
+
+        viewHelp =
+            case help of
+                Nothing ->
+                    Element.none
+
+                Just helpText ->
+                    Element.row
+                        [ Element.spacing Ui.Space.level1
+                        , Font.color Ui.Color.danger
+                        ]
+                        [ fa "exclamation-circle"
+                        , Ui.Typography.bodyBold helpText
+                        ]
     in
     case child of
         Nothing ->
@@ -514,6 +529,7 @@ segmentControl { id, label, onChange, options, selected, child } =
                             , Element.spacing Ui.Space.level2
                             ]
                             [ header
+                            , viewHelp
                             , control (Border.rounded 3)
                             ]
                     ]
@@ -530,6 +546,7 @@ segmentControl { id, label, onChange, options, selected, child } =
                             , Element.spacing Ui.Space.level2
                             ]
                             [ header
+                            , viewHelp
                             , control <|
                                 Border.roundEach
                                     { topLeft = 3
@@ -555,6 +572,7 @@ segmentControl { id, label, onChange, options, selected, child } =
                             , Element.spacing Ui.Space.level2
                             ]
                             [ header
+                            , viewHelp
                             , control (Border.rounded 3)
                             ]
                     , Element.el
@@ -593,6 +611,7 @@ segmentControl { id, label, onChange, options, selected, child } =
                                 , Element.spacing Ui.Space.level2
                                 ]
                                 [ header
+                                , viewHelp
                                 , control (Border.rounded 3)
                                 ]
                         , Element.el
@@ -611,9 +630,10 @@ segmentControl { id, label, onChange, options, selected, child } =
                     Element.column
                         [ Element.width Element.fill
                         , Element.spacing Ui.Space.level2
-                        , Element.padding 7
+                        , Element.padding 6
                         ]
                         [ header
+                        , viewHelp
                         , hidden
                         ]
                 ]
