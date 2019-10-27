@@ -17,7 +17,7 @@
 import { Elm } from './src/Worker.elm';
 
 const dbName = "sewing-pattern-editor";
-const dbVersion = 4;
+const dbVersion = 1;
 
 
 self.addEventListener("install", event => {
