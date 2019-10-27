@@ -92,8 +92,6 @@ import Result.Extra as Result
 import State exposing (State)
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
-import View.Icon
-import View.Input
 
 
 
@@ -1410,8 +1408,9 @@ viewActions name nameHelp =
         [ Element.width Element.fill
         , Element.spacing Design.small
         ]
-        [ View.Input.text "name-input"
-            { onChange = NameChanged
+        [ Ui.Atom.inputText
+            { id = "name-input"
+            , onChange = NameChanged
             , text = name
             , label = "Pick a name"
             , help = nameHelp
@@ -1421,18 +1420,21 @@ viewActions name nameHelp =
             , Element.spacing Design.xxSmall
             ]
             [ Element.el [ Element.alignLeft ] <|
-                View.Input.btnPrimary
-                    { onPress = Just CreatePressed
+                Ui.Atom.btnPrimary
+                    { id = "create-btn"
+                    , onPress = Just CreatePressed
                     , label = "Create"
                     }
             , Element.el [ Element.alignLeft ] <|
-                View.Input.btnSecondary "preview"
-                    { onPress = Just CreatePreviewPressed
+                Ui.Atom.btnSecondary
+                    { id = "preview-btn"
+                    , onPress = Just CreatePreviewPressed
                     , label = "Preview"
                     }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just CreateCancelPressed
+                Ui.Atom.btnCancel
+                    { id = "cancel-btn"
+                    , onPress = Just CreateCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -1562,8 +1564,9 @@ viewPointFormHelp pattern objects { point, id } =
                                 , id = id ++ "__from-one-point--direction"
                                 , help = stuff.directionHelp
                                 }
-                        , View.Input.formula "distance"
-                            { onChange = FromOnePoint_DistanceChanged
+                        , Ui.Atom.inputFormula
+                            { id = "distance"
+                            , onChange = FromOnePoint_DistanceChanged
                             , text = stuff.distance
                             , label = "Distance"
                             , help = stuff.distanceHelp
@@ -1793,8 +1796,9 @@ viewCircleFormHelp pattern objects { circle, id } =
                                 , id = id ++ "__with-radius--center-point"
                                 , label = "Center point"
                                 }
-                        , View.Input.formula "radius"
-                            { onChange = WithRadius_RadiusChanged
+                        , Ui.Atom.inputFormula
+                            { id = "radius"
+                            , onChange = WithRadius_RadiusChanged
                             , text = stuff.radius
                             , label = "Radius"
                             , help = stuff.radiusHelp
@@ -2109,8 +2113,9 @@ viewDetailFormHelp pattern objects { detail, id } =
                     }
               , case Tuple.first detail.firstCurve of
                     FirstReferencedCurveForm { reversed } ->
-                        View.Input.checkbox
-                            { onChange = FirstCurveReverseChanged
+                        Ui.Atom.checkbox
+                            { id = id ++ "__reverse-checkbox"
+                            , onChange = FirstCurveReverseChanged
                             , checked = reversed
                             , label = "Reverse curve"
                             }
@@ -2119,8 +2124,9 @@ viewDetailFormHelp pattern objects { detail, id } =
                         Element.none
               ]
             , List.indexedMap (viewNextCurve pattern objects id) detail.nextCurves
-            , [ View.Input.btnSecondary "add-curve-button"
-                    { onPress = Just AddCurvePressed
+            , [ Ui.Atom.btnSecondary
+                    { id = id ++ "__add-curve-button"
+                    , onPress = Just AddCurvePressed
                     , label = "Add Curve"
                     }
               , Ui.Atom.segmentControl
@@ -2185,8 +2191,9 @@ viewDetailFormHelp pattern objects { detail, id } =
                     }
               , case Tuple.first detail.lastCurve of
                     LastReferencedCurveForm { reversed } ->
-                        View.Input.checkbox
-                            { onChange = LastCurveReverseChanged
+                        Ui.Atom.checkbox
+                            { id = id ++ "__reverse-checkbox"
+                            , onChange = LastCurveReverseChanged
                             , checked = reversed
                             , label = "Reverse curve"
                             }
@@ -2308,8 +2315,9 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
             }
         , case form of
             NextReferencedCurveForm { reversed } ->
-                View.Input.checkbox
-                    { onChange = NextCurveReverseChanged index
+                Ui.Atom.checkbox
+                    { id = id ++ "__reverse-checkbox"
+                    , onChange = NextCurveReverseChanged index
                     , checked = reversed
                     , label = "Reverse curve"
                     }
@@ -2408,7 +2416,7 @@ viewActionMenu actionMenu =
                 Element.row
                     [ Element.spacing Design.xxSmall ]
                     [ Element.text "Actions"
-                    , View.Icon.fa "angle-down"
+                    , Ui.Atom.fa "angle-down"
                     ]
             }
         ]
@@ -2430,18 +2438,21 @@ editView { pattern, name } edit =
                 , Element.spacing Design.xxSmall
                 ]
                 [ Element.el [ Element.alignLeft ] <|
-                    View.Input.btnPrimary
-                        { onPress = Just UpdatePressed
+                    Ui.Atom.btnPrimary
+                        { id = "update-btn"
+                        , onPress = Just UpdatePressed
                         , label = "Update"
                         }
                 , Element.el [ Element.alignLeft ] <|
-                    View.Input.btnSecondary "preview"
-                        { onPress = Just EditPreviewPressed
+                    Ui.Atom.btnSecondary
+                        { id = "preview-btn"
+                        , onPress = Just EditPreviewPressed
                         , label = "Preview"
                         }
                 , Element.el [ Element.alignRight ] <|
-                    View.Input.btnCancel
-                        { onPress = Just EditCancelPressed
+                    Ui.Atom.btnCancel
+                        { id = "cancel-btn"
+                        , onPress = Just EditCancelPressed
                         , label = "Cancel"
                         }
                 ]
