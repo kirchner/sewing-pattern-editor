@@ -50,6 +50,7 @@ module Dialog exposing
 
 -}
 
+import Dialog.Intersectable as Intersectable
 import Dialog.OtherPoint as OtherPoint
 import Element exposing (Element)
 import Element.Background as Background
@@ -77,8 +78,6 @@ import Pattern
         , ExprHelp(..)
         , FirstCurve(..)
         , InsertHelp(..)
-        , Intersectable(..)
-        , IntersectableTag(..)
         , LastCurve(..)
         , NextCurve(..)
         , OneInTwo(..)
@@ -264,8 +263,8 @@ type PointForm
         , twoPointsPosition : TwoPointsPosition
         }
     | IntersectionForm
-        { objectA : OtherIntersectableForm
-        , objectB : OtherIntersectableForm
+        { objectA : Intersectable.Form AxisForm CircleForm CurveForm
+        , objectB : Intersectable.Form AxisForm CircleForm CurveForm
         , objectsHelp : Maybe String
         , which : Int
         , whichHelp : Maybe String
@@ -415,46 +414,6 @@ type ActionMenu
     | InsertCurveBefore
     | InsertCurveAfter
     | Remove
-
-
-
----- NESTINGS
-
-
-type OtherIntersectableForm
-    = ReferencedIntersectableForm
-        { dropdown : Dropdown
-        , maybeAIntersectable : Maybe (A Intersectable)
-        , help : Maybe String
-        }
-    | InlinedAxisForm
-        { expanded : Bool
-        , axis : AxisForm
-        }
-    | InlinedCircleForm
-        { expanded : Bool
-        , circle : CircleForm
-        }
-    | InlinedCurveForm
-        { expanded : Bool
-        , curve : CurveForm
-        }
-
-
-otherIntersectableFormExpanded : OtherIntersectableForm -> Bool
-otherIntersectableFormExpanded form =
-    case form of
-        ReferencedIntersectableForm _ ->
-            True
-
-        InlinedAxisForm { expanded } ->
-            expanded
-
-        InlinedCircleForm { expanded } ->
-            expanded
-
-        InlinedCurveForm { expanded } ->
-            expanded
 
 
 
@@ -609,11 +568,18 @@ initPointFormWith pattern aPoint =
                                 }
                     in
                     Maybe.map2 toForm
-                        (initOtherIntersectableFormWith pattern stuff.objectA)
-                        (initOtherIntersectableFormWith pattern stuff.objectB)
+                        (Intersectable.initWith initIntersectable pattern stuff.objectA)
+                        (Intersectable.initWith initIntersectable pattern stuff.objectB)
 
                 TransformedPoint stuff ->
                     Nothing
+
+
+initIntersectable =
+    { axis = initAxisFormWith
+    , circle = initCircleFormWith
+    , curve = initCurveFormWith
+    }
 
 
 {-| -}
@@ -995,61 +961,6 @@ initLastCurveFormWith pattern lastCurve =
                     }
 
 
-initOtherIntersectableFormWith :
-    Pattern
-    -> A Intersectable
-    -> Maybe OtherIntersectableForm
-initOtherIntersectableFormWith pattern aIntersectable =
-    if Pattern.inlined aIntersectable then
-        case Pattern.tagFromIntersectable pattern aIntersectable of
-            Just IntersectableAxisTag ->
-                let
-                    toForm axis =
-                        InlinedAxisForm
-                            { expanded = False
-                            , axis = axis
-                            }
-                in
-                Pattern.axisFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initAxisFormWith pattern)
-                    |> Maybe.map toForm
-
-            Just IntersectableCircleTag ->
-                let
-                    toForm circle =
-                        InlinedCircleForm
-                            { expanded = False
-                            , circle = circle
-                            }
-                in
-                Pattern.circleFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initCircleFormWith pattern)
-                    |> Maybe.map toForm
-
-            Just IntersectableCurveTag ->
-                let
-                    toForm curve =
-                        InlinedCurveForm
-                            { expanded = False
-                            , curve = curve
-                            }
-                in
-                Pattern.curveFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initCurveFormWith pattern)
-                    |> Maybe.map toForm
-
-            Nothing ->
-                Nothing
-
-    else
-        Just <|
-            ReferencedIntersectableForm
-                { dropdown = Ui.Atom.Dropdown.init
-                , maybeAIntersectable = Just aIntersectable
-                , help = Nothing
-                }
-
-
 
 -- POINT FORM
 
@@ -1082,8 +993,8 @@ initFromTwoPointsForm =
 initIntersectionForm : PointForm
 initIntersectionForm =
     IntersectionForm
-        { objectA = initReferencedIntersectableForm
-        , objectB = initReferencedIntersectableForm
+        { objectA = Intersectable.initReferenced
+        , objectB = Intersectable.initReferenced
         , objectsHelp = Nothing
         , which = 1
         , whichHelp = Nothing
@@ -1288,43 +1199,6 @@ initOtherCurveForm =
 
 
 
--- OTHER FORM
-
-
-initReferencedIntersectableForm : OtherIntersectableForm
-initReferencedIntersectableForm =
-    ReferencedIntersectableForm
-        { dropdown = Ui.Atom.Dropdown.init
-        , maybeAIntersectable = Nothing
-        , help = Nothing
-        }
-
-
-initInlinedAxisForm : OtherIntersectableForm
-initInlinedAxisForm =
-    InlinedAxisForm
-        { expanded = True
-        , axis = initThroughOnePointForm
-        }
-
-
-initInlinedCircleForm : OtherIntersectableForm
-initInlinedCircleForm =
-    InlinedCircleForm
-        { expanded = True
-        , circle = initWithRadiusForm
-        }
-
-
-initInlinedCurveForm : OtherIntersectableForm
-initInlinedCurveForm =
-    InlinedCurveForm
-        { expanded = True
-        , curve = initStraightForm
-        }
-
-
-
 ---- VIEW
 
 
@@ -1520,33 +1394,20 @@ viewPointFormHelp pattern objects { point, id } =
                             whichSize =
                                 Maybe.withDefault 1 <|
                                     Maybe.map2 Pattern.whichSize
-                                        (intersectableFrom stuff.objectA)
-                                        (intersectableFrom stuff.objectB)
-
-                            intersectableFrom object =
-                                case object of
-                                    ReferencedIntersectableForm { maybeAIntersectable } ->
-                                        Maybe.andThen (Pattern.tagFromIntersectable pattern)
-                                            maybeAIntersectable
-
-                                    InlinedAxisForm _ ->
-                                        Just IntersectableAxisTag
-
-                                    InlinedCircleForm _ ->
-                                        Just IntersectableCircleTag
-
-                                    InlinedCurveForm _ ->
-                                        Just IntersectableCurveTag
+                                        (Intersectable.intersectableTagFromForm pattern stuff.objectA)
+                                        (Intersectable.intersectableTagFromForm pattern stuff.objectB)
                         in
                         [ Element.map Intersection_ObjectAMsg <|
-                            viewOtherIntersectableForm pattern
+                            Intersectable.view viewIntersectable
+                                pattern
                                 objects
                                 { otherIntersectable = stuff.objectA
                                 , id = "__intersection--object-a"
                                 , label = "1st object"
                                 }
                         , Element.map Intersection_ObjectBMsg <|
-                            viewOtherIntersectableForm pattern
+                            Intersectable.view viewIntersectable
+                                pattern
                                 objects
                                 { otherIntersectable = stuff.objectB
                                 , id = "__intersection--object-b"
@@ -1572,6 +1433,13 @@ viewPointFormHelp pattern objects { point, id } =
                             Element.none
                         ]
         }
+
+
+viewIntersectable =
+    { axis = viewAxisFormHelp
+    , circle = viewCircleFormHelp
+    , curve = viewCurveFormHelp
+    }
 
 
 
@@ -2472,98 +2340,6 @@ title text =
         (Ui.Typography.bodyBold text)
 
 
-viewOtherIntersectableForm :
-    Pattern
-    -> Pattern.Objects
-    ->
-        { otherIntersectable : OtherIntersectableForm
-        , id : String
-        , label : String
-        }
-    -> Element OtherIntersectableMsg
-viewOtherIntersectableForm pattern objects { otherIntersectable, id, label } =
-    let
-        selectedTag =
-            tagFromOtherIntersectableForm otherIntersectable
-
-        expanded =
-            otherIntersectableFormExpanded otherIntersectable
-    in
-    Ui.Atom.segmentControl
-        { id = id
-        , label = Just label
-        , help = Nothing
-        , onChange = OtherIntersectableTypeChanged
-        , options = otherIntersectableTags
-        , selected = selectedTag
-        , child =
-            case otherIntersectable of
-                ReferencedIntersectableForm { dropdown, maybeAIntersectable, help } ->
-                    Just <|
-                        Ui.Atom.Dropdown.viewAppended
-                            { entryToString = objectName
-                            , entryToHash = Pattern.hash
-                            }
-                            { id = id ++ "__other-intersectable-object"
-                            , lift = ReferencedIntersectableDropdownMsg
-                            , label = label
-                            }
-                            (List.concat
-                                [ List.map Pattern.intersectableAxis objects.axes
-                                , List.map Pattern.intersectableCircle objects.circles
-                                , List.map Pattern.intersectableCurve objects.curves
-                                ]
-                            )
-                            dropdown
-                            maybeAIntersectable
-
-                InlinedAxisForm { axis } ->
-                    Just <|
-                        Ui.Atom.nestedHideable
-                            { show = expanded
-                            , onPress = InlinedIntersectableExpandToggled
-                            , shown =
-                                Element.map InlinedAxisMsg <|
-                                    viewAxisFormHelp pattern
-                                        objects
-                                        { axis = axis
-                                        , id = id ++ "__inlined--axis"
-                                        }
-                            , hidden = Element.none
-                            }
-
-                InlinedCircleForm { circle } ->
-                    Just <|
-                        Ui.Atom.nestedHideable
-                            { show = expanded
-                            , onPress = InlinedIntersectableExpandToggled
-                            , shown =
-                                Element.map InlinedCircleMsg <|
-                                    viewCircleFormHelp pattern
-                                        objects
-                                        { circle = circle
-                                        , id = id ++ "__inlined--circle"
-                                        }
-                            , hidden = Element.none
-                            }
-
-                InlinedCurveForm { curve } ->
-                    Just <|
-                        Ui.Atom.nestedHideable
-                            { show = expanded
-                            , onPress = InlinedIntersectableExpandToggled
-                            , shown =
-                                Element.map InlinedCurveMsg <|
-                                    viewCurveFormHelp pattern
-                                        objects
-                                        { curve = curve
-                                        , id = "__inlined--curve"
-                                        }
-                            , hidden = Element.none
-                            }
-        }
-
-
 viewDirection :
     { direction : Direction
     , id : String
@@ -2727,8 +2503,8 @@ type PointMsg
     | FromTwoPoints_BasePointBMsg (OtherPoint.Msg PointMsg)
     | FromTwoPoints_TwoPointsPositionMsg TwoPointsPositionMsg
       -- INTERSECTION
-    | Intersection_ObjectAMsg OtherIntersectableMsg
-    | Intersection_ObjectBMsg OtherIntersectableMsg
+    | Intersection_ObjectAMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
+    | Intersection_ObjectBMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
     | Intersection_WhichChanged Int
 
 
@@ -2817,19 +2593,6 @@ type ActionMenuMsg
     | InsertCurveBeforePressed
     | InsertCurveAfterPressed
     | RemovePressed
-
-
-
--- NESTINGS
-
-
-type OtherIntersectableMsg
-    = OtherIntersectableTypeChanged OtherIntersectableTag
-    | ReferencedIntersectableDropdownMsg (Ui.Atom.Dropdown.Msg (A Intersectable))
-    | InlinedAxisMsg AxisMsg
-    | InlinedCircleMsg CircleMsg
-    | InlinedCurveMsg CurveMsg
-    | InlinedIntersectableExpandToggled
 
 
 
@@ -3237,7 +3000,11 @@ updatePointForm pattern objects pointMsg form =
         ( Intersection_ObjectAMsg subMsg, IntersectionForm stuff ) ->
             let
                 ( newObjectA, subCmd ) =
-                    updateOtherIntersectableForm pattern objects subMsg stuff.objectA
+                    Intersectable.update intersectableUpdateConfig
+                        pattern
+                        objects
+                        subMsg
+                        stuff.objectA
             in
             ( IntersectionForm { stuff | objectA = newObjectA }
             , Cmd.map Intersection_ObjectAMsg subCmd
@@ -3246,7 +3013,11 @@ updatePointForm pattern objects pointMsg form =
         ( Intersection_ObjectBMsg subMsg, IntersectionForm stuff ) ->
             let
                 ( newObjectB, subCmd ) =
-                    updateOtherIntersectableForm pattern objects subMsg stuff.objectB
+                    Intersectable.update intersectableUpdateConfig
+                        pattern
+                        objects
+                        subMsg
+                        stuff.objectB
             in
             ( IntersectionForm { stuff | objectB = newObjectB }
             , Cmd.map Intersection_ObjectBMsg subCmd
@@ -3260,6 +3031,16 @@ updatePointForm pattern objects pointMsg form =
         -- CATCH ALL
         _ ->
             ( form, Cmd.none )
+
+
+intersectableUpdateConfig =
+    { updateAxis = updateAxisForm
+    , updateCircle = updateCircleForm
+    , updateCurve = updateCurveForm
+    , initAxis = initThroughOnePointForm
+    , initCircle = initWithRadiusForm
+    , initCurve = initStraightForm
+    }
 
 
 updateAxisForm :
@@ -4184,104 +3965,6 @@ updateDetailForm pattern objects detailMsg detail =
             ( detail, Cmd.none )
 
 
-updateOtherIntersectableForm :
-    Pattern
-    -> Pattern.Objects
-    -> OtherIntersectableMsg
-    -> OtherIntersectableForm
-    -> ( OtherIntersectableForm, Cmd OtherIntersectableMsg )
-updateOtherIntersectableForm pattern objects msg form =
-    case ( msg, form ) of
-        ( OtherIntersectableTypeChanged intersectableTag, _ ) ->
-            if tagFromOtherIntersectableForm form == intersectableTag then
-                ( form, Cmd.none )
-
-            else
-                ( case intersectableTag of
-                    ReferencedIntersectableTag ->
-                        initReferencedIntersectableForm
-
-                    InlinedAxisTag ->
-                        initInlinedAxisForm
-
-                    InlinedCircleTag ->
-                        initInlinedCircleForm
-
-                    InlinedCurveTag ->
-                        initInlinedCurveForm
-                , Cmd.none
-                )
-
-        ( ReferencedIntersectableDropdownMsg dropdownMsg, ReferencedIntersectableForm stuff ) ->
-            let
-                ( newDropdown, dropdownCmd, newMaybeAIntersectable ) =
-                    Ui.Atom.Dropdown.update
-                        { entryToHash = Pattern.hash }
-                        (List.concat
-                            [ List.map Pattern.intersectableAxis objects.axes
-                            , List.map Pattern.intersectableCircle objects.circles
-                            , List.map Pattern.intersectableCurve objects.curves
-                            ]
-                        )
-                        dropdownMsg
-                        stuff.dropdown
-                        stuff.maybeAIntersectable
-            in
-            ( ReferencedIntersectableForm
-                { stuff
-                    | dropdown = newDropdown
-                    , maybeAIntersectable = newMaybeAIntersectable
-                }
-            , Cmd.map ReferencedIntersectableDropdownMsg dropdownCmd
-            )
-
-        ( InlinedAxisMsg axisMsg, InlinedAxisForm stuff ) ->
-            let
-                ( newAxis, axisCmd ) =
-                    updateAxisForm pattern objects axisMsg stuff.axis
-            in
-            ( InlinedAxisForm { stuff | axis = newAxis }
-            , Cmd.map InlinedAxisMsg axisCmd
-            )
-
-        ( InlinedCircleMsg circleMsg, InlinedCircleForm stuff ) ->
-            let
-                ( newCircle, circleCmd ) =
-                    updateCircleForm pattern objects circleMsg stuff.circle
-            in
-            ( InlinedCircleForm { stuff | circle = newCircle }
-            , Cmd.map InlinedCircleMsg circleCmd
-            )
-
-        ( InlinedCurveMsg curveMsg, InlinedCurveForm stuff ) ->
-            let
-                ( newCurve, curveCmd ) =
-                    updateCurveForm pattern objects curveMsg stuff.curve
-            in
-            ( InlinedCurveForm { stuff | curve = newCurve }
-            , Cmd.map InlinedCurveMsg curveCmd
-            )
-
-        ( InlinedIntersectableExpandToggled, InlinedAxisForm stuff ) ->
-            ( InlinedAxisForm { stuff | expanded = not stuff.expanded }
-            , Cmd.none
-            )
-
-        ( InlinedIntersectableExpandToggled, InlinedCircleForm stuff ) ->
-            ( InlinedCircleForm { stuff | expanded = not stuff.expanded }
-            , Cmd.none
-            )
-
-        ( InlinedIntersectableExpandToggled, InlinedCurveForm stuff ) ->
-            ( InlinedCurveForm { stuff | expanded = not stuff.expanded }
-            , Cmd.none
-            )
-
-        -- CATCH ALL
-        _ ->
-            ( form, Cmd.none )
-
-
 updateDirection : DirectionMsg -> Direction -> Direction
 updateDirection directionMsg direction =
     case directionMsg of
@@ -4435,7 +4118,7 @@ newPointFrom form pattern =
         IntersectionForm stuff ->
             let
                 getObjectA =
-                    newOtherIntersectableFrom stuff.objectA pattern
+                    Intersectable.new newIntersectable stuff.objectA pattern
                         |> Result.mapError
                             (\objectAWithHelp ->
                                 { stuff
@@ -4448,7 +4131,7 @@ newPointFrom form pattern =
                         |> Result.andThen getObjectB
 
                 getObjectB aIntersectableA =
-                    newOtherIntersectableFrom stuff.objectB pattern
+                    Intersectable.new newIntersectable stuff.objectB pattern
                         |> Result.mapError
                             (\objectBWithHelp ->
                                 { stuff | objectB = objectBWithHelp }
@@ -4475,6 +4158,13 @@ newPointFrom form pattern =
             in
             getObjectA
                 |> Result.mapError IntersectionForm
+
+
+newIntersectable =
+    { axis = newAxisFrom
+    , circle = newCircleFrom
+    , curve = newCurveFrom
+    }
 
 
 newAxisFrom : AxisForm -> Pattern -> Result AxisForm Axis
@@ -5206,47 +4896,6 @@ checkLastCurve pattern form =
             form
 
 
-newOtherIntersectableFrom :
-    OtherIntersectableForm
-    -> Pattern
-    -> Result OtherIntersectableForm (A Intersectable)
-newOtherIntersectableFrom form pattern =
-    case form of
-        ReferencedIntersectableForm stuff ->
-            case stuff.maybeAIntersectable of
-                Nothing ->
-                    Err <|
-                        ReferencedIntersectableForm
-                            { stuff | help = Just "Pick an object" }
-
-                Just aIntersectable ->
-                    Ok aIntersectable
-
-        InlinedAxisForm stuff ->
-            newAxisFrom stuff.axis pattern
-                |> Result.mapError
-                    (\axisFormWithHelp ->
-                        InlinedAxisForm { stuff | axis = axisFormWithHelp }
-                    )
-                |> Result.map (Pattern.this >> Pattern.intersectableAxis)
-
-        InlinedCircleForm stuff ->
-            newCircleFrom stuff.circle pattern
-                |> Result.mapError
-                    (\circleFormWithHelp ->
-                        InlinedCircleForm { stuff | circle = circleFormWithHelp }
-                    )
-                |> Result.map (Pattern.this >> Pattern.intersectableCircle)
-
-        InlinedCurveForm stuff ->
-            newCurveFrom stuff.curve pattern
-                |> Result.mapError
-                    (\curveFormWithHelp ->
-                        InlinedCurveForm { stuff | curve = curveFormWithHelp }
-                    )
-                |> Result.map (Pattern.this >> Pattern.intersectableCurve)
-
-
 
 -- ADDING HELP
 
@@ -5261,9 +4910,12 @@ checkOtherPoint pattern otherPoint =
             otherPoint
 
 
-checkOtherIntersectableObject : Pattern -> OtherIntersectableForm -> OtherIntersectableForm
+checkOtherIntersectableObject :
+    Pattern
+    -> Intersectable.Form AxisForm CircleForm CurveForm
+    -> Intersectable.Form AxisForm CircleForm CurveForm
 checkOtherIntersectableObject pattern otherIntersectable =
-    case newOtherIntersectableFrom otherIntersectable pattern of
+    case Intersectable.new newIntersectable otherIntersectable pattern of
         Err otherIntersectableWithHelp ->
             otherIntersectableWithHelp
 
@@ -5510,11 +5162,18 @@ clearPointForm form =
         IntersectionForm stuff ->
             IntersectionForm
                 { stuff
-                    | objectA = clearOtherIntersectableHelp stuff.objectA
-                    , objectB = clearOtherIntersectableHelp stuff.objectB
+                    | objectA = Intersectable.clear clearIntersectable stuff.objectA
+                    , objectB = Intersectable.clear clearIntersectable stuff.objectB
                     , objectsHelp = Nothing
                     , whichHelp = Nothing
                 }
+
+
+clearIntersectable =
+    { axis = clearAxisForm
+    , circle = clearCircleForm
+    , curve = clearCurveForm
+    }
 
 
 clearAxisForm : AxisForm -> AxisForm
@@ -5674,22 +5333,6 @@ clearLastCurveForm form =
         LastReferencedCurveForm stuff ->
             LastReferencedCurveForm
                 { stuff | curve = clearOtherCurveHelp stuff.curve }
-
-
-clearOtherIntersectableHelp : OtherIntersectableForm -> OtherIntersectableForm
-clearOtherIntersectableHelp form =
-    case form of
-        ReferencedIntersectableForm stuff ->
-            ReferencedIntersectableForm { stuff | help = Nothing }
-
-        InlinedAxisForm stuff ->
-            InlinedAxisForm { stuff | axis = clearAxisForm stuff.axis }
-
-        InlinedCircleForm stuff ->
-            InlinedCircleForm { stuff | circle = clearCircleForm stuff.circle }
-
-        InlinedCurveForm stuff ->
-            InlinedCurveForm { stuff | curve = clearCurveForm stuff.curve }
 
 
 clearOtherCurveHelp : OtherCurveForm -> OtherCurveForm
@@ -6181,41 +5824,6 @@ tagFromOrientation orientation =
 
         OrientationAngle _ ->
             CustomOrientationTag
-
-
-
---
-
-
-type OtherIntersectableTag
-    = ReferencedIntersectableTag
-    | InlinedAxisTag
-    | InlinedCircleTag
-    | InlinedCurveTag
-
-
-otherIntersectableTags =
-    [ ( ReferencedIntersectableTag, "Pick object" )
-    , ( InlinedAxisTag, "New axis" )
-    , ( InlinedCircleTag, "New circle" )
-    , ( InlinedCurveTag, "New curve" )
-    ]
-
-
-tagFromOtherIntersectableForm : OtherIntersectableForm -> OtherIntersectableTag
-tagFromOtherIntersectableForm form =
-    case form of
-        ReferencedIntersectableForm _ ->
-            ReferencedIntersectableTag
-
-        InlinedAxisForm _ ->
-            InlinedAxisTag
-
-        InlinedCircleForm _ ->
-            InlinedCircleTag
-
-        InlinedCurveForm _ ->
-            InlinedCurveTag
 
 
 
