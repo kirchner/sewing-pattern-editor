@@ -9,11 +9,9 @@ module View.Input exposing
     , btnSecondary
     , btnSecondaryWide
     , checkbox
-    , dropdown
-    , dropdownAppended
-    , dropdownWithMenu
-    , formula
-    , listbox
+    ,  formula
+       --, listbox
+
     , option
     , optionCustom
     , radioColumn
@@ -630,338 +628,114 @@ radioOptionCustom label status =
 
 
 
----- DROPDPOWNS
-
-
-dropdown :
-    String
-    ->
-        { lift : Dropdown.Msg entry -> msg
-        , entryToString : entry -> String
-        , entryToHash : entry -> String
-        , label : String
-        , options : List entry
-        , dropdown : Dropdown
-        , selection : Maybe entry
-        }
-    -> Element msg
-dropdown =
-    dropdownWithMenu Element.none
-
-
-dropdownWithMenu :
-    Element msg
-    -> String
-    ->
-        { lift : Dropdown.Msg entry -> msg
-        , entryToString : entry -> String
-        , entryToHash : entry -> String
-        , label : String
-        , options : List entry
-        , dropdown : Dropdown
-        , selection : Maybe entry
-        }
-    -> Element msg
-dropdownWithMenu menu id data =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Design.xSmall
-        ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
-                , Element.alignLeft
-                , Font.size 12
-                , Font.color Design.black
-                , Font.bold
-                ]
-                (Element.text data.label)
-            , Element.el [ Element.alignRight ]
-                menu
-            ]
-        , Dropdown.customView dropdownDomFunctions
-            (dropdownViewConfig False data.entryToString data.entryToHash)
-            { id = id
-            , labelledBy = id ++ "-label"
-            , lift = data.lift
-            }
-            (List.map Listbox.option data.options)
-            data.dropdown
-            data.selection
-        ]
-
-
-dropdownViewConfig appended printOption hashOption =
-    Dropdown.customViewConfig hashOption
-        { container =
-            [ Element.width Element.fill
-            , Element.height (Element.px 30)
-            ]
-        , button =
-            \{ maybeSelection } ->
-                { attributes =
-                    [ Element.height Element.fill
-                    , Element.width Element.fill
-                    , Element.padding 5
-                    , Font.size 16
-                    , Font.color Design.black
-                    , if appended then
-                        Border.roundEach
-                            { topLeft = 0
-                            , topRight = 0
-                            , bottomLeft = 3
-                            , bottomRight = 3
-                            }
-
-                      else
-                        Border.rounded 3
-                    , Border.width 1
-                    , Border.color Design.black
-                    , Background.color Design.white
-                    , Element.mouseOver
-                        [ Border.color Design.primaryDark
-                        , Font.color Design.primaryDark
-                        ]
-                    ]
-                , children =
-                    [ Element.text <|
-                        case maybeSelection of
-                            Nothing ->
-                                ""
-
-                            Just that ->
-                                printOption that
-                    , Element.el
-                        [ Element.alignRight
-                        , Element.paddingXY 10 0
-                        ]
-                        (View.Icon.fa "chevron-down")
-                    ]
-                }
-        , ul =
-            [ Element.width Element.fill
-            , Element.height
-                (Element.fill
-                    |> Element.maximum 200
-                )
-            , Element.scrollbarY
-            , Font.color Design.black
-            , Background.color Design.white
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color Design.black
-            ]
-        , liOption =
-            \{ focused, hovered } thatPoint ->
-                let
-                    defaultAttrs =
-                        [ Element.pointer
-                        , Element.padding 10
-                        , Font.size 16
-                        , Element.width Element.fill
-                        ]
-                in
-                { attributes =
-                    if hovered then
-                        [ Background.color Design.secondaryDark ] ++ defaultAttrs
-
-                    else if focused then
-                        [ Background.color Design.secondary ] ++ defaultAttrs
-
-                    else
-                        defaultAttrs
-                , children =
-                    [ Element.text (printOption thatPoint) ]
-                }
-        , liDivider =
-            \_ ->
-                { attributes = []
-                , children = []
-                }
-        }
-
-
-dropdownAppended :
-    String
-    ->
-        { lift : Dropdown.Msg entry -> msg
-        , entryToString : entry -> String
-        , entryToHash : entry -> String
-        , label : String
-        , options : List entry
-        , dropdown : Dropdown
-        , selection : Maybe entry
-        }
-    -> Element msg
-dropdownAppended id data =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Design.xSmall
-        ]
-        [ Dropdown.customView dropdownDomFunctions
-            (dropdownViewConfig True data.entryToString data.entryToHash)
-            { id = id
-            , labelledBy = id ++ "-label"
-            , lift = data.lift
-            }
-            (List.map Listbox.option data.options)
-            data.dropdown
-            data.selection
-        ]
-
-
-dropdownDomFunctions =
-    let
-        attribute name value =
-            Element.htmlAttribute (Attributes.attribute name value)
-
-        style name value =
-            Element.htmlAttribute (Attributes.style name value)
-
-        on event decoder =
-            Element.htmlAttribute (Events.on event decoder)
-
-        preventDefaultOn event decoder =
-            Element.htmlAttribute (Events.preventDefaultOn event decoder)
-    in
-    { ul = Element.column
-    , li = Element.row
-    , button =
-        \attributes children ->
-            Input.button attributes
-                { onPress = Nothing
-                , label =
-                    Element.row
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        ]
-                        children
-                }
-    , div =
-        \attributes children ->
-            Element.el (Element.below children.ul :: attributes) children.button
-    , style = style
-    , text = Element.text
-    , attribute = attribute
-    , on = on
-    , preventDefaultOn = preventDefaultOn
-    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
-    , htmlMap = \noOp -> Element.map (\_ -> noOp)
-    }
-
-
-
 ---- LISTBOX
-
-
-listbox :
-    String
-    ->
-        { lift : Listbox.Msg (That object) -> msg
-        , entryToString : That object -> String
-        , label : String
-        , options : List ( That object, Entry object )
-        , listbox : Listbox
-        , selection : Those object
-        }
-    -> Element msg
-listbox id data =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing 3
-        ]
-        [ Element.el
-            [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
-            , Font.size 12
-            , Font.color Design.black
-            , Font.bold
-            ]
-            (Element.text data.label)
-        , Listbox.customView listboxDomFunctions
-            (listboxViewConfig data.entryToString)
-            { id = id
-            , labelledBy = id ++ "-label"
-            , lift = data.lift
-            }
-            (List.map (Tuple.first >> Listbox.option) data.options)
-            data.listbox
-            (Those.toList data.selection)
-        ]
-
-
-listboxViewConfig printOption =
-    Listbox.customViewConfig That.hash
-        { ul =
-            [ Element.width Element.fill
-            , Element.height (Element.px 400)
-            , Element.padding 1
-            , Element.scrollbarY
-            , Font.color Design.black
-            , Background.color Design.white
-            , Border.width 1
-            , Border.rounded 3
-            , Border.color Design.black
-            ]
-        , liOption =
-            \{ selected, focused, hovered } thatPoint ->
-                let
-                    defaultAttrs =
-                        [ Element.pointer
-                        , Element.paddingEach
-                            { left = 0
-                            , right = 10
-                            , top = 10
-                            , bottom = 10
-                            }
-                        , Font.size 16
-                        , Element.width Element.fill
-                        ]
-                in
-                { attributes =
-                    if hovered then
-                        [ Background.color Design.secondaryDark ] ++ defaultAttrs
-
-                    else if focused then
-                        [ Background.color Design.secondary ] ++ defaultAttrs
-
-                    else
-                        defaultAttrs
-                , children =
-                    [ Element.el
-                        [ Element.width (Element.px 30) ]
-                        (if selected then
-                            Element.el [ Element.centerX ]
-                                (View.Icon.fa "check")
-
-                         else
-                            Element.none
-                        )
-                    , Element.text (printOption thatPoint)
-                    ]
-                }
-        , liDivider = \_ -> { attributes = [], children = [] }
-        , empty = Element.text ""
-        , focusable = True
-        }
-
-
-listboxDomFunctions =
-    let
-        attribute name value =
-            Element.htmlAttribute (Attributes.attribute name value)
-
-        on event decoder =
-            Element.htmlAttribute (Events.on event decoder)
-
-        preventDefaultOn event decoder =
-            Element.htmlAttribute (Events.preventDefaultOn event decoder)
-    in
-    { ul = Element.column
-    , li = Element.row
-    , attribute = attribute
-    , on = on
-    , preventDefaultOn = preventDefaultOn
-    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
-    , htmlMap = \noOp -> Element.map (\_ -> noOp)
-    }
+--listbox :
+--    String
+--    ->
+--        { lift : Listbox.Msg (That object) -> msg
+--        , entryToString : That object -> String
+--        , label : String
+--        , options : List ( That object, Entry object )
+--        , listbox : Listbox
+--        , selection : Those object
+--        }
+--    -> Element msg
+--listbox id data =
+--    Element.column
+--        [ Element.width Element.fill
+--        , Element.spacing 3
+--        ]
+--        [ Element.el
+--            [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
+--            , Font.size 12
+--            , Font.color Design.black
+--            , Font.bold
+--            ]
+--            (Element.text data.label)
+--        , Listbox.customView listboxDomFunctions
+--            (listboxViewConfig data.entryToString)
+--            { id = id
+--            , labelledBy = id ++ "-label"
+--            , lift = data.lift
+--            }
+--            (List.map (Tuple.first >> Listbox.option) data.options)
+--            data.listbox
+--            (Those.toList data.selection)
+--        ]
+--
+--
+--listboxViewConfig printOption =
+--    Listbox.customViewConfig That.hash
+--        { ul =
+--            [ Element.width Element.fill
+--            , Element.height (Element.px 400)
+--            , Element.padding 1
+--            , Element.scrollbarY
+--            , Font.color Design.black
+--            , Background.color Design.white
+--            , Border.width 1
+--            , Border.rounded 3
+--            , Border.color Design.black
+--            ]
+--        , liOption =
+--            \{ selected, focused, hovered } thatPoint ->
+--                let
+--                    defaultAttrs =
+--                        [ Element.pointer
+--                        , Element.paddingEach
+--                            { left = 0
+--                            , right = 10
+--                            , top = 10
+--                            , bottom = 10
+--                            }
+--                        , Font.size 16
+--                        , Element.width Element.fill
+--                        ]
+--                in
+--                { attributes =
+--                    if hovered then
+--                        [ Background.color Design.secondaryDark ] ++ defaultAttrs
+--
+--                    else if focused then
+--                        [ Background.color Design.secondary ] ++ defaultAttrs
+--
+--                    else
+--                        defaultAttrs
+--                , children =
+--                    [ Element.el
+--                        [ Element.width (Element.px 30) ]
+--                        (if selected then
+--                            Element.el [ Element.centerX ]
+--                                (View.Icon.fa "check")
+--
+--                         else
+--                            Element.none
+--                        )
+--                    , Element.text (printOption thatPoint)
+--                    ]
+--                }
+--        , liDivider = \_ -> { attributes = [], children = [] }
+--        , empty = Element.text ""
+--        , focusable = True
+--        }
+--
+--
+--listboxDomFunctions =
+--    let
+--        attribute name value =
+--            Element.htmlAttribute (Attributes.attribute name value)
+--
+--        on event decoder =
+--            Element.htmlAttribute (Events.on event decoder)
+--
+--        preventDefaultOn event decoder =
+--            Element.htmlAttribute (Events.preventDefaultOn event decoder)
+--    in
+--    { ul = Element.column
+--    , li = Element.row
+--    , attribute = attribute
+--    , on = on
+--    , preventDefaultOn = preventDefaultOn
+--    , attributeMap = \noOp -> Element.mapAttribute (\_ -> noOp)
+--    , htmlMap = \noOp -> Element.map (\_ -> noOp)
+--    }

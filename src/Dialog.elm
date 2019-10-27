@@ -61,8 +61,6 @@ import Html.Attributes as Attributes
 import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
-import Listbox
-import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Maybe.Extra as Maybe
 import Pattern
     exposing
@@ -92,6 +90,8 @@ import Pattern
         )
 import Result.Extra as Result
 import State exposing (State)
+import Ui.Atom
+import Ui.Atom.Dropdown exposing (Dropdown)
 import View.Icon
 import View.Input
 
@@ -889,7 +889,7 @@ initFirstCurveFormWith pattern firstCurve =
             Just <|
                 FirstReferencedCurveForm
                     { curve =
-                        { dropdown = Dropdown.init
+                        { dropdown = Ui.Atom.Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
                     , reversed = stuff.reversed
@@ -962,7 +962,7 @@ nextCurveFormWith pattern nextCurve =
             Just <|
                 NextReferencedCurveForm
                     { curve =
-                        { dropdown = Dropdown.init
+                        { dropdown = Ui.Atom.Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
                     , reversed = stuff.reversed
@@ -999,7 +999,7 @@ initLastCurveFormWith pattern lastCurve =
             Just <|
                 LastReferencedCurveForm
                     { curve =
-                        { dropdown = Dropdown.init
+                        { dropdown = Ui.Atom.Dropdown.init
                         , maybeACurve = Just stuff.curve
                         }
                     , reversed = stuff.reversed
@@ -1021,7 +1021,7 @@ initOtherPointFormWith pattern aPoint =
     else
         Just <|
             ReferencedPointForm
-                { dropdown = Dropdown.init
+                { dropdown = Ui.Atom.Dropdown.init
                 , maybeAPoint = Just aPoint
                 , help = Nothing
                 }
@@ -1076,7 +1076,7 @@ initOtherIntersectableFormWith pattern aIntersectable =
     else
         Just <|
             ReferencedIntersectableForm
-                { dropdown = Dropdown.init
+                { dropdown = Ui.Atom.Dropdown.init
                 , maybeAIntersectable = Just aIntersectable
                 , help = Nothing
                 }
@@ -1314,7 +1314,7 @@ initLastReferencedCurveForm =
 
 initOtherCurveForm : OtherCurveForm
 initOtherCurveForm =
-    { dropdown = Dropdown.init
+    { dropdown = Ui.Atom.Dropdown.init
     , maybeACurve = Nothing
     }
 
@@ -1326,7 +1326,7 @@ initOtherCurveForm =
 initReferencedPointForm : OtherPointForm
 initReferencedPointForm =
     ReferencedPointForm
-        { dropdown = Dropdown.init
+        { dropdown = Ui.Atom.Dropdown.init
         , maybeAPoint = Nothing
         , help = Nothing
         }
@@ -1343,7 +1343,7 @@ initInlinedPointForm =
 initReferencedIntersectableForm : OtherIntersectableForm
 initReferencedIntersectableForm =
     ReferencedIntersectableForm
-        { dropdown = Dropdown.init
+        { dropdown = Ui.Atom.Dropdown.init
         , maybeAIntersectable = Nothing
         , help = Nothing
         }
@@ -2015,218 +2015,196 @@ viewDetailFormHelp pattern objects { detail, id } =
         , Element.spacing Design.small
         ]
         (List.concat
-            [ [ Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing Design.xSmall
-                    ]
-                    [ curveLabel (id ++ "__first-curve-label") "1st curve"
-                    , Element.column
-                        [ Element.width Element.fill ]
-                        [ segmentControl
-                            { selectionChanged = FirstCurveTypeChanged
-                            , tags = firstCurveTags
-                            , elementAppended =
-                                tagFromFirstCurveForm (Tuple.first detail.firstCurve)
-                                    /= FirstReferencedCurveTag
-                            , selectedTag =
-                                tagFromFirstCurveForm (Tuple.first detail.firstCurve)
-                            }
-                        , case Tuple.first detail.firstCurve of
+            [ [ Ui.Atom.segmentControl
+                    { id = id ++ "__first-curve-label"
+                    , label = Just "1st curve"
+                    , onChange = FirstCurveTypeChanged
+                    , options = firstCurveTags
+                    , selected = tagFromFirstCurveForm (Tuple.first detail.firstCurve)
+                    , child =
+                        case Tuple.first detail.firstCurve of
                             FirstStraightForm stuff ->
-                                elInlined <|
-                                    Element.column
-                                        [ Element.width Element.fill
-                                        , Element.spacing Design.small
-                                        ]
-                                        [ Element.map FirstCurveStartPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.startPoint
-                                                , id = id ++ "__first-straight--start-point"
-                                                , label = "Start point"
-                                                }
-                                        , Element.map FirstCurveEndPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.endPoint
-                                                , id = id ++ "__first-straight--end-point"
-                                                , label = "End point"
-                                                }
-                                        ]
+                                Just <|
+                                    Ui.Atom.nested <|
+                                        Element.column
+                                            [ Element.width Element.fill
+                                            , Element.spacing Design.small
+                                            ]
+                                            [ Element.map FirstCurveStartPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.startPoint
+                                                    , id = id ++ "__first-straight--start-point"
+                                                    , label = "Start point"
+                                                    }
+                                            , Element.map FirstCurveEndPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.endPoint
+                                                    , id = id ++ "__first-straight--end-point"
+                                                    , label = "End point"
+                                                    }
+                                            ]
 
                             FirstQuadraticForm stuff ->
-                                elInlined <|
-                                    Element.column
-                                        [ Element.width Element.fill
-                                        , Element.spacing Design.small
-                                        ]
-                                        [ Element.map FirstCurveStartPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.startPoint
-                                                , id = id ++ "__first-quadratic--start-point"
-                                                , label = "Start point"
-                                                }
-                                        , Element.map FirstCurveControlPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.controlPoint
-                                                , id = id ++ "__first-quadratic--control-point"
-                                                , label = "Control point"
-                                                }
-                                        , Element.map FirstCurveEndPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.endPoint
-                                                , id = id ++ "__first-quadratic--end-point"
-                                                , label = "End point"
-                                                }
-                                        ]
+                                Just <|
+                                    Ui.Atom.nested <|
+                                        Element.column
+                                            [ Element.width Element.fill
+                                            , Element.spacing Design.small
+                                            ]
+                                            [ Element.map FirstCurveStartPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.startPoint
+                                                    , id = id ++ "__first-quadratic--start-point"
+                                                    , label = "Start point"
+                                                    }
+                                            , Element.map FirstCurveControlPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.controlPoint
+                                                    , id = id ++ "__first-quadratic--control-point"
+                                                    , label = "Control point"
+                                                    }
+                                            , Element.map FirstCurveEndPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.endPoint
+                                                    , id = id ++ "__first-quadratic--end-point"
+                                                    , label = "End point"
+                                                    }
+                                            ]
 
                             FirstCubicForm stuff ->
-                                elInlined <|
-                                    Element.column
-                                        [ Element.width Element.fill
-                                        , Element.spacing Design.small
-                                        ]
-                                        [ Element.map FirstCurveStartPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.startPoint
-                                                , id = id ++ "__first-cubic--start-point"
-                                                , label = "Start point"
-                                                }
-                                        , Element.map FirstCurveStartControlPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.startControlPoint
-                                                , id =
-                                                    id ++ "__first-cubic--start-control-point"
-                                                , label = "Start control point"
-                                                }
-                                        , Element.map FirstCurveEndControlPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.endControlPoint
-                                                , id = id ++ "__first-cubic--end-control-point"
-                                                , label = "End control point"
-                                                }
-                                        , Element.map FirstCurveEndPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.endPoint
-                                                , id = id ++ "__first-cubic--end-point"
-                                                , label = "End point"
-                                                }
-                                        ]
+                                Just <|
+                                    Ui.Atom.nested <|
+                                        Element.column
+                                            [ Element.width Element.fill
+                                            , Element.spacing Design.small
+                                            ]
+                                            [ Element.map FirstCurveStartPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.startPoint
+                                                    , id = id ++ "__first-cubic--start-point"
+                                                    , label = "Start point"
+                                                    }
+                                            , Element.map FirstCurveStartControlPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.startControlPoint
+                                                    , id =
+                                                        id ++ "__first-cubic--start-control-point"
+                                                    , label = "Start control point"
+                                                    }
+                                            , Element.map FirstCurveEndControlPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.endControlPoint
+                                                    , id = id ++ "__first-cubic--end-control-point"
+                                                    , label = "End control point"
+                                                    }
+                                            , Element.map FirstCurveEndPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.endPoint
+                                                    , id = id ++ "__first-cubic--end-point"
+                                                    , label = "End point"
+                                                    }
+                                            ]
 
                             FirstReferencedCurveForm { curve, reversed } ->
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.xSmall
-                                    ]
-                                    [ View.Input.dropdownAppended (id ++ "__first-referenced-curve")
-                                        { lift = FirstCurveDropdownMsg
-                                        , entryToString = objectName
+                                --, View.Input.checkbox
+                                --    { onChange = FirstCurveReverseChanged
+                                --    , checked = reversed
+                                --    , label = "Reverse curve"
+                                --    }
+                                --]
+                                Just <|
+                                    Ui.Atom.Dropdown.viewAppended
+                                        { entryToString = objectName
                                         , entryToHash = Pattern.hash
+                                        }
+                                        { id = id ++ "__first-referenced-curve"
+                                        , lift = FirstCurveDropdownMsg
                                         , label = "First curve"
-                                        , options = objects.curves
-                                        , dropdown = curve.dropdown
-                                        , selection = curve.maybeACurve
                                         }
-                                    , View.Input.checkbox
-                                        { onChange = FirstCurveReverseChanged
-                                        , checked = reversed
-                                        , label = "Reverse curve"
-                                        }
-                                    ]
-                        ]
-                    ]
+                                        objects.curves
+                                        curve.dropdown
+                                        curve.maybeACurve
+                    }
               ]
             , List.indexedMap (viewNextCurve pattern objects id) detail.nextCurves
             , [ View.Input.btnSecondary "add-curve-button"
                     { onPress = Just AddCurvePressed
                     , label = "Add Curve"
                     }
-              , Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing Design.xSmall
-                    ]
-                    [ curveLabel (id ++ "__last-curve-label") "Closing curve"
-                    , Element.column
-                        [ Element.width Element.fill ]
-                        [ segmentControl
-                            { selectionChanged = LastCurveTypeChanged
-                            , tags = lastCurveTags
-                            , elementAppended =
-                                tagFromLastCurveForm (Tuple.first detail.lastCurve)
-                                    /= LastReferencedCurveTag
-                            , selectedTag = tagFromLastCurveForm (Tuple.first detail.lastCurve)
-                            }
-                        , case Tuple.first detail.lastCurve of
+              , Ui.Atom.segmentControl
+                    { id = id ++ "__last-curve-label"
+                    , label = Just "Closing curve"
+                    , onChange = LastCurveTypeChanged
+                    , options = lastCurveTags
+                    , selected = tagFromLastCurveForm (Tuple.first detail.lastCurve)
+                    , child =
+                        case Tuple.first detail.lastCurve of
                             LastStraightForm ->
-                                Element.none
+                                Nothing
 
                             LastQuadraticForm stuff ->
-                                elInlined <|
-                                    Element.column
-                                        [ Element.width Element.fill
-                                        , Element.spacing Design.small
-                                        ]
-                                        [ Element.map LastCurveControlPointMsg <|
+                                Just <|
+                                    Ui.Atom.nested <|
+                                        Element.map LastCurveControlPointMsg <|
                                             viewOtherPointForm pattern
                                                 objects
                                                 { otherPoint = stuff.controlPoint
                                                 , id = id ++ "__last-quadratic--control-point"
                                                 , label = "Control point"
                                                 }
-                                        ]
 
                             LastCubicForm stuff ->
-                                elInlined <|
-                                    Element.column
-                                        [ Element.width Element.fill
-                                        , Element.spacing Design.small
-                                        ]
-                                        [ Element.map LastCurveStartControlPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.startControlPoint
-                                                , id =
-                                                    id ++ "__last-cubic--start-control-point"
-                                                , label = "Start control point"
-                                                }
-                                        , Element.map LastCurveEndControlPointMsg <|
-                                            viewOtherPointForm pattern
-                                                objects
-                                                { otherPoint = stuff.endControlPoint
-                                                , id = id ++ "__last-cubic--end-control-point"
-                                                , label = "End control point"
-                                                }
-                                        ]
+                                Just <|
+                                    Ui.Atom.nested <|
+                                        Element.column
+                                            [ Element.width Element.fill
+                                            , Element.spacing Design.small
+                                            ]
+                                            [ Element.map LastCurveStartControlPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.startControlPoint
+                                                    , id = id ++ "__last-cubic--start-control-point"
+                                                    , label = "Start control point"
+                                                    }
+                                            , Element.map LastCurveEndControlPointMsg <|
+                                                viewOtherPointForm pattern
+                                                    objects
+                                                    { otherPoint = stuff.endControlPoint
+                                                    , id = id ++ "__last-cubic--end-control-point"
+                                                    , label = "End control point"
+                                                    }
+                                            ]
 
                             LastReferencedCurveForm { curve, reversed } ->
-                                Element.column
-                                    [ Element.width Element.fill
-                                    , Element.spacing Design.xSmall
-                                    ]
-                                    [ View.Input.dropdownAppended (id ++ "__last-referenced-curve")
-                                        { lift = LastCurveDropdownMsg
-                                        , entryToString = objectName
+                                --, View.Input.checkbox
+                                --    { onChange = LastCurveReverseChanged
+                                --    , checked = reversed
+                                --    , label = "Reverse curve"
+                                --    }
+                                --]
+                                Just <|
+                                    Ui.Atom.Dropdown.viewAppended
+                                        { entryToString = objectName
                                         , entryToHash = Pattern.hash
+                                        }
+                                        { id = id ++ "__last-referenced-curve"
+                                        , lift = LastCurveDropdownMsg
                                         , label = "Last curve"
-                                        , options = objects.curves
-                                        , dropdown = curve.dropdown
-                                        , selection = curve.maybeACurve
                                         }
-                                    , View.Input.checkbox
-                                        { onChange = LastCurveReverseChanged
-                                        , checked = reversed
-                                        , label = "Reverse curve"
-                                        }
-                                    ]
-                        ]
-                    ]
+                                        objects.curves
+                                        curve.dropdown
+                                        curve.maybeACurve
+                    }
               ]
             ]
         )
@@ -2244,108 +2222,103 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
         actualId =
             id ++ "__next-" ++ String.fromInt index
     in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Design.xSmall
-        ]
-        [ curveLabel "next-curve-label" (ordinalFromInt (index + 2) ++ " Curve")
-        , Element.column
-            [ Element.width Element.fill ]
-            [ segmentControl
-                { selectionChanged = NextCurveTypeChanged index
-                , tags = nextCurveTags
-                , elementAppended = tagFromNextCurveForm form /= NextReferencedCurveTag
-                , selectedTag = tagFromNextCurveForm form
-                }
-            , case form of
+    Ui.Atom.segmentControl
+        { id = actualId
+        , label = Just (ordinalFromInt (index + 2) ++ " Curve")
+        , onChange = NextCurveTypeChanged index
+        , options = nextCurveTags
+        , selected = tagFromNextCurveForm form
+        , child =
+            case form of
                 NextStraightForm stuff ->
-                    elInlined <|
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing Design.small
-                            ]
-                            [ Element.map (NextCurveEndPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.endPoint
-                                    , id = actualId ++ "__next-straight--end-point"
-                                    , label = "End point"
-                                    }
-                            ]
+                    Just <|
+                        Ui.Atom.nested <|
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.small
+                                ]
+                                [ Element.map (NextCurveEndPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.endPoint
+                                        , id = actualId ++ "__next-straight--end-point"
+                                        , label = "End point"
+                                        }
+                                ]
 
                 NextQuadraticForm stuff ->
-                    elInlined <|
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing Design.small
-                            ]
-                            [ Element.map (NextCurveControlPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.controlPoint
-                                    , id = actualId ++ "__next-quadratic--control-point"
-                                    , label = "Control point"
-                                    }
-                            , Element.map (NextCurveEndPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.endPoint
-                                    , id = actualId ++ "__next-quadratic--end-point"
-                                    , label = "End point"
-                                    }
-                            ]
+                    Just <|
+                        Ui.Atom.nested <|
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.small
+                                ]
+                                [ Element.map (NextCurveControlPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.controlPoint
+                                        , id = actualId ++ "__next-quadratic--control-point"
+                                        , label = "Control point"
+                                        }
+                                , Element.map (NextCurveEndPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.endPoint
+                                        , id = actualId ++ "__next-quadratic--end-point"
+                                        , label = "End point"
+                                        }
+                                ]
 
                 NextCubicForm stuff ->
-                    elInlined <|
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing Design.small
-                            ]
-                            [ Element.map (NextCurveStartControlPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.startControlPoint
-                                    , id = actualId ++ "__next-cubic--start-control-point"
-                                    , label = "Start control point"
-                                    }
-                            , Element.map (NextCurveEndControlPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.endControlPoint
-                                    , id = actualId ++ "__next-cubic--end-control-point"
-                                    , label = "End control point"
-                                    }
-                            , Element.map (NextCurveEndPointMsg index) <|
-                                viewOtherPointForm pattern
-                                    objects
-                                    { otherPoint = stuff.endPoint
-                                    , id = actualId ++ "__next-cubic--end-point"
-                                    , label = "End point"
-                                    }
-                            ]
+                    Just <|
+                        Ui.Atom.nested <|
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Design.small
+                                ]
+                                [ Element.map (NextCurveStartControlPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.startControlPoint
+                                        , id = actualId ++ "__next-cubic--start-control-point"
+                                        , label = "Start control point"
+                                        }
+                                , Element.map (NextCurveEndControlPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.endControlPoint
+                                        , id = actualId ++ "__next-cubic--end-control-point"
+                                        , label = "End control point"
+                                        }
+                                , Element.map (NextCurveEndPointMsg index) <|
+                                    viewOtherPointForm pattern
+                                        objects
+                                        { otherPoint = stuff.endPoint
+                                        , id = actualId ++ "__next-cubic--end-point"
+                                        , label = "End point"
+                                        }
+                                ]
 
                 NextReferencedCurveForm { curve, reversed } ->
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing Design.xSmall
-                        ]
-                        [ View.Input.dropdownAppended (actualId ++ "__referenced-curve")
-                            { lift = NextCurveDropdownMsg index
-                            , entryToString = objectName
+                    --, View.Input.checkbox
+                    --    { onChange = NextCurveReverseChanged index
+                    --    , checked = reversed
+                    --    , label = "Reverse curve"
+                    --    }
+                    --]
+                    Just <|
+                        Ui.Atom.Dropdown.viewAppended
+                            { entryToString = objectName
                             , entryToHash = Pattern.hash
+                            }
+                            { id = actualId ++ "__referenced-curve"
+                            , lift = NextCurveDropdownMsg index
                             , label = ordinalFromInt (index + 2) ++ " Curve"
-                            , options = objects.curves
-                            , dropdown = curve.dropdown
-                            , selection = curve.maybeACurve
                             }
-                        , View.Input.checkbox
-                            { onChange = NextCurveReverseChanged index
-                            , checked = reversed
-                            , label = "Reverse curve"
-                            }
-                        ]
-            ]
-        ]
+                            objects.curves
+                            curve.dropdown
+                            curve.maybeACurve
+        }
 
 
 curveLabel : String -> String -> Element msg
@@ -2582,132 +2555,65 @@ viewOtherPointForm :
         }
     -> Element OtherPointMsg
 viewOtherPointForm pattern objects { otherPoint, id, label } =
-    let
-        selectedTag =
-            tagFromOtherPointForm otherPoint
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Design.xSmall
-        ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
-                , Element.alignLeft
-                , Design.fontSmall
-                , Font.color Design.black
-                , Font.bold
-                ]
-                (Element.text label)
-            , case otherPoint of
-                ReferencedPointForm _ ->
-                    Element.none
-
-                InlinedPointForm { expanded } ->
-                    Input.button
-                        [ Font.color Design.black
-                        , Element.mouseOver
-                            [ Font.color Design.primaryDark ]
-                        , Element.htmlAttribute <|
-                            Attributes.style "transition" "color 0.2s ease-in-out 0s"
-                        , Element.alignRight
-                        ]
-                        { onPress = Just InlinedPointExpandToggled
-                        , label =
-                            Element.row
-                                [ Element.spacing Design.xxSmall
-                                , Element.paddingXY Design.xxSmall 0
-                                ]
-                                (if expanded then
-                                    [ Element.el
-                                        [ Font.size 12 ]
-                                        (Element.text "Minimize")
-                                    , View.Icon.fa "chevron-up"
-                                    ]
-
-                                 else
-                                    [ Element.el
-                                        [ Font.size 12 ]
-                                        (Element.text "Expand")
-                                    , View.Icon.fa "chevron-down"
-                                    ]
-                                )
-                        }
-            ]
-        , Element.column
-            [ Element.width Element.fill ]
-            [ case otherPoint of
-                ReferencedPointForm { help } ->
-                    case help of
-                        Nothing ->
-                            Element.none
-
-                        Just helpText ->
-                            Element.row
-                                [ Element.spacing Design.xSmall
-                                , Element.paddingEach
-                                    { left = 0
-                                    , right = 0
-                                    , top = 0
-                                    , bottom = Design.xSmall
-                                    }
-                                , Font.color Design.danger
-                                , Design.fontSmall
-                                ]
-                                [ View.Icon.fa "exclamation-circle"
-                                , Element.text helpText
-                                ]
-
-                _ ->
-                    Element.none
-            , case otherPoint of
-                InlinedPointForm { expanded } ->
-                    if expanded then
-                        segmentControl
-                            { selectionChanged = OtherPointTypeChanged
-                            , tags = otherPointTags
-                            , elementAppended = selectedTag /= ReferencedPointTag
-                            , selectedTag = selectedTag
-                            }
-
-                    else
-                        Element.none
-
-                _ ->
-                    segmentControl
-                        { selectionChanged = OtherPointTypeChanged
-                        , tags = otherPointTags
-                        , elementAppended = selectedTag /= ReferencedPointTag
-                        , selectedTag = selectedTag
-                        }
-            , case otherPoint of
+    --case otherPoint of
+    --    ReferencedPointForm { help } ->
+    --        case help of
+    --            Nothing ->
+    --                Element.none
+    --            Just helpText ->
+    --                Element.row
+    --                    [ Element.spacing Design.xSmall
+    --                    , Element.paddingEach
+    --                        { left = 0
+    --                        , right = 0
+    --                        , top = 0
+    --                        , bottom = Design.xSmall
+    --                        }
+    --                    , Font.color Design.danger
+    --                    , Design.fontSmall
+    --                    ]
+    --                    [ View.Icon.fa "exclamation-circle"
+    --                    , Element.text helpText
+    --                    ]
+    --    _ ->
+    --        Element.none
+    Ui.Atom.segmentControl
+        { id = id
+        , label = Just label
+        , onChange = OtherPointTypeChanged
+        , options = otherPointTags
+        , selected = tagFromOtherPointForm otherPoint
+        , child =
+            case otherPoint of
                 ReferencedPointForm { dropdown, maybeAPoint, help } ->
-                    View.Input.dropdownAppended id
-                        { lift = ReferencedPointDropdownMsg
-                        , entryToString = objectName
-                        , entryToHash = Pattern.hash
-                        , label = label
-                        , options = objects.points
-                        , dropdown = dropdown
-                        , selection = maybeAPoint
-                        }
+                    Just <|
+                        Ui.Atom.Dropdown.viewAppended
+                            { entryToString = objectName
+                            , entryToHash = Pattern.hash
+                            }
+                            { id = id ++ "__referenced--point"
+                            , lift = ReferencedPointDropdownMsg
+                            , label = label
+                            }
+                            objects.points
+                            dropdown
+                            maybeAPoint
 
                 InlinedPointForm { expanded, point } ->
-                    if expanded then
-                        Element.map InlinedPointMsg <|
-                            elInlined
-                                (viewPointFormHelp pattern
-                                    objects
-                                    { point = point
-                                    , id = id ++ "__inlined--point"
-                                    }
-                                )
-
-                    else
-                        Element.none
-            ]
-        ]
+                    Just <|
+                        Ui.Atom.nestedHideable
+                            { show = expanded
+                            , onPress = InlinedPointExpandToggled
+                            , shown =
+                                Element.map InlinedPointMsg <|
+                                    viewPointFormHelp pattern
+                                        objects
+                                        { point = point
+                                        , id = id ++ "__inlined--point"
+                                        }
+                            , hidden = Element.none
+                            }
+        }
 
 
 viewOtherIntersectableForm :
@@ -2727,111 +2633,78 @@ viewOtherIntersectableForm pattern objects { otherIntersectable, id, label } =
         expanded =
             otherIntersectableFormExpanded otherIntersectable
     in
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing Design.xSmall
-        ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.htmlAttribute (Attributes.id (id ++ "-label"))
-                , Element.alignLeft
-                , Design.fontSmall
-                , Font.color Design.black
-                , Font.bold
-                ]
-                (Element.text label)
-            , if selectedTag == ReferencedIntersectableTag then
-                Element.none
-
-              else
-                Input.button
-                    [ Font.color Design.black
-                    , Element.mouseOver
-                        [ Font.color Design.primaryDark ]
-                    , Element.htmlAttribute <|
-                        Attributes.style "transition" "color 0.2s ease-in-out 0s"
-                    , Element.alignRight
-                    ]
-                    { onPress = Just InlinedIntersectableExpandToggled
-                    , label =
-                        Element.row
-                            [ Element.spacing Design.xxSmall
-                            , Element.paddingXY Design.xxSmall 0
-                            ]
-                            (if expanded then
-                                [ Element.el
-                                    [ Font.size 12 ]
-                                    (Element.text "Minimize")
-                                , View.Icon.fa "chevron-up"
-                                ]
-
-                             else
-                                [ Element.el
-                                    [ Font.size 12 ]
-                                    (Element.text "Expand")
-                                , View.Icon.fa "chevron-down"
+    Ui.Atom.segmentControl
+        { id = id
+        , label = Just label
+        , onChange = OtherIntersectableTypeChanged
+        , options = otherIntersectableTags
+        , selected = selectedTag
+        , child =
+            case otherIntersectable of
+                ReferencedIntersectableForm { dropdown, maybeAIntersectable, help } ->
+                    Just <|
+                        Ui.Atom.Dropdown.viewAppended
+                            { entryToString = objectName
+                            , entryToHash = Pattern.hash
+                            }
+                            { id = id ++ "__other-intersectable-object"
+                            , lift = ReferencedIntersectableDropdownMsg
+                            , label = label
+                            }
+                            (List.concat
+                                [ List.map Pattern.intersectableAxis objects.axes
+                                , List.map Pattern.intersectableCircle objects.circles
+                                , List.map Pattern.intersectableCurve objects.curves
                                 ]
                             )
-                    }
-            ]
-        , if expanded then
-            Element.column
-                [ Element.width Element.fill ]
-                [ segmentControl
-                    { selectionChanged = OtherIntersectableTypeChanged
-                    , tags = otherIntersectableTags
-                    , elementAppended = selectedTag /= ReferencedIntersectableTag
-                    , selectedTag = selectedTag
-                    }
-                , case otherIntersectable of
-                    ReferencedIntersectableForm { dropdown, maybeAIntersectable, help } ->
-                        View.Input.dropdownAppended (id ++ "__other-intersectable-object")
-                            { lift = ReferencedIntersectableDropdownMsg
-                            , entryToString = objectName
-                            , entryToHash = Pattern.hash
-                            , label = label
-                            , options =
-                                List.concat
-                                    [ List.map Pattern.intersectableAxis objects.axes
-                                    , List.map Pattern.intersectableCircle objects.circles
-                                    , List.map Pattern.intersectableCurve objects.curves
-                                    ]
-                            , dropdown = dropdown
-                            , selection = maybeAIntersectable
+                            dropdown
+                            maybeAIntersectable
+
+                InlinedAxisForm { axis } ->
+                    Just <|
+                        Ui.Atom.nestedHideable
+                            { show = expanded
+                            , onPress = InlinedIntersectableExpandToggled
+                            , shown =
+                                Element.map InlinedAxisMsg <|
+                                    viewAxisFormHelp pattern
+                                        objects
+                                        { axis = axis
+                                        , id = id ++ "__inlined--axis"
+                                        }
+                            , hidden = Element.none
                             }
 
-                    InlinedAxisForm { axis } ->
-                        Element.map InlinedAxisMsg <|
-                            elInlined <|
-                                viewAxisFormHelp pattern
-                                    objects
-                                    { axis = axis
-                                    , id = id ++ "__inlined--axis"
-                                    }
+                InlinedCircleForm { circle } ->
+                    Just <|
+                        Ui.Atom.nestedHideable
+                            { show = expanded
+                            , onPress = InlinedIntersectableExpandToggled
+                            , shown =
+                                Element.map InlinedCircleMsg <|
+                                    viewCircleFormHelp pattern
+                                        objects
+                                        { circle = circle
+                                        , id = id ++ "__inlined--circle"
+                                        }
+                            , hidden = Element.none
+                            }
 
-                    InlinedCircleForm { circle } ->
-                        Element.map InlinedCircleMsg <|
-                            elInlined <|
-                                viewCircleFormHelp pattern
-                                    objects
-                                    { circle = circle
-                                    , id = id ++ "__inlined--circle"
-                                    }
-
-                    InlinedCurveForm { curve } ->
-                        Element.map InlinedCurveMsg <|
-                            elInlined <|
-                                viewCurveFormHelp pattern
-                                    objects
-                                    { curve = curve
-                                    , id = "__inlined--curve"
-                                    }
-                ]
-
-          else
-            Element.none
-        ]
+                InlinedCurveForm { curve } ->
+                    Just <|
+                        Ui.Atom.nestedHideable
+                            { show = expanded
+                            , onPress = InlinedIntersectableExpandToggled
+                            , shown =
+                                Element.map InlinedCurveMsg <|
+                                    viewCurveFormHelp pattern
+                                        objects
+                                        { curve = curve
+                                        , id = "__inlined--curve"
+                                        }
+                            , hidden = Element.none
+                            }
+        }
 
 
 elInlined element =
@@ -3493,7 +3366,7 @@ type DetailMsg
     | FirstCurveControlPointMsg OtherPointMsg
     | FirstCurveEndControlPointMsg OtherPointMsg
     | FirstCurveEndPointMsg OtherPointMsg
-    | FirstCurveDropdownMsg (Dropdown.Msg (A Curve))
+    | FirstCurveDropdownMsg (Ui.Atom.Dropdown.Msg (A Curve))
     | FirstCurveReverseChanged Bool
     | FirstCurveActionMenuMsg ActionMenuMsg
       -- NEXT CURVE
@@ -3502,7 +3375,7 @@ type DetailMsg
     | NextCurveControlPointMsg Int OtherPointMsg
     | NextCurveEndControlPointMsg Int OtherPointMsg
     | NextCurveEndPointMsg Int OtherPointMsg
-    | NextCurveDropdownMsg Int (Dropdown.Msg (A Curve))
+    | NextCurveDropdownMsg Int (Ui.Atom.Dropdown.Msg (A Curve))
     | NextCurveReverseChanged Int Bool
     | NextCurveActionMenuMsg Int ActionMenuMsg
       -- LAST CURVE
@@ -3510,7 +3383,7 @@ type DetailMsg
     | LastCurveStartControlPointMsg OtherPointMsg
     | LastCurveControlPointMsg OtherPointMsg
     | LastCurveEndControlPointMsg OtherPointMsg
-    | LastCurveDropdownMsg (Dropdown.Msg (A Curve))
+    | LastCurveDropdownMsg (Ui.Atom.Dropdown.Msg (A Curve))
     | LastCurveReverseChanged Bool
     | LastCurveActionMenuMsg ActionMenuMsg
 
@@ -3537,14 +3410,14 @@ type ActionMenuMsg
 
 type OtherPointMsg
     = OtherPointTypeChanged OtherPointTag
-    | ReferencedPointDropdownMsg (Dropdown.Msg (A Pattern.Point))
+    | ReferencedPointDropdownMsg (Ui.Atom.Dropdown.Msg (A Pattern.Point))
     | InlinedPointMsg PointMsg
     | InlinedPointExpandToggled
 
 
 type OtherIntersectableMsg
     = OtherIntersectableTypeChanged OtherIntersectableTag
-    | ReferencedIntersectableDropdownMsg (Dropdown.Msg (A Intersectable))
+    | ReferencedIntersectableDropdownMsg (Ui.Atom.Dropdown.Msg (A Intersectable))
     | InlinedAxisMsg AxisMsg
     | InlinedCircleMsg CircleMsg
     | InlinedCurveMsg CurveMsg
@@ -4451,8 +4324,9 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstReferencedCurveForm stuff ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
-                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
-                                (List.map Listbox.option objects.curves)
+                            Ui.Atom.Dropdown.update
+                                { entryToHash = Pattern.hash }
+                                objects.curves
                                 dropdownMsg
                                 stuff.curve.dropdown
                                 stuff.curve.maybeACurve
@@ -4710,8 +4584,9 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextReferencedCurveForm stuff, actionMenu ) ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
-                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
-                                (List.map Listbox.option objects.curves)
+                            Ui.Atom.Dropdown.update
+                                { entryToHash = Pattern.hash }
+                                objects.curves
                                 dropdownMsg
                                 stuff.curve.dropdown
                                 stuff.curve.maybeACurve
@@ -4864,8 +4739,9 @@ updateDetailForm pattern objects detailMsg detail =
                 LastReferencedCurveForm stuff ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeACurve ) =
-                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
-                                (List.map Listbox.option objects.curves)
+                            Ui.Atom.Dropdown.update
+                                { entryToHash = Pattern.hash }
+                                objects.curves
                                 dropdownMsg
                                 stuff.curve.dropdown
                                 stuff.curve.maybeACurve
@@ -4932,8 +4808,9 @@ updateOtherPointForm pattern objects msg form =
                 ReferencedPointForm stuff ->
                     let
                         ( newDropdown, dropdownCmd, newMaybeAPoint ) =
-                            Dropdown.update (dropdownUpdateConfig Pattern.hash)
-                                (List.map Listbox.option objects.points)
+                            Ui.Atom.Dropdown.update
+                                { entryToHash = Pattern.hash }
+                                objects.points
                                 dropdownMsg
                                 stuff.dropdown
                                 stuff.maybeAPoint
@@ -5005,14 +4882,13 @@ updateOtherIntersectableForm pattern objects msg form =
         ( ReferencedIntersectableDropdownMsg dropdownMsg, ReferencedIntersectableForm stuff ) ->
             let
                 ( newDropdown, dropdownCmd, newMaybeAIntersectable ) =
-                    Dropdown.update
-                        (dropdownUpdateConfig Pattern.hash)
-                        (List.map Listbox.option <|
-                            List.concat
-                                [ List.map Pattern.intersectableAxis objects.axes
-                                , List.map Pattern.intersectableCircle objects.circles
-                                , List.map Pattern.intersectableCurve objects.curves
-                                ]
+                    Ui.Atom.Dropdown.update
+                        { entryToHash = Pattern.hash }
+                        (List.concat
+                            [ List.map Pattern.intersectableAxis objects.axes
+                            , List.map Pattern.intersectableCircle objects.circles
+                            , List.map Pattern.intersectableCurve objects.curves
+                            ]
                         )
                         dropdownMsg
                         stuff.dropdown
@@ -7059,23 +6935,6 @@ tagFromOtherIntersectableForm form =
 
         InlinedCurveForm _ ->
             InlinedCurveTag
-
-
-
----- DROPDOWN CONFIG
-
-
-dropdownUpdateConfig entryToHash =
-    Dropdown.updateConfig entryToHash
-        { jumpAtEnds = True
-        , separateFocus = True
-        , selectionFollowsFocus = False
-        , handleHomeAndEnd = True
-        , closeAfterMouseSelection = True
-        , typeAhead = Listbox.noTypeAhead
-        , minimalGap = 0
-        , initialGap = 0
-        }
 
 
 

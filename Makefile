@@ -7,8 +7,12 @@ check-app:
 serve-design-system:
 	yarn parcel serve ./design-system.html
 
-serve-app:
-	yarn parcel serve ./index.html
+build-app:
+	yarn parcel build ./index.html
+
+serve-app: build-app
+	PORT=2345 go run server.go
+
 
 test:
 	elm-test

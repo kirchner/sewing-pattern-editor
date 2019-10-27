@@ -4,7 +4,7 @@ module Ui.Atom exposing
     , btnIcon, btnIconDanger, btnIconLarge
     , checkbox
     , radioRow, radioColumn, option
-    , segmentControl, Child(..), nested
+    , segmentControl, Child(..), nested, nestedHideable
     , inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge
     , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
@@ -24,7 +24,7 @@ module Ui.Atom exposing
 
 @docs checkbox
 @docs radioRow, radioColumn, option
-@docs segmentControl, Child, nested
+@docs segmentControl, Child, nested, nestedHideable
 @docs inputText, inputTextAppended, inputFormula, inputFormulaAppended
 
 
@@ -441,7 +441,8 @@ type alias SegmentControlConfig tag msg =
 
 type Child msg
     = Appended (Element msg)
-    | Nested
+    | Nested (Element msg)
+    | NestedHideable
         { show : Bool
         , onPress : msg
         , shown : Element msg
@@ -449,15 +450,20 @@ type Child msg
         }
 
 
-nested :
+nested : Element msg -> Child msg
+nested =
+    Nested
+
+
+nestedHideable :
     { show : Bool
     , onPress : msg
     , shown : Element msg
     , hidden : Element msg
     }
     -> Child msg
-nested =
-    Nested
+nestedHideable =
+    NestedHideable
 
 
 segmentControl : SegmentControlConfig tag msg -> Element msg
@@ -536,7 +542,35 @@ segmentControl { id, label, onChange, options, selected, child } =
                 , withFocusOutlineBottom appended
                 ]
 
-        Just (Nested { show, onPress, shown, hidden }) ->
+        Just (Nested shown) ->
+            Element.column
+                [ Element.width Element.fill ]
+                [ Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing Ui.Space.level1
+                    ]
+                    [ withFocusOutline <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Ui.Space.level2
+                            ]
+                            [ header
+                            , control (Border.rounded 3)
+                            ]
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.paddingEach
+                            { top = 0
+                            , bottom = 0
+                            , left = Ui.Space.level2
+                            , right = 0
+                            }
+                        ]
+                        shown
+                    ]
+                ]
+
+        Just (NestedHideable { show, onPress, shown, hidden }) ->
             Element.column
                 [ Element.width Element.fill
                 , Element.inFront <|

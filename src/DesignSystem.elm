@@ -849,7 +849,7 @@ content model =
 
                                     Center ->
                                         Just <|
-                                            Ui.Atom.nested
+                                            Ui.Atom.nestedHideable
                                                 { show = model.showFormula
                                                 , onPress = ClickedShowFormula
                                                 , shown =
