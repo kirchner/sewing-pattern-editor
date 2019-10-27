@@ -50,6 +50,7 @@ module Dialog exposing
 
 -}
 
+import Dialog.OtherPoint as OtherPoint
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -250,15 +251,15 @@ editFocused model =
 {-| -}
 type PointForm
     = FromOnePointForm
-        { basePoint : OtherPointForm
+        { basePoint : OtherPoint.Form PointForm
         , direction : Direction
         , directionHelp : Maybe String
         , distance : String
         , distanceHelp : Maybe String
         }
     | FromTwoPointsForm
-        { basePointA : OtherPointForm
-        , basePointB : OtherPointForm
+        { basePointA : OtherPoint.Form PointForm
+        , basePointB : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         , twoPointsPosition : TwoPointsPosition
         }
@@ -289,13 +290,13 @@ type TwoPointsPosition
 {-| -}
 type AxisForm
     = ThroughOnePointForm
-        { point : OtherPointForm
+        { point : OtherPoint.Form PointForm
         , orientation : Orientation
         , orientationHelp : Maybe String
         }
     | ThroughTwoPointsForm
-        { pointA : OtherPointForm
-        , pointB : OtherPointForm
+        { pointA : OtherPoint.Form PointForm
+        , pointB : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         }
 
@@ -303,14 +304,14 @@ type AxisForm
 {-| -}
 type CircleForm
     = WithRadiusForm
-        { centerPoint : OtherPointForm
+        { centerPoint : OtherPoint.Form PointForm
         , radius : String
         , radiusHelp : Maybe String
         }
     | ThroughThreePointsForm
-        { pointA : OtherPointForm
-        , pointB : OtherPointForm
-        , pointC : OtherPointForm
+        { pointA : OtherPoint.Form PointForm
+        , pointB : OtherPoint.Form PointForm
+        , pointC : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         }
 
@@ -318,21 +319,21 @@ type CircleForm
 {-| -}
 type CurveForm
     = StraightForm
-        { startPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         }
     | QuadraticForm
-        { startPoint : OtherPointForm
-        , controlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , controlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         }
     | CubicForm
-        { startPoint : OtherPointForm
-        , startControlPoint : OtherPointForm
-        , endControlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , startControlPoint : OtherPoint.Form PointForm
+        , endControlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         , pointsHelp : Maybe String
         }
 
@@ -347,19 +348,19 @@ type alias DetailForm =
 
 type FirstCurveForm
     = FirstStraightForm
-        { startPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         }
     | FirstQuadraticForm
-        { startPoint : OtherPointForm
-        , controlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , controlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         }
     | FirstCubicForm
-        { startPoint : OtherPointForm
-        , startControlPoint : OtherPointForm
-        , endControlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startPoint : OtherPoint.Form PointForm
+        , startControlPoint : OtherPoint.Form PointForm
+        , endControlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         }
     | FirstReferencedCurveForm
         { curve : OtherCurveForm
@@ -369,16 +370,16 @@ type FirstCurveForm
 
 type NextCurveForm
     = NextStraightForm
-        { endPoint : OtherPointForm
+        { endPoint : OtherPoint.Form PointForm
         }
     | NextQuadraticForm
-        { controlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { controlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         }
     | NextCubicForm
-        { startControlPoint : OtherPointForm
-        , endControlPoint : OtherPointForm
-        , endPoint : OtherPointForm
+        { startControlPoint : OtherPoint.Form PointForm
+        , endControlPoint : OtherPoint.Form PointForm
+        , endPoint : OtherPoint.Form PointForm
         }
     | NextReferencedCurveForm
         { curve : OtherCurveForm
@@ -389,11 +390,11 @@ type NextCurveForm
 type LastCurveForm
     = LastStraightForm
     | LastQuadraticForm
-        { controlPoint : OtherPointForm
+        { controlPoint : OtherPoint.Form PointForm
         }
     | LastCubicForm
-        { startControlPoint : OtherPointForm
-        , endControlPoint : OtherPointForm
+        { startControlPoint : OtherPoint.Form PointForm
+        , endControlPoint : OtherPoint.Form PointForm
         }
     | LastReferencedCurveForm
         { curve : OtherCurveForm
@@ -418,18 +419,6 @@ type ActionMenu
 
 
 ---- NESTINGS
-
-
-type OtherPointForm
-    = ReferencedPointForm
-        { dropdown : Dropdown
-        , maybeAPoint : Maybe (A Point)
-        , help : Maybe String
-        }
-    | InlinedPointForm
-        { expanded : Bool
-        , point : PointForm
-        }
 
 
 type OtherIntersectableForm
@@ -562,7 +551,7 @@ initPointFormWith pattern aPoint =
                                 , distanceHelp = Nothing
                                 }
                     in
-                    Maybe.map toForm (initOtherPointFormWith pattern stuff.basePoint)
+                    Maybe.map toForm (OtherPoint.initWith initPointFormWith pattern stuff.basePoint)
 
                 BetweenRatio stuff ->
                     let
@@ -579,8 +568,8 @@ initPointFormWith pattern aPoint =
                                 }
                     in
                     Maybe.map2 toForm
-                        (initOtherPointFormWith pattern stuff.basePointA)
-                        (initOtherPointFormWith pattern stuff.basePointB)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.basePointA)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.basePointB)
 
                 BetweenLength stuff ->
                     let
@@ -605,8 +594,8 @@ initPointFormWith pattern aPoint =
                                 }
                     in
                     Maybe.map2 toForm
-                        (initOtherPointFormWith pattern stuff.basePointA)
-                        (initOtherPointFormWith pattern stuff.basePointB)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.basePointA)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.basePointB)
 
                 Intersection stuff ->
                     let
@@ -660,7 +649,7 @@ initAxisFormWith pattern aAxis =
                         , orientationHelp = Nothing
                         }
             in
-            Maybe.map toForm (initOtherPointFormWith pattern stuff.point)
+            Maybe.map toForm (OtherPoint.initWith initPointFormWith pattern stuff.point)
 
         Just (ThroughTwoPoints stuff) ->
             let
@@ -672,8 +661,8 @@ initAxisFormWith pattern aAxis =
                         }
             in
             Maybe.map2 toForm
-                (initOtherPointFormWith pattern stuff.pointA)
-                (initOtherPointFormWith pattern stuff.pointB)
+                (OtherPoint.initWith initPointFormWith pattern stuff.pointA)
+                (OtherPoint.initWith initPointFormWith pattern stuff.pointB)
 
         Just (TransformedAxis stuff) ->
             Nothing
@@ -712,7 +701,7 @@ initCircleFormWith pattern aCircle =
                         , radiusHelp = Nothing
                         }
             in
-            Maybe.map toForm (initOtherPointFormWith pattern stuff.centerPoint)
+            Maybe.map toForm (OtherPoint.initWith initPointFormWith pattern stuff.centerPoint)
 
         Just (ThroughThreePoints stuff) ->
             let
@@ -725,9 +714,9 @@ initCircleFormWith pattern aCircle =
                         }
             in
             Maybe.map3 toForm
-                (initOtherPointFormWith pattern stuff.pointA)
-                (initOtherPointFormWith pattern stuff.pointB)
-                (initOtherPointFormWith pattern stuff.pointC)
+                (OtherPoint.initWith initPointFormWith pattern stuff.pointA)
+                (OtherPoint.initWith initPointFormWith pattern stuff.pointB)
+                (OtherPoint.initWith initPointFormWith pattern stuff.pointC)
 
         Just (TransformedCircle stuff) ->
             Nothing
@@ -769,8 +758,8 @@ initCurveFormWith pattern aCurve =
                                 }
                     in
                     Maybe.map2 toForm
-                        (initOtherPointFormWith pattern stuff.startPoint)
-                        (initOtherPointFormWith pattern stuff.endPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
                 Quadratic stuff ->
                     let
@@ -783,9 +772,9 @@ initCurveFormWith pattern aCurve =
                                 }
                     in
                     Maybe.map3 toForm
-                        (initOtherPointFormWith pattern stuff.startPoint)
-                        (initOtherPointFormWith pattern stuff.controlPoint)
-                        (initOtherPointFormWith pattern stuff.endPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.controlPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
                 Cubic stuff ->
                     let
@@ -799,10 +788,10 @@ initCurveFormWith pattern aCurve =
                                 }
                     in
                     Maybe.map4 toForm
-                        (initOtherPointFormWith pattern stuff.startPoint)
-                        (initOtherPointFormWith pattern stuff.startControlPoint)
-                        (initOtherPointFormWith pattern stuff.endControlPoint)
-                        (initOtherPointFormWith pattern stuff.endPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.startControlPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.endControlPoint)
+                        (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
                 TransformedCurve stuff ->
                     Nothing
@@ -852,8 +841,8 @@ initFirstCurveFormWith pattern firstCurve =
                         }
             in
             Maybe.map2 toForm
-                (initOtherPointFormWith pattern stuff.startPoint)
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         FirstQuadratic stuff ->
             let
@@ -865,9 +854,9 @@ initFirstCurveFormWith pattern firstCurve =
                         }
             in
             Maybe.map3 toForm
-                (initOtherPointFormWith pattern stuff.startPoint)
-                (initOtherPointFormWith pattern stuff.controlPoint)
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.controlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         FirstCubic stuff ->
             let
@@ -880,10 +869,10 @@ initFirstCurveFormWith pattern firstCurve =
                         }
             in
             Maybe.map4 toForm
-                (initOtherPointFormWith pattern stuff.startPoint)
-                (initOtherPointFormWith pattern stuff.startControlPoint)
-                (initOtherPointFormWith pattern stuff.endControlPoint)
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         FirstReferencedCurve stuff ->
             Just <|
@@ -930,7 +919,7 @@ nextCurveFormWith pattern nextCurve =
                         { endPoint = endPoint }
             in
             Maybe.map toForm
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         NextQuadratic stuff ->
             let
@@ -941,8 +930,8 @@ nextCurveFormWith pattern nextCurve =
                         }
             in
             Maybe.map2 toForm
-                (initOtherPointFormWith pattern stuff.controlPoint)
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.controlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         NextCubic stuff ->
             let
@@ -954,9 +943,9 @@ nextCurveFormWith pattern nextCurve =
                         }
             in
             Maybe.map3 toForm
-                (initOtherPointFormWith pattern stuff.startControlPoint)
-                (initOtherPointFormWith pattern stuff.endControlPoint)
-                (initOtherPointFormWith pattern stuff.endPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
         NextReferencedCurve stuff ->
             Just <|
@@ -981,7 +970,7 @@ initLastCurveFormWith pattern lastCurve =
                     LastQuadraticForm { controlPoint = controlPoint }
             in
             Maybe.map toForm
-                (initOtherPointFormWith pattern stuff.controlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.controlPoint)
 
         LastCubic stuff ->
             let
@@ -992,8 +981,8 @@ initLastCurveFormWith pattern lastCurve =
                         }
             in
             Maybe.map2 toForm
-                (initOtherPointFormWith pattern stuff.startControlPoint)
-                (initOtherPointFormWith pattern stuff.endControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.startControlPoint)
+                (OtherPoint.initWith initPointFormWith pattern stuff.endControlPoint)
 
         LastReferencedCurve stuff ->
             Just <|
@@ -1004,27 +993,6 @@ initLastCurveFormWith pattern lastCurve =
                         }
                     , reversed = stuff.reversed
                     }
-
-
-initOtherPointFormWith : Pattern -> A Point -> Maybe OtherPointForm
-initOtherPointFormWith pattern aPoint =
-    if Pattern.inlined aPoint then
-        let
-            toForm point =
-                InlinedPointForm
-                    { expanded = False
-                    , point = point
-                    }
-        in
-        Maybe.map toForm (initPointFormWith pattern aPoint)
-
-    else
-        Just <|
-            ReferencedPointForm
-                { dropdown = Ui.Atom.Dropdown.init
-                , maybeAPoint = Just aPoint
-                , help = Nothing
-                }
 
 
 initOtherIntersectableFormWith :
@@ -1089,7 +1057,7 @@ initOtherIntersectableFormWith pattern aIntersectable =
 initFromOnePointForm : PointForm
 initFromOnePointForm =
     FromOnePointForm
-        { basePoint = initReferencedPointForm
+        { basePoint = OtherPoint.initReferenced
         , direction = DirectionAngle ""
         , directionHelp = Nothing
         , distance = ""
@@ -1100,8 +1068,8 @@ initFromOnePointForm =
 initFromTwoPointsForm : PointForm
 initFromTwoPointsForm =
     FromTwoPointsForm
-        { basePointA = initReferencedPointForm
-        , basePointB = initReferencedPointForm
+        { basePointA = OtherPoint.initReferenced
+        , basePointB = OtherPoint.initReferenced
         , pointsHelp = Nothing
         , twoPointsPosition =
             TwoPointsPositionRatio
@@ -1129,7 +1097,7 @@ initIntersectionForm =
 initThroughOnePointForm : AxisForm
 initThroughOnePointForm =
     ThroughOnePointForm
-        { point = initReferencedPointForm
+        { point = OtherPoint.initReferenced
         , orientation = OrientationAngle ""
         , orientationHelp = Nothing
         }
@@ -1138,8 +1106,8 @@ initThroughOnePointForm =
 initThroughTwoPointsForm : AxisForm
 initThroughTwoPointsForm =
     ThroughTwoPointsForm
-        { pointA = initReferencedPointForm
-        , pointB = initReferencedPointForm
+        { pointA = OtherPoint.initReferenced
+        , pointB = OtherPoint.initReferenced
         , pointsHelp = Nothing
         }
 
@@ -1151,7 +1119,7 @@ initThroughTwoPointsForm =
 initWithRadiusForm : CircleForm
 initWithRadiusForm =
     WithRadiusForm
-        { centerPoint = initReferencedPointForm
+        { centerPoint = OtherPoint.initReferenced
         , radius = ""
         , radiusHelp = Nothing
         }
@@ -1160,9 +1128,9 @@ initWithRadiusForm =
 initThroughThreePointsForm : CircleForm
 initThroughThreePointsForm =
     ThroughThreePointsForm
-        { pointA = initReferencedPointForm
-        , pointB = initReferencedPointForm
-        , pointC = initReferencedPointForm
+        { pointA = OtherPoint.initReferenced
+        , pointB = OtherPoint.initReferenced
+        , pointC = OtherPoint.initReferenced
         , pointsHelp = Nothing
         }
 
@@ -1174,8 +1142,8 @@ initThroughThreePointsForm =
 initStraightForm : CurveForm
 initStraightForm =
     StraightForm
-        { startPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         , pointsHelp = Nothing
         }
 
@@ -1183,9 +1151,9 @@ initStraightForm =
 initQuadraticForm : CurveForm
 initQuadraticForm =
     QuadraticForm
-        { startPoint = initReferencedPointForm
-        , controlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , controlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         , pointsHelp = Nothing
         }
 
@@ -1193,10 +1161,10 @@ initQuadraticForm =
 initCubicForm : CurveForm
 initCubicForm =
     CubicForm
-        { startPoint = initReferencedPointForm
-        , startControlPoint = initReferencedPointForm
-        , endControlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , startControlPoint = OtherPoint.initReferenced
+        , endControlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         , pointsHelp = Nothing
         }
 
@@ -1222,27 +1190,27 @@ initDetailForm =
 initFirstStraightForm : FirstCurveForm
 initFirstStraightForm =
     FirstStraightForm
-        { startPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         }
 
 
 initFirstQuadraticForm : FirstCurveForm
 initFirstQuadraticForm =
     FirstQuadraticForm
-        { startPoint = initReferencedPointForm
-        , controlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , controlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         }
 
 
 initFirstCubicForm : FirstCurveForm
 initFirstCubicForm =
     FirstCubicForm
-        { startPoint = initReferencedPointForm
-        , startControlPoint = initReferencedPointForm
-        , endControlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startPoint = OtherPoint.initReferenced
+        , startControlPoint = OtherPoint.initReferenced
+        , endControlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         }
 
 
@@ -1257,23 +1225,23 @@ initFirstReferencedCurveForm =
 initNextStraightForm : NextCurveForm
 initNextStraightForm =
     NextStraightForm
-        { endPoint = initReferencedPointForm }
+        { endPoint = OtherPoint.initReferenced }
 
 
 initNextQuadraticForm : NextCurveForm
 initNextQuadraticForm =
     NextQuadraticForm
-        { controlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { controlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         }
 
 
 initNextCubicForm : NextCurveForm
 initNextCubicForm =
     NextCubicForm
-        { startControlPoint = initReferencedPointForm
-        , endControlPoint = initReferencedPointForm
-        , endPoint = initReferencedPointForm
+        { startControlPoint = OtherPoint.initReferenced
+        , endControlPoint = OtherPoint.initReferenced
+        , endPoint = OtherPoint.initReferenced
         }
 
 
@@ -1293,14 +1261,14 @@ initLastStraightForm =
 initLastQuadraticForm : LastCurveForm
 initLastQuadraticForm =
     LastQuadraticForm
-        { controlPoint = initReferencedPointForm }
+        { controlPoint = OtherPoint.initReferenced }
 
 
 initLastCubicForm : LastCurveForm
 initLastCubicForm =
     LastCubicForm
-        { startControlPoint = initReferencedPointForm
-        , endControlPoint = initReferencedPointForm
+        { startControlPoint = OtherPoint.initReferenced
+        , endControlPoint = OtherPoint.initReferenced
         }
 
 
@@ -1321,23 +1289,6 @@ initOtherCurveForm =
 
 
 -- OTHER FORM
-
-
-initReferencedPointForm : OtherPointForm
-initReferencedPointForm =
-    ReferencedPointForm
-        { dropdown = Ui.Atom.Dropdown.init
-        , maybeAPoint = Nothing
-        , help = Nothing
-        }
-
-
-initInlinedPointForm : OtherPointForm
-initInlinedPointForm =
-    InlinedPointForm
-        { expanded = True
-        , point = initFromOnePointForm
-        }
 
 
 initReferencedIntersectableForm : OtherIntersectableForm
@@ -1447,13 +1398,7 @@ viewActions name nameHelp =
 ---- VIEW CREATE POINT DIALOG
 
 
-viewPointForm :
-    Pattern
-    -> Pattern.Objects
-    -> String
-    -> Maybe String
-    -> PointForm
-    -> Element CreateMsg
+viewPointForm : Pattern -> Pattern.Objects -> String -> Maybe String -> PointForm -> Element CreateMsg
 viewPointForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
@@ -1501,14 +1446,7 @@ viewPointForm pattern objects name nameHelp form =
         ]
 
 
-viewPointFormHelp :
-    Pattern
-    -> Pattern.Objects
-    ->
-        { point : PointForm
-        , id : String
-        }
-    -> Element PointMsg
+viewPointFormHelp : Pattern -> Pattern.Objects -> { point : PointForm, id : String } -> Element PointMsg
 viewPointFormHelp pattern objects { point, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1531,7 +1469,8 @@ viewPointFormHelp pattern objects { point, id } =
                 case point of
                     FromOnePointForm stuff ->
                         [ Element.map FromOnePoint_BasePointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.basePoint
                                 , id = id ++ "__from-one-point--base-point"
@@ -1554,14 +1493,16 @@ viewPointFormHelp pattern objects { point, id } =
 
                     FromTwoPointsForm stuff ->
                         [ Element.map FromTwoPoints_BasePointAMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.basePointA
                                 , id = id ++ "__from-two-points--base-point-a"
                                 , label = "1st base point"
                                 }
                         , Element.map FromTwoPoints_BasePointBMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.basePointB
                                 , id = id ++ "__from-two-points--base-point-b"
@@ -1660,11 +1601,7 @@ viewAxisForm pattern objects name nameHelp form =
         ]
 
 
-viewAxisFormHelp :
-    Pattern
-    -> Pattern.Objects
-    -> { axis : AxisForm, id : String }
-    -> Element AxisMsg
+viewAxisFormHelp : Pattern -> Pattern.Objects -> { axis : AxisForm, id : String } -> Element AxisMsg
 viewAxisFormHelp pattern objects { axis, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1678,7 +1615,8 @@ viewAxisFormHelp pattern objects { axis, id } =
                 case axis of
                     ThroughOnePointForm stuff ->
                         [ Element.map ThroughOnePoint_PointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.point
                                 , id = id ++ "__through-one-point--point"
@@ -1693,14 +1631,16 @@ viewAxisFormHelp pattern objects { axis, id } =
 
                     ThroughTwoPointsForm stuff ->
                         [ Element.map ThroughTwoPoints_PointAMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.pointA
                                 , id = id ++ "__through-two-points--point-a"
                                 , label = "1st point"
                                 }
                         , Element.map ThroughTwoPoints_PointBMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.pointB
                                 , id = id ++ "__through-two-points--point-b"
@@ -1755,7 +1695,8 @@ viewCircleFormHelp pattern objects { circle, id } =
                 case circle of
                     WithRadiusForm stuff ->
                         [ Element.map WithRadius_CenterPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.centerPoint
                                 , id = id ++ "__with-radius--center-point"
@@ -1772,21 +1713,24 @@ viewCircleFormHelp pattern objects { circle, id } =
 
                     ThroughThreePointsForm stuff ->
                         [ Element.map ThroughThreePoints_PointAMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.pointA
                                 , id = "__through-three-points--point-a"
                                 , label = "1st point"
                                 }
                         , Element.map ThroughThreePoints_PointBMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.pointB
                                 , id = "__through-three-points--point-b"
                                 , label = "2nd point"
                                 }
                         , Element.map ThroughThreePoints_PointCMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.pointC
                                 , id = "__through-three-points--point-c"
@@ -1823,11 +1767,7 @@ viewCurveForm pattern objects name nameHelp form =
         ]
 
 
-viewCurveFormHelp :
-    Pattern
-    -> Pattern.Objects
-    -> { curve : CurveForm, id : String }
-    -> Element CurveMsg
+viewCurveFormHelp : Pattern -> Pattern.Objects -> { curve : CurveForm, id : String } -> Element CurveMsg
 viewCurveFormHelp pattern objects { curve, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1841,14 +1781,16 @@ viewCurveFormHelp pattern objects { curve, id } =
                 case curve of
                     StraightForm stuff ->
                         [ Element.map StartPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.startPoint
                                 , id = "__straight--start-point"
                                 , label = "Start point"
                                 }
                         , Element.map EndPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.endPoint
                                 , id = "__straight--end-point"
@@ -1858,21 +1800,24 @@ viewCurveFormHelp pattern objects { curve, id } =
 
                     QuadraticForm stuff ->
                         [ Element.map StartPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.startPoint
                                 , id = "__quadratic--start-point"
                                 , label = "Start point"
                                 }
                         , Element.map ControlPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.controlPoint
                                 , id = "__quadratic--control-point"
                                 , label = "Control point"
                                 }
                         , Element.map EndPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.endPoint
                                 , id = "__quadratic--end-point"
@@ -1882,28 +1827,32 @@ viewCurveFormHelp pattern objects { curve, id } =
 
                     CubicForm stuff ->
                         [ Element.map StartPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.startPoint
                                 , id = "__cubic--start-point"
                                 , label = "Start point"
                                 }
                         , Element.map StartControlPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.startControlPoint
                                 , id = "__cubic--start-control-point"
                                 , label = "Start control point"
                                 }
                         , Element.map EndControlPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.endControlPoint
                                 , id = "__cubic--end-control-point"
                                 , label = "End control point"
                                 }
                         , Element.map EndPointMsg <|
-                            viewOtherPointForm pattern
+                            OtherPoint.view viewPointFormHelp
+                                pattern
                                 objects
                                 { otherPoint = stuff.endPoint
                                 , id = "__cubic--end-point"
@@ -1971,14 +1920,16 @@ viewDetailFormHelp pattern objects { detail, id } =
                                             , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.startPoint
                                                     , id = id ++ "__first-straight--start-point"
                                                     , label = "Start point"
                                                     }
                                             , Element.map FirstCurveEndPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.endPoint
                                                     , id = id ++ "__first-straight--end-point"
@@ -1994,21 +1945,24 @@ viewDetailFormHelp pattern objects { detail, id } =
                                             , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.startPoint
                                                     , id = id ++ "__first-quadratic--start-point"
                                                     , label = "Start point"
                                                     }
                                             , Element.map FirstCurveControlPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.controlPoint
                                                     , id = id ++ "__first-quadratic--control-point"
                                                     , label = "Control point"
                                                     }
                                             , Element.map FirstCurveEndPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.endPoint
                                                     , id = id ++ "__first-quadratic--end-point"
@@ -2024,14 +1978,16 @@ viewDetailFormHelp pattern objects { detail, id } =
                                             , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.startPoint
                                                     , id = id ++ "__first-cubic--start-point"
                                                     , label = "Start point"
                                                     }
                                             , Element.map FirstCurveStartControlPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.startControlPoint
                                                     , id =
@@ -2039,14 +1995,16 @@ viewDetailFormHelp pattern objects { detail, id } =
                                                     , label = "Start control point"
                                                     }
                                             , Element.map FirstCurveEndControlPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.endControlPoint
                                                     , id = id ++ "__first-cubic--end-control-point"
                                                     , label = "End control point"
                                                     }
                                             , Element.map FirstCurveEndPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.endPoint
                                                     , id = id ++ "__first-cubic--end-point"
@@ -2102,7 +2060,8 @@ viewDetailFormHelp pattern objects { detail, id } =
                                 Just <|
                                     Ui.Atom.nested <|
                                         Element.map LastCurveControlPointMsg <|
-                                            viewOtherPointForm pattern
+                                            OtherPoint.view viewPointFormHelp
+                                                pattern
                                                 objects
                                                 { otherPoint = stuff.controlPoint
                                                 , id = id ++ "__last-quadratic--control-point"
@@ -2117,14 +2076,16 @@ viewDetailFormHelp pattern objects { detail, id } =
                                             , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map LastCurveStartControlPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.startControlPoint
                                                     , id = id ++ "__last-cubic--start-control-point"
                                                     , label = "Start control point"
                                                     }
                                             , Element.map LastCurveEndControlPointMsg <|
-                                                viewOtherPointForm pattern
+                                                OtherPoint.view viewPointFormHelp
+                                                    pattern
                                                     objects
                                                     { otherPoint = stuff.endControlPoint
                                                     , id = id ++ "__last-cubic--end-control-point"
@@ -2195,7 +2156,8 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                                     , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveEndPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.endPoint
                                             , id = actualId ++ "__next-straight--end-point"
@@ -2211,14 +2173,16 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                                     , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveControlPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.controlPoint
                                             , id = actualId ++ "__next-quadratic--control-point"
                                             , label = "Control point"
                                             }
                                     , Element.map (NextCurveEndPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.endPoint
                                             , id = actualId ++ "__next-quadratic--end-point"
@@ -2234,21 +2198,24 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                                     , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveStartControlPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.startControlPoint
                                             , id = actualId ++ "__next-cubic--start-control-point"
                                             , label = "Start control point"
                                             }
                                     , Element.map (NextCurveEndControlPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.endControlPoint
                                             , id = actualId ++ "__next-cubic--end-control-point"
                                             , label = "End control point"
                                             }
                                     , Element.map (NextCurveEndPointMsg index) <|
-                                        viewOtherPointForm pattern
+                                        OtherPoint.view viewPointFormHelp
+                                            pattern
                                             objects
                                             { otherPoint = stuff.endPoint
                                             , id = actualId ++ "__next-cubic--end-point"
@@ -2505,62 +2472,6 @@ title text =
         (Ui.Typography.bodyBold text)
 
 
-viewOtherPointForm :
-    Pattern
-    -> Pattern.Objects
-    ->
-        { otherPoint : OtherPointForm
-        , id : String
-        , label : String
-        }
-    -> Element OtherPointMsg
-viewOtherPointForm pattern objects { otherPoint, id, label } =
-    Ui.Atom.segmentControl
-        { id = id
-        , label = Just label
-        , help =
-            case otherPoint of
-                ReferencedPointForm { help } ->
-                    help
-
-                _ ->
-                    Nothing
-        , onChange = OtherPointTypeChanged
-        , options = otherPointTags
-        , selected = tagFromOtherPointForm otherPoint
-        , child =
-            case otherPoint of
-                ReferencedPointForm { dropdown, maybeAPoint, help } ->
-                    Just <|
-                        Ui.Atom.Dropdown.viewAppended
-                            { entryToString = objectName
-                            , entryToHash = Pattern.hash
-                            }
-                            { id = id ++ "__referenced--point"
-                            , lift = ReferencedPointDropdownMsg
-                            , label = label
-                            }
-                            objects.points
-                            dropdown
-                            maybeAPoint
-
-                InlinedPointForm { expanded, point } ->
-                    Just <|
-                        Ui.Atom.nestedHideable
-                            { show = expanded
-                            , onPress = InlinedPointExpandToggled
-                            , shown =
-                                Element.map InlinedPointMsg <|
-                                    viewPointFormHelp pattern
-                                        objects
-                                        { point = point
-                                        , id = id ++ "__inlined--point"
-                                        }
-                            , hidden = Element.none
-                            }
-        }
-
-
 viewOtherIntersectableForm :
     Pattern
     -> Pattern.Objects
@@ -2808,12 +2719,12 @@ type EditMsg
 type PointMsg
     = PointTypeChanged PointTag
       -- FROM ONE POINT
-    | FromOnePoint_BasePointMsg OtherPointMsg
+    | FromOnePoint_BasePointMsg (OtherPoint.Msg PointMsg)
     | FromOnePoint_DirectionMsg DirectionMsg
     | FromOnePoint_DistanceChanged String
       -- FROM TWO POINTS
-    | FromTwoPoints_BasePointAMsg OtherPointMsg
-    | FromTwoPoints_BasePointBMsg OtherPointMsg
+    | FromTwoPoints_BasePointAMsg (OtherPoint.Msg PointMsg)
+    | FromTwoPoints_BasePointBMsg (OtherPoint.Msg PointMsg)
     | FromTwoPoints_TwoPointsPositionMsg TwoPointsPositionMsg
       -- INTERSECTION
     | Intersection_ObjectAMsg OtherIntersectableMsg
@@ -2832,61 +2743,61 @@ type AxisMsg
     = AxisUseInPointPressed
     | AxisTypeChanged AxisTag
       -- THROUGH ONE POINT
-    | ThroughOnePoint_PointMsg OtherPointMsg
+    | ThroughOnePoint_PointMsg (OtherPoint.Msg PointMsg)
     | ThroughOnePoint_OrientationMsg OrientationMsg
       -- THROUGH TWO POINTS
-    | ThroughTwoPoints_PointAMsg OtherPointMsg
-    | ThroughTwoPoints_PointBMsg OtherPointMsg
+    | ThroughTwoPoints_PointAMsg (OtherPoint.Msg PointMsg)
+    | ThroughTwoPoints_PointBMsg (OtherPoint.Msg PointMsg)
 
 
 type CircleMsg
     = CircleUseInPointPressed
     | CircleTypeChanged CircleTag
       -- WITH RADIUS
-    | WithRadius_CenterPointMsg OtherPointMsg
+    | WithRadius_CenterPointMsg (OtherPoint.Msg PointMsg)
     | WithRadius_RadiusChanged String
       -- THROUGH THREE POINTS
-    | ThroughThreePoints_PointAMsg OtherPointMsg
-    | ThroughThreePoints_PointBMsg OtherPointMsg
-    | ThroughThreePoints_PointCMsg OtherPointMsg
+    | ThroughThreePoints_PointAMsg (OtherPoint.Msg PointMsg)
+    | ThroughThreePoints_PointBMsg (OtherPoint.Msg PointMsg)
+    | ThroughThreePoints_PointCMsg (OtherPoint.Msg PointMsg)
 
 
 type CurveMsg
     = CurveTypeChanged CurveTag
       -- STRAIGHT & QUADRATIC & CUBIC
-    | StartPointMsg OtherPointMsg
-    | ControlPointMsg OtherPointMsg
-    | StartControlPointMsg OtherPointMsg
-    | EndControlPointMsg OtherPointMsg
-    | EndPointMsg OtherPointMsg
+    | StartPointMsg (OtherPoint.Msg PointMsg)
+    | ControlPointMsg (OtherPoint.Msg PointMsg)
+    | StartControlPointMsg (OtherPoint.Msg PointMsg)
+    | EndControlPointMsg (OtherPoint.Msg PointMsg)
+    | EndPointMsg (OtherPoint.Msg PointMsg)
 
 
 type DetailMsg
     = AddCurvePressed
       -- FIRST CURVE
     | FirstCurveTypeChanged FirstCurveTag
-    | FirstCurveStartPointMsg OtherPointMsg
-    | FirstCurveStartControlPointMsg OtherPointMsg
-    | FirstCurveControlPointMsg OtherPointMsg
-    | FirstCurveEndControlPointMsg OtherPointMsg
-    | FirstCurveEndPointMsg OtherPointMsg
+    | FirstCurveStartPointMsg (OtherPoint.Msg PointMsg)
+    | FirstCurveStartControlPointMsg (OtherPoint.Msg PointMsg)
+    | FirstCurveControlPointMsg (OtherPoint.Msg PointMsg)
+    | FirstCurveEndControlPointMsg (OtherPoint.Msg PointMsg)
+    | FirstCurveEndPointMsg (OtherPoint.Msg PointMsg)
     | FirstCurveDropdownMsg (Ui.Atom.Dropdown.Msg (A Curve))
     | FirstCurveReverseChanged Bool
     | FirstCurveActionMenuMsg ActionMenuMsg
       -- NEXT CURVE
     | NextCurveTypeChanged Int NextCurveTag
-    | NextCurveStartControlPointMsg Int OtherPointMsg
-    | NextCurveControlPointMsg Int OtherPointMsg
-    | NextCurveEndControlPointMsg Int OtherPointMsg
-    | NextCurveEndPointMsg Int OtherPointMsg
+    | NextCurveStartControlPointMsg Int (OtherPoint.Msg PointMsg)
+    | NextCurveControlPointMsg Int (OtherPoint.Msg PointMsg)
+    | NextCurveEndControlPointMsg Int (OtherPoint.Msg PointMsg)
+    | NextCurveEndPointMsg Int (OtherPoint.Msg PointMsg)
     | NextCurveDropdownMsg Int (Ui.Atom.Dropdown.Msg (A Curve))
     | NextCurveReverseChanged Int Bool
     | NextCurveActionMenuMsg Int ActionMenuMsg
       -- LAST CURVE
     | LastCurveTypeChanged LastCurveTag
-    | LastCurveStartControlPointMsg OtherPointMsg
-    | LastCurveControlPointMsg OtherPointMsg
-    | LastCurveEndControlPointMsg OtherPointMsg
+    | LastCurveStartControlPointMsg (OtherPoint.Msg PointMsg)
+    | LastCurveControlPointMsg (OtherPoint.Msg PointMsg)
+    | LastCurveEndControlPointMsg (OtherPoint.Msg PointMsg)
     | LastCurveDropdownMsg (Ui.Atom.Dropdown.Msg (A Curve))
     | LastCurveReverseChanged Bool
     | LastCurveActionMenuMsg ActionMenuMsg
@@ -2910,13 +2821,6 @@ type ActionMenuMsg
 
 
 -- NESTINGS
-
-
-type OtherPointMsg
-    = OtherPointTypeChanged OtherPointTag
-    | ReferencedPointDropdownMsg (Ui.Atom.Dropdown.Msg (A Pattern.Point))
-    | InlinedPointMsg PointMsg
-    | InlinedPointExpandToggled
 
 
 type OtherIntersectableMsg
@@ -3133,10 +3037,7 @@ createUpdate pattern msg ((Create stuff) as create) =
                                     DialogPoint <|
                                         FromOnePointForm
                                             { basePoint =
-                                                InlinedPointForm
-                                                    { expanded = False
-                                                    , point = point
-                                                    }
+                                                OtherPoint.initInlined False point
                                             , direction = DirectionAngle ""
                                             , directionHelp = Nothing
                                             , distance = ""
@@ -3159,10 +3060,7 @@ createUpdate pattern msg ((Create stuff) as create) =
                                     DialogAxis <|
                                         ThroughOnePointForm
                                             { point =
-                                                InlinedPointForm
-                                                    { expanded = False
-                                                    , point = point
-                                                    }
+                                                OtherPoint.initInlined False point
                                             , orientation = OrientationAngle ""
                                             , orientationHelp = Nothing
                                             }
@@ -3183,10 +3081,7 @@ createUpdate pattern msg ((Create stuff) as create) =
                                     DialogCircle <|
                                         WithRadiusForm
                                             { centerPoint =
-                                                InlinedPointForm
-                                                    { expanded = False
-                                                    , point = point
-                                                    }
+                                                OtherPoint.initInlined False point
                                             , radius = ""
                                             , radiusHelp = Nothing
                                             }
@@ -3227,7 +3122,7 @@ updatePointForm pattern objects pointMsg form =
         ( FromOnePoint_BasePointMsg subMsg, FromOnePointForm stuff ) ->
             let
                 ( newBasePoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.basePoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.basePoint
             in
             ( FromOnePointForm { stuff | basePoint = newBasePoint }
             , Cmd.map FromOnePoint_BasePointMsg subCmd
@@ -3249,7 +3144,7 @@ updatePointForm pattern objects pointMsg form =
         ( FromTwoPoints_BasePointAMsg subMsg, FromTwoPointsForm stuff ) ->
             let
                 ( newBasePointA, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.basePointA
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.basePointA
             in
             ( FromTwoPointsForm { stuff | basePointA = newBasePointA }
             , Cmd.map FromTwoPoints_BasePointAMsg subCmd
@@ -3258,7 +3153,7 @@ updatePointForm pattern objects pointMsg form =
         ( FromTwoPoints_BasePointBMsg subMsg, FromTwoPointsForm stuff ) ->
             let
                 ( newBasePointB, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.basePointB
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.basePointB
             in
             ( FromTwoPointsForm { stuff | basePointB = newBasePointB }
             , Cmd.map FromTwoPoints_BasePointBMsg subCmd
@@ -3393,7 +3288,7 @@ updateAxisForm pattern objects axisMsg form =
         ( ThroughOnePoint_PointMsg subMsg, ThroughOnePointForm stuff ) ->
             let
                 ( newPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.point
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.point
             in
             ( ThroughOnePointForm { stuff | point = newPoint }
             , Cmd.map ThroughOnePoint_PointMsg subCmd
@@ -3409,7 +3304,7 @@ updateAxisForm pattern objects axisMsg form =
         ( ThroughTwoPoints_PointAMsg subMsg, ThroughTwoPointsForm stuff ) ->
             let
                 ( newPointA, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.pointA
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.pointA
             in
             ( ThroughTwoPointsForm { stuff | pointA = newPointA }
             , Cmd.map ThroughTwoPoints_PointAMsg subCmd
@@ -3418,7 +3313,7 @@ updateAxisForm pattern objects axisMsg form =
         ( ThroughTwoPoints_PointBMsg subMsg, ThroughTwoPointsForm stuff ) ->
             let
                 ( newPointB, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.pointB
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.pointB
             in
             ( ThroughTwoPointsForm { stuff | pointB = newPointB }
             , Cmd.map ThroughTwoPoints_PointBMsg subCmd
@@ -3455,7 +3350,7 @@ updateCircleForm pattern objects circleMsg form =
         ( WithRadius_CenterPointMsg subMsg, WithRadiusForm stuff ) ->
             let
                 ( newCenterPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.centerPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.centerPoint
             in
             ( WithRadiusForm { stuff | centerPoint = newCenterPoint }
             , Cmd.map WithRadius_CenterPointMsg subCmd
@@ -3470,7 +3365,7 @@ updateCircleForm pattern objects circleMsg form =
         ( ThroughThreePoints_PointAMsg subMsg, ThroughThreePointsForm stuff ) ->
             let
                 ( newPointA, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.pointA
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.pointA
             in
             ( ThroughThreePointsForm { stuff | pointA = newPointA }
             , Cmd.map ThroughThreePoints_PointAMsg subCmd
@@ -3479,7 +3374,7 @@ updateCircleForm pattern objects circleMsg form =
         ( ThroughThreePoints_PointBMsg subMsg, ThroughThreePointsForm stuff ) ->
             let
                 ( newPointB, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.pointB
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.pointB
             in
             ( ThroughThreePointsForm { stuff | pointB = newPointB }
             , Cmd.map ThroughThreePoints_PointBMsg subCmd
@@ -3488,7 +3383,7 @@ updateCircleForm pattern objects circleMsg form =
         ( ThroughThreePoints_PointCMsg subMsg, ThroughThreePointsForm stuff ) ->
             let
                 ( newPointC, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.pointC
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.pointC
             in
             ( ThroughThreePointsForm { stuff | pointC = newPointC }
             , Cmd.map ThroughThreePoints_PointCMsg subCmd
@@ -3528,7 +3423,7 @@ updateCurveForm pattern objects curveMsg form =
         ( StartPointMsg subMsg, StraightForm stuff ) ->
             let
                 ( newStartPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.startPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.startPoint
             in
             ( StraightForm { stuff | startPoint = newStartPoint }
             , Cmd.map StartPointMsg subCmd
@@ -3537,7 +3432,7 @@ updateCurveForm pattern objects curveMsg form =
         ( EndPointMsg subMsg, StraightForm stuff ) ->
             let
                 ( newEndPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.endPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.endPoint
             in
             ( StraightForm { stuff | endPoint = newEndPoint }
             , Cmd.map EndPointMsg subCmd
@@ -3547,7 +3442,7 @@ updateCurveForm pattern objects curveMsg form =
         ( StartPointMsg subMsg, QuadraticForm stuff ) ->
             let
                 ( newStartPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.startPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.startPoint
             in
             ( QuadraticForm { stuff | startPoint = newStartPoint }
             , Cmd.map StartPointMsg subCmd
@@ -3556,7 +3451,7 @@ updateCurveForm pattern objects curveMsg form =
         ( ControlPointMsg subMsg, QuadraticForm stuff ) ->
             let
                 ( newControlPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.controlPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.controlPoint
             in
             ( QuadraticForm { stuff | controlPoint = newControlPoint }
             , Cmd.map ControlPointMsg subCmd
@@ -3565,7 +3460,7 @@ updateCurveForm pattern objects curveMsg form =
         ( EndPointMsg subMsg, QuadraticForm stuff ) ->
             let
                 ( newEndPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.endPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.endPoint
             in
             ( QuadraticForm { stuff | endPoint = newEndPoint }
             , Cmd.map EndPointMsg subCmd
@@ -3575,7 +3470,7 @@ updateCurveForm pattern objects curveMsg form =
         ( StartPointMsg subMsg, CubicForm stuff ) ->
             let
                 ( newStartPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.startPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.startPoint
             in
             ( CubicForm { stuff | startPoint = newStartPoint }
             , Cmd.map StartPointMsg subCmd
@@ -3584,7 +3479,7 @@ updateCurveForm pattern objects curveMsg form =
         ( StartControlPointMsg subMsg, CubicForm stuff ) ->
             let
                 ( newStartControlPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.startControlPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.startControlPoint
             in
             ( CubicForm { stuff | startControlPoint = newStartControlPoint }
             , Cmd.map StartControlPointMsg subCmd
@@ -3593,7 +3488,7 @@ updateCurveForm pattern objects curveMsg form =
         ( EndControlPointMsg subMsg, CubicForm stuff ) ->
             let
                 ( newEndControlPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.endControlPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.endControlPoint
             in
             ( CubicForm { stuff | endControlPoint = newEndControlPoint }
             , Cmd.map EndControlPointMsg subCmd
@@ -3602,7 +3497,7 @@ updateCurveForm pattern objects curveMsg form =
         ( EndPointMsg subMsg, CubicForm stuff ) ->
             let
                 ( newEndPoint, subCmd ) =
-                    updateOtherPointForm pattern objects subMsg stuff.endPoint
+                    OtherPoint.update initFromOnePointForm updatePointForm pattern objects subMsg stuff.endPoint
             in
             ( CubicForm { stuff | endPoint = newEndPoint }
             , Cmd.map EndPointMsg subCmd
@@ -3659,7 +3554,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstStraightForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.startPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.startPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3673,7 +3568,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstQuadraticForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.startPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.startPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3687,7 +3582,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.startPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.startPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3712,7 +3607,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.startControlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.startControlPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3734,7 +3629,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstQuadraticForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.controlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.controlPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3762,7 +3657,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endControlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endControlPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3781,7 +3676,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstStraightForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3795,7 +3690,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstQuadraticForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3809,7 +3704,7 @@ updateDetailForm pattern objects detailMsg detail =
                 FirstCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | firstCurve =
@@ -3931,7 +3826,9 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextCubicForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern
+                            OtherPoint.update initFromOnePointForm
+                                updatePointForm
+                                pattern
                                 objects
                                 otherPointMsg
                                 stuff.startControlPoint
@@ -3964,7 +3861,7 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextQuadraticForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.controlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.controlPoint
                     in
                     ( { detail
                         | nextCurves =
@@ -4000,7 +3897,7 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextCubicForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endControlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endControlPoint
                     in
                     ( { detail
                         | nextCurves =
@@ -4027,7 +3924,7 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextStraightForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | nextCurves =
@@ -4046,7 +3943,7 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextQuadraticForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | nextCurves =
@@ -4065,7 +3962,7 @@ updateDetailForm pattern objects detailMsg detail =
                 Just ( NextCubicForm stuff, actionMenu ) ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endPoint
                     in
                     ( { detail
                         | nextCurves =
@@ -4174,7 +4071,7 @@ updateDetailForm pattern objects detailMsg detail =
                 LastCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.startControlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.startControlPoint
                     in
                     ( { detail
                         | lastCurve =
@@ -4196,7 +4093,7 @@ updateDetailForm pattern objects detailMsg detail =
                 LastQuadraticForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.controlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.controlPoint
                     in
                     ( { detail
                         | lastCurve =
@@ -4224,7 +4121,7 @@ updateDetailForm pattern objects detailMsg detail =
                 LastCubicForm stuff ->
                     let
                         ( newOtherPoint, subCmd ) =
-                            updateOtherPointForm pattern objects otherPointMsg stuff.endControlPoint
+                            OtherPoint.update initFromOnePointForm updatePointForm pattern objects otherPointMsg stuff.endControlPoint
                     in
                     ( { detail
                         | lastCurve =
@@ -4285,74 +4182,6 @@ updateDetailForm pattern objects detailMsg detail =
 
         LastCurveActionMenuMsg actionMenuMsg ->
             ( detail, Cmd.none )
-
-
-updateOtherPointForm :
-    Pattern
-    -> Pattern.Objects
-    -> OtherPointMsg
-    -> OtherPointForm
-    -> ( OtherPointForm, Cmd OtherPointMsg )
-updateOtherPointForm pattern objects msg form =
-    case msg of
-        OtherPointTypeChanged otherPointTag ->
-            case otherPointTag of
-                ReferencedPointTag ->
-                    ( initReferencedPointForm
-                    , Cmd.none
-                    )
-
-                InlinedPointTag ->
-                    ( initInlinedPointForm
-                    , Cmd.none
-                    )
-
-        ReferencedPointDropdownMsg dropdownMsg ->
-            case form of
-                ReferencedPointForm stuff ->
-                    let
-                        ( newDropdown, dropdownCmd, newMaybeAPoint ) =
-                            Ui.Atom.Dropdown.update
-                                { entryToHash = Pattern.hash }
-                                objects.points
-                                dropdownMsg
-                                stuff.dropdown
-                                stuff.maybeAPoint
-                    in
-                    ( ReferencedPointForm
-                        { stuff
-                            | dropdown = newDropdown
-                            , maybeAPoint = newMaybeAPoint
-                        }
-                    , Cmd.map ReferencedPointDropdownMsg dropdownCmd
-                    )
-
-                _ ->
-                    ( form, Cmd.none )
-
-        InlinedPointMsg subMsg ->
-            case form of
-                InlinedPointForm stuff ->
-                    let
-                        ( newPoint, subCmd ) =
-                            updatePointForm pattern objects subMsg stuff.point
-                    in
-                    ( InlinedPointForm { stuff | point = newPoint }
-                    , Cmd.map InlinedPointMsg subCmd
-                    )
-
-                _ ->
-                    ( form, Cmd.none )
-
-        InlinedPointExpandToggled ->
-            case form of
-                InlinedPointForm stuff ->
-                    ( InlinedPointForm { stuff | expanded = not stuff.expanded }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( form, Cmd.none )
 
 
 updateOtherIntersectableForm :
@@ -4519,7 +4348,7 @@ newPointFrom form pattern =
         FromOnePointForm stuff ->
             let
                 getBasePoint =
-                    newOtherPointFrom stuff.basePoint pattern
+                    OtherPoint.new newPointFrom stuff.basePoint pattern
                         |> Result.mapError
                             (\basePointWithHelp ->
                                 { stuff
@@ -4546,7 +4375,7 @@ newPointFrom form pattern =
         FromTwoPointsForm stuff ->
             let
                 getBasePointA =
-                    newOtherPointFrom stuff.basePointA pattern
+                    OtherPoint.new newPointFrom stuff.basePointA pattern
                         |> Result.mapError
                             (\basePointAWithHelp ->
                                 { stuff
@@ -4560,7 +4389,7 @@ newPointFrom form pattern =
                         |> Result.andThen getBasePointB
 
                 getBasePointB aPointA =
-                    newOtherPointFrom stuff.basePointB pattern
+                    OtherPoint.new newPointFrom stuff.basePointB pattern
                         |> Result.mapError
                             (\basePointBWithHelp ->
                                 { stuff
@@ -4654,7 +4483,7 @@ newAxisFrom form pattern =
         ThroughOnePointForm stuff ->
             let
                 getPoint =
-                    newOtherPointFrom stuff.point pattern
+                    OtherPoint.new newPointFrom stuff.point pattern
                         |> Result.mapError
                             (\pointWithHelp ->
                                 { stuff
@@ -4677,7 +4506,7 @@ newAxisFrom form pattern =
         ThroughTwoPointsForm stuff ->
             let
                 getPointA =
-                    newOtherPointFrom stuff.pointA pattern
+                    OtherPoint.new newPointFrom stuff.pointA pattern
                         |> Result.mapError
                             (\pointAWithHelp ->
                                 { stuff
@@ -4688,7 +4517,7 @@ newAxisFrom form pattern =
                         |> Result.andThen getPointB
 
                 getPointB aPointA =
-                    newOtherPointFrom stuff.pointB pattern
+                    OtherPoint.new newPointFrom stuff.pointB pattern
                         |> Result.mapError
                             (\pointBWithHelp ->
                                 { stuff | pointB = pointBWithHelp }
@@ -4713,7 +4542,7 @@ newCircleFrom form pattern =
         WithRadiusForm stuff ->
             let
                 getCenterPoint =
-                    newOtherPointFrom stuff.centerPoint pattern
+                    OtherPoint.new newPointFrom stuff.centerPoint pattern
                         |> Result.mapError
                             (\centerPointWithHelp ->
                                 { stuff
@@ -4737,7 +4566,7 @@ newCircleFrom form pattern =
         ThroughThreePointsForm stuff ->
             let
                 getPointA =
-                    newOtherPointFrom stuff.pointA pattern
+                    OtherPoint.new newPointFrom stuff.pointA pattern
                         |> Result.mapError
                             (\pointAWithHelp ->
                                 { stuff
@@ -4749,7 +4578,7 @@ newCircleFrom form pattern =
                         |> Result.andThen getPointB
 
                 getPointB aPointA =
-                    newOtherPointFrom stuff.pointB pattern
+                    OtherPoint.new newPointFrom stuff.pointB pattern
                         |> Result.mapError
                             (\pointBWithHelp ->
                                 { stuff
@@ -4760,7 +4589,7 @@ newCircleFrom form pattern =
                         |> Result.andThen (getPointC aPointA)
 
                 getPointC aPointA aPointB =
-                    newOtherPointFrom stuff.pointC pattern
+                    OtherPoint.new newPointFrom stuff.pointC pattern
                         |> Result.mapError
                             (\pointCWithHelp ->
                                 { stuff | pointC = pointCWithHelp }
@@ -4785,7 +4614,7 @@ newCurveFrom form pattern =
         StraightForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -4796,7 +4625,7 @@ newCurveFrom form pattern =
                         |> Result.andThen getEndPoint
 
                 getEndPoint aStartPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff
@@ -4818,7 +4647,7 @@ newCurveFrom form pattern =
         QuadraticForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -4831,7 +4660,7 @@ newCurveFrom form pattern =
                         |> Result.andThen getControlPoint
 
                 getControlPoint aStartPoint =
-                    newOtherPointFrom stuff.controlPoint pattern
+                    OtherPoint.new newPointFrom stuff.controlPoint pattern
                         |> Result.mapError
                             (\controlPointWithHelp ->
                                 { stuff
@@ -4842,7 +4671,7 @@ newCurveFrom form pattern =
                         |> Result.andThen (getEndPoint aStartPoint)
 
                 getEndPoint aStartPoint aControlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff
@@ -4865,7 +4694,7 @@ newCurveFrom form pattern =
         CubicForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -4880,7 +4709,7 @@ newCurveFrom form pattern =
                         |> Result.andThen getStartControlPoint
 
                 getStartControlPoint aStartPoint =
-                    newOtherPointFrom stuff.startControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.startControlPoint pattern
                         |> Result.mapError
                             (\startControlPointWithHelp ->
                                 { stuff
@@ -4893,7 +4722,7 @@ newCurveFrom form pattern =
                         |> Result.andThen (getEndControlPoint aStartPoint)
 
                 getEndControlPoint aStartPoint aStartControlPoint =
-                    newOtherPointFrom stuff.endControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.endControlPoint pattern
                         |> Result.mapError
                             (\endControlPointWithHelp ->
                                 { stuff
@@ -4905,7 +4734,7 @@ newCurveFrom form pattern =
                             (getEndPoint aStartPoint aStartControlPoint)
 
                 getEndPoint aStartPoint aStartControlPoint aEndControlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff
@@ -5020,7 +4849,7 @@ newFirstCurveFrom form pattern =
         FirstStraightForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -5031,7 +4860,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen getEndPoint
 
                 getEndPoint startPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5049,7 +4878,7 @@ newFirstCurveFrom form pattern =
         FirstQuadraticForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -5062,7 +4891,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen getControlPoint
 
                 getControlPoint startPoint =
-                    newOtherPointFrom stuff.controlPoint pattern
+                    OtherPoint.new newPointFrom stuff.controlPoint pattern
                         |> Result.mapError
                             (\controlPointWithHelp ->
                                 { stuff
@@ -5073,7 +4902,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen (getEndPoint startPoint)
 
                 getEndPoint startPoint controlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5092,7 +4921,7 @@ newFirstCurveFrom form pattern =
         FirstCubicForm stuff ->
             let
                 getStartPoint =
-                    newOtherPointFrom stuff.startPoint pattern
+                    OtherPoint.new newPointFrom stuff.startPoint pattern
                         |> Result.mapError
                             (\startPointWithHelp ->
                                 { stuff
@@ -5107,7 +4936,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen getStartControlPoint
 
                 getStartControlPoint startPoint =
-                    newOtherPointFrom stuff.startControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.startControlPoint pattern
                         |> Result.mapError
                             (\startControlPointWithHelp ->
                                 { stuff
@@ -5120,7 +4949,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen (getEndControlPoint startPoint)
 
                 getEndControlPoint startPoint startControlPoint =
-                    newOtherPointFrom stuff.endControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.endControlPoint pattern
                         |> Result.mapError
                             (\endControlPointWithHelp ->
                                 { stuff
@@ -5131,7 +4960,7 @@ newFirstCurveFrom form pattern =
                         |> Result.andThen (getEndPoint startPoint startControlPoint)
 
                 getEndPoint startPoint startControlPoint endControlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5168,7 +4997,7 @@ newNextCurveFrom form pattern =
         NextStraightForm stuff ->
             let
                 getEndPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5183,7 +5012,7 @@ newNextCurveFrom form pattern =
         NextQuadraticForm stuff ->
             let
                 getControlPoint =
-                    newOtherPointFrom stuff.controlPoint pattern
+                    OtherPoint.new newPointFrom stuff.controlPoint pattern
                         |> Result.mapError
                             (\controlPointWithHelp ->
                                 { stuff
@@ -5194,7 +5023,7 @@ newNextCurveFrom form pattern =
                         |> Result.andThen getEndPoint
 
                 getEndPoint controlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5212,7 +5041,7 @@ newNextCurveFrom form pattern =
         NextCubicForm stuff ->
             let
                 getStartControlPoint =
-                    newOtherPointFrom stuff.startControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.startControlPoint pattern
                         |> Result.mapError
                             (\startControlPointWithHelp ->
                                 { stuff
@@ -5225,7 +5054,7 @@ newNextCurveFrom form pattern =
                         |> Result.andThen getEndControlPoint
 
                 getEndControlPoint startControlPoint =
-                    newOtherPointFrom stuff.endControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.endControlPoint pattern
                         |> Result.mapError
                             (\endControlPointWithHelp ->
                                 { stuff
@@ -5236,7 +5065,7 @@ newNextCurveFrom form pattern =
                         |> Result.andThen (getEndPoint startControlPoint)
 
                 getEndPoint startControlPoint endControlPoint =
-                    newOtherPointFrom stuff.endPoint pattern
+                    OtherPoint.new newPointFrom stuff.endPoint pattern
                         |> Result.mapError
                             (\endPointWithHelp ->
                                 { stuff | endPoint = endPointWithHelp }
@@ -5301,7 +5130,7 @@ newLastCurveFrom form pattern =
         LastQuadraticForm stuff ->
             let
                 getControlPoint =
-                    newOtherPointFrom stuff.controlPoint pattern
+                    OtherPoint.new newPointFrom stuff.controlPoint pattern
                         |> Result.mapError
                             (\controlPointWithHelp ->
                                 { stuff | controlPoint = controlPointWithHelp }
@@ -5316,7 +5145,7 @@ newLastCurveFrom form pattern =
         LastCubicForm stuff ->
             let
                 getStartControlPoint =
-                    newOtherPointFrom stuff.startControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.startControlPoint pattern
                         |> Result.mapError
                             (\startControlPointWithHelp ->
                                 { stuff
@@ -5328,7 +5157,7 @@ newLastCurveFrom form pattern =
                         |> Result.andThen getEndControlPoint
 
                 getEndControlPoint startControlPoint =
-                    newOtherPointFrom stuff.endControlPoint pattern
+                    OtherPoint.new newPointFrom stuff.endControlPoint pattern
                         |> Result.mapError
                             (\endControlPointWithHelp ->
                                 { stuff | endControlPoint = endControlPointWithHelp }
@@ -5377,26 +5206,6 @@ checkLastCurve pattern form =
             form
 
 
-newOtherPointFrom : OtherPointForm -> Pattern -> Result OtherPointForm (A Point)
-newOtherPointFrom form pattern =
-    case form of
-        ReferencedPointForm stuff ->
-            case stuff.maybeAPoint of
-                Nothing ->
-                    Err (ReferencedPointForm { stuff | help = Just "Pick a point" })
-
-                Just aPoint ->
-                    Ok aPoint
-
-        InlinedPointForm stuff ->
-            newPointFrom stuff.point pattern
-                |> Result.mapError
-                    (\pointFormWithHelp ->
-                        InlinedPointForm { stuff | point = pointFormWithHelp }
-                    )
-                |> Result.map Pattern.this
-
-
 newOtherIntersectableFrom :
     OtherIntersectableForm
     -> Pattern
@@ -5442,9 +5251,9 @@ newOtherIntersectableFrom form pattern =
 -- ADDING HELP
 
 
-checkOtherPoint : Pattern -> OtherPointForm -> OtherPointForm
+checkOtherPoint : Pattern -> OtherPoint.Form PointForm -> OtherPoint.Form PointForm
 checkOtherPoint pattern otherPoint =
-    case newOtherPointFrom otherPoint pattern of
+    case OtherPoint.new newPointFrom otherPoint pattern of
         Err otherPointWithHelp ->
             otherPointWithHelp
 
@@ -5685,7 +5494,7 @@ clearPointForm form =
         FromOnePointForm stuff ->
             FromOnePointForm
                 { stuff
-                    | basePoint = clearOtherPointHelp stuff.basePoint
+                    | basePoint = OtherPoint.clear clearPointForm stuff.basePoint
                     , directionHelp = Nothing
                     , distanceHelp = Nothing
                 }
@@ -5693,8 +5502,8 @@ clearPointForm form =
         FromTwoPointsForm stuff ->
             FromTwoPointsForm
                 { stuff
-                    | basePointA = clearOtherPointHelp stuff.basePointA
-                    , basePointB = clearOtherPointHelp stuff.basePointB
+                    | basePointA = OtherPoint.clear clearPointForm stuff.basePointA
+                    , basePointB = OtherPoint.clear clearPointForm stuff.basePointB
                     , pointsHelp = Nothing
                 }
 
@@ -5714,15 +5523,15 @@ clearAxisForm form =
         ThroughOnePointForm stuff ->
             ThroughOnePointForm
                 { stuff
-                    | point = clearOtherPointHelp stuff.point
+                    | point = OtherPoint.clear clearPointForm stuff.point
                     , orientationHelp = Nothing
                 }
 
         ThroughTwoPointsForm stuff ->
             ThroughTwoPointsForm
                 { stuff
-                    | pointA = clearOtherPointHelp stuff.pointA
-                    , pointB = clearOtherPointHelp stuff.pointB
+                    | pointA = OtherPoint.clear clearPointForm stuff.pointA
+                    , pointB = OtherPoint.clear clearPointForm stuff.pointB
                     , pointsHelp = Nothing
                 }
 
@@ -5733,16 +5542,16 @@ clearCircleForm form =
         WithRadiusForm stuff ->
             WithRadiusForm
                 { stuff
-                    | centerPoint = clearOtherPointHelp stuff.centerPoint
+                    | centerPoint = OtherPoint.clear clearPointForm stuff.centerPoint
                     , radiusHelp = Nothing
                 }
 
         ThroughThreePointsForm stuff ->
             ThroughThreePointsForm
                 { stuff
-                    | pointA = clearOtherPointHelp stuff.pointA
-                    , pointB = clearOtherPointHelp stuff.pointB
-                    , pointC = clearOtherPointHelp stuff.pointC
+                    | pointA = OtherPoint.clear clearPointForm stuff.pointA
+                    , pointB = OtherPoint.clear clearPointForm stuff.pointB
+                    , pointC = OtherPoint.clear clearPointForm stuff.pointC
                 }
 
 
@@ -5752,27 +5561,27 @@ clearCurveForm form =
         StraightForm stuff ->
             StraightForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                     , pointsHelp = Nothing
                 }
 
         QuadraticForm stuff ->
             QuadraticForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , controlPoint = clearOtherPointHelp stuff.controlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , controlPoint = OtherPoint.clear clearPointForm stuff.controlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                     , pointsHelp = Nothing
                 }
 
         CubicForm stuff ->
             CubicForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , startControlPoint = clearOtherPointHelp stuff.startControlPoint
-                    , endControlPoint = clearOtherPointHelp stuff.endControlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , startControlPoint = OtherPoint.clear clearPointForm stuff.startControlPoint
+                    , endControlPoint = OtherPoint.clear clearPointForm stuff.endControlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                     , pointsHelp = Nothing
                 }
 
@@ -5792,25 +5601,25 @@ clearFirstCurveForm form =
         FirstStraightForm stuff ->
             FirstStraightForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                 }
 
         FirstQuadraticForm stuff ->
             FirstQuadraticForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , controlPoint = clearOtherPointHelp stuff.controlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , controlPoint = OtherPoint.clear clearPointForm stuff.controlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                 }
 
         FirstCubicForm stuff ->
             FirstCubicForm
                 { stuff
-                    | startPoint = clearOtherPointHelp stuff.startPoint
-                    , startControlPoint = clearOtherPointHelp stuff.startControlPoint
-                    , endControlPoint = clearOtherPointHelp stuff.endControlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startPoint = OtherPoint.clear clearPointForm stuff.startPoint
+                    , startControlPoint = OtherPoint.clear clearPointForm stuff.startControlPoint
+                    , endControlPoint = OtherPoint.clear clearPointForm stuff.endControlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                 }
 
         FirstReferencedCurveForm stuff ->
@@ -5823,21 +5632,21 @@ clearNextCurveForm form =
     case form of
         NextStraightForm stuff ->
             NextStraightForm
-                { stuff | endPoint = clearOtherPointHelp stuff.endPoint }
+                { stuff | endPoint = OtherPoint.clear clearPointForm stuff.endPoint }
 
         NextQuadraticForm stuff ->
             NextQuadraticForm
                 { stuff
-                    | controlPoint = clearOtherPointHelp stuff.controlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | controlPoint = OtherPoint.clear clearPointForm stuff.controlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                 }
 
         NextCubicForm stuff ->
             NextCubicForm
                 { stuff
-                    | startControlPoint = clearOtherPointHelp stuff.startControlPoint
-                    , endControlPoint = clearOtherPointHelp stuff.endControlPoint
-                    , endPoint = clearOtherPointHelp stuff.endPoint
+                    | startControlPoint = OtherPoint.clear clearPointForm stuff.startControlPoint
+                    , endControlPoint = OtherPoint.clear clearPointForm stuff.endControlPoint
+                    , endPoint = OtherPoint.clear clearPointForm stuff.endPoint
                 }
 
         NextReferencedCurveForm stuff ->
@@ -5853,28 +5662,18 @@ clearLastCurveForm form =
 
         LastQuadraticForm stuff ->
             LastQuadraticForm
-                { stuff | controlPoint = clearOtherPointHelp stuff.controlPoint }
+                { stuff | controlPoint = OtherPoint.clear clearPointForm stuff.controlPoint }
 
         LastCubicForm stuff ->
             LastCubicForm
                 { stuff
-                    | startControlPoint = clearOtherPointHelp stuff.startControlPoint
-                    , endControlPoint = clearOtherPointHelp stuff.endControlPoint
+                    | startControlPoint = OtherPoint.clear clearPointForm stuff.startControlPoint
+                    , endControlPoint = OtherPoint.clear clearPointForm stuff.endControlPoint
                 }
 
         LastReferencedCurveForm stuff ->
             LastReferencedCurveForm
                 { stuff | curve = clearOtherCurveHelp stuff.curve }
-
-
-clearOtherPointHelp : OtherPointForm -> OtherPointForm
-clearOtherPointHelp form =
-    case form of
-        ReferencedPointForm stuff ->
-            ReferencedPointForm { stuff | help = Nothing }
-
-        InlinedPointForm stuff ->
-            InlinedPointForm { stuff | point = clearPointForm stuff.point }
 
 
 clearOtherIntersectableHelp : OtherIntersectableForm -> OtherIntersectableForm
@@ -6386,28 +6185,6 @@ tagFromOrientation orientation =
 
 
 --
-
-
-type OtherPointTag
-    = ReferencedPointTag
-    | InlinedPointTag
-
-
-otherPointTags : List ( OtherPointTag, String )
-otherPointTags =
-    [ ( ReferencedPointTag, "Pick point" )
-    , ( InlinedPointTag, "New point" )
-    ]
-
-
-tagFromOtherPointForm : OtherPointForm -> OtherPointTag
-tagFromOtherPointForm form =
-    case form of
-        ReferencedPointForm _ ->
-            ReferencedPointTag
-
-        InlinedPointForm _ ->
-            InlinedPointTag
 
 
 type OtherIntersectableTag
