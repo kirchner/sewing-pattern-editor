@@ -20,7 +20,6 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Navigation
-import Design
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
@@ -39,9 +38,11 @@ import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
 import StoredPattern exposing (StoredPattern)
+import Ui.Atom
+import Ui.Color
+import Ui.Modal
+import Ui.Space
 import Url exposing (Url)
-import View.Input
-import View.Modal
 
 
 main : Program {} Model Msg
@@ -63,7 +64,7 @@ main =
 type alias Model =
     { key : Navigation.Key
     , page : Page
-    , newWorkerModal : Maybe View.Modal.State
+    , newWorkerModal : Maybe Ui.Modal.State
     }
 
 
@@ -185,8 +186,8 @@ viewHelp body dialog =
         , Element.height Element.fill
         , Font.family
             [ Font.external
-                { name = "Roboto"
-                , url = "https://fonts.googleapis.com/css?family=Roboto"
+                { name = "Rubik"
+                , url = "https://fonts.googleapis.com/css?family=Rubik:300"
                 }
             , Font.sansSerif
             ]
@@ -195,32 +196,34 @@ viewHelp body dialog =
         body
 
 
-viewNewWorkerDialog : View.Modal.State -> Element Msg
+viewNewWorkerDialog : Ui.Modal.State -> Element Msg
 viewNewWorkerDialog state =
-    View.Modal.small state
+    Ui.Modal.small state
         { onCancelPress = NewWorkerDialogCancelPressed
         , onClosed = ModalClosed
         , title = "New version available"
         , content =
             Element.el
-                [ Element.spacing Design.small
+                [ Element.spacing Ui.Space.level2
                 , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                 , Element.width Element.fill
-                , Element.padding Design.small
-                , Background.color Design.white
+                , Element.padding Ui.Space.level2
+                , Background.color Ui.Color.white
                 ]
                 (Element.paragraph []
                     [ Element.text "A new version is available. You have to reload to activate it."
                     ]
                 )
         , actions =
-            [ View.Input.btnPrimary
-                { onPress = Just NewWorkerDialogReloadPressed
+            [ Ui.Atom.btnPrimary
+                { id = "new-worker-modal__reload-btn"
+                , onPress = Just NewWorkerDialogReloadPressed
                 , label = "Reload"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just NewWorkerDialogCancelPressed
+                Ui.Atom.btnCancel
+                    { id = "new-worker-modal__cancel-btn"
+                    , onPress = Just NewWorkerDialogCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -244,7 +247,7 @@ type Msg
     | OnNewWorker ()
     | NewWorkerDialogCancelPressed
     | NewWorkerDialogReloadPressed
-    | ModalStateChanged View.Modal.State
+    | ModalStateChanged Ui.Modal.State
     | ModalClosed
 
 
@@ -323,17 +326,17 @@ update msg model =
 
         -- SERVICE WORKER
         ( OnNewWorker _, _ ) ->
-            ( { model | newWorkerModal = Just View.Modal.Opening }
+            ( { model | newWorkerModal = Just Ui.Modal.Opening }
             , Cmd.none
             )
 
         ( NewWorkerDialogCancelPressed, _ ) ->
-            ( { model | newWorkerModal = Just View.Modal.Closing }
+            ( { model | newWorkerModal = Just Ui.Modal.Closing }
             , Cmd.none
             )
 
         ( NewWorkerDialogReloadPressed, _ ) ->
-            ( { model | newWorkerModal = Just View.Modal.Closing }
+            ( { model | newWorkerModal = Just Ui.Modal.Closing }
             , Cmd.none
             )
 
@@ -410,7 +413,7 @@ subscriptions model =
                 Sub.none
 
             Just state ->
-                Sub.map ModalStateChanged (View.Modal.subscriptions state)
+                Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
         , case model.page of
             NotFound ->
                 Sub.none

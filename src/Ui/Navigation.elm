@@ -1,4 +1,4 @@
-module View.Navigation exposing
+module Ui.Navigation exposing
     ( accordion
     , link
     , newTabLink
@@ -22,12 +22,14 @@ module View.Navigation exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import Design
 import Element exposing (Element)
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import View.Icon
+import Ui.Atom
+import Ui.Color
+import Ui.Space
+import Ui.Typography
 
 
 link : { url : String, label : String } -> Element msg
@@ -36,13 +38,11 @@ link { url, label } =
         { url = url
         , label =
             Element.el
-                [ Design.fontNormal
-                , Font.underline
-                , Font.color Design.primary
-                , Element.mouseOver
-                    [ Font.color Design.primaryDark ]
+                [ Font.underline
+                , Font.color Ui.Color.primary
+                , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
                 ]
-                (Element.text label)
+                (Ui.Typography.body label)
         }
 
 
@@ -52,13 +52,11 @@ newTabLink { url, label } =
         { url = url
         , label =
             Element.el
-                [ Design.fontNormal
-                , Font.underline
-                , Font.color Design.primary
-                , Element.mouseOver
-                    [ Font.color Design.primaryDark ]
+                [ Font.underline
+                , Font.color Ui.Color.primary
+                , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
                 ]
-                (Element.text label)
+                (Ui.Typography.body label)
         }
 
 
@@ -72,22 +70,22 @@ accordion :
 accordion { onPress, label, open, content } =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.xSmall
+        , Element.spacing Ui.Space.level1
         ]
         [ Input.button
             [ Element.width Element.fill
-            , Element.padding Design.xSmall
-            , Font.color Design.black
+            , Element.padding Ui.Space.level1
+            , Font.color Ui.Color.black
             , Border.widthEach
                 { left = 0
                 , right = 0
                 , top = 0
                 , bottom = 1
                 }
-            , Border.color Design.black
+            , Border.color Ui.Color.black
             , Element.mouseOver
-                [ Border.color Design.primaryDark
-                , Font.color Design.primaryDark
+                [ Border.color Ui.Color.primaryDark
+                , Font.color Ui.Color.primaryDark
                 ]
             ]
             { onPress = Just onPress
@@ -104,17 +102,17 @@ accordion { onPress, label, open, content } =
                         , Element.centerX
                         ]
                         (if open then
-                            View.Icon.fa "chevron-up"
+                            Ui.Atom.fa "chevron-up"
 
                          else
-                            View.Icon.fa "chevron-down"
+                            Ui.Atom.fa "chevron-down"
                         )
                     ]
             }
         , if open then
             Element.el
                 [ Element.width Element.fill
-                , Element.padding Design.small
+                , Element.padding Ui.Space.level2
                 ]
                 content
 

@@ -30,7 +30,6 @@ import BoundingBox2d
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
-import Design
 import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
@@ -61,18 +60,20 @@ import StoredPattern exposing (StoredPattern)
 import Svg
 import Svg.Attributes
 import Task
+import Ui.Atom
+import Ui.Color
+import Ui.Modal
+import Ui.Navigation
+import Ui.Space
+import Ui.Typography
 import Uuid
 import Vector2d
-import View.Icon
-import View.Input
-import View.Modal
-import View.Navigation
 
 
 type alias Model =
     { seed : Random.Seed
     , storedPatterns : WebData (List StoredPattern)
-    , dialog : Maybe ( Dialog, View.Modal.State )
+    , dialog : Maybe ( Dialog, Ui.Modal.State )
     }
 
 
@@ -137,7 +138,7 @@ type Msg
     | ImportPatternsClicked
     | ImportPatternsImportClicked
       -- MODALS
-    | ModalStateChanged View.Modal.State
+    | ModalStateChanged Ui.Modal.State
     | ModalCancelClicked
     | ModalClosed
 
@@ -181,7 +182,7 @@ update key msg model =
 
         -- ADD PATTERN
         AddPatternClicked ->
-            ( { model | dialog = Just ( CreatePattern "", View.Modal.Opening ) }
+            ( { model | dialog = Just ( CreatePattern "", Ui.Modal.Opening ) }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             )
@@ -204,7 +205,7 @@ update key msg model =
                             Random.step Uuid.generator model.seed
                     in
                     ( { model
-                        | dialog = Just ( CreatePattern name, View.Modal.Closing )
+                        | dialog = Just ( CreatePattern name, Ui.Modal.Closing )
                         , seed = newSeed
                       }
                     , Api.createPattern PatternCreateResponse <|
@@ -225,7 +226,7 @@ update key msg model =
                         | dialog =
                             Just
                                 ( RenamePattern slug storedPattern.name
-                                , View.Modal.Opening
+                                , Ui.Modal.Opening
                                 )
                       }
                     , Cmd.batch
@@ -254,7 +255,7 @@ update key msg model =
                                 | dialog =
                                     Just
                                         ( RenamePattern slug newName
-                                        , View.Modal.Closing
+                                        , Ui.Modal.Closing
                                         )
                               }
                             , Api.updatePattern PatternUpdateReceived
@@ -281,7 +282,7 @@ update key msg model =
 
         -- DELETE PATTERNS
         DeletePatternPressed slug name ->
-            ( { model | dialog = Just ( DeletePattern slug name, View.Modal.Opening ) }
+            ( { model | dialog = Just ( DeletePattern slug name, Ui.Modal.Opening ) }
             , Cmd.none
             )
 
@@ -292,7 +293,7 @@ update key msg model =
                         | dialog =
                             Just
                                 ( DeletePattern slug name
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                       }
                     , Api.deletePattern PatternDeleteResponse slug
@@ -428,7 +429,7 @@ update key msg model =
                             { hover = False
                             , previews = []
                             }
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -459,7 +460,7 @@ update key msg model =
                     in
                     ( { model
                         | seed = newSeed
-                        , dialog = Just ( ImportPatterns data, View.Modal.Closing )
+                        , dialog = Just ( ImportPatterns data, Ui.Modal.Closing )
                       }
                     , Cmd.batch allCmds
                     )
@@ -484,7 +485,7 @@ update key msg model =
                     ( model, Cmd.none )
 
                 Just ( dialog, _ ) ->
-                    ( { model | dialog = Just ( dialog, View.Modal.Closing ) }
+                    ( { model | dialog = Just ( dialog, Ui.Modal.Closing ) }
                     , Cmd.none
                     )
 
@@ -515,7 +516,7 @@ subscriptions model =
 
             Just ( _, state ) ->
                 Sub.batch
-                    [ Sub.map ModalStateChanged (View.Modal.subscriptions state)
+                    [ Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
                     , Browser.Events.onKeyDown
                         (Decode.field "key" Decode.string
                             |> Decode.andThen
@@ -534,7 +535,7 @@ subscriptions model =
 
 headerHeight : Int
 headerHeight =
-    Design.large + Design.normal
+    2 * Ui.Space.level8
 
 
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
@@ -559,7 +560,7 @@ view model =
 ---- DIALOGS
 
 
-viewDialog : Model -> ( Dialog, View.Modal.State ) -> Element Msg
+viewDialog : Model -> ( Dialog, Ui.Modal.State ) -> Element Msg
 viewDialog model ( dialog, state ) =
     case dialog of
         CreatePattern name ->
@@ -578,84 +579,90 @@ viewDialog model ( dialog, state ) =
             viewImportPatternsDialog state data
 
 
-viewCreatePatternDialog : View.Modal.State -> String -> Element Msg
+viewCreatePatternDialog : Ui.Modal.State -> String -> Element Msg
 viewCreatePatternDialog state name =
-    View.Modal.small state
+    Ui.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Create new pattern"
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Design.small
+                , Element.spacing Ui.Space.level2
                 ]
                 [ Element.text "Create a new pattern"
-                , View.Input.text "name-input"
-                    { onChange = NewPatternNameChanged
+                , Ui.Atom.inputText
+                    { id = "name-input"
+                    , onChange = NewPatternNameChanged
                     , text = name
                     , label = "Pick a name"
                     , help = Nothing
                     }
                 ]
         , actions =
-            [ View.Input.btnPrimary
-                { onPress = Just NewPatternCreateClicked
+            [ Ui.Atom.btnPrimary
+                { id = "new-pattern-create-btn"
+                , onPress = Just NewPatternCreateClicked
                 , label = "Create"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just ModalCancelClicked
+                Ui.Atom.btnCancel
+                    { id = "modal-cancel-btn"
+                    , onPress = Just ModalCancelClicked
                     , label = "Cancel"
                     }
             ]
         }
 
 
-viewRenamePatternDialog : View.Modal.State -> String -> String -> String -> Element Msg
+viewRenamePatternDialog : Ui.Modal.State -> String -> String -> String -> Element Msg
 viewRenamePatternDialog state slug name oldName =
-    View.Modal.small state
+    Ui.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Rename the pattern «" ++ oldName ++ "»?"
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Design.small
+                , Element.spacing Ui.Space.level2
                 ]
                 [ Element.paragraph
                     [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
                     , Element.width Element.fill
-                    , Background.color Design.white
+                    , Background.color Ui.Color.white
                     ]
                     [ Element.text <|
                         "What do you want to rename the pattern «"
                             ++ oldName
                             ++ "» to?"
                     ]
-                , View.Input.text "name-input"
-                    { onChange = RenamePatternNameChanged
+                , Ui.Atom.inputText
+                    { id = "name-input"
+                    , onChange = RenamePatternNameChanged
                     , text = name
                     , label = "Pick a new name"
                     , help = Nothing
                     }
                 ]
         , actions =
-            [ View.Input.btnPrimary
-                { onPress = Just RenamePatternRenameClicked
+            [ Ui.Atom.btnPrimary
+                { id = "rename-pattern-rename-btn"
+                , onPress = Just RenamePatternRenameClicked
                 , label = "Rename"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just ModalCancelClicked
+                Ui.Atom.btnCancel
+                    { id = "modal-cancel-btn"
+                    , onPress = Just ModalCancelClicked
                     , label = "Cancel"
                     }
             ]
         }
 
 
-viewDeletePatternDialog : View.Modal.State -> String -> String -> Element Msg
+viewDeletePatternDialog : Ui.Modal.State -> String -> String -> Element Msg
 viewDeletePatternDialog state slug name =
-    View.Modal.small state
+    Ui.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
@@ -663,8 +670,8 @@ viewDeletePatternDialog state slug name =
             Element.paragraph
                 [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
                 , Element.width Element.fill
-                , Element.padding Design.small
-                , Background.color Design.white
+                , Element.padding Ui.Space.level2
+                , Background.color Ui.Color.white
                 ]
                 [ Element.text "Do you want to delete the pattern "
                 , Element.el [ Font.bold ]
@@ -672,36 +679,38 @@ viewDeletePatternDialog state slug name =
                 , Element.text "?"
                 ]
         , actions =
-            [ View.Input.btnDanger
-                { onPress = Just DeletePatternDeleteClicked
+            [ Ui.Atom.btnDanger
+                { id = "delete-pattern-modal__delete-btn"
+                , onPress = Just DeletePatternDeleteClicked
                 , label = "Delete pattern"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just ModalCancelClicked
+                Ui.Atom.btnCancel
+                    { id = "delete-pattern-modal__cancel-btn"
+                    , onPress = Just ModalCancelClicked
                     , label = "Cancel"
                     }
             ]
         }
 
 
-viewImportPatternsDialog : View.Modal.State -> ImportPatternsData -> Element Msg
+viewImportPatternsDialog : Ui.Modal.State -> ImportPatternsData -> Element Msg
 viewImportPatternsDialog state { hover, previews } =
     let
         hoverAttributes attrs =
             if hover then
-                Border.color Design.primaryDark
-                    :: Background.color Design.secondary
+                Border.color Ui.Color.primaryDark
+                    :: Background.color Ui.Color.secondary
                     :: attrs
 
             else
-                Border.color Design.primary
+                Border.color Ui.Color.primary
                     :: attrs
 
         viewFile { fileName, content } =
             Element.row
                 [ Element.width Element.fill
-                , Element.spacing Design.small
+                , Element.spacing Ui.Space.level2
                 ]
                 (case content of
                     Err error ->
@@ -712,18 +721,19 @@ viewImportPatternsDialog state { hover, previews } =
                             (Element.text fileName)
                         , Element.row
                             [ Element.width (Element.fillPortion 1)
-                            , Element.spacing Design.xxSmall
+                            , Element.spacing Ui.Space.level1
                             , Font.bold
-                            , Font.color Design.danger
+                            , Font.color Ui.Color.danger
                             ]
-                            [ View.Icon.fa "exclamation-circle"
+                            [ Ui.Atom.fa "exclamation-circle"
                             , Element.text <|
                                 "This is not a valid pattern file: "
                                     ++ error
                             ]
                         , Element.el [ Element.alignRight ]
-                            (View.Input.btnSecondary "remove-file-button"
-                                { onPress = Nothing
+                            (Ui.Atom.btnSecondary
+                                { id = "remove-file-button"
+                                , onPress = Nothing
                                 , label = "Remove"
                                 }
                             )
@@ -734,48 +744,49 @@ viewImportPatternsDialog state { hover, previews } =
                             [ Element.width Element.fill
                             , Element.clip
                             ]
-                            (View.Navigation.newTabLink
+                            (Ui.Navigation.newTabLink
                                 { url = ""
                                 , label = fileName
                                 }
                             )
                         , Element.row
                             [ Element.width (Element.fillPortion 1)
-                            , Element.spacing Design.xxSmall
+                            , Element.spacing Ui.Space.level1
                             , Font.bold
-                            , Font.color Design.success
+                            , Font.color Ui.Color.success
                             ]
-                            [ View.Icon.fa "check-circle"
+                            [ Ui.Atom.fa "check-circle"
                             , Element.text "File can be imported."
                             ]
                         , Element.el [ Element.alignRight ]
-                            (View.Input.btnSecondary "remove-file-button"
-                                { onPress = Nothing
+                            (Ui.Atom.btnSecondary
+                                { id = "remove-file-button"
+                                , onPress = Nothing
                                 , label = "Remove"
                                 }
                             )
                         ]
                 )
     in
-    View.Modal.wide state
+    Ui.Modal.wide state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Import patterns"
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Design.small
+                , Element.spacing Ui.Space.level2
                 ]
                 [ Element.column
                     [ Element.width Element.fill
-                    , Element.spacing Design.xSmall
+                    , Element.spacing Ui.Space.level1
                     ]
                     (List.map viewFile previews)
                 , Element.el
                     ([ Element.width Element.fill
                      , Element.height (Element.px 200)
                      , Border.width 2
-                     , Border.rounded Design.xSmall
+                     , Border.rounded Ui.Space.level1
                      , Border.dashed
                      , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
                      , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
@@ -791,21 +802,24 @@ viewImportPatternsDialog state { hover, previews } =
                         [ Element.centerX
                         , Element.centerY
                         ]
-                        (View.Input.btnSecondary "upload-file-button"
-                            { onPress = Just ImportPatternsPick
+                        (Ui.Atom.btnSecondary
+                            { id = "upload-file-button"
+                            , onPress = Just ImportPatternsPick
                             , label = "Upload file"
                             }
                         )
                     )
                 ]
         , actions =
-            [ View.Input.btnPrimary
-                { onPress = Just ImportPatternsImportClicked
+            [ Ui.Atom.btnPrimary
+                { id = "import-patterns-modal__import-btn"
+                , onPress = Just ImportPatternsImportClicked
                 , label = "Import"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just ModalCancelClicked
+                Ui.Atom.btnCancel
+                    { id = "import-patterns-modal__cancel-btn"
+                    , onPress = Just ModalCancelClicked
                     , label = "Cancel"
                     }
             ]
@@ -844,13 +858,15 @@ viewBody model =
             , label = "Patterns"
             , actions =
                 Element.row
-                    [ Element.spacing Design.small ]
-                    [ View.Input.btnPrimary
-                        { onPress = Just AddPatternClicked
+                    [ Element.spacing Ui.Space.level2 ]
+                    [ Ui.Atom.btnPrimary
+                        { id = "add-pattern-btn"
+                        , onPress = Just AddPatternClicked
                         , label = "Create new pattern"
                         }
-                    , View.Input.btnPrimary
-                        { onPress = Just ImportPatternsClicked
+                    , Ui.Atom.btnPrimary
+                        { id = "import-pattern-btn"
+                        , onPress = Just ImportPatternsClicked
                         , label = "Import pattern"
                         }
                     ]
@@ -867,8 +883,8 @@ viewBody model =
                 )
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Design.xxSmall)
-            , Background.color Design.primary
+            , Element.height (Element.px Ui.Space.level1)
+            , Background.color Ui.Color.primary
             ]
             Element.none
         ]
@@ -888,8 +904,8 @@ viewPatterns storedPatterns =
         (Element.column
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Element.spacing Design.large
-            , Element.paddingXY Design.large Design.normal
+            , Element.spacing Ui.Space.level4
+            , Element.paddingXY Ui.Space.level4 Ui.Space.level3
             ]
             (List.map
                 (List.map viewPattern
@@ -911,21 +927,21 @@ viewPattern ({ pattern } as storedPattern) =
         [ Border.width 1
 
         --, Border.rounded 4
-        , Border.color Design.primary
-        , Element.padding Design.small
-        , Element.spacing Design.normal
+        , Border.color Ui.Color.primary
+        , Element.padding Ui.Space.level2
+        , Element.spacing Ui.Space.level2
         , Element.mouseOver
-            [ Border.color Design.primaryDark
+            [ Border.color Ui.Color.primaryDark
             , Border.shadow
                 { offset = ( 0, 0 )
                 , size = 2
                 , blur = 8
-                , color = Design.primary
+                , color = Ui.Color.primary
                 }
             ]
         ]
         [ Element.column
-            [ Element.spacing Design.normal
+            [ Element.spacing Ui.Space.level2
             , Element.pointer
             , Events.onClick (PatternCardClicked storedPattern.slug)
             ]
@@ -938,12 +954,11 @@ viewPattern ({ pattern } as storedPattern) =
                     { url = Route.toString (Route.Editor storedPattern.slug Nothing)
                     , label =
                         Element.el
-                            [ Design.fontXLarge
-                            , Font.bold
-                            , Font.color Design.primary
+                            [ Font.bold
+                            , Font.color Ui.Color.primary
                             , Font.underline
                             , Element.mouseOver
-                                [ Font.color Design.primaryDark ]
+                                [ Font.color Ui.Color.primaryDark ]
                             ]
                             (Element.text storedPattern.name)
                     }
@@ -951,20 +966,18 @@ viewPattern ({ pattern } as storedPattern) =
             ]
         , Element.row
             [ Element.width Element.fill
-            , Element.spacing Design.xSmall
+            , Element.spacing Ui.Space.level1
             ]
-            [ View.Input.btnSecondary (storedPattern.slug ++ "-rename")
-                { onPress = Just (RenamePatternPressed storedPattern.slug)
+            [ Ui.Atom.btnSecondary
+                { id = storedPattern.slug ++ "-rename"
+                , onPress = Just (RenamePatternPressed storedPattern.slug)
                 , label = "Rename"
                 }
             , Element.downloadAs
                 [ Element.alignLeft
                 , Element.paddingXY 18 10
-                , Background.color Design.secondary
-                , Font.color Design.black
-                , Design.fontSmall
-                , Element.mouseOver
-                    [ Background.color Design.secondaryDark ]
+                , Background.color Ui.Color.secondary
+                , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
                 , Element.htmlAttribute <|
                     Html.Attributes.style "transition"
                         "background-color 0.2s ease-in-out 0s"
@@ -972,12 +985,13 @@ viewPattern ({ pattern } as storedPattern) =
                 { url =
                     "data:application/json;charset=utf-8,"
                         ++ Encode.encode 0 (StoredPattern.encode storedPattern)
-                , label = Element.text "Download"
+                , label = Ui.Typography.button "Download"
                 , filename = storedPattern.slug ++ ".json"
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnDanger
-                    { onPress =
+                Ui.Atom.btnDanger
+                    { id = storedPattern.slug ++ "__delete-pattern-btn"
+                    , onPress =
                         Just <|
                             DeletePatternPressed storedPattern.slug storedPattern.name
                     , label = "Delete"

@@ -3,7 +3,6 @@ module DesignSystem exposing (main)
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
-import Design
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
 import Element.Border as Border

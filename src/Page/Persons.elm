@@ -26,11 +26,12 @@ module Page.Persons exposing
 -}
 
 import Browser.Navigation
-import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Header
 import Sidebar
+import Ui.Color
+import Ui.Space
 
 
 type alias Model =
@@ -67,7 +68,7 @@ subscriptions model =
 
 headerHeight : Int
 headerHeight =
-    Design.large + Design.normal
+    8 * Ui.Space.level8
 
 
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
@@ -106,8 +107,8 @@ viewBody =
             Element.none
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Design.xxSmall)
-            , Background.color Design.primary
+            , Element.height (Element.px Ui.Space.level1)
+            , Background.color Ui.Color.primary
             ]
             Element.none
         ]

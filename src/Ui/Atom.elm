@@ -7,7 +7,7 @@ module Ui.Atom exposing
     , radioRow, radioColumn, option
     , segmentControl, Child(..), nested, nestedHideable
     , inputText, inputTextAppended, inputFormula, inputFormulaAppended
-    , fa, faBody, faLarge
+    , fa, faBody, faLarge, faBrandLarge
     , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
     )
 
@@ -36,7 +36,7 @@ module Ui.Atom exposing
 
 # Icons
 
-@docs fa, faBody, faLarge
+@docs fa, faBody, faLarge, faBrandLarge
 
 @docs withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
 
@@ -1136,21 +1136,26 @@ lineNumbers lineCount =
 
 fa : String -> Element msg
 fa name =
-    faHelp 14 name
+    faHelp "fas" 14 name
 
 
 faBody : String -> Element msg
 faBody name =
-    faHelp 16 name
+    faHelp "fas" 16 name
 
 
 faLarge : String -> Element msg
 faLarge name =
-    faHelp 24 name
+    faHelp "fas" 24 name
 
 
-faHelp : Int -> String -> Element msg
-faHelp size name =
+faBrandLarge : String -> Element msg
+faBrandLarge name =
+    faHelp "fab" 24 name
+
+
+faHelp : String -> Int -> String -> Element msg
+faHelp class size name =
     let
         sizePx =
             String.fromInt size ++ "px"
@@ -1162,7 +1167,7 @@ faHelp size name =
         (Element.el [] <|
             Element.html <|
                 Html.i
-                    [ Html.Attributes.class "fas"
+                    [ Html.Attributes.class class
                     , Html.Attributes.class ("fa-" ++ name)
                     , Html.Attributes.style "font-size" sizePx
                     , Html.Attributes.style "width" sizePx

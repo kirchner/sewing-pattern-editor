@@ -35,7 +35,6 @@ import Browser.Events
 import Browser.Navigation as Navigation
 import Circle2d
 import Color
-import Design
 import Dialog
 import Draw.Pattern as Pattern exposing (HoveredObject)
 import Element exposing (Element)
@@ -73,14 +72,14 @@ import Svg.Events
 import Svg.Lazy
 import Task
 import Triple
+import Ui.Atom
+import Ui.Color
+import Ui.Modal
+import Ui.Navigation
 import Ui.Space
+import Ui.Table
 import Url exposing (Url)
 import Vector2d
-import View.Icon
-import View.Input
-import View.Modal
-import View.Navigation
-import View.Table
 import VoronoiDiagram2d
 
 
@@ -104,7 +103,7 @@ init slug =
 type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
-    , maybeModal : Maybe ( Modal, View.Modal.State )
+    , maybeModal : Maybe ( Modal, Ui.Modal.State )
 
     -- PATTERN
     , storedPattern : StoredPattern
@@ -206,7 +205,7 @@ view model =
             }
 
 
-viewModal : Pattern -> ( Modal, View.Modal.State ) -> Element Msg
+viewModal : Pattern -> ( Modal, Ui.Modal.State ) -> Element Msg
 viewModal pattern ( modal, state ) =
     case modal of
         PointDeleteConfirm aPoint ->
@@ -231,7 +230,7 @@ viewModal pattern ( modal, state ) =
                             [ Element.paddingEach
                                 { top = 0
                                 , bottom = 0
-                                , left = Design.small
+                                , left = Ui.Space.level1
                                 , right = 0
                                 }
                             ]
@@ -253,17 +252,17 @@ viewModal pattern ( modal, state ) =
                             )
                     ]
             in
-            View.Modal.small state
+            Ui.Modal.small state
                 { onCancelPress = ModalCancelPressed
                 , onClosed = ModalClosed
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
                 , content =
                     Element.column
-                        [ Element.spacing Design.small
+                        [ Element.spacing Ui.Space.level1
                         , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                         , Element.width Element.fill
-                        , Element.padding Design.small
-                        , Background.color Design.white
+                        , Element.padding Ui.Space.level1
+                        , Background.color Ui.Color.white
                         ]
                         (Element.paragraph []
                             [ Element.text "Do you want to remove the point "
@@ -285,13 +284,15 @@ viewModal pattern ( modal, state ) =
                                )
                         )
                 , actions =
-                    [ View.Input.btnDanger
-                        { onPress = Just PointDeleteModalDeletePressed
+                    [ Ui.Atom.btnDanger
+                        { id = "point-delete-modal__delete-btn"
+                        , onPress = Just PointDeleteModalDeletePressed
                         , label = "Delete point"
                         }
                     , Element.el [ Element.alignRight ] <|
-                        View.Input.btnCancel
-                            { onPress = Just ModalCancelPressed
+                        Ui.Atom.btnCancel
+                            { id = "point-delete-modal__cancel-btn"
+                            , onPress = Just ModalCancelPressed
                             , label = "Cancel"
                             }
                     ]
@@ -334,7 +335,7 @@ viewModal pattern ( modal, state ) =
 
 
 viewDeleteModal :
-    View.Modal.State
+    Ui.Modal.State
     ->
         { name : String
         , kind : String
@@ -342,7 +343,7 @@ viewDeleteModal :
         }
     -> Element Msg
 viewDeleteModal state { name, kind, onDeletePress } =
-    View.Modal.small state
+    Ui.Modal.small state
         { onCancelPress = ModalCancelPressed
         , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
@@ -350,8 +351,8 @@ viewDeleteModal state { name, kind, onDeletePress } =
             Element.paragraph
                 [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
                 , Element.width Element.fill
-                , Element.padding Design.small
-                , Background.color Design.white
+                , Element.padding Ui.Space.level1
+                , Background.color Ui.Color.white
                 ]
                 [ Element.text ("Do you want to remove the " ++ kind ++ " ")
                 , Element.el [ Font.bold ]
@@ -359,13 +360,15 @@ viewDeleteModal state { name, kind, onDeletePress } =
                 , Element.text "?"
                 ]
         , actions =
-            [ View.Input.btnDanger
-                { onPress = Just onDeletePress
+            [ Ui.Atom.btnDanger
+                { id = "delete-modal__delete-btn"
+                , onPress = Just onDeletePress
                 , label = "Delete " ++ kind
                 }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just ModalCancelPressed
+                Ui.Atom.btnCancel
+                    { id = "delete-modal__cancel-btn"
+                    , onPress = Just ModalCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -384,33 +387,28 @@ viewEditor storedPattern model =
         ]
         [ Element.row
             [ Element.width Element.fill
-            , Element.padding Design.small
-            , Element.spacing Design.xSmall
-            , Font.size Design.small
-            , Background.color Design.secondary
-            , Font.color Design.black
+            , Element.padding Ui.Space.level1
+            , Element.spacing Ui.Space.level1
+            , Background.color Ui.Color.secondary
             ]
-            [ View.Navigation.link
+            [ Ui.Navigation.link
                 { url = "/patterns"
                 , label = "Patterns"
                 }
-            , Element.el [] (View.Icon.fa "angle-right")
+            , Element.el [] (Ui.Atom.fa "angle-right")
             , Element.el [] (Element.text name)
             , Element.newTabLink
                 [ Element.alignRight
-                , Font.color Design.black
-                , Font.size Design.small
-                , Element.mouseOver
-                    [ Font.color Design.primaryDark ]
+                , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = View.Icon.faBrandLarge "github"
+                , label = Ui.Atom.faBrandLarge "github"
                 }
             ]
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Design.xxxSmall)
-            , Background.color Design.primary
+            , Element.height (Element.px Ui.Space.level1)
+            , Background.color Ui.Color.primary
             ]
             Element.none
         , Element.row
@@ -442,8 +440,8 @@ viewEditor storedPattern model =
             ]
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Design.xxSmall)
-            , Background.color Design.primary
+            , Element.height (Element.px Ui.Space.level1)
+            , Background.color Ui.Color.primary
             ]
             Element.none
         ]
@@ -456,7 +454,7 @@ viewLeftToolbar pattern maybeDialog =
         , Element.height Element.fill
         , Element.padding Ui.Space.level1
         , Element.scrollbarY
-        , Background.color Design.white
+        , Background.color Ui.Color.white
         ]
         [ case maybeDialog of
             Nothing ->
@@ -563,12 +561,14 @@ viewZoom model =
         [ Element.padding 20
         , Element.spacing 10
         ]
-        [ View.Input.btnIconLarge
-            { onPress = Just ZoomPlusPressed
+        [ Ui.Atom.btnIconLarge
+            { id = "zoom-plus-btn"
+            , onPress = Just ZoomPlusPressed
             , icon = "search-plus"
             }
-        , View.Input.btnIconLarge
-            { onPress = Just ZoomMinusPressed
+        , Ui.Atom.btnIconLarge
+            { id = "zoom-minus-btn"
+            , onPress = Just ZoomMinusPressed
             , icon = "search-minus"
             }
         ]
@@ -577,16 +577,16 @@ viewZoom model =
 viewRightToolbar pattern model =
     Element.row
         [ Element.height Element.fill
-        , Background.color Design.white
+        , Background.color Ui.Color.white
         ]
         [ Input.button
             [ Element.height Element.fill
             , Element.padding 5
-            , Font.color Design.black
+            , Font.color Ui.Color.black
             , Element.mouseOver
-                [ Font.color Design.primaryDark
-                , Border.color Design.primaryDark
-                , Background.color Design.secondary
+                [ Font.color Ui.Color.primaryDark
+                , Border.color Ui.Color.primaryDark
+                , Background.color Ui.Color.secondary
                 ]
             ]
             { onPress = Just ToolbarTogglePressed
@@ -594,7 +594,7 @@ viewRightToolbar pattern model =
                 Element.column
                     [ Element.height Element.fill
                     , Element.width Element.fill
-                    , Element.spacing Design.xSmall
+                    , Element.spacing Ui.Space.level1
                     ]
                     (List.repeat 3
                         (Element.el
@@ -602,10 +602,10 @@ viewRightToolbar pattern model =
                             , Element.centerX
                             ]
                             (if model.rightToolbarVisible then
-                                View.Icon.fa "chevron-right"
+                                Ui.Atom.fa "chevron-right"
 
                              else
-                                View.Icon.fa "chevron-left"
+                                Ui.Atom.fa "chevron-left"
                             )
                         )
                     )
@@ -614,8 +614,8 @@ viewRightToolbar pattern model =
             Element.column
                 [ Element.width (Element.px 400)
                 , Element.height Element.fill
-                , Element.padding Design.xSmall
-                , Element.spacing Design.xSmall
+                , Element.padding Ui.Space.level1
+                , Element.spacing Ui.Space.level1
                 , Element.scrollbarY
                 ]
                 (case model.maybeVariableDialog of
@@ -651,10 +651,7 @@ viewVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Element.paragraph
-            [ Font.size 12
-            , Font.color Design.black
-            ]
+        [ Element.paragraph []
             [ Element.text "Create a new "
             , Element.el
                 [ Font.bold ]
@@ -664,14 +661,16 @@ viewVariable name value =
             [ Element.width Element.fill
             , Element.spacing 10
             ]
-            [ View.Input.text "name-input"
-                { onChange = VariableNameChanged
+            [ Ui.Atom.inputText
+                { id = "name-input"
+                , onChange = VariableNameChanged
                 , text = name
                 , label = "Pick a name"
                 , help = Nothing
                 }
-            , View.Input.formula "variable-value--input"
-                { onChange = VariableValueChanged
+            , Ui.Atom.inputFormula
+                { id = "variable-value--input"
+                , onChange = VariableValueChanged
                 , text = value
                 , label = "Value"
                 , help = Nothing
@@ -682,13 +681,15 @@ viewVariable name value =
             , Element.spacing 5
             ]
             [ Element.el [ Element.alignLeft ] <|
-                View.Input.btnPrimary
-                    { onPress = Just VariableCreateSubmitPressed
+                Ui.Atom.btnPrimary
+                    { id = "variable-create-submit-btn"
+                    , onPress = Just VariableCreateSubmitPressed
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just VariableDialogCancelPressed
+                Ui.Atom.btnCancel
+                    { id = "variable-create-cancel-btn"
+                    , onPress = Just VariableDialogCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -702,17 +703,15 @@ viewEditVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Element.paragraph
-            [ Font.size 12
-            , Font.color Design.black
-            ]
+        [ Element.paragraph []
             [ Element.text "Edit the variable "
             , Element.el
                 [ Font.bold ]
                 (Element.text name)
             ]
-        , View.Input.formula "variable-value--input"
-            { onChange = VariableValueChanged
+        , Ui.Atom.inputFormula
+            { id = "variable-value--input"
+            , onChange = VariableValueChanged
             , text = value
             , label = "Value"
             , help = Nothing
@@ -722,13 +721,15 @@ viewEditVariable name value =
             , Element.spacing 5
             ]
             [ Element.el [ Element.alignLeft ] <|
-                View.Input.btnPrimary
-                    { onPress = Just VariableEditUpdatePressed
+                Ui.Atom.btnPrimary
+                    { id = "variable-edit-update-btn"
+                    , onPress = Just VariableEditUpdatePressed
                     , label = "Update"
                     }
             , Element.el [ Element.alignRight ] <|
-                View.Input.btnCancel
-                    { onPress = Just VariableDialogCancelPressed
+                Ui.Atom.btnCancel
+                    { id = "variable-edit-cancel-btn"
+                    , onPress = Just VariableDialogCancelPressed
                     , label = "Cancel"
                     }
             ]
@@ -743,22 +744,23 @@ viewToolSelector : Element Msg
 viewToolSelector =
     let
         button msg id label =
-            View.Input.btnCallToAction (id ++ "-button")
-                { onPress = Just msg
+            Ui.Atom.btnCallToAction
+                { id = id ++ "-button"
+                , onPress = Just msg
                 , label = label
                 }
     in
     Element.column
-        [ Element.padding Design.small
-        , Element.spacing Design.small
+        [ Element.padding Ui.Space.level1
+        , Element.spacing Ui.Space.level1
         , Element.width Element.fill
         ]
         [ Element.column
-            [ Element.spacing Design.xSmall
+            [ Element.spacing Ui.Space.level1
             , Element.width Element.fill
             ]
             [ Element.column
-                [ Element.spacing Design.xxSmall
+                [ Element.spacing Ui.Space.level1
                 , Element.width Element.fill
                 ]
                 [ button CreatePointPressed "create-point" "Create a point"
@@ -777,17 +779,17 @@ viewToolSelector =
 
 viewVariables : Pattern -> Bool -> Element Msg
 viewVariables pattern variablesVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = VariablesRulerPressed
         , label = "Variables"
         , open = variablesVisible
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Design.small
+                , Element.spacing Ui.Space.level1
                 ]
                 [ Element.table
-                    [ Element.spacing Design.xSmall ]
+                    [ Element.spacing Ui.Space.level1 ]
                     { data =
                         List.sortBy .name
                             (Pattern.variables pattern
@@ -811,23 +813,24 @@ viewVariables pattern variablesVisible =
                                     )
                             )
                     , columns =
-                        [ View.Table.column
+                        [ Ui.Table.column
                             { label = "Name"
                             , recordToString = .name
                             }
-                        , View.Table.columnFloat
+                        , Ui.Table.columnFloat
                             { label = "Value"
                             , recordToFloat = Just << .value
                             }
-                        , View.Table.columnActions
+                        , Ui.Table.columnActions
                             { onEditPress = Just << VariableEditPressed << .name
                             , onRemovePress = Just << VariableRemovePressed << .name
                             }
                         ]
                     }
                 , Element.el [ Element.alignRight ] <|
-                    View.Input.btnSecondary "create-variable--button"
-                        { onPress = Just VariableCreatePressed
+                    Ui.Atom.btnSecondary
+                        { id = "create-variable--button"
+                        , onPress = Just VariableCreatePressed
                         , label = "Create variable"
                         }
                 ]
@@ -836,21 +839,21 @@ viewVariables pattern variablesVisible =
 
 viewPoints : Pattern -> Bool -> Element Msg
 viewPoints pattern pointsVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = PointsRulerPressed
         , label = "Points"
         , open = pointsVisible
         , content =
-            View.Table.table
+            Ui.Table.table
                 { data = List.sortBy objectName (Pattern.points pattern)
                 , columns =
-                    [ View.Table.column
+                    [ Ui.Table.column
                         { label = "Name"
                         , recordToString =
                             Pattern.name
                                 >> Maybe.withDefault "<no name>"
                         }
-                    , View.Table.columnFloat
+                    , Ui.Table.columnFloat
                         { label = "x"
                         , recordToFloat =
                             Pattern.point2d
@@ -858,7 +861,7 @@ viewPoints pattern pointsVisible =
                                 >> Result.toMaybe
                                 >> Maybe.map Point2d.xCoordinate
                         }
-                    , View.Table.columnFloat
+                    , Ui.Table.columnFloat
                         { label = "y"
                         , recordToFloat =
                             Pattern.point2d
@@ -866,7 +869,7 @@ viewPoints pattern pointsVisible =
                                 >> Result.toMaybe
                                 >> Maybe.map Point2d.yCoordinate
                         }
-                    , View.Table.columnActions
+                    , Ui.Table.columnActions
                         { onEditPress = Just << PointEditPressed
                         , onRemovePress = Just << PointDeletePressed
                         }
@@ -877,21 +880,21 @@ viewPoints pattern pointsVisible =
 
 viewAxes : Pattern -> Bool -> Element Msg
 viewAxes pattern axesVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = AxesRulerPressed
         , label = "Axes"
         , open = axesVisible
         , content =
-            View.Table.table
+            Ui.Table.table
                 { data = List.sortBy objectName (Pattern.axes pattern)
                 , columns =
-                    [ View.Table.column
+                    [ Ui.Table.column
                         { label = "Name"
                         , recordToString =
                             Pattern.name
                                 >> Maybe.withDefault "<no name>"
                         }
-                    , View.Table.columnActions
+                    , Ui.Table.columnActions
                         { onEditPress = Just << AxisEditPressed
                         , onRemovePress = Just << AxisDeletePressed
                         }
@@ -902,21 +905,21 @@ viewAxes pattern axesVisible =
 
 viewCircles : Pattern -> Bool -> Element Msg
 viewCircles pattern circlesVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = CirclesRulerPressed
         , label = "Circles"
         , open = circlesVisible
         , content =
-            View.Table.table
+            Ui.Table.table
                 { data = List.sortBy objectName (Pattern.circles pattern)
                 , columns =
-                    [ View.Table.column
+                    [ Ui.Table.column
                         { label = "Name"
                         , recordToString =
                             Pattern.name
                                 >> Maybe.withDefault "<no name>"
                         }
-                    , View.Table.columnFloat
+                    , Ui.Table.columnFloat
                         { label = "x"
                         , recordToFloat =
                             Pattern.circle2d
@@ -924,7 +927,7 @@ viewCircles pattern circlesVisible =
                                 >> Result.toMaybe
                                 >> Maybe.map (Circle2d.centerPoint >> Point2d.xCoordinate)
                         }
-                    , View.Table.columnFloat
+                    , Ui.Table.columnFloat
                         { label = "y"
                         , recordToFloat =
                             Pattern.circle2d
@@ -932,7 +935,7 @@ viewCircles pattern circlesVisible =
                                 >> Result.toMaybe
                                 >> Maybe.map (Circle2d.centerPoint >> Point2d.yCoordinate)
                         }
-                    , View.Table.columnFloat
+                    , Ui.Table.columnFloat
                         { label = "r"
                         , recordToFloat =
                             Pattern.circle2d
@@ -940,7 +943,7 @@ viewCircles pattern circlesVisible =
                                 >> Result.toMaybe
                                 >> Maybe.map Circle2d.radius
                         }
-                    , View.Table.columnActions
+                    , Ui.Table.columnActions
                         { onEditPress = always Nothing
                         , onRemovePress = always Nothing
                         }
@@ -951,21 +954,21 @@ viewCircles pattern circlesVisible =
 
 viewCurves : Pattern -> Bool -> Element Msg
 viewCurves pattern curvesVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = CurvesRulerPressed
         , label = "Curves"
         , open = curvesVisible
         , content =
-            View.Table.table
+            Ui.Table.table
                 { data = List.sortBy objectName (Pattern.curves pattern)
                 , columns =
-                    [ View.Table.column
+                    [ Ui.Table.column
                         { label = "Name"
                         , recordToString =
                             Pattern.name
                                 >> Maybe.withDefault "<no name>"
                         }
-                    , View.Table.columnActions
+                    , Ui.Table.columnActions
                         { onEditPress = Just << CurveEditPressed
                         , onRemovePress = Just << CurveDeletePressed
                         }
@@ -976,21 +979,21 @@ viewCurves pattern curvesVisible =
 
 viewDetails : Pattern -> Bool -> Element Msg
 viewDetails pattern curvesVisible =
-    View.Navigation.accordion
+    Ui.Navigation.accordion
         { onPress = DetailsRulerPressed
         , label = "Details"
         , open = curvesVisible
         , content =
-            View.Table.table
+            Ui.Table.table
                 { data = List.sortBy objectName (Pattern.details pattern)
                 , columns =
-                    [ View.Table.column
+                    [ Ui.Table.column
                         { label = "Name"
                         , recordToString =
                             Pattern.name
                                 >> Maybe.withDefault "<no name>"
                         }
-                    , View.Table.columnActions
+                    , Ui.Table.columnActions
                         { onEditPress = Just << DetailEditPressed
                         , onRemovePress = Just << DetailDeletePressed
                         }
@@ -1064,7 +1067,7 @@ type Msg
     | CurveDeleteModalDeletePressed
     | DetailDeleteModalDeletePressed
     | VariableDeleteModalDeletePressed
-    | ModalStateChanged View.Modal.State
+    | ModalStateChanged Ui.Modal.State
     | ModalCancelPressed
     | ModalClosed
 
@@ -1408,7 +1411,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( VariableDeleteConfirm variable
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1535,7 +1538,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( PointDeleteConfirm aPoint
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1562,7 +1565,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( AxisDeleteConfirm aAxis
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1589,7 +1592,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( CircleDeleteConfirm aCircle
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1616,7 +1619,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( CurveDeleteConfirm aCurve
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1643,7 +1646,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( DetailDeleteConfirm aDetail
-                        , View.Modal.Opening
+                        , Ui.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1664,7 +1667,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( PointDeleteConfirm aPoint
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1688,7 +1691,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( AxisDeleteConfirm aAxis
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1712,7 +1715,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( CircleDeleteConfirm aCircle
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1736,7 +1739,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( CurveDeleteConfirm aCurve
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1760,7 +1763,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( DetailDeleteConfirm aDetail
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1784,7 +1787,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( VariableDeleteConfirm variable
-                                , View.Modal.Closing
+                                , Ui.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1810,7 +1813,7 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just ( modal, state ) ->
-                    ( { model | maybeModal = Just ( modal, View.Modal.Closing ) }
+                    ( { model | maybeModal = Just ( modal, Ui.Modal.Closing ) }
                     , Cmd.none
                     )
 
@@ -1840,7 +1843,7 @@ subscriptions model =
                         Sub.none
 
                     Just ( _, state ) ->
-                        Sub.map ModalStateChanged (View.Modal.subscriptions state)
+                        Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
                 , case data.patternContainerDimensions of
                     Just _ ->
                         Sub.none

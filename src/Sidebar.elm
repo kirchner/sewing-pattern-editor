@@ -21,12 +21,13 @@ module Sidebar exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
 import Route
-import View.Icon
+import Ui.Atom
+import Ui.Color
+import Ui.Space
 
 
 type Page
@@ -81,14 +82,14 @@ view { headerHeight, currentPage } =
         [ Element.el
             [ Element.width Element.fill
             , Element.height (Element.px headerHeight)
-            , Background.color Design.primary
+            , Background.color Ui.Color.primary
             ]
             Element.none
         , viewNavigation currentPage
         , Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Background.color Design.primary
+            , Background.color Ui.Color.primary
             ]
             Element.none
         ]
@@ -101,39 +102,39 @@ viewNavigation currentPage =
             Element.link
                 [ Element.width Element.fill
                 , Element.paddingEach
-                    { top = Design.small
-                    , bottom = Design.small
-                    , left = Design.normal
-                    , right = Design.large
+                    { top = Ui.Space.level2
+                    , bottom = Ui.Space.level2
+                    , left = Ui.Space.level3
+                    , right = Ui.Space.level4
                     }
                 , Font.color <|
                     if page == currentPage then
-                        Design.primaryDark
+                        Ui.Color.primaryDark
 
                     else
-                        Design.white
+                        Ui.Color.white
                 , Background.color <|
                     if page == currentPage then
-                        Design.white
+                        Ui.Color.white
 
                     else
-                        Design.primary
+                        Ui.Color.primary
                 , Element.mouseOver
                     [ Background.color <|
                         if page == currentPage then
-                            Design.white
+                            Ui.Color.white
 
                         else
-                            Design.primaryDark
+                            Ui.Color.primaryDark
                     ]
                 ]
                 { url = pageUrl page
                 , label =
                     Element.row
-                        [ Element.spacing Design.small
+                        [ Element.spacing Ui.Space.level2
                         , Font.size 16
                         ]
-                        [ View.Icon.fa (pageIcon page)
+                        [ Ui.Atom.fa (pageIcon page)
                         , Element.text (pageLabel page)
                         ]
                 }

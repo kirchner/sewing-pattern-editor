@@ -1,4 +1,4 @@
-module View.Modal exposing
+module Ui.Modal exposing
     ( State(..)
     , small
     , subscriptions
@@ -24,7 +24,6 @@ module View.Modal exposing
 -}
 
 import Browser.Events
-import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -32,8 +31,9 @@ import Element.Font as Font
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
-import View.Icon
-import View.Input
+import Ui.Atom
+import Ui.Color
+import Ui.Space
 
 
 type State
@@ -124,18 +124,18 @@ custom width state config =
                         :: attrs
 
                 Open ->
-                    Element.moveDown (Design.large + Design.normal)
+                    Element.moveDown (2 * Ui.Space.level8)
                         :: style "transition" "transform 0.3s"
                         :: attrs
 
                 Closing ->
-                    Element.moveDown (Design.large + Design.normal)
+                    Element.moveDown (2 * Ui.Space.level8)
                         :: attrs
     in
     Element.el
         ([ Element.width Element.fill
          , Element.height Element.fill
-         , Background.color Design.grayDark
+         , Background.color Ui.Color.grayDark
          ]
             |> backdropAttrs
         )
@@ -145,9 +145,8 @@ custom width state config =
              , Element.width (Element.px width)
              , Border.width 1
              , Border.rounded 4
-             , Border.color Design.black
-             , Design.fontNormal
-             , Background.color Design.white
+             , Border.color Ui.Color.black
+             , Background.color Ui.Color.white
              , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
              , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
              , Element.htmlAttribute <|
@@ -163,8 +162,8 @@ custom width state config =
             )
             [ Element.row
                 [ Element.width Element.fill
-                , Element.padding Design.small
-                , Background.color Design.secondary
+                , Element.padding Ui.Space.level2
+                , Background.color Ui.Color.secondary
                 , Border.roundEach
                     { topLeft = 4
                     , topRight = 4
@@ -179,26 +178,27 @@ custom width state config =
                     ]
                     (Element.text config.title)
                 , Element.el [ Element.alignRight ] <|
-                    View.Input.btnIcon
-                        { onPress = Just config.onCancelPress
+                    Ui.Atom.btnIcon
+                        { id = "modal-cancel-btn"
+                        , onPress = Just config.onCancelPress
                         , icon = "times"
                         }
                 ]
             , Element.el
                 [ Element.width Element.fill
-                , Element.padding Design.small
+                , Element.padding Ui.Space.level2
                 ]
                 config.content
             , Element.row
                 [ Element.width Element.fill
-                , Element.padding Design.small
+                , Element.padding Ui.Space.level2
                 , Border.widthEach
                     { top = 1
                     , bottom = 0
                     , left = 0
                     , right = 0
                     }
-                , Border.color Design.secondary
+                , Border.color Ui.Color.secondary
                 ]
                 config.actions
             ]

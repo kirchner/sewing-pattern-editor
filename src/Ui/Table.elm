@@ -1,4 +1,4 @@
-module View.Table exposing
+module Ui.Table exposing
     ( column
     , columnActions
     , columnFloat
@@ -23,10 +23,10 @@ module View.Table exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import Design
 import Element exposing (Column, Element)
 import Element.Font as Font
-import View.Input
+import Ui.Atom
+import Ui.Space
 
 
 table :
@@ -36,7 +36,7 @@ table :
     -> Element msg
 table =
     Element.table
-        [ Element.spacing Design.xSmall ]
+        [ Element.spacing Ui.Space.level1 ]
 
 
 
@@ -103,12 +103,14 @@ columnActions { onEditPress, onRemovePress } =
                     }
                 , Element.spacing 10
                 ]
-                [ View.Input.btnIcon
-                    { onPress = onEditPress record
+                [ Ui.Atom.btnIcon
+                    { id = "edit-btn"
+                    , onPress = onEditPress record
                     , icon = "edit"
                     }
-                , View.Input.btnIcon
-                    { onPress = onRemovePress record
+                , Ui.Atom.btnIcon
+                    { id = "remove-btn"
+                    , onPress = onRemovePress record
                     , icon = "trash"
                     }
                 ]
