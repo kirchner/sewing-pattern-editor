@@ -24,9 +24,9 @@ module Ui.Table exposing
 -}
 
 import Element exposing (Column, Element)
-import Element.Font as Font
 import Ui.Atom
 import Ui.Space
+import Ui.Typography
 
 
 table :
@@ -49,12 +49,12 @@ column :
     }
     -> Column record msg
 column { label, recordToString } =
-    { header = Element.el [ Font.size 12 ] (Element.text label)
+    { header = Ui.Typography.button label
     , width = Element.fill
     , view =
-        \record ->
-            Element.el [ Font.size 14 ] <|
-                Element.text (recordToString record)
+        Element.el [ Element.alignRight, Element.centerY ]
+            << Ui.Typography.body
+            << recordToString
     }
 
 
@@ -64,10 +64,7 @@ columnFloat :
     }
     -> Column record msg
 columnFloat { label, recordToFloat } =
-    { header =
-        Element.el [ Font.size 12 ] <|
-            Element.el [ Element.alignRight ]
-                (Element.text label)
+    { header = Element.el [ Element.alignRight ] (Ui.Typography.button label)
     , width = Element.px 35
     , view =
         \record ->
@@ -76,11 +73,10 @@ columnFloat { label, recordToFloat } =
                     Element.none
 
                 Just float ->
-                    Element.el [ Font.size 14 ] <|
-                        Element.el [ Element.alignRight ] <|
-                            Element.text <|
-                                String.fromInt <|
-                                    round float
+                    Element.el [ Element.alignRight, Element.centerY ] <|
+                        Ui.Typography.body <|
+                            String.fromInt <|
+                                round float
     }
 
 

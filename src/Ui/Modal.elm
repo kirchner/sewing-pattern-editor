@@ -27,13 +27,13 @@ import Browser.Events
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import Ui.Atom
 import Ui.Color
 import Ui.Space
+import Ui.Typography
 
 
 type State
@@ -59,45 +59,26 @@ subscriptions state =
 ---- VIEWS
 
 
-wide :
-    State
-    ->
-        { onCancelPress : msg
-        , onClosed : msg
-        , title : String
-        , content : Element msg
-        , actions : List (Element msg)
-        }
-    -> Element msg
+type alias ViewConfig msg =
+    { onCancelPress : msg
+    , onClosed : msg
+    , title : String
+    , content : Element msg
+    , actions : List (Element msg)
+    }
+
+
+wide : State -> ViewConfig msg -> Element msg
 wide =
-    custom 600
+    custom (20 * Ui.Space.level8)
 
 
-small :
-    State
-    ->
-        { onCancelPress : msg
-        , onClosed : msg
-        , title : String
-        , content : Element msg
-        , actions : List (Element msg)
-        }
-    -> Element msg
+small : State -> ViewConfig msg -> Element msg
 small =
-    custom 500
+    custom (10 * Ui.Space.level8)
 
 
-custom :
-    Int
-    -> State
-    ->
-        { onCancelPress : msg
-        , onClosed : msg
-        , title : String
-        , content : Element msg
-        , actions : List (Element msg)
-        }
-    -> Element msg
+custom : Int -> State -> ViewConfig msg -> Element msg
 custom width state config =
     let
         backdropAttrs attrs =
@@ -147,16 +128,14 @@ custom width state config =
              , Border.rounded 4
              , Border.color Ui.Color.black
              , Background.color Ui.Color.white
-             , Element.htmlAttribute (Html.Attributes.attribute "role" "dialog")
-             , Element.htmlAttribute (Html.Attributes.attribute "aria-modal" "true")
-             , Element.htmlAttribute <|
-                Html.Attributes.attribute "aria-labelledby" "dialog--title"
-             , Element.htmlAttribute <|
-                Html.Attributes.attribute "aria-describedby" "dialog--body"
+             , attribute "role" "dialog"
+             , attribute "aria-modal" "true"
+             , attribute "aria-labelledby" "dialog--title"
+             , attribute "aria-describedby" "dialog--body"
 
              -- TODO: fix display error in Chromium with scale-factor=1.5
-             , Element.htmlAttribute (Html.Attributes.style "padding-left" "1px")
-             , Element.htmlAttribute (Html.Attributes.style "padding-right" "1px")
+             , style "padding-left" "1px"
+             , style "padding-right" "1px"
              ]
                 |> modalAttrs
             )
@@ -172,11 +151,10 @@ custom width state config =
                     }
                 ]
                 [ Element.el
-                    [ Element.htmlAttribute (Html.Attributes.id "dialog--title")
+                    [ attributeId "dialog--title"
                     , Element.centerX
-                    , Font.bold
                     ]
-                    (Element.text config.title)
+                    (Ui.Typography.bodyBold config.title)
                 , Element.el [ Element.alignRight ] <|
                     Ui.Atom.btnIcon
                         { id = "modal-cancel-btn"
@@ -186,7 +164,7 @@ custom width state config =
                 ]
             , Element.el
                 [ Element.width Element.fill
-                , Element.padding Ui.Space.level2
+                , Element.padding Ui.Space.level3
                 ]
                 config.content
             , Element.row
@@ -207,11 +185,19 @@ custom width state config =
 
 style : String -> String -> Element.Attribute msg
 style name value =
-    Element.htmlAttribute <|
-        Html.Attributes.style name value
+    Element.htmlAttribute (Html.Attributes.style name value)
+
+
+attribute : String -> String -> Element.Attribute msg
+attribute name value =
+    Element.htmlAttribute (Html.Attributes.attribute name value)
+
+
+attributeId : String -> Element.Attribute msg
+attributeId id =
+    Element.htmlAttribute (Html.Attributes.id id)
 
 
 onTransitionEnd : msg -> Element.Attribute msg
 onTransitionEnd msg =
-    Element.htmlAttribute <|
-        Html.Events.on "transitionend" (Decode.succeed msg)
+    Element.htmlAttribute (Html.Events.on "transitionend" (Decode.succeed msg))

@@ -590,7 +590,8 @@ viewCreatePatternDialog state name =
                 [ Element.width Element.fill
                 , Element.spacing Ui.Space.level2
                 ]
-                [ Element.text "Create a new pattern"
+                [ Ui.Typography.paragraphBody
+                    [ Element.text "Create a new pattern" ]
                 , Ui.Atom.inputText
                     { id = "name-input"
                     , onChange = NewPatternNameChanged
@@ -600,11 +601,12 @@ viewCreatePatternDialog state name =
                     }
                 ]
         , actions =
-            [ Ui.Atom.btnPrimary
-                { id = "new-pattern-create-btn"
-                , onPress = Just NewPatternCreateClicked
-                , label = "Create"
-                }
+            [ Element.el [] <|
+                Ui.Atom.btnPrimary
+                    { id = "new-pattern-create-btn"
+                    , onPress = Just NewPatternCreateClicked
+                    , label = "Create"
+                    }
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "modal-cancel-btn"
@@ -626,16 +628,12 @@ viewRenamePatternDialog state slug name oldName =
                 [ Element.width Element.fill
                 , Element.spacing Ui.Space.level2
                 ]
-                [ Element.paragraph
-                    [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                    , Element.width Element.fill
-                    , Background.color Ui.Color.white
-                    ]
-                    [ Element.text <|
-                        "What do you want to rename the pattern «"
-                            ++ oldName
-                            ++ "» to?"
-                    ]
+                [ Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
+                    Ui.Typography.paragraphBody
+                        [ Element.text "What do you want to rename the pattern "
+                        , Element.el [ Font.bold ] (Element.text ("«" ++ oldName ++ "»"))
+                        , Element.text " to?"
+                        ]
                 , Ui.Atom.inputText
                     { id = "name-input"
                     , onChange = RenamePatternNameChanged
@@ -645,11 +643,12 @@ viewRenamePatternDialog state slug name oldName =
                     }
                 ]
         , actions =
-            [ Ui.Atom.btnPrimary
-                { id = "rename-pattern-rename-btn"
-                , onPress = Just RenamePatternRenameClicked
-                , label = "Rename"
-                }
+            [ Element.el [] <|
+                Ui.Atom.btnPrimary
+                    { id = "rename-pattern-rename-btn"
+                    , onPress = Just RenamePatternRenameClicked
+                    , label = "Rename"
+                    }
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "modal-cancel-btn"
@@ -667,17 +666,12 @@ viewDeletePatternDialog state slug name =
         , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
         , content =
-            Element.paragraph
-                [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                , Element.width Element.fill
-                , Element.padding Ui.Space.level2
-                , Background.color Ui.Color.white
-                ]
-                [ Element.text "Do you want to delete the pattern "
-                , Element.el [ Font.bold ]
-                    (Element.text ("«" ++ name ++ "»"))
-                , Element.text "?"
-                ]
+            Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
+                Ui.Typography.paragraphBody
+                    [ Element.text "Do you want to delete the pattern "
+                    , Element.el [ Font.bold ] (Element.text ("«" ++ name ++ "»"))
+                    , Element.text "?"
+                    ]
         , actions =
             [ Ui.Atom.btnDanger
                 { id = "delete-pattern-modal__delete-btn"
@@ -718,15 +712,14 @@ viewImportPatternsDialog state { hover, previews } =
                             [ Element.width Element.fill
                             , Element.clip
                             ]
-                            (Element.text fileName)
+                            (Ui.Typography.body fileName)
                         , Element.row
-                            [ Element.width (Element.fillPortion 1)
+                            [ Element.alignRight
                             , Element.spacing Ui.Space.level1
-                            , Font.bold
                             , Font.color Ui.Color.danger
                             ]
                             [ Ui.Atom.fa "exclamation-circle"
-                            , Element.text <|
+                            , Ui.Typography.bodyBold <|
                                 "This is not a valid pattern file: "
                                     ++ error
                             ]
@@ -750,13 +743,12 @@ viewImportPatternsDialog state { hover, previews } =
                                 }
                             )
                         , Element.row
-                            [ Element.width (Element.fillPortion 1)
+                            [ Element.alignRight
                             , Element.spacing Ui.Space.level1
-                            , Font.bold
                             , Font.color Ui.Color.success
                             ]
                             [ Ui.Atom.fa "check-circle"
-                            , Element.text "File can be imported."
+                            , Ui.Typography.bodyBold "File can be imported."
                             ]
                         , Element.el [ Element.alignRight ]
                             (Ui.Atom.btnSecondary
@@ -811,11 +803,12 @@ viewImportPatternsDialog state { hover, previews } =
                     )
                 ]
         , actions =
-            [ Ui.Atom.btnPrimary
-                { id = "import-patterns-modal__import-btn"
-                , onPress = Just ImportPatternsImportClicked
-                , label = "Import"
-                }
+            [ Element.el [] <|
+                Ui.Atom.btnPrimary
+                    { id = "import-patterns-modal__import-btn"
+                    , onPress = Just ImportPatternsImportClicked
+                    , label = "Import"
+                    }
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "import-patterns-modal__cancel-btn"

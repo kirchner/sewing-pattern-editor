@@ -68,12 +68,12 @@ subscriptions model =
 
 headerHeight : Int
 headerHeight =
-    8 * Ui.Space.level8
+    2 * Ui.Space.level8
 
 
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view model =
-    { title = "Measurements"
+    { title = "Persons"
     , body =
         Element.row
             [ Element.width Element.fill

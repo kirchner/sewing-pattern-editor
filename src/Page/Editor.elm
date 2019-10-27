@@ -78,6 +78,7 @@ import Ui.Modal
 import Ui.Navigation
 import Ui.Space
 import Ui.Table
+import Ui.Typography
 import Url exposing (Url)
 import Vector2d
 import VoronoiDiagram2d
@@ -214,7 +215,7 @@ viewModal pattern ( modal, state ) =
                     Pattern.objectsDependingOnPoint pattern aPoint
 
                 viewDependentObjects =
-                    [ Element.paragraph []
+                    [ Ui.Typography.paragraphBody
                         [ Element.el [ Font.bold ]
                             (Element.text "Note:")
                         , Element.text " The following objects depend on this point and will therefore be "
@@ -226,7 +227,7 @@ viewModal pattern ( modal, state ) =
                         Element.none
 
                       else
-                        Element.paragraph
+                        Element.el
                             [ Element.paddingEach
                                 { top = 0
                                 , bottom = 0
@@ -234,22 +235,24 @@ viewModal pattern ( modal, state ) =
                                 , right = 0
                                 }
                             ]
-                            (List.concat
-                                [ [ Element.text "The points " ]
-                                , dependentObjects.points
-                                    |> List.map
-                                        (\aDependentPoint ->
-                                            Element.el [ Font.bold ] <|
-                                                Element.text
-                                                    ("«"
-                                                        ++ objectName aDependentPoint
-                                                        ++ "»"
-                                                    )
-                                        )
-                                    |> List.intersperse (Element.text ", ")
-                                , [ Element.text "." ]
-                                ]
-                            )
+                        <|
+                            Ui.Typography.paragraphBody
+                                (List.concat
+                                    [ [ Element.text "The points " ]
+                                    , dependentObjects.points
+                                        |> List.map
+                                            (\aDependentPoint ->
+                                                Element.el [ Font.bold ] <|
+                                                    Element.text
+                                                        ("«"
+                                                            ++ objectName aDependentPoint
+                                                            ++ "»"
+                                                        )
+                                            )
+                                        |> List.intersperse (Element.text ", ")
+                                    , [ Element.text "." ]
+                                    ]
+                                )
                     ]
             in
             Ui.Modal.small state
@@ -258,13 +261,13 @@ viewModal pattern ( modal, state ) =
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
                 , content =
                     Element.column
-                        [ Element.spacing Ui.Space.level1
+                        [ Element.spacing Ui.Space.level3
                         , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                         , Element.width Element.fill
-                        , Element.padding Ui.Space.level1
+                        , Element.padding Ui.Space.level2
                         , Background.color Ui.Color.white
                         ]
-                        (Element.paragraph []
+                        (Ui.Typography.paragraphBody
                             [ Element.text "Do you want to remove the point "
                             , Element.el [ Font.bold ]
                                 (Element.text ("«" ++ objectName aPoint ++ "»"))
@@ -348,17 +351,13 @@ viewDeleteModal state { name, kind, onDeletePress } =
         , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
         , content =
-            Element.paragraph
-                [ Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                , Element.width Element.fill
-                , Element.padding Ui.Space.level1
-                , Background.color Ui.Color.white
-                ]
-                [ Element.text ("Do you want to remove the " ++ kind ++ " ")
-                , Element.el [ Font.bold ]
-                    (Element.text ("«" ++ name ++ "»"))
-                , Element.text "?"
-                ]
+            Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
+                Ui.Typography.paragraphBody
+                    [ Element.text ("Do you want to remove the " ++ kind ++ " ")
+                    , Element.el [ Font.bold ]
+                        (Element.text ("«" ++ name ++ "»"))
+                    , Element.text "?"
+                    ]
         , actions =
             [ Ui.Atom.btnDanger
                 { id = "delete-modal__delete-btn"
@@ -387,7 +386,7 @@ viewEditor storedPattern model =
         ]
         [ Element.row
             [ Element.width Element.fill
-            , Element.padding Ui.Space.level1
+            , Element.padding Ui.Space.level2
             , Element.spacing Ui.Space.level1
             , Background.color Ui.Color.secondary
             ]
@@ -396,7 +395,7 @@ viewEditor storedPattern model =
                 , label = "Patterns"
                 }
             , Element.el [] (Ui.Atom.fa "angle-right")
-            , Element.el [] (Element.text name)
+            , Element.el [] (Ui.Typography.body name)
             , Element.newTabLink
                 [ Element.alignRight
                 , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
@@ -407,7 +406,7 @@ viewEditor storedPattern model =
             ]
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Ui.Space.level1)
+            , Element.height (Element.px 2)
             , Background.color Ui.Color.primary
             ]
             Element.none
@@ -440,7 +439,7 @@ viewEditor storedPattern model =
             ]
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Ui.Space.level1)
+            , Element.height (Element.px 2)
             , Background.color Ui.Color.primary
             ]
             Element.none
@@ -651,7 +650,7 @@ viewVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Element.paragraph []
+        [ Ui.Typography.paragraphBody
             [ Element.text "Create a new "
             , Element.el
                 [ Font.bold ]
@@ -703,7 +702,7 @@ viewEditVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Element.paragraph []
+        [ Ui.Typography.paragraphBody
             [ Element.text "Edit the variable "
             , Element.el
                 [ Font.bold ]
@@ -752,24 +751,13 @@ viewToolSelector =
     in
     Element.column
         [ Element.padding Ui.Space.level1
-        , Element.spacing Ui.Space.level1
         , Element.width Element.fill
         ]
-        [ Element.column
-            [ Element.spacing Ui.Space.level1
-            , Element.width Element.fill
-            ]
-            [ Element.column
-                [ Element.spacing Ui.Space.level1
-                , Element.width Element.fill
-                ]
-                [ button CreatePointPressed "create-point" "Create a point"
-                , button CreateAxisPressed "create-axis" "Create an axis"
-                , button CreateCirclePressed "create-circle" "Create a circle"
-                , button CreateCurvePressed "create-curve" "Create a curve"
-                , button CreateDetailPressed "create-detail" "Create a detail"
-                ]
-            ]
+        [ button CreatePointPressed "create-point" "Create a point"
+        , button CreateAxisPressed "create-axis" "Create an axis"
+        , button CreateCirclePressed "create-circle" "Create a circle"
+        , button CreateCurvePressed "create-curve" "Create a curve"
+        , button CreateDetailPressed "create-detail" "Create a detail"
         ]
 
 
