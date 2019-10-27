@@ -4,8 +4,8 @@ module Ui.Atom exposing
     , btnIcon, btnIconDanger, btnIconLarge
     , checkbox
     , radioRow, radioColumn, option
-    , segmentControl, Appendable(..)
-    , inputText, inputTextAppendable, inputFormula, inputFormulaAppendable
+    , segmentControl, Child(..), nested
+    , inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge
     , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
     )
@@ -24,8 +24,8 @@ module Ui.Atom exposing
 
 @docs checkbox
 @docs radioRow, radioColumn, option
-@docs segmentControl, Appendable
-@docs inputText, inputTextAppendable, inputFormula, inputFormulaAppendable
+@docs segmentControl, Child, nested
+@docs inputText, inputTextAppended, inputFormula, inputFormulaAppended
 
 
 # Icons
@@ -435,151 +435,187 @@ type alias SegmentControlConfig tag msg =
     , onChange : tag -> msg
     , options : List ( tag, String )
     , selected : tag
-    , appended :
-        Maybe
-            { appendable : Appendable msg
-            , disclosure :
-                Maybe
-                    { show : Bool
-                    , onPress : msg
-                    }
-            }
+    , child : Maybe (Child msg)
     }
 
 
-type Appendable msg
-    = Appendable (Element msg)
+type Child msg
+    = Appended (Element msg)
+    | Nested
+        { show : Bool
+        , onPress : msg
+        , shown : Element msg
+        , hidden : Element msg
+        }
+
+
+nested :
+    { show : Bool
+    , onPress : msg
+    , shown : Element msg
+    , hidden : Element msg
+    }
+    -> Child msg
+nested =
+    Nested
 
 
 segmentControl : SegmentControlConfig tag msg -> Element msg
-segmentControl { id, label, onChange, options, selected, appended } =
+segmentControl { id, label, onChange, options, selected, child } =
     let
-        segmentControlHelp =
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing Ui.Space.level2
-                ]
-                [ case label of
-                    Nothing ->
-                        Element.none
+        header =
+            case label of
+                Nothing ->
+                    Element.none
 
-                    Just labelText ->
-                        Element.el
-                            [ attributeId (id ++ "-label")
-                            , Element.width Element.fill
-                            ]
-                            (Ui.Typography.bodyBold labelText)
-                , Element.el
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , if showAppended then
-                        Border.roundEach
-                            { topLeft = 3
-                            , topRight = 3
-                            , bottomLeft = 0
-                            , bottomRight = 0
-                            }
-
-                      else
-                        Border.rounded 3
-                    , Border.width 1
-                    , Border.color Ui.Color.primary
-                    , Background.color Ui.Color.secondary
-                    ]
-                    (Element.row
+                Just labelText ->
+                    Element.el
                         [ attributeId (id ++ "-label")
                         , Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
-                        , Element.htmlAttribute (Html.Attributes.tabindex 0)
-                        , Element.htmlAttribute (Html.Attributes.class "segment-control")
-                        , onKeyDown onChange (List.map Tuple.first options) selected
                         ]
-                        (List.map (Element.map onChange) (segments options selected))
-                    )
+                        (Ui.Typography.bodyBold labelText)
+
+        control borderRounded =
+            Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , borderRounded
+                , Border.width 1
+                , Border.color Ui.Color.primary
+                , Background.color Ui.Color.secondary
                 ]
-
-        showAppended =
-            case appended of
-                Nothing ->
-                    False
-
-                Just { disclosure } ->
-                    case disclosure of
-                        Nothing ->
-                            True
-
-                        Just { show } ->
-                            show
+                (Element.row
+                    [ attributeId (id ++ "-label")
+                    , Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.htmlAttribute (Html.Attributes.attribute "role" "radiogroup")
+                    , Element.htmlAttribute (Html.Attributes.tabindex 0)
+                    , Element.htmlAttribute (Html.Attributes.class "segment-control")
+                    , onKeyDown onChange (List.map Tuple.first options) selected
+                    ]
+                    (List.map (Element.map onChange) (segments options selected))
+                )
     in
-    case appended of
+    case child of
         Nothing ->
-            withFocusOutline segmentControlHelp
-
-        Just { appendable, disclosure } ->
-            if showAppended then
-                let
-                    (Appendable appendableElement) =
-                        appendable
-                in
-                Element.column
+            Element.column
+                [ Element.width Element.fill ]
+                [ Element.column
                     [ Element.width Element.fill ]
-                    [ Element.el
-                        [ Element.width Element.fill
-                        , Element.inFront (disclosureButton disclosure)
-                        ]
-                        (withFocusOutlineTop segmentControlHelp)
-                    , withFocusOutlineBottom appendableElement
+                    [ withFocusOutline <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Ui.Space.level2
+                            ]
+                            [ header
+                            , control (Border.rounded 3)
+                            ]
                     ]
-
-            else
-                Element.column
-                    [ Element.width Element.fill ]
-                    [ Element.el
-                        [ Element.width Element.fill
-                        , Element.inFront (disclosureButton disclosure)
-                        ]
-                        (withFocusOutline segmentControlHelp)
-                    ]
-
-
-disclosureButton : Maybe { show : Bool, onPress : msg } -> Element msg
-disclosureButton disclosure =
-    case disclosure of
-        Nothing ->
-            Element.none
-
-        Just { show, onPress } ->
-            Input.button
-                [ Element.mouseOver [ Font.color Ui.Color.primary ]
-                , Element.focused [ Font.color Ui.Color.primary ]
-                , Element.width Element.fill
-                , fontColorEaseInOut
                 ]
-                { onPress = Just onPress
-                , label =
+
+        Just (Appended appended) ->
+            Element.column
+                [ Element.width Element.fill ]
+                [ Element.column
+                    [ Element.width Element.fill ]
+                    [ withFocusOutlineTop <|
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing Ui.Space.level2
+                            ]
+                            [ header
+                            , control <|
+                                Border.roundEach
+                                    { topLeft = 3
+                                    , topRight = 3
+                                    , bottomLeft = 0
+                                    , bottomRight = 0
+                                    }
+                            ]
+                    ]
+                , withFocusOutlineBottom appended
+                ]
+
+        Just (Nested { show, onPress, shown, hidden }) ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.inFront <|
                     Element.el
-                        [ Element.alignRight
-                        , Element.padding 3
-                        ]
-                        (withFocusOutline <|
-                            Element.row
-                                [ Element.spacing Ui.Space.level1 ]
-                                [ Ui.Typography.button <|
-                                    if show then
-                                        "Minimize"
-
-                                    else
-                                        "Expand"
-                                , fa <|
-                                    if show then
-                                        "chevron-up"
-
-                                    else
-                                        "chevron-down"
-                                ]
+                        [ Element.alignRight ]
+                        (disclosureButton
+                            { show = show
+                            , onPress = onPress
+                            }
                         )
-                }
+                ]
+                [ if show then
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing Ui.Space.level1
+                        ]
+                        [ withFocusOutline <|
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.spacing Ui.Space.level2
+                                ]
+                                [ header
+                                , control (Border.rounded 3)
+                                ]
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Element.paddingEach
+                                { top = 0
+                                , bottom = 0
+                                , left = Ui.Space.level2
+                                , right = 0
+                                }
+                            ]
+                            shown
+                        ]
+
+                  else
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing Ui.Space.level2
+                        , Element.padding 7
+                        ]
+                        [ header
+                        , hidden
+                        ]
+                ]
+
+
+disclosureButton : { show : Bool, onPress : msg } -> Element msg
+disclosureButton { show, onPress } =
+    Input.button
+        [ Element.mouseOver [ Font.color Ui.Color.primary ]
+        , Element.focused [ Font.color Ui.Color.primary ]
+        , fontColorEaseInOut
+        ]
+        { onPress = Just onPress
+        , label =
+            Element.el
+                [ Element.alignRight
+                , Element.padding 3
+                ]
+                (withFocusOutline <|
+                    Element.row
+                        [ Element.spacing Ui.Space.level1 ]
+                        [ Ui.Typography.button <|
+                            if show then
+                                "Minimize"
+
+                            else
+                                "Expand"
+                        , fa <|
+                            if show then
+                                "chevron-up"
+
+                            else
+                                "chevron-down"
+                        ]
+                )
+        }
 
 
 type Position
@@ -810,16 +846,16 @@ inputText data =
             }
 
 
-inputTextAppendable :
+inputTextAppended :
     String
     ->
         { onChange : String -> msg
         , text : String
         , label : String
         }
-    -> Appendable msg
-inputTextAppendable id data =
-    Appendable <|
+    -> Child msg
+inputTextAppended id data =
+    Appended <|
         Input.text
             [ attributeId id
             , Element.width Element.fill
@@ -910,15 +946,15 @@ inputFormula data =
             }
 
 
-inputFormulaAppendable :
+inputFormulaAppended :
     String
     ->
         { onChange : String -> msg
         , text : String
         , label : String
         }
-    -> Appendable msg
-inputFormulaAppendable id data =
+    -> Child msg
+inputFormulaAppended id data =
     let
         lineCount =
             List.length (String.split "\n" data.text)
@@ -940,7 +976,7 @@ inputFormulaAppendable id data =
                     , bottom = 10
                     }
     in
-    Appendable <|
+    Appended <|
         Input.multiline
             [ attributeId id
             , Element.width Element.fill

@@ -20,6 +20,7 @@ stdenv.mkDerivation {
     yarn
     latestPkgs.elmPackages.elm
     latestPkgs.elmPackages.elm-test
+    latestPkgs.elmPackages.elm-format
     expect
   ];
 

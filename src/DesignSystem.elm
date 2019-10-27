@@ -48,6 +48,7 @@ type alias Model =
     , dropdownAppended : Dropdown
     , selectionAppended : Maybe Fruit
     , positionAppended : Position
+    , positionNested : Position
     , showFormula : Bool
     }
 
@@ -229,6 +230,7 @@ init { width, height } url key =
         , dropdownAppended = Ui.Atom.Dropdown.init
         , selectionAppended = Nothing
         , positionAppended = Left
+        , positionNested = Left
         , showFormula = True
         }
 
@@ -673,7 +675,7 @@ content model =
                             , onChange = ChangedPosition
                             , options = positions
                             , selected = model.position
-                            , appended = Nothing
+                            , child = Nothing
                             }
                         )
                     , Ui.Typography.headingThree "Text"
@@ -773,22 +775,19 @@ content model =
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
-                            , appended =
+                            , child =
                                 Just <|
-                                    { appendable =
-                                        Ui.Atom.Dropdown.viewAppendable
-                                            { entryToString = fruitToString
-                                            , entryToHash = fruitToString
-                                            }
-                                            { id = "fruit-dropdown-appended"
-                                            , lift = DropdownAppendedMsg
-                                            , label = "Fruit"
-                                            }
-                                            fruits
-                                            model.dropdownAppended
-                                            model.selectionAppended
-                                    , disclosure = Nothing
-                                    }
+                                    Ui.Atom.Dropdown.viewAppended
+                                        { entryToString = fruitToString
+                                        , entryToHash = fruitToString
+                                        }
+                                        { id = "fruit-dropdown-appended"
+                                        , lift = DropdownAppendedMsg
+                                        , label = "Fruit"
+                                        }
+                                        fruits
+                                        model.dropdownAppended
+                                        model.selectionAppended
                             }
                         ]
                     , Ui.Typography.headingThree "Segment Control + Text"
@@ -803,16 +802,13 @@ content model =
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
-                            , appended =
+                            , child =
                                 Just <|
-                                    { appendable =
-                                        Ui.Atom.inputTextAppendable "text-appended"
-                                            { onChange = \_ -> NoOp
-                                            , text = ""
-                                            , label = "Text"
-                                            }
-                                    , disclosure = Nothing
-                                    }
+                                    Ui.Atom.inputTextAppended "text-appended"
+                                        { onChange = \_ -> NoOp
+                                        , text = ""
+                                        , label = "Text"
+                                        }
                             }
                         , Ui.Atom.segmentControl
                             { id = "position-formula-segment-control"
@@ -820,20 +816,60 @@ content model =
                             , onChange = ChangedPositionAppended
                             , options = positions
                             , selected = model.positionAppended
-                            , appended =
+                            , child =
                                 Just <|
-                                    { appendable =
-                                        Ui.Atom.inputFormulaAppendable "formula-appended"
-                                            { onChange = ChangedFormula
-                                            , text = model.formula
-                                            , label = "Formula"
-                                            }
-                                    , disclosure =
+                                    Ui.Atom.inputFormulaAppended "formula-appended"
+                                        { onChange = ChangedFormula
+                                        , text = model.formula
+                                        , label = "Formula"
+                                        }
+                            }
+                        ]
+                    , Ui.Typography.headingThree "Segment Control + Nested Form"
+                    , Element.column
+                        [ Element.padding Ui.Space.level1
+                        , Element.spacing Ui.Space.level4
+                        , Element.width Element.fill
+                        ]
+                        [ Ui.Atom.segmentControl
+                            { id = "position-nested-formula-segment-control"
+                            , label = Just "Position"
+                            , onChange = ChangedPositionNested
+                            , options = positions
+                            , selected = model.positionNested
+                            , child =
+                                case model.positionNested of
+                                    Left ->
                                         Just <|
-                                            { show = model.showFormula
-                                            , onPress = ClickedShowFormula
-                                            }
-                                    }
+                                            Ui.Atom.inputFormulaAppended "formula-appended"
+                                                { onChange = ChangedFormula
+                                                , text = model.formula
+                                                , label = "Formula"
+                                                }
+
+                                    Center ->
+                                        Just <|
+                                            Ui.Atom.nested
+                                                { show = model.showFormula
+                                                , onPress = ClickedShowFormula
+                                                , shown =
+                                                    Element.column
+                                                        [ Element.spacing Ui.Space.level4
+                                                        , Element.width Element.fill
+                                                        ]
+                                                        [ Ui.Atom.inputFormula
+                                                            { id = "input-formula"
+                                                            , onChange = ChangedFormula
+                                                            , text = model.formula
+                                                            , label = "Formula"
+                                                            , help = Nothing
+                                                            }
+                                                        ]
+                                                , hidden = Element.none
+                                                }
+
+                                    Right ->
+                                        Nothing
                             }
                         ]
                     ]
@@ -856,6 +892,7 @@ type Msg
     | DropdownAppendedMsg (Ui.Atom.Dropdown.Msg Fruit)
     | ChangedPosition Position
     | ChangedPositionAppended Position
+    | ChangedPositionNested Position
     | ChangedFormula String
     | ClickedShowFormula
 
@@ -948,6 +985,9 @@ update msg model =
 
         ChangedPositionAppended position ->
             ( { model | positionAppended = position }, Cmd.none )
+
+        ChangedPositionNested position ->
+            ( { model | positionNested = position }, Cmd.none )
 
         ChangedFormula formula ->
             ( { model | formula = formula }, Cmd.none )
