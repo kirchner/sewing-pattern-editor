@@ -50,7 +50,6 @@ module Dialog exposing
 
 -}
 
-import Design
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -92,6 +91,9 @@ import Result.Extra as Result
 import State exposing (State)
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Color
+import Ui.Space
+import Ui.Typography
 
 
 
@@ -1406,7 +1408,7 @@ viewActions : String -> Maybe String -> Element CreateMsg
 viewActions name nameHelp =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.small
+        , Element.spacing Ui.Space.level1
         ]
         [ Ui.Atom.inputText
             { id = "name-input"
@@ -1417,7 +1419,7 @@ viewActions name nameHelp =
             }
         , Element.row
             [ Element.width Element.fill
-            , Element.spacing Design.xxSmall
+            , Element.spacing Ui.Space.level1
             ]
             [ Element.el [ Element.alignLeft ] <|
                 Ui.Atom.btnPrimary
@@ -1455,8 +1457,7 @@ viewPointForm :
 viewPointForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ Element.map CreatePointMsg <|
             elCreateANew "point" <|
@@ -1467,51 +1468,35 @@ viewPointForm pattern objects name nameHelp form =
                     }
         , Element.column
             [ Element.width Element.fill
-            , Element.spacing Design.small
+            , Element.spacing Ui.Space.level2
             ]
             [ viewActions name nameHelp
-            , Element.paragraph
-                [ Design.fontNormal
-                , Font.color Design.black
-                , Font.size 14
+            , Element.el
+                [ Element.width Element.fill
+                , Element.padding 7
                 ]
-                [ Element.text "or use this point as a base point "
-                , Input.button
-                    [ Font.underline
-                    , Font.color Design.primary
-                    , Element.mouseOver
-                        [ Font.color Design.primaryDark ]
-                    , Element.htmlAttribute <|
-                        Attributes.style "transition" "color 0.2s ease-in-out 0s"
+                (Ui.Typography.paragraphBody
+                    [ Element.text "or use this point as a base point "
+                    , Ui.Atom.link
+                        { id = "point-use-in-point-link"
+                        , onPress = Just PointUseInPointPressed
+                        , label = "for another point"
+                        }
+                    , Element.text " or "
+                    , Ui.Atom.link
+                        { id = "point-use-in-axis-link"
+                        , onPress = Just PointUseInAxisPressed
+                        , label = "for an axis"
+                        }
+                    , Element.text ", or as the center point "
+                    , Ui.Atom.link
+                        { id = "point-use-in-circle-link"
+                        , onPress = Just PointUseInCirclePressed
+                        , label = "for a circle"
+                        }
+                    , Element.text "."
                     ]
-                    { onPress = Just PointUseInPointPressed
-                    , label = Element.text "for another point"
-                    }
-                , Element.text " or "
-                , Input.button
-                    [ Font.underline
-                    , Font.color Design.primary
-                    , Element.mouseOver
-                        [ Font.color Design.primaryDark ]
-                    , Element.htmlAttribute <|
-                        Attributes.style "transition" "color 0.2s ease-in-out 0s"
-                    ]
-                    { onPress = Just PointUseInAxisPressed
-                    , label = Element.text "for an axis"
-                    }
-                , Element.text ", or as the center point "
-                , Input.button
-                    [ Font.underline
-                    , Font.color Design.primary
-                    , Element.mouseOver
-                        [ Font.color Design.primaryDark ]
-                    , Element.htmlAttribute <|
-                        Attributes.style "transition" "color 0.2s ease-in-out 0s"
-                    ]
-                    { onPress = Just PointUseInCirclePressed
-                    , label = Element.text "of a circle"
-                    }
-                ]
+                )
             ]
         ]
 
@@ -1525,12 +1510,6 @@ viewPointFormHelp :
         }
     -> Element PointMsg
 viewPointFormHelp pattern objects { point, id } =
-    let
-        nested =
-            Just
-                << Ui.Atom.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Design.small ]
-    in
     Ui.Atom.segmentControl
         { id = id
         , label = Nothing
@@ -1668,8 +1647,7 @@ viewAxisForm :
 viewAxisForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ Element.map CreateAxisMsg <|
             elCreateANew "axis" <|
@@ -1688,12 +1666,6 @@ viewAxisFormHelp :
     -> { axis : AxisForm, id : String }
     -> Element AxisMsg
 viewAxisFormHelp pattern objects { axis, id } =
-    let
-        nested =
-            Just
-                << Ui.Atom.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Design.small ]
-    in
     Ui.Atom.segmentControl
         { id = id
         , label = Nothing
@@ -1752,8 +1724,7 @@ viewCircleForm :
 viewCircleForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ Element.map CreateCircleMsg <|
             elCreateANew "circle" <|
@@ -1772,12 +1743,6 @@ viewCircleFormHelp :
     -> { circle : CircleForm, id : String }
     -> Element CircleMsg
 viewCircleFormHelp pattern objects { circle, id } =
-    let
-        nested =
-            Just
-                << Ui.Atom.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Design.small ]
-    in
     Ui.Atom.segmentControl
         { id = id
         , label = Nothing
@@ -1845,8 +1810,7 @@ viewCurveForm :
 viewCurveForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ Element.map CreateCurveMsg <|
             elCreateANew "curve" <|
@@ -1865,12 +1829,6 @@ viewCurveFormHelp :
     -> { curve : CurveForm, id : String }
     -> Element CurveMsg
 viewCurveFormHelp pattern objects { curve, id } =
-    let
-        nested =
-            Just
-                << Ui.Atom.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Design.small ]
-    in
     Ui.Atom.segmentControl
         { id = id
         , label = Nothing
@@ -1969,8 +1927,7 @@ viewDetailForm :
 viewDetailForm pattern objects name nameHelp detail =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ Element.map CreateDetailMsg <|
             elCreateANew "detail" <|
@@ -1994,7 +1951,7 @@ viewDetailFormHelp :
 viewDetailFormHelp pattern objects { detail, id } =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.small
+        , Element.spacing Ui.Space.level1
         ]
         (List.concat
             [ [ Ui.Atom.segmentControl
@@ -2011,7 +1968,7 @@ viewDetailFormHelp pattern objects { detail, id } =
                                     Ui.Atom.nested <|
                                         Element.column
                                             [ Element.width Element.fill
-                                            , Element.spacing Design.small
+                                            , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
                                                 viewOtherPointForm pattern
@@ -2034,7 +1991,7 @@ viewDetailFormHelp pattern objects { detail, id } =
                                     Ui.Atom.nested <|
                                         Element.column
                                             [ Element.width Element.fill
-                                            , Element.spacing Design.small
+                                            , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
                                                 viewOtherPointForm pattern
@@ -2064,7 +2021,7 @@ viewDetailFormHelp pattern objects { detail, id } =
                                     Ui.Atom.nested <|
                                         Element.column
                                             [ Element.width Element.fill
-                                            , Element.spacing Design.small
+                                            , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map FirstCurveStartPointMsg <|
                                                 viewOtherPointForm pattern
@@ -2157,7 +2114,7 @@ viewDetailFormHelp pattern objects { detail, id } =
                                     Ui.Atom.nested <|
                                         Element.column
                                             [ Element.width Element.fill
-                                            , Element.spacing Design.small
+                                            , Element.spacing Ui.Space.level1
                                             ]
                                             [ Element.map LastCurveStartControlPointMsg <|
                                                 viewOtherPointForm pattern
@@ -2219,7 +2176,7 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.small
+        , Element.spacing Ui.Space.level1
         ]
         [ Ui.Atom.segmentControl
             { id = actualId
@@ -2235,7 +2192,7 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                             Ui.Atom.nested <|
                                 Element.column
                                     [ Element.width Element.fill
-                                    , Element.spacing Design.small
+                                    , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveEndPointMsg index) <|
                                         viewOtherPointForm pattern
@@ -2251,7 +2208,7 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                             Ui.Atom.nested <|
                                 Element.column
                                     [ Element.width Element.fill
-                                    , Element.spacing Design.small
+                                    , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveControlPointMsg index) <|
                                         viewOtherPointForm pattern
@@ -2274,7 +2231,7 @@ viewNextCurve pattern objects id index ( form, actionMenu ) =
                             Ui.Atom.nested <|
                                 Element.column
                                     [ Element.width Element.fill
-                                    , Element.spacing Design.small
+                                    , Element.spacing Ui.Space.level1
                                     ]
                                     [ Element.map (NextCurveStartControlPointMsg index) <|
                                         viewOtherPointForm pattern
@@ -2331,12 +2288,12 @@ viewActionMenu : ActionMenu -> Element ActionMenuMsg
 viewActionMenu actionMenu =
     Element.row
         (if actionMenu == Closed then
-            [ Element.spacing Design.xxSmall
+            [ Element.spacing Ui.Space.level1
             , Element.alignRight
             ]
 
          else
-            [ Element.spacing Design.xxSmall
+            [ Element.spacing Ui.Space.level1
             , Element.alignRight
             , Element.htmlAttribute <|
                 Attributes.style "z-index" "1"
@@ -2344,27 +2301,27 @@ viewActionMenu actionMenu =
         )
         [ Input.button
             [ Element.paddingEach
-                { left = Design.xxSmall
-                , right = Design.xxSmall
-                , top = Design.xxSmall
-                , bottom = Design.xxSmall - 2
+                { left = Ui.Space.level1
+                , right = Ui.Space.level1
+                , top = Ui.Space.level1
+                , bottom = Ui.Space.level1
                 }
             , Font.size 10
-            , Font.color Design.black
+            , Font.color Ui.Color.black
             , Border.widthEach
                 { left = 0
                 , right = 0
                 , top = 0
                 , bottom = 2
                 }
-            , Border.color Design.secondary
-            , Background.color Design.secondary
+            , Border.color Ui.Color.secondary
+            , Background.color Ui.Color.secondary
             , Element.mouseOver
-                [ Background.color Design.secondaryDark
-                , Border.color Design.black
+                [ Background.color Ui.Color.secondaryDark
+                , Border.color Ui.Color.black
                 ]
             , Element.focused
-                [ Border.color Design.black ]
+                [ Border.color Ui.Color.black ]
             , Element.htmlAttribute <|
                 Attributes.style "transition" <|
                     String.join "; "
@@ -2382,9 +2339,9 @@ viewActionMenu actionMenu =
                                 Element.el
                                     [ Element.paddingXY 8 7
                                     , Element.width Element.fill
-                                    , Background.color Design.secondary
+                                    , Background.color Ui.Color.secondary
                                     , Element.mouseOver
-                                        [ Background.color Design.secondaryDark ]
+                                        [ Background.color Ui.Color.secondaryDark ]
                                     , Element.htmlAttribute <|
                                         Attributes.tabindex -1
                                     , Element.htmlAttribute <|
@@ -2399,7 +2356,7 @@ viewActionMenu actionMenu =
                             , Events.onMouseUp MouseUp
                             , Element.moveDown 2
                             , Font.size 14
-                            , Font.color Design.black
+                            , Font.color Ui.Color.black
                             ]
                             [ viewAction MoveDownPressed "Move down"
                             , viewAction MoveUpPressed "Move up"
@@ -2414,7 +2371,7 @@ viewActionMenu actionMenu =
             { onPress = Just Pressed
             , label =
                 Element.row
-                    [ Element.spacing Design.xxSmall ]
+                    [ Element.spacing Ui.Space.level1 ]
                     [ Element.text "Actions"
                     , Ui.Atom.fa "angle-down"
                     ]
@@ -2435,7 +2392,7 @@ editView { pattern, name } edit =
         actions =
             Element.row
                 [ Element.width Element.fill
-                , Element.spacing Design.xxSmall
+                , Element.spacing Ui.Space.level1
                 ]
                 [ Element.el [ Element.alignLeft ] <|
                     Ui.Atom.btnPrimary
@@ -2459,8 +2416,7 @@ editView { pattern, name } edit =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.large
-        , Element.padding Design.small
+        , Element.spacing Ui.Space.level4
         ]
         [ case edit of
             EditPoint { objects, form } ->
@@ -2519,7 +2475,7 @@ elCreateANew : String -> Element msg -> Element msg
 elCreateANew thing element =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.small
+        , Element.spacing Ui.Space.level2
         ]
         [ title ("Create a new " ++ thing)
         , element
@@ -2535,7 +2491,7 @@ elEditThe :
 elEditThe { thing, name } element =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Design.small
+        , Element.spacing Ui.Space.level2
         ]
         [ title ("Edit the " ++ thing ++ " ‘" ++ name ++ "’")
         , element
@@ -2545,11 +2501,8 @@ elEditThe { thing, name } element =
 title : String -> Element msg
 title text =
     Element.el
-        [ Design.fontNormal
-        , Font.color Design.black
-        , Font.bold
-        ]
-        (Element.text text)
+        [ Element.padding 7 ]
+        (Ui.Typography.bodyBold text)
 
 
 viewOtherPointForm :
@@ -2808,6 +2761,15 @@ viewTwoPointsPosition { twoPointsPosition, id } =
                             , label = "Distance from 2nd base point"
                             }
         }
+
+
+nested =
+    Just
+        << Ui.Atom.nested
+        << Element.column
+            [ Element.width Element.fill
+            , Element.spacing Ui.Space.level1
+            ]
 
 
 

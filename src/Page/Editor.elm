@@ -73,6 +73,7 @@ import Svg.Events
 import Svg.Lazy
 import Task
 import Triple
+import Ui.Space
 import Url exposing (Url)
 import Vector2d
 import View.Icon
@@ -451,8 +452,9 @@ viewEditor storedPattern model =
 viewLeftToolbar : Pattern -> Maybe Dialog -> Element Msg
 viewLeftToolbar pattern maybeDialog =
     Element.column
-        [ Element.width (Element.maximum 400 Element.fill)
+        [ Element.width (Element.maximum 500 Element.fill)
         , Element.height Element.fill
+        , Element.padding Ui.Space.level1
         , Element.scrollbarY
         , Background.color Design.white
         ]

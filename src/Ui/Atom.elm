@@ -2,6 +2,7 @@ module Ui.Atom exposing
     ( btnPrimary, btnSecondary, btnDanger, btnCancel
     , btnCallToAction
     , btnIcon, btnIconDanger, btnIconLarge
+    , link
     , checkbox
     , radioRow, radioColumn, option
     , segmentControl, Child(..), nested, nestedHideable
@@ -18,6 +19,11 @@ module Ui.Atom exposing
 @docs btnPrimary, btnSecondary, btnDanger, btnCancel
 @docs btnCallToAction
 @docs btnIcon, btnIconDanger, btnIconLarge
+
+
+# Links
+
+@docs link
 
 
 # Form Elements
@@ -210,6 +216,32 @@ btnIconLabel icon =
         , Element.centerY
         ]
         icon
+
+
+
+---- LINKS
+
+
+type alias LinkConfig msg =
+    { id : String
+    , onPress : Maybe msg
+    , label : String
+    }
+
+
+link : LinkConfig msg -> Element msg
+link { id, onPress, label } =
+    Input.button
+        [ attributeId id
+        , Font.underline
+        , Font.color Ui.Color.primary
+        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+        , Element.htmlAttribute <|
+            Html.Attributes.style "transition" "color 0.2s ease-in-out 0s"
+        ]
+        { onPress = onPress
+        , label = Element.text label
+        }
 
 
 
@@ -630,7 +662,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                     Element.column
                         [ Element.width Element.fill
                         , Element.spacing Ui.Space.level2
-                        , Element.padding 6
+                        , Element.padding 7
                         ]
                         [ header
                         , viewHelp

@@ -1,6 +1,7 @@
 module Ui.Typography exposing
     ( headingOne, headingTwo, headingThree, headingFour
     , bodyBold, body
+    , paragraphBody
     , button
     )
 
@@ -9,6 +10,8 @@ module Ui.Typography exposing
 @docs headingOne, headingTwo, headingThree, headingFour
 
 @docs bodyBold, body
+
+@docs paragraphBody
 
 @docs button
 
@@ -72,6 +75,15 @@ body text =
     Element.el
         [ Font.size 16 ]
         (Element.text text)
+
+
+paragraphBody : List (Element msg) -> Element msg
+paragraphBody elements =
+    Element.paragraph
+        [ Font.size 16
+        , Element.width Element.fill
+        ]
+        elements
 
 
 button : String -> Element msg

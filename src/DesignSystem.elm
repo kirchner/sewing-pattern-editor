@@ -451,6 +451,16 @@ content model =
                         , Ui.Typography.body "Body"
                         , Ui.Typography.button "Button"
                         ]
+                    , Ui.Typography.headingThree "Paragraphs and Links"
+                    , Ui.Typography.paragraphBody
+                        [ Element.text "This is a pragraph with a "
+                        , Ui.Atom.link
+                            { id = "link"
+                            , onPress = Nothing
+                            , label = "link"
+                            }
+                        , Element.text "."
+                        ]
                     ]
 
             Color ->
