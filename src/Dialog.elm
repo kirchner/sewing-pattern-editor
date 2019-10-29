@@ -674,42 +674,17 @@ initCurveFormWith pattern aCurve =
 {-| -}
 editDetail : Pattern -> A Pattern.Detail -> Maybe Edit
 editDetail pattern aDetail =
-    case Pattern.detailInfo aDetail pattern of
+    case Detail.initWith (OtherPoint.initWith initPointFormWith) pattern aDetail of
         Nothing ->
             Nothing
 
-        Just info ->
-            let
-                toForm firstCurve nextCurves lastCurve =
-                    EditDetail
-                        { aDetail = aDetail
-                        , form =
-                            { firstCurve = ( firstCurve, Closed )
-                            , nextCurves = List.map close nextCurves
-                            , lastCurve = ( lastCurve, Closed )
-                            }
-                        , objects = objects
-                        }
-
-                close nextCurve =
-                    ( nextCurve, Closed )
-
-                objects =
-                    Pattern.objectsNotDependingOnDetail pattern aDetail
-            in
-            Maybe.map3 toForm
-                (Detail.initFirstCurveFormWith (OtherPoint.initWith initPointFormWith)
-                    pattern
-                    info.firstCurve
-                )
-                (Detail.initNextCurvesFormWith (OtherPoint.initWith initPointFormWith)
-                    pattern
-                    info.nextCurves
-                )
-                (Detail.initLastCurveFormWith (OtherPoint.initWith initPointFormWith)
-                    pattern
-                    info.lastCurve
-                )
+        Just form ->
+            Just <|
+                EditDetail
+                    { aDetail = aDetail
+                    , form = form
+                    , objects = Pattern.objectsNotDependingOnDetail pattern aDetail
+                    }
 
 
 

@@ -1,5 +1,5 @@
 module Dialog.Detail exposing
-    ( Form, init, initFirstCurveFormWith, initNextCurvesFormWith, initLastCurveFormWith
+    ( Form, init, initWith
     , ActionMenu(..)
     , new, clear
     , Msg, update
@@ -8,7 +8,7 @@ module Dialog.Detail exposing
 
 {-|
 
-@docs Form, init, initFirstCurveFormWith, initNextCurvesFormWith, initLastCurveFormWith
+@docs Form, init, initWith
 @docs ActionMenu
 @docs new, clear
 @docs Msg, update
@@ -159,6 +159,10 @@ type ActionMenu
     | Remove
 
 
+
+---- TAGS
+
+
 type FirstCurveTag
     = FirstStraightTag
     | FirstQuadraticTag
@@ -207,17 +211,15 @@ lastCurveTags =
     ]
 
 
+
+---- INIT
+
+
 init : otherPointForm -> Form otherPointForm
 init initOtherPointForm =
-    { firstCurve =
-        ( initFirstStraightForm initOtherPointForm
-        , Closed
-        )
+    { firstCurve = ( initFirstStraightForm initOtherPointForm, Closed )
     , nextCurves = []
-    , lastCurve =
-        ( LastStraightForm
-        , Closed
-        )
+    , lastCurve = ( LastStraightForm, Closed )
     }
 
 
@@ -333,6 +335,37 @@ initOtherCurveForm =
     { dropdown = Ui.Atom.Dropdown.init
     , maybeACurve = Nothing
     }
+
+
+
+-- INIT WITH
+
+
+initWith :
+    (Pattern -> A Point -> Maybe otherPointForm)
+    -> Pattern
+    -> A Pattern.Detail
+    -> Maybe (Form otherPointForm)
+initWith initOtherPointFormWith pattern aDetail =
+    let
+        toForm firstCurve nextCurves lastCurve =
+            { firstCurve = ( firstCurve, Closed )
+            , nextCurves = List.map close nextCurves
+            , lastCurve = ( lastCurve, Closed )
+            }
+
+        close nextCurve =
+            ( nextCurve, Closed )
+    in
+    case Pattern.detailInfo aDetail pattern of
+        Nothing ->
+            Nothing
+
+        Just info ->
+            Maybe.map3 toForm
+                (initFirstCurveFormWith initOtherPointFormWith pattern info.firstCurve)
+                (initNextCurvesFormWith initOtherPointFormWith pattern info.nextCurves)
+                (initLastCurveFormWith initOtherPointFormWith pattern info.lastCurve)
 
 
 initFirstCurveFormWith :
