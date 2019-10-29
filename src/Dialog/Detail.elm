@@ -863,24 +863,28 @@ checkNextCurve :
     -> NextCurveForm otherPointForm
     -> NextCurveForm otherPointForm
 checkNextCurve checkOtherPointForm pattern form =
+    let
+        check =
+            checkOtherPointForm pattern
+    in
     case form of
         NextStraightForm stuff ->
             NextStraightForm
-                { stuff | endPoint = checkOtherPointForm pattern stuff.endPoint }
+                { stuff | endPoint = check stuff.endPoint }
 
         NextQuadraticForm stuff ->
             NextQuadraticForm
                 { stuff
-                    | controlPoint = checkOtherPointForm pattern stuff.controlPoint
-                    , endPoint = checkOtherPointForm pattern stuff.endPoint
+                    | controlPoint = check stuff.controlPoint
+                    , endPoint = check stuff.endPoint
                 }
 
         NextCubicForm stuff ->
             NextCubicForm
                 { stuff
-                    | startControlPoint = checkOtherPointForm pattern stuff.startControlPoint
-                    , endControlPoint = checkOtherPointForm pattern stuff.endControlPoint
-                    , endPoint = checkOtherPointForm pattern stuff.endPoint
+                    | startControlPoint = check stuff.startControlPoint
+                    , endControlPoint = check stuff.endControlPoint
+                    , endPoint = check stuff.endPoint
                 }
 
         NextReferencedCurveForm stuff ->
