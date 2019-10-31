@@ -6,6 +6,14 @@
         "Dialog",
         "Dialog.Detail",
         "Dialog.Intersectable",
-        "Dialog.OtherPoint"
+        "Dialog.OtherPoint",
+        "Ui.Atom",
+        "Ui.Color",
+        "Ui.Modal",
+        "Ui.Space",
+        "Ui.Table",
+        "Ui.Navigation",
+        "Ui.Typography",
+        "Ui.Atom.Dropdown"
     ]
 }

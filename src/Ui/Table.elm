@@ -1,9 +1,14 @@
 module Ui.Table exposing
-    ( column
-    , columnActions
-    , columnFloat
-    , table
+    ( table
+    , column, columnActions, columnFloat
     )
+
+{-|
+
+@docs table
+@docs column, columnActions, columnFloat
+
+-}
 
 {-
    Sewing pattern editor
@@ -29,6 +34,7 @@ import Ui.Space
 import Ui.Typography
 
 
+{-| -}
 table :
     { data : List record
     , columns : List (Column record msg)
@@ -43,6 +49,7 @@ table =
 ---- COLUMNS
 
 
+{-| -}
 column :
     { label : String
     , recordToString : record -> String
@@ -58,6 +65,7 @@ column { label, recordToString } =
     }
 
 
+{-| -}
 columnFloat :
     { label : String
     , recordToFloat : record -> Maybe Float
@@ -80,6 +88,7 @@ columnFloat { label, recordToFloat } =
     }
 
 
+{-| -}
 columnActions :
     { onEditPress : record -> Maybe msg
     , onRemovePress : record -> Maybe msg

@@ -1,8 +1,14 @@
 module Ui.Navigation exposing
-    ( accordion
-    , link
-    , newTabLink
+    ( link, newTabLink
+    , accordion
     )
+
+{-|
+
+@docs link, newTabLink
+@docs accordion
+
+-}
 
 {-
    Sewing pattern editor
@@ -32,6 +38,7 @@ import Ui.Space
 import Ui.Typography
 
 
+{-| -}
 link : { url : String, label : String } -> Element msg
 link { url, label } =
     Element.link []
@@ -46,6 +53,7 @@ link { url, label } =
         }
 
 
+{-| -}
 newTabLink : { url : String, label : String } -> Element msg
 newTabLink { url, label } =
     Element.newTabLink []
@@ -60,6 +68,7 @@ newTabLink { url, label } =
         }
 
 
+{-| -}
 accordion :
     { onPress : msg
     , label : String

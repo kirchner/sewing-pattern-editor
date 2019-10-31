@@ -1,9 +1,14 @@
 module Ui.Modal exposing
-    ( State(..)
-    , small
-    , subscriptions
-    , wide
+    ( State(..), subscriptions
+    , ViewConfig, small, wide
     )
+
+{-|
+
+@docs State, subscriptions
+@docs ViewConfig, small, wide
+
+-}
 
 {-
    Sewing pattern editor
@@ -36,12 +41,14 @@ import Ui.Space
 import Ui.Typography
 
 
+{-| -}
 type State
     = Opening
     | Open
     | Closing
 
 
+{-| -}
 subscriptions : State -> Sub State
 subscriptions state =
     case state of
@@ -59,6 +66,7 @@ subscriptions state =
 ---- VIEWS
 
 
+{-| -}
 type alias ViewConfig msg =
     { onCancelPress : msg
     , onClosed : msg
@@ -68,11 +76,13 @@ type alias ViewConfig msg =
     }
 
 
+{-| -}
 wide : State -> ViewConfig msg -> Element msg
 wide =
     custom (20 * Ui.Space.level8)
 
 
+{-| -}
 small : State -> ViewConfig msg -> Element msg
 small =
     custom (10 * Ui.Space.level8)

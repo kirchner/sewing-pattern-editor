@@ -1,12 +1,12 @@
 module Ui.Atom exposing
-    ( btnPrimary, btnSecondary, btnDanger, btnCancel
+    ( BtnConfig, btnPrimary, btnSecondary, btnDanger, btnCancel
     , btnCallToAction
-    , btnIcon, btnIconDanger, btnIconLarge
-    , link
-    , checkbox
-    , radioRow, radioColumn, option
-    , segmentControl, Child(..), nested, nestedHideable
-    , inputText, inputTextAppended, inputFormula, inputFormulaAppended
+    , IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
+    , LinkConfig, link
+    , CheckboxConfig, checkbox
+    , RadioConfig, radioRow, radioColumn, option
+    , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
+    , TextConfig, inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge, faBrandLarge
     , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
     )
@@ -16,22 +16,22 @@ module Ui.Atom exposing
 
 # Buttons
 
-@docs btnPrimary, btnSecondary, btnDanger, btnCancel
+@docs BtnConfig, btnPrimary, btnSecondary, btnDanger, btnCancel
 @docs btnCallToAction
-@docs btnIcon, btnIconDanger, btnIconLarge
+@docs IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
 
 
 # Links
 
-@docs link
+@docs LinkConfig, link
 
 
 # Form Elements
 
-@docs checkbox
-@docs radioRow, radioColumn, option
-@docs segmentControl, Child, nested, nestedHideable
-@docs inputText, inputTextAppended, inputFormula, inputFormulaAppended
+@docs CheckboxConfig, checkbox
+@docs RadioConfig, radioRow, radioColumn, option
+@docs SegmentControlConfig, segmentControl, Child, nested, nestedHideable
+@docs TextConfig, inputText, inputTextAppended, inputFormula, inputFormulaAppended
 
 
 # Icons
@@ -64,6 +64,7 @@ import Ui.Typography
 ---- STANDARD
 
 
+{-| -}
 type alias BtnConfig msg =
     { id : String
     , onPress : Maybe msg
@@ -71,6 +72,7 @@ type alias BtnConfig msg =
     }
 
 
+{-| -}
 btnPrimary : BtnConfig msg -> Element msg
 btnPrimary { id, onPress, label } =
     withFocusOutline <|
@@ -87,6 +89,7 @@ btnPrimary { id, onPress, label } =
             }
 
 
+{-| -}
 btnSecondary : BtnConfig msg -> Element msg
 btnSecondary { id, onPress, label } =
     withFocusOutline <|
@@ -102,6 +105,7 @@ btnSecondary { id, onPress, label } =
             }
 
 
+{-| -}
 btnDanger : BtnConfig msg -> Element msg
 btnDanger { id, onPress, label } =
     withFocusOutline <|
@@ -118,6 +122,7 @@ btnDanger { id, onPress, label } =
             }
 
 
+{-| -}
 btnCancel : BtnConfig msg -> Element msg
 btnCancel { id, onPress, label } =
     withFocusOutline <|
@@ -137,6 +142,7 @@ btnCancel { id, onPress, label } =
 ---- CALL TO ACTION
 
 
+{-| -}
 btnCallToAction : BtnConfig msg -> Element msg
 btnCallToAction { id, onPress, label } =
     withFocusOutline <|
@@ -165,6 +171,7 @@ btnCallToAction { id, onPress, label } =
 ---- ICON BUTTONS
 
 
+{-| -}
 type alias IconBtnConfig msg =
     { id : String
     , onPress : Maybe msg
@@ -172,6 +179,7 @@ type alias IconBtnConfig msg =
     }
 
 
+{-| -}
 btnIcon : IconBtnConfig msg -> Element msg
 btnIcon { id, onPress, icon } =
     withFocusOutline <|
@@ -184,6 +192,7 @@ btnIcon { id, onPress, icon } =
             }
 
 
+{-| -}
 btnIconDanger : IconBtnConfig msg -> Element msg
 btnIconDanger { id, onPress, icon } =
     withFocusOutline <|
@@ -197,6 +206,7 @@ btnIconDanger { id, onPress, icon } =
             }
 
 
+{-| -}
 btnIconLarge : IconBtnConfig msg -> Element msg
 btnIconLarge { id, onPress, icon } =
     withFocusOutline <|
@@ -209,6 +219,7 @@ btnIconLarge { id, onPress, icon } =
             }
 
 
+{-| -}
 btnIconLabel : Element msg -> Element msg
 btnIconLabel icon =
     Element.el
@@ -222,6 +233,7 @@ btnIconLabel icon =
 ---- LINKS
 
 
+{-| -}
 type alias LinkConfig msg =
     { id : String
     , onPress : Maybe msg
@@ -229,6 +241,7 @@ type alias LinkConfig msg =
     }
 
 
+{-| -}
 link : LinkConfig msg -> Element msg
 link { id, onPress, label } =
     Input.button
@@ -248,6 +261,7 @@ link { id, onPress, label } =
 ---- CHECKBOX
 
 
+{-| -}
 type alias CheckboxConfig msg =
     { id : String
     , onChange : Bool -> msg
@@ -256,6 +270,7 @@ type alias CheckboxConfig msg =
     }
 
 
+{-| -}
 checkbox : CheckboxConfig msg -> Element msg
 checkbox { id, onChange, checked, label } =
     withFocusOutline <|
@@ -330,6 +345,7 @@ checkboxIcon checked =
 ---- RADIOS
 
 
+{-| -}
 type alias RadioConfig value msg =
     { id : String
     , onChange : value -> msg
@@ -339,6 +355,7 @@ type alias RadioConfig value msg =
     }
 
 
+{-| -}
 radioRow : RadioConfig value msg -> Element msg
 radioRow { id, onChange, options, selected, label } =
     withFocusOutline <|
@@ -363,6 +380,7 @@ radioRow { id, onChange, options, selected, label } =
             }
 
 
+{-| -}
 radioColumn : RadioConfig value msg -> Element msg
 radioColumn { id, onChange, options, selected, label } =
     withFocusOutline <|
@@ -387,6 +405,7 @@ radioColumn { id, onChange, options, selected, label } =
             }
 
 
+{-| -}
 option : value -> String -> Input.Option value msg
 option value label =
     Input.optionWith value (radioOption label)
@@ -461,6 +480,7 @@ radioOptionCustom label status =
 ---- SEGMENT CONTROL
 
 
+{-| -}
 type alias SegmentControlConfig tag msg =
     { id : String
     , label : Maybe String
@@ -472,6 +492,7 @@ type alias SegmentControlConfig tag msg =
     }
 
 
+{-| -}
 type Child msg
     = Appended (Element msg)
     | Nested (Element msg)
@@ -483,11 +504,13 @@ type Child msg
         }
 
 
+{-| -}
 nested : Element msg -> Child msg
 nested =
     Nested
 
 
+{-| -}
 nestedHideable :
     { show : Bool
     , onPress : msg
@@ -499,6 +522,7 @@ nestedHideable =
     NestedHideable
 
 
+{-| -}
 segmentControl : SegmentControlConfig tag msg -> Element msg
 segmentControl { id, label, help, onChange, options, selected, child } =
     let
@@ -881,6 +905,7 @@ userSelectNone =
 ---- TEXT
 
 
+{-| -}
 type alias TextConfig msg =
     { id : String
     , onChange : String -> msg
@@ -890,6 +915,7 @@ type alias TextConfig msg =
     }
 
 
+{-| -}
 inputText : TextConfig msg -> Element msg
 inputText data =
     let
@@ -932,6 +958,7 @@ inputText data =
             }
 
 
+{-| -}
 inputTextAppended :
     String
     ->
@@ -963,6 +990,7 @@ inputTextAppended id data =
             }
 
 
+{-| -}
 inputFormula : TextConfig msg -> Element msg
 inputFormula data =
     let
@@ -1032,6 +1060,7 @@ inputFormula data =
             }
 
 
+{-| -}
 inputFormulaAppended :
     String
     ->
@@ -1134,21 +1163,25 @@ lineNumbers lineCount =
 ---- ICONS
 
 
+{-| -}
 fa : String -> Element msg
 fa name =
     faHelp "fas" 14 name
 
 
+{-| -}
 faBody : String -> Element msg
 faBody name =
     faHelp "fas" 16 name
 
 
+{-| -}
 faLarge : String -> Element msg
 faLarge name =
     faHelp "fas" 24 name
 
 
+{-| -}
 faBrandLarge : String -> Element msg
 faBrandLarge name =
     faHelp "fab" 24 name
@@ -1183,6 +1216,7 @@ faHelp class size name =
 ---- WITH FOCUS OUTLINE
 
 
+{-| -}
 withFocusOutline : Element msg -> Element msg
 withFocusOutline element =
     Element.el
@@ -1200,6 +1234,7 @@ withFocusOutline element =
         )
 
 
+{-| -}
 withFocusOutlineTop : Element msg -> Element msg
 withFocusOutlineTop element =
     Element.el
@@ -1227,6 +1262,7 @@ withFocusOutlineTop element =
         )
 
 
+{-| -}
 withFocusOutlineBottom : Element msg -> Element msg
 withFocusOutlineBottom element =
     Element.el

@@ -28,10 +28,12 @@ import Ui.Space
 import Ui.Typography
 
 
+{-| -}
 type alias Msg entry =
     Dropdown.Msg entry
 
 
+{-| -}
 type alias Dropdown =
     Dropdown.Dropdown
 
@@ -40,6 +42,7 @@ type alias Dropdown =
 ---- INIT
 
 
+{-| -}
 init : Dropdown
 init =
     Dropdown.init
@@ -49,6 +52,7 @@ init =
 ---- VIEW
 
 
+{-| -}
 type alias Instance entry msg =
     { id : String
     , label : String
@@ -56,12 +60,14 @@ type alias Instance entry msg =
     }
 
 
+{-| -}
 type alias ViewConfig entry =
     { entryToString : entry -> String
     , entryToHash : entry -> String
     }
 
 
+{-| -}
 view :
     ViewConfig entry
     -> Instance entry msg
@@ -109,6 +115,7 @@ viewWithMenu menu config instance options dropdown selection =
             ]
 
 
+{-| -}
 viewAppended :
     ViewConfig entry
     -> Instance entry msg
@@ -297,10 +304,12 @@ dropdownDomFunctions =
 ---- UPDATE
 
 
+{-| -}
 type alias UpdateConfig entry =
     { entryToHash : entry -> String }
 
 
+{-| -}
 update :
     UpdateConfig entry
     -> List entry
@@ -312,6 +321,7 @@ update { entryToHash } options =
     Dropdown.update (dropdownUpdateConfig entryToHash) (List.map Listbox.option options)
 
 
+{-| -}
 subscriptions : Dropdown -> Sub (Msg entry)
 subscriptions =
     Dropdown.subscriptions

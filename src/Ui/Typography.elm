@@ -22,6 +22,7 @@ import Element.Font as Font
 import Element.Region as Region
 
 
+{-| -}
 headingOne : String -> Element msg
 headingOne text =
     Element.paragraph
@@ -37,16 +38,19 @@ headingOne text =
         [ Element.text text ]
 
 
+{-| -}
 headingTwo : String -> Element msg
 headingTwo text =
     heading { level = 2, fontSize = 36 } text
 
 
+{-| -}
 headingThree : String -> Element msg
 headingThree text =
     heading { level = 3, fontSize = 28 } text
 
 
+{-| -}
 headingFour : String -> Element msg
 headingFour text =
     heading { level = 4, fontSize = 20 } text
@@ -61,6 +65,7 @@ heading { level, fontSize } text =
         [ Element.text text ]
 
 
+{-| -}
 bodyBold : String -> Element msg
 bodyBold text =
     Element.el
@@ -70,6 +75,7 @@ bodyBold text =
         (Element.text text)
 
 
+{-| -}
 body : String -> Element msg
 body text =
     Element.el
@@ -77,6 +83,7 @@ body text =
         (Element.text text)
 
 
+{-| -}
 paragraphBody : List (Element msg) -> Element msg
 paragraphBody elements =
     Element.paragraph
@@ -86,6 +93,7 @@ paragraphBody elements =
         elements
 
 
+{-| -}
 button : String -> Element msg
 button text =
     Element.el
