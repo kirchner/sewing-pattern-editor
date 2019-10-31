@@ -32,6 +32,7 @@ import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 
 
+{-| -}
 type Form axisForm circleForm curveForm
     = Referenced
         { dropdown : Dropdown
@@ -68,6 +69,7 @@ tags =
     ]
 
 
+{-| -}
 intersectableTagFromForm : Pattern -> Form axisForm circleForm curveForm -> Maybe IntersectableTag
 intersectableTagFromForm pattern form =
     case form of
@@ -85,6 +87,7 @@ intersectableTagFromForm pattern form =
             Just IntersectableCurveTag
 
 
+{-| -}
 initReferenced : Form axisForm circleForm curveForm
 initReferenced =
     Referenced
@@ -125,6 +128,7 @@ type alias InitConfig axisForm circleForm curveForm =
     }
 
 
+{-| -}
 initWith :
     InitConfig axisForm circleForm curveForm
     -> Pattern
@@ -204,6 +208,7 @@ type alias NewConfig axisForm circleForm curveForm =
     }
 
 
+{-| -}
 new :
     NewConfig axisForm circleForm curveForm
     -> Form axisForm circleForm curveForm
@@ -253,6 +258,7 @@ type alias ClearConfig axisForm circleForm curveForm =
     }
 
 
+{-| -}
 clear :
     ClearConfig axisForm circleForm curveForm
     -> Form axisForm circleForm curveForm
@@ -283,6 +289,7 @@ type alias ViewConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg =
     }
 
 
+{-| -}
 view :
     ViewConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
     -> Pattern
@@ -380,6 +387,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
 ---- UPDATE
 
 
+{-| -}
 type Msg axisMsg circleMsg curveMsg
     = OtherIntersectableTypeChanged Tag
     | ReferencedIntersectableDropdownMsg (Ui.Atom.Dropdown.Msg (A Intersectable))
@@ -399,6 +407,7 @@ type alias UpdateConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
     }
 
 
+{-| -}
 update :
     UpdateConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
     -> Pattern

@@ -21,6 +21,7 @@ stdenv.mkDerivation {
     latestPkgs.elmPackages.elm
     latestPkgs.elmPackages.elm-test
     latestPkgs.elmPackages.elm-format
+    latestPkgs.elmPackages.elm-doc-preview
     expect
   ];
 

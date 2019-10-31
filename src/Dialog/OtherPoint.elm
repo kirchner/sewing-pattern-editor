@@ -26,6 +26,7 @@ import Ui.Atom.Dropdown exposing (Dropdown)
 ---- MODEL
 
 
+{-| -}
 type Form pointForm
     = Referenced
         { dropdown : Dropdown
@@ -50,6 +51,7 @@ tags =
     ]
 
 
+{-| -}
 initReferenced : Form pointForm
 initReferenced =
     Referenced
@@ -59,6 +61,7 @@ initReferenced =
         }
 
 
+{-| -}
 initInlined : Bool -> pointForm -> Form pointForm
 initInlined expanded initFromOnePointForm =
     Inlined
@@ -67,6 +70,7 @@ initInlined expanded initFromOnePointForm =
         }
 
 
+{-| -}
 initWith :
     (Pattern -> A Point -> Maybe pointForm)
     -> Pattern
@@ -92,6 +96,7 @@ initWith initPointFormWith pattern aPoint =
                 }
 
 
+{-| -}
 new :
     (pointForm -> Pattern -> Result pointForm Point)
     -> Form pointForm
@@ -116,6 +121,7 @@ new newPointFrom form pattern =
                 |> Result.map Pattern.this
 
 
+{-| -}
 clear : (pointForm -> pointForm) -> Form pointForm -> Form pointForm
 clear clearPointForm form =
     case form of
@@ -130,6 +136,7 @@ clear clearPointForm form =
 ---- UPDATE
 
 
+{-| -}
 type Msg pointMsg
     = OtherPointTypeChanged Tag
     | ReferencedDropdownMsg (Ui.Atom.Dropdown.Msg (A Pattern.Point))
@@ -137,6 +144,7 @@ type Msg pointMsg
     | InlinedExpandToggled
 
 
+{-| -}
 update :
     pointForm
     -> (Pattern -> Objects -> pointMsg -> pointForm -> ( pointForm, Cmd pointMsg ))
@@ -211,6 +219,7 @@ update initFromOnePointForm updatePointForm pattern objects msg form =
 ---- VIEW
 
 
+{-| -}
 view :
     (Pattern -> Objects -> { point : pointForm, id : String } -> Element pointMsg)
     -> Pattern

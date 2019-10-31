@@ -48,6 +48,7 @@ import Ui.Space
 ---- FORM
 
 
+{-| -}
 type alias Form point =
     { firstCurve : ( FCurve point, ActionMenu )
     , nextCurves : List ( NCurve point, ActionMenu )
@@ -150,6 +151,7 @@ type alias OtherCurveForm =
     }
 
 
+{-| -}
 type ActionMenu
     = Closed
     | MoveUp
@@ -215,6 +217,7 @@ lastCurveTags =
 ---- INIT
 
 
+{-| -}
 init : point -> Form point
 init initPoint =
     { firstCurve = ( initFStraight initPoint, Closed )
@@ -341,6 +344,7 @@ initOtherCurveForm =
 -- INIT WITH
 
 
+{-| -}
 initWith :
     (Pattern -> A Point -> Maybe point)
     -> Pattern
@@ -513,6 +517,7 @@ initLCurveWith initPointWith pattern lastCurve =
 ---- NEW
 
 
+{-| -}
 new :
     (point -> Pattern -> Result point (A Point))
     -> (Pattern -> point -> point)
@@ -980,6 +985,7 @@ checkLastCurve checkPoint pattern form =
 ---- CLEAR
 
 
+{-| -}
 clear : (point -> point) -> Form point -> Form point
 clear clearPoint form =
     { form
@@ -1079,6 +1085,7 @@ clearOtherCurveHelp form =
 ---- VIEW
 
 
+{-| -}
 view :
     (Pattern -> Objects -> { otherPoint : point, id : String, label : String } -> Element pointMsg)
     -> Pattern
@@ -1504,6 +1511,7 @@ viewActionMenu actionMenu =
 ---- UPDATE
 
 
+{-| -}
 type Msg pointMsg
     = AddCurvePressed
       -- FIRST CURVE
@@ -1547,6 +1555,7 @@ type ActionMenuMsg
     | RemovePressed
 
 
+{-| -}
 update :
     (Pattern -> Objects -> pointMsg -> point -> ( point, Cmd pointMsg ))
     -> point

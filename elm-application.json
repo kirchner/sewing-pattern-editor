@@ -1,0 +1,11 @@
+{
+    "name": "kirchner/sewing-pattern-editor",
+    "summary": "Sewing pattern editor",
+    "version": "1.0.0",
+    "exposed-modules": [
+        "Dialog",
+        "Dialog.Detail",
+        "Dialog.Intersectable",
+        "Dialog.OtherPoint"
+    ]
+}
