@@ -11,9 +11,18 @@ import Element.Input as Input
 import Element.Lazy as Element
 import Html exposing (Html)
 import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
+import Length
+import Pixels
+import Point2d
+import Quantity
+import Svg exposing (Svg)
+import Svg.Attributes
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
+import Ui.Pattern.Point
 import Ui.Space
 import Ui.Typography
 import Url exposing (Url)
@@ -845,12 +854,61 @@ viewIcons model =
 
 viewObjects : Model -> Element Msg
 viewObjects model =
+    let
+        resolution =
+            Pixels.pixels 1
+                |> Quantity.per (Length.millimeters 1)
+    in
     Element.column
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Points"
+        , viewObject
+            [ Ui.Pattern.Point.draw resolution
+                { focused = False
+                , hovered = False
+                }
+                (Point2d.millimeters -32 0)
+            , Ui.Pattern.Point.draw resolution
+                { focused = False
+                , hovered = True
+                }
+                (Point2d.millimeters 0 0)
+            , Ui.Pattern.Point.draw resolution
+                { focused = True
+                , hovered = False
+                }
+                (Point2d.millimeters 32 0)
+            ]
         ]
+
+
+viewObject : List (Svg Msg) -> Element Msg
+viewObject svgElements =
+    let
+        width =
+            128
+
+        height =
+            64
+    in
+    Element.el [ Border.width 1, Border.color Ui.Color.grayDark ] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox <|
+                    String.join " "
+                        [ String.fromFloat (width / -2)
+                        , String.fromFloat (height / -2)
+                        , String.fromFloat width
+                        , String.fromFloat height
+                        ]
+                , Html.Attributes.style "user-select" "none"
+                , Html.Attributes.style "width" (String.fromInt width ++ "px")
+                , Html.Attributes.style "height" (String.fromInt height ++ "px")
+                , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                ]
+                svgElements
 
 
 
