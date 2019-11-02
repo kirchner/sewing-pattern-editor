@@ -250,6 +250,7 @@ pointInfo resolution cfg =
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from offsetPointA offsetBasePointA)
+                , lineLabel basePointA point info.label
                 , Svg.circle2d
                     [ Svg.Attributes.fill (toColor Ui.Color.primary) ]
                     (Circle2d.withRadius (pixels 3) basePointB)
@@ -286,7 +287,7 @@ lineLabel basePoint point label =
             Svg.Attributes.transform
                 (String.concat
                     [ "rotate("
-                    , String.fromFloat angle
+                    , String.fromFloat (fixAngle angle)
                     , " "
                     , String.fromFloat position.x
                     , " "
@@ -295,6 +296,13 @@ lineLabel basePoint point label =
                     ]
                 )
                 :: attrs
+
+        fixAngle angle =
+            if 90 < angle then
+                angle + 180
+
+            else
+                angle
     in
     Svg.text_
         ([ Svg.Attributes.x (String.fromFloat position.x)
