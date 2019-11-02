@@ -868,18 +868,27 @@ viewObjects model =
             [ Ui.Pattern.Point.draw resolution
                 { focused = False
                 , hovered = False
+                , label = "A42"
                 }
-                (Point2d.millimeters -32 0)
+                (Point2d.millimeters -96 0)
             , Ui.Pattern.Point.draw resolution
                 { focused = False
                 , hovered = True
+                , label = "A42"
                 }
-                (Point2d.millimeters 0 0)
+                (Point2d.millimeters -32 0)
             , Ui.Pattern.Point.draw resolution
                 { focused = True
                 , hovered = False
+                , label = "A42"
                 }
                 (Point2d.millimeters 32 0)
+            , Ui.Pattern.Point.draw resolution
+                { focused = True
+                , hovered = True
+                , label = "A42"
+                }
+                (Point2d.millimeters 96 0)
             ]
         ]
 
@@ -888,10 +897,10 @@ viewObject : List (Svg Msg) -> Element Msg
 viewObject svgElements =
     let
         width =
-            128
+            5 * 64
 
         height =
-            64
+            96
     in
     Element.el [ Border.width 1, Border.color Ui.Color.grayDark ] <|
         Element.html <|
