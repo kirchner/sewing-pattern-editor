@@ -1,8 +1,10 @@
 module DesignSystem exposing (main)
 
+import Axis2d
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
+import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
 import Element.Border as Border
@@ -22,7 +24,7 @@ import Svg.Attributes
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
-import Ui.Pattern.Point
+import Ui.Pattern.Point exposing (Object2d(..))
 import Ui.Space
 import Ui.Typography
 import Url exposing (Url)
@@ -894,6 +896,27 @@ viewObjects model =
                         , label = "height"
                         }
                 }
+
+        lineLinePoint focused hovered xOffset yOffset =
+            Ui.Pattern.Point.draw resolution
+                { focused = focused
+                , hovered = hovered
+                , label = "A42"
+                , point = Point2d.millimeters xOffset yOffset
+                , info =
+                    Ui.Pattern.Point.Intersection
+                        { objectA =
+                            Axis2d
+                                (Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                    Direction2d.positiveY
+                                )
+                        , objectB =
+                            Axis2d
+                                (Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                    Direction2d.positiveX
+                                )
+                        }
+                }
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -917,6 +940,12 @@ viewObjects model =
             , betweenTwoPoints False True -32
             , betweenTwoPoints True False 32
             , betweenTwoPoints True True 96
+            ]
+        , viewObject 224
+            [ lineLinePoint False False -96 -48
+            , lineLinePoint False True 32 -16
+            , lineLinePoint True False -32 16
+            , lineLinePoint True True 96 48
             ]
         ]
 

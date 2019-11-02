@@ -1,13 +1,18 @@
-module Ui.Pattern.Point exposing (Config, Info(..), draw)
+module Ui.Pattern.Point exposing
+    ( Config, Info(..), draw
+    , Object2d(..)
+    )
 
 {-|
 
 @docs Config, Info, draw
+@docs Object2d
 
 -}
 
 import Angle
-import Circle2d
+import Axis2d exposing (Axis2d)
+import Circle2d exposing (Circle2d)
 import Direction2d
 import Element exposing (Color)
 import Geometry.Svg as Svg
@@ -42,6 +47,15 @@ type Info coordinates
         , basePointB : Point2d Meters coordinates
         , label : String
         }
+    | Intersection
+        { objectA : Object2d Meters coordinates
+        , objectB : Object2d Meters coordinates
+        }
+
+
+type Object2d units coordinates
+    = Axis2d (Axis2d units coordinates)
+    | Circle2d (Circle2d units coordinates)
 
 
 type alias Resolution =
@@ -55,18 +69,18 @@ draw resolution cfg =
             Point2d.at resolution cfg.point
     in
     Svg.g []
-        [ if cfg.focused then
-            focusOutline point
-
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
+        [ if cfg.focused || cfg.hovered then
             pointLabel point cfg.label
 
           else
             Svg.text ""
         , if cfg.focused || cfg.hovered then
             pointInfo resolution cfg
+
+          else
+            Svg.text ""
+        , if cfg.focused then
+            focusOutline point
 
           else
             Svg.text ""
@@ -91,7 +105,7 @@ pointLabel point label =
     let
         labelPosition =
             point
-                |> Point2d.translateBy (Vector2d.pixels 23 13)
+                |> Point2d.translateBy (Vector2d.pixels 23 17)
                 |> Point2d.toPixels
     in
     Svg.text_
@@ -266,6 +280,45 @@ pointInfo resolution cfg =
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from offsetPointB offsetBasePointB)
+                ]
+
+        Intersection info ->
+            let
+                drawAxis axis =
+                    Svg.lineSegment2d
+                        [ Svg.Attributes.stroke (toColor Ui.Color.primary)
+                        , Svg.Attributes.strokeWidth <|
+                            if cfg.focused then
+                                "1.5"
+
+                            else
+                                "1"
+                        ]
+                        (LineSegment2d.along (Axis2d.at resolution axis)
+                            (pixels -1000)
+                            (pixels 1000)
+                        )
+            in
+            Svg.g []
+                [ case info.objectA of
+                    Axis2d axisA ->
+                        drawAxis axisA
+
+                    Circle2d _ ->
+                        Svg.text ""
+                , case info.objectB of
+                    Axis2d axisB ->
+                        drawAxis axisB
+
+                    Circle2d _ ->
+                        Svg.text ""
+                , if cfg.focused then
+                    Svg.circle2d
+                        [ Svg.Attributes.fill (toColor Ui.Color.white) ]
+                        (Circle2d.withRadius (pixels 8) point)
+
+                  else
+                    Svg.text ""
                 ]
 
 
