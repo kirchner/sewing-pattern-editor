@@ -877,7 +877,21 @@ viewObjects model =
                 , info =
                     Ui.Pattern.Point.FromOnePoint
                         { basePoint = Point2d.millimeters (xOffset - 32) -64
-                        , distance = "height"
+                        , label = "height"
+                        }
+                }
+
+        betweenTwoPoints focused hovered xOffset =
+            Ui.Pattern.Point.draw resolution
+                { focused = focused
+                , hovered = hovered
+                , label = "A42"
+                , point = Point2d.millimeters xOffset 0
+                , info =
+                    Ui.Pattern.Point.BetweenTwoPoints
+                        { basePointA = Point2d.millimeters (xOffset + 32) -64
+                        , basePointB = Point2d.millimeters (xOffset - 32) 64
+                        , label = "height"
                         }
                 }
     in
@@ -897,6 +911,12 @@ viewObjects model =
             , fromOnePoint False True -32
             , fromOnePoint True False 32
             , fromOnePoint True True 96
+            ]
+        , viewObject 192
+            [ betweenTwoPoints False False -96
+            , betweenTwoPoints False True -32
+            , betweenTwoPoints True False 32
+            , betweenTwoPoints True True 96
             ]
         ]
 

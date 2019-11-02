@@ -35,7 +35,12 @@ type Info coordinates
     = Origin
     | FromOnePoint
         { basePoint : Point2d Meters coordinates
-        , distance : String
+        , label : String
+        }
+    | BetweenTwoPoints
+        { basePointA : Point2d Meters coordinates
+        , basePointB : Point2d Meters coordinates
+        , label : String
         }
 
 
@@ -86,7 +91,7 @@ pointLabel point label =
     let
         labelPosition =
             point
-                |> Point2d.translateBy (Vector2d.pixels 17 -13)
+                |> Point2d.translateBy (Vector2d.pixels 23 13)
                 |> Point2d.toPixels
     in
     Svg.text_
@@ -151,12 +156,115 @@ pointInfo resolution cfg =
                     (Circle2d.withRadius (pixels 3) basePoint)
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke (toColor Ui.Color.primary)
-                    , Svg.Attributes.strokeWidth "1.5"
+                    , Svg.Attributes.strokeWidth <|
+                        if cfg.focused then
+                            "1.5"
+
+                        else
+                            "1"
                     , strokeDasharray length 8 10
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from offsetPoint offsetBasePoint)
-                , lineLabel basePoint point info.distance
+                , lineLabel basePoint point info.label
+                ]
+
+        BetweenTwoPoints info ->
+            let
+                -- A
+                basePointA =
+                    Point2d.at resolution info.basePointA
+
+                offsetBasePointA =
+                    case Direction2d.from basePointA point of
+                        Nothing ->
+                            basePointA
+
+                        Just direction ->
+                            basePointA
+                                |> Point2d.translateBy (Vector2d.withLength (pixels 3) direction)
+
+                offsetPointA =
+                    case Direction2d.from point basePointA of
+                        Nothing ->
+                            point
+
+                        Just direction ->
+                            point
+                                |> Point2d.translateBy
+                                    (Vector2d.withLength (pixels offsetPointFactor) direction)
+
+                lengthA =
+                    Vector2d.from offsetPointA offsetBasePointA
+                        |> Vector2d.length
+                        |> Pixels.inPixels
+
+                -- B
+                basePointB =
+                    Point2d.at resolution info.basePointB
+
+                offsetBasePointB =
+                    case Direction2d.from basePointB point of
+                        Nothing ->
+                            basePointB
+
+                        Just direction ->
+                            basePointB
+                                |> Point2d.translateBy (Vector2d.withLength (pixels 3) direction)
+
+                offsetPointB =
+                    case Direction2d.from point basePointB of
+                        Nothing ->
+                            point
+
+                        Just direction ->
+                            point
+                                |> Point2d.translateBy
+                                    (Vector2d.withLength (pixels offsetPointFactor) direction)
+
+                lengthB =
+                    Vector2d.from offsetPointB offsetBasePointB
+                        |> Vector2d.length
+                        |> Pixels.inPixels
+
+                offsetPointFactor =
+                    if cfg.focused then
+                        8.5
+
+                    else
+                        5
+            in
+            Svg.g []
+                [ Svg.circle2d
+                    [ Svg.Attributes.fill (toColor Ui.Color.primary) ]
+                    (Circle2d.withRadius (pixels 3) basePointA)
+                , Svg.lineSegment2d
+                    [ Svg.Attributes.stroke (toColor Ui.Color.primary)
+                    , Svg.Attributes.strokeWidth <|
+                        if cfg.focused then
+                            "1.5"
+
+                        else
+                            "1"
+                    , strokeDasharray lengthA 8 10
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                    (LineSegment2d.from offsetPointA offsetBasePointA)
+                , Svg.circle2d
+                    [ Svg.Attributes.fill (toColor Ui.Color.primary) ]
+                    (Circle2d.withRadius (pixels 3) basePointB)
+                , Svg.lineSegment2d
+                    [ Svg.Attributes.stroke (toColor Ui.Color.primary)
+                    , Svg.Attributes.strokeWidth <|
+                        if cfg.focused then
+                            "1.5"
+
+                        else
+                            "1"
+                    , strokeDasharray lengthB 8 10
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                    (LineSegment2d.from offsetPointB offsetBasePointB)
                 ]
 
 
