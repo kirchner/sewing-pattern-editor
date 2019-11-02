@@ -858,49 +858,54 @@ viewObjects model =
         resolution =
             Pixels.pixels 1
                 |> Quantity.per (Length.millimeters 1)
+
+        origin focused hovered xOffset =
+            Ui.Pattern.Point.draw resolution
+                { focused = focused
+                , hovered = hovered
+                , label = "A42"
+                , point = Point2d.millimeters xOffset 0
+                , info = Ui.Pattern.Point.Origin
+                }
+
+        fromOnePoint focused hovered xOffset =
+            Ui.Pattern.Point.draw resolution
+                { focused = focused
+                , hovered = hovered
+                , label = "A42"
+                , point = Point2d.millimeters xOffset 48
+                , info =
+                    Ui.Pattern.Point.FromOnePoint
+                        { basePoint = Point2d.millimeters (xOffset - 32) -64
+                        , distance = "height"
+                        }
+                }
     in
     Element.column
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Points"
-        , viewObject
-            [ Ui.Pattern.Point.draw resolution
-                { focused = False
-                , hovered = False
-                , label = "A42"
-                }
-                (Point2d.millimeters -96 0)
-            , Ui.Pattern.Point.draw resolution
-                { focused = False
-                , hovered = True
-                , label = "A42"
-                }
-                (Point2d.millimeters -32 0)
-            , Ui.Pattern.Point.draw resolution
-                { focused = True
-                , hovered = False
-                , label = "A42"
-                }
-                (Point2d.millimeters 32 0)
-            , Ui.Pattern.Point.draw resolution
-                { focused = True
-                , hovered = True
-                , label = "A42"
-                }
-                (Point2d.millimeters 96 0)
+        , viewObject 96
+            [ origin False False -96
+            , origin False True -32
+            , origin True False 32
+            , origin True True 96
+            ]
+        , viewObject 192
+            [ fromOnePoint False False -96
+            , fromOnePoint False True -32
+            , fromOnePoint True False 32
+            , fromOnePoint True True 96
             ]
         ]
 
 
-viewObject : List (Svg Msg) -> Element Msg
-viewObject svgElements =
+viewObject : Float -> List (Svg Msg) -> Element Msg
+viewObject height svgElements =
     let
         width =
             5 * 64
-
-        height =
-            96
     in
     Element.el [ Border.width 1, Border.color Ui.Color.grayDark ] <|
         Element.html <|
@@ -913,8 +918,8 @@ viewObject svgElements =
                         , String.fromFloat height
                         ]
                 , Html.Attributes.style "user-select" "none"
-                , Html.Attributes.style "width" (String.fromInt width ++ "px")
-                , Html.Attributes.style "height" (String.fromInt height ++ "px")
+                , Html.Attributes.style "width" (String.fromFloat width ++ "px")
+                , Html.Attributes.style "height" (String.fromFloat height ++ "px")
                 , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
                 ]
                 svgElements
