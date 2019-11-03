@@ -981,7 +981,81 @@ actualQuadraticSpline hovered quadraticSpline2d =
 
 drawCubicSpline : Resolution -> CurveConfig -> CubicSplineData coordinates -> Svg msg
 drawCubicSpline resolution cfg cubicSpline =
-    Svg.g [] []
+    let
+        cubicSpline2d =
+            CubicSpline2d.at resolution cubicSpline.cubicSpline2d
+    in
+    Svg.g []
+        [ if cfg.focused || cfg.hovered then
+            cubicSplineLabel cubicSpline2d cfg.name
+
+          else
+            Svg.text ""
+        , if cfg.focused || cfg.hovered then
+            cubicSplineInfo resolution cfg.hovered cubicSpline
+
+          else
+            Svg.text ""
+        , if cfg.focused then
+            cubicSplineFocusOutline cubicSpline2d
+
+          else
+            Svg.text ""
+        , actualCubicSpline cfg.hovered cubicSpline2d
+        ]
+
+
+cubicSplineLabel : CubicSpline2d Pixels coordinates -> String -> Svg msg
+cubicSplineLabel cubicSpline2d label =
+    let
+        labelPosition =
+            CubicSpline2d.pointOn cubicSpline2d 0.3
+                |> Point2d.translateBy (Vector2d.pixels 23 19)
+                |> Point2d.toPixels
+    in
+    Svg.text_
+        [ Svg.Attributes.x (String.fromFloat labelPosition.x)
+        , Svg.Attributes.y (String.fromFloat labelPosition.y)
+        , Svg.Attributes.textAnchor "middle"
+        , font
+        , Svg.Attributes.fill (toColor Ui.Color.primary)
+        ]
+        [ Svg.text label ]
+
+
+cubicSplineInfo : Resolution -> Bool -> CubicSplineData coordinates -> Svg msg
+cubicSplineInfo resolution hovered cubicSpline =
+    case cubicSpline.info of
+        Nothing ->
+            Svg.text ""
+
+        Just info ->
+            Svg.g []
+                [ actualInfoPoint hovered (Point2d.at resolution info.firstControlPoint.point2d)
+                , actualInfoPoint hovered (Point2d.at resolution info.secondControlPoint.point2d)
+                , actualInfoPoint hovered (Point2d.at resolution info.thirdControlPoint.point2d)
+                , actualInfoPoint hovered (Point2d.at resolution info.fourthControlPoint.point2d)
+                ]
+
+
+cubicSplineFocusOutline : CubicSpline2d Pixels coordinates -> Svg msg
+cubicSplineFocusOutline cubicSpline2d =
+    Svg.text "TODO"
+
+
+actualCubicSpline : Bool -> CubicSpline2d Pixels coordinates -> Svg msg
+actualCubicSpline hovered cubicSpline2d =
+    Svg.cubicSpline2d
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke <|
+            if hovered then
+                toColor Ui.Color.primary
+
+            else
+                toColor Ui.Color.black
+        , Svg.Attributes.strokeWidth "1"
+        ]
+        cubicSpline2d
 
 
 

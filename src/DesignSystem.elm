@@ -5,6 +5,7 @@ import Browser exposing (Document, UrlRequest(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
 import Circle2d
+import CubicSpline2d
 import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
@@ -1174,6 +1175,54 @@ viewObjects model =
                             }
                     }
                 )
+
+        cubicSpline focused hovered xOffset =
+            let
+                firstControlPoint =
+                    Point2d.millimeters (xOffset + 24) -64
+
+                secondControlPoint =
+                    Point2d.millimeters (xOffset + 16) 0
+
+                thirdControlPoint =
+                    Point2d.millimeters xOffset 48
+
+                fourthControlPoint =
+                    Point2d.millimeters (xOffset - 32) 64
+            in
+            Ui.Pattern.drawCurve resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Curve"
+                }
+                (Ui.Pattern.CubicSpline
+                    { cubicSpline2d =
+                        CubicSpline2d.fromControlPoints
+                            firstControlPoint
+                            secondControlPoint
+                            thirdControlPoint
+                            fourthControlPoint
+                    , info =
+                        Just <|
+                            { firstControlPoint =
+                                { point2d = firstControlPoint
+                                , info = Nothing
+                                }
+                            , secondControlPoint =
+                                { point2d = secondControlPoint
+                                , info = Nothing
+                                }
+                            , thirdControlPoint =
+                                { point2d = thirdControlPoint
+                                , info = Nothing
+                                }
+                            , fourthControlPoint =
+                                { point2d = fourthControlPoint
+                                , info = Nothing
+                                }
+                            }
+                    }
+                )
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1254,6 +1303,12 @@ viewObjects model =
             , quadraticSpline False True -32
             , quadraticSpline True False 32
             , quadraticSpline True True 96
+            ]
+        , viewObject 192
+            [ cubicSpline False False -96
+            , cubicSpline False True -32
+            , cubicSpline True False 32
+            , cubicSpline True True 96
             ]
         ]
 
