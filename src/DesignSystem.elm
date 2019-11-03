@@ -954,6 +954,27 @@ viewObjects model =
                                 }
                             }
                 }
+
+        throughTwoPoints focused hovered yOffset =
+            Ui.Pattern.drawAxis resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Axis"
+                }
+                { axis2d = Axis2d.through (Point2d.millimeters -96 yOffset) Direction2d.positiveX
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughTwoPoints
+                            { pointA =
+                                { point2d = Point2d.millimeters -96 yOffset
+                                , info = Nothing
+                                }
+                            , pointB =
+                                { point2d = Point2d.millimeters 96 yOffset
+                                , info = Nothing
+                                }
+                            }
+                }
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -990,6 +1011,12 @@ viewObjects model =
             , throughOnePoint False True -32
             , throughOnePoint True False 32
             , throughOnePoint True True 96
+            ]
+        , viewObject 224
+            [ throughTwoPoints False False -64
+            , throughTwoPoints False True -24
+            , throughTwoPoints True False 24
+            , throughTwoPoints True True 64
             ]
         ]
 

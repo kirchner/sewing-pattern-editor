@@ -142,7 +142,7 @@ pointLabel point2d label =
     let
         labelPosition =
             point2d
-                |> Point2d.translateBy (Vector2d.pixels 23 17)
+                |> Point2d.translateBy (Vector2d.pixels 23 19)
                 |> Point2d.toPixels
     in
     Svg.text_
@@ -213,9 +213,7 @@ pointInfo resolution cfg point =
                             Ui.Color.black
             in
             Svg.g []
-                [ Svg.circle2d
-                    [ Svg.Attributes.fill color ]
-                    (Circle2d.withRadius (pixels 3) basePoint2d)
+                [ actualInfoPoint cfg.hovered basePoint2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
@@ -305,9 +303,7 @@ pointInfo resolution cfg point =
                             Ui.Color.black
             in
             Svg.g []
-                [ Svg.circle2d
-                    [ Svg.Attributes.fill color ]
-                    (Circle2d.withRadius (pixels 3) basePointA2d)
+                [ actualInfoPoint cfg.hovered basePointA2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
@@ -321,9 +317,7 @@ pointInfo resolution cfg point =
                     ]
                     (LineSegment2d.from offsetPointA2d offsetBasePointA2d)
                 , lineLabel cfg.hovered basePointA2d point2d info.label
-                , Svg.circle2d
-                    [ Svg.Attributes.fill color ]
-                    (Circle2d.withRadius (pixels 3) basePointB2d)
+                , actualInfoPoint cfg.hovered basePointB2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
@@ -339,37 +333,16 @@ pointInfo resolution cfg point =
                 ]
 
         Just (Intersection info) ->
-            let
-                drawAxisHelp { axis2d } =
-                    Svg.lineSegment2d
-                        [ Svg.Attributes.stroke <|
-                            if cfg.hovered then
-                                toColor Ui.Color.primary
-
-                            else
-                                toColor Ui.Color.black
-                        , Svg.Attributes.strokeWidth <|
-                            if cfg.focused then
-                                "1.5"
-
-                            else
-                                "1"
-                        ]
-                        (LineSegment2d.along (Axis2d.at resolution axis2d)
-                            (pixels -1000)
-                            (pixels 1000)
-                        )
-            in
             Svg.g []
                 [ case info.intersectableA of
                     IntersectableAxis axisA ->
-                        drawAxisHelp axisA
+                        actualAxis cfg.hovered cfg.focused (Axis2d.at resolution axisA.axis2d)
 
                     IntersectableCircle _ ->
                         Svg.text ""
                 , case info.intersectableB of
                     IntersectableAxis axisB ->
-                        drawAxisHelp axisB
+                        actualAxis cfg.hovered cfg.focused (Axis2d.at resolution axisB.axis2d)
 
                     IntersectableCircle _ ->
                         Svg.text ""
@@ -468,6 +441,19 @@ actualPoint hovered point2d =
         (Circle2d.withRadius (pixels 5) point2d)
 
 
+actualInfoPoint : Bool -> Point2d Pixels coordinates -> Svg msg
+actualInfoPoint hovered point2d =
+    Svg.circle2d
+        [ Svg.Attributes.fill <|
+            if hovered then
+                toColor Ui.Color.primary
+
+            else
+                toColor Ui.Color.black
+        ]
+        (Circle2d.withRadius (pixels 3) point2d)
+
+
 
 ---- AXIS
 
@@ -501,7 +487,7 @@ drawAxis resolution cfg axis =
 
           else
             Svg.text ""
-        , actualAxis cfg.hovered axis2d
+        , actualAxis cfg.hovered cfg.focused axis2d
         ]
 
 
@@ -511,7 +497,7 @@ axisLabel axis2d label =
         labelPosition =
             axis2d
                 |> Axis2d.originPoint
-                |> Point2d.translateBy (Vector2d.pixels 23 17)
+                |> Point2d.translateBy (Vector2d.pixels 23 19)
                 |> Point2d.toPixels
     in
     Svg.text_
@@ -531,22 +517,13 @@ axisInfo resolution cfg axis =
             Svg.text ""
 
         Just (ThroughOnePoint info) ->
-            let
-                point2d =
-                    Point2d.at resolution info.point.point2d
-            in
-            Svg.circle2d
-                [ Svg.Attributes.fill <|
-                    if cfg.hovered then
-                        toColor Ui.Color.primary
-
-                    else
-                        toColor Ui.Color.black
-                ]
-                (Circle2d.withRadius (pixels 3) point2d)
+            actualInfoPoint cfg.hovered (Point2d.at resolution info.point.point2d)
 
         Just (ThroughTwoPoints info) ->
-            Svg.text ""
+            Svg.g []
+                [ actualInfoPoint cfg.hovered (Point2d.at resolution info.pointA.point2d)
+                , actualInfoPoint cfg.hovered (Point2d.at resolution info.pointB.point2d)
+                ]
 
 
 axisFocusOutline : Axis2d Pixels coordinates -> Svg msg
@@ -577,8 +554,8 @@ axisFocusOutline axis2d =
         ]
 
 
-actualAxis : Bool -> Axis2d Pixels coordinates -> Svg msg
-actualAxis hovered axis2d =
+actualAxis : Bool -> Bool -> Axis2d Pixels coordinates -> Svg msg
+actualAxis hovered focused axis2d =
     Svg.lineSegment2d
         [ Svg.Attributes.stroke <|
             if hovered then
@@ -586,7 +563,12 @@ actualAxis hovered axis2d =
 
             else
                 toColor Ui.Color.black
-        , Svg.Attributes.strokeWidth "1"
+        , Svg.Attributes.strokeWidth <|
+            if focused then
+                "1.5"
+
+            else
+                "1"
         ]
         (LineSegment2d.along axis2d
             (pixels -1000)
