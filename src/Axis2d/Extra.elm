@@ -1,7 +1,6 @@
 module Axis2d.Extra exposing
     ( intersectionWithAxis
     , scaleAbout
-    , throughOnePoint
     , throughTwoPoints
     )
 
@@ -23,43 +22,40 @@ module Axis2d.Extra exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Angle
 import Axis2d exposing (Axis2d)
 import Direction2d
+import Length exposing (Meters)
 import Point2d exposing (Point2d)
 import Vector2d
 
 
-throughTwoPoints : Point2d -> Point2d -> Maybe Axis2d
+throughTwoPoints : Point2d Meters c -> Point2d Meters c -> Maybe (Axis2d Meters c)
 throughTwoPoints pointA pointB =
     Direction2d.from pointA pointB
         |> Maybe.map (Axis2d.through pointA)
 
 
-throughOnePoint : Point2d -> Float -> Axis2d
-throughOnePoint point angle =
-    Axis2d.through point (Direction2d.fromAngle (degrees angle))
-
-
-intersectionWithAxis : Axis2d -> Axis2d -> Maybe Point2d
+intersectionWithAxis : Axis2d Meters c -> Axis2d Meters c -> Maybe (Point2d Meters c)
 intersectionWithAxis axis1 axis2 =
     let
         ( x1, y1 ) =
             axis1
                 |> Axis2d.originPoint
-                |> Point2d.coordinates
+                |> Point2d.toTuple Length.inMeters
 
         ( x2, y2 ) =
-            Point2d.along axis1 1
-                |> Point2d.coordinates
+            Point2d.along axis1 (Length.meters 1)
+                |> Point2d.toTuple Length.inMeters
 
         ( x3, y3 ) =
             axis2
                 |> Axis2d.originPoint
-                |> Point2d.coordinates
+                |> Point2d.toTuple Length.inMeters
 
         ( x4, y4 ) =
-            Point2d.along axis2 1
-                |> Point2d.coordinates
+            Point2d.along axis2 (Length.meters 1)
+                |> Point2d.toTuple Length.inMeters
 
         nominator =
             det (x1 - x2) (y1 - y2) (x3 - x4) (y3 - y4)
@@ -79,14 +75,14 @@ intersectionWithAxis axis1 axis2 =
                 det (det x1 y1 x2 y2) (y1 - y2) (det x3 y3 x4 y4) (y3 - y4)
         in
         Just
-            (Point2d.fromCoordinates
+            (Point2d.fromTuple Length.meters
                 ( denominatorX / nominator
                 , denominatorY / nominator
                 )
             )
 
 
-scaleAbout : Point2d -> Float -> Axis2d -> Axis2d
+scaleAbout : Point2d Meters c -> Float -> Axis2d Meters c -> Axis2d Meters c
 scaleAbout point factor axis =
     Axis2d.originPoint axis
         |> Point2d.scaleAbout point factor

@@ -24,7 +24,7 @@ import Svg.Attributes
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
-import Ui.Pattern.Point exposing (Object2d(..))
+import Ui.Pattern exposing (Intersectable(..))
 import Ui.Space
 import Ui.Typography
 import Url exposing (Url)
@@ -862,60 +862,97 @@ viewObjects model =
                 |> Quantity.per (Length.millimeters 1)
 
         origin focused hovered xOffset =
-            Ui.Pattern.Point.draw resolution
+            Ui.Pattern.drawPoint resolution
                 { focused = focused
                 , hovered = hovered
-                , label = "A42"
-                , point = Point2d.millimeters xOffset 0
-                , info = Ui.Pattern.Point.Origin
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset 0
+                , info = Just Ui.Pattern.Origin
                 }
 
         fromOnePoint focused hovered xOffset =
-            Ui.Pattern.Point.draw resolution
+            Ui.Pattern.drawPoint resolution
                 { focused = focused
                 , hovered = hovered
-                , label = "A42"
-                , point = Point2d.millimeters xOffset 48
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset 48
                 , info =
-                    Ui.Pattern.Point.FromOnePoint
-                        { basePoint = Point2d.millimeters (xOffset - 32) -64
-                        , label = "height"
-                        }
+                    Just <|
+                        Ui.Pattern.FromOnePoint
+                            { basePoint =
+                                { point2d = Point2d.millimeters (xOffset - 32) -64
+                                , info = Nothing
+                                }
+                            , label = "height"
+                            }
                 }
 
         betweenTwoPoints focused hovered xOffset =
-            Ui.Pattern.Point.draw resolution
+            Ui.Pattern.drawPoint resolution
                 { focused = focused
                 , hovered = hovered
-                , label = "A42"
-                , point = Point2d.millimeters xOffset 0
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset 0
                 , info =
-                    Ui.Pattern.Point.BetweenTwoPoints
-                        { basePointA = Point2d.millimeters (xOffset + 32) -64
-                        , basePointB = Point2d.millimeters (xOffset - 32) 64
-                        , label = "height"
-                        }
+                    Just <|
+                        Ui.Pattern.BetweenTwoPoints
+                            { basePointA =
+                                { point2d = Point2d.millimeters (xOffset + 32) -64
+                                , info = Nothing
+                                }
+                            , basePointB =
+                                { point2d = Point2d.millimeters (xOffset - 32) 64
+                                , info = Nothing
+                                }
+                            , label = "height"
+                            }
                 }
 
         lineLinePoint focused hovered xOffset yOffset =
-            Ui.Pattern.Point.draw resolution
+            Ui.Pattern.drawPoint resolution
                 { focused = focused
                 , hovered = hovered
-                , label = "A42"
-                , point = Point2d.millimeters xOffset yOffset
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset yOffset
                 , info =
-                    Ui.Pattern.Point.Intersection
-                        { objectA =
-                            Axis2d
-                                (Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                    Direction2d.positiveY
-                                )
-                        , objectB =
-                            Axis2d
-                                (Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                    Direction2d.positiveX
-                                )
-                        }
+                    Just <|
+                        Ui.Pattern.Intersection
+                            { intersectableA =
+                                IntersectableAxis
+                                    { axis2d =
+                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                            Direction2d.positiveY
+                                    , info = Nothing
+                                    }
+                            , intersectableB =
+                                IntersectableAxis
+                                    { axis2d =
+                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                            Direction2d.positiveX
+                                    , info = Nothing
+                                    }
+                            }
+                }
+
+        throughOnePoint focused hovered xOffset =
+            Ui.Pattern.drawAxis resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Axis"
+                }
+                { axis2d = Axis2d.through (Point2d.millimeters xOffset 0) Direction2d.positiveY
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughOnePoint
+                            { point =
+                                { point2d = Point2d.millimeters xOffset 0
+                                , info = Nothing
+                                }
+                            }
                 }
     in
     Element.column
@@ -946,6 +983,13 @@ viewObjects model =
             , lineLinePoint False True 32 -16
             , lineLinePoint True False -32 16
             , lineLinePoint True True 96 48
+            ]
+        , Ui.Typography.headingThree "Axes"
+        , viewObject 192
+            [ throughOnePoint False False -96
+            , throughOnePoint False True -32
+            , throughOnePoint True False 32
+            , throughOnePoint True True 96
             ]
         ]
 

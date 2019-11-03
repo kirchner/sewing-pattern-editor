@@ -2,6 +2,7 @@ module Pattern exposing
     ( Pattern, empty
     , Point, Axis, Circle, Curve, Detail
     , Intersectable
+    , BottomLeft
     , A, this, name, inlined, hash
     , intersectableAxis, intersectableCircle, intersectableCurve
     , axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
@@ -65,6 +66,7 @@ module Pattern exposing
 
 @docs Point, Axis, Circle, Curve, Detail
 @docs Intersectable
+@docs BottomLeft
 
 
 # Nest and reference
@@ -214,16 +216,18 @@ module Pattern exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Angle exposing (Angle)
 import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import CubicSpline2d exposing (CubicSpline2d)
 import Dict exposing (Dict)
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Length exposing (Meters)
 import LineSegment2d exposing (LineSegment2d)
 import Parser exposing (DeadEnd)
 import Point2d exposing (Point2d)
@@ -239,6 +243,10 @@ type Pattern
     = Pattern PatternData
 
 
+type BottomLeft
+    = BottomLeft BottomLeft
+
+
 type alias PatternData =
     { points : Dict String Point
     , axes : Dict String Axis
@@ -249,11 +257,11 @@ type alias PatternData =
     , variables : Dict String String
 
     -- CACHE
-    , point2ds : Dict String (Result ComputeHelp Point2d)
-    , axis2ds : Dict String (Result ComputeHelp Axis2d)
-    , circle2ds : Dict String (Result ComputeHelp Circle2d)
-    , curve2ds : Dict String (Result ComputeHelp Curve2d)
-    , detail2ds : Dict String (Result ComputeHelp Detail2d)
+    , point2ds : Dict String (Result ComputeHelp (Point2d Meters BottomLeft))
+    , axis2ds : Dict String (Result ComputeHelp (Axis2d Meters BottomLeft))
+    , circle2ds : Dict String (Result ComputeHelp (Circle2d Meters BottomLeft))
+    , curve2ds : Dict String (Result ComputeHelp (Curve2d Meters BottomLeft))
+    , detail2ds : Dict String (Result ComputeHelp (Detail2d Meters BottomLeft))
     , variablesCache : Dict String (Result ComputeHelp Float)
     }
 
@@ -1459,7 +1467,7 @@ type Orientation
 ---- COMPUTE
 
 
-point2d : A Point -> State Pattern (Result ComputeHelp Point2d)
+point2d : A Point -> State Pattern (Result ComputeHelp (Point2d Meters BottomLeft))
 point2d aPoint =
     case aPoint of
         That name_ ->
@@ -1495,20 +1503,18 @@ point2d aPoint =
             computePoint2d point
 
 
-computePoint2d : Point -> State Pattern (Result ComputeHelp Point2d)
+computePoint2d : Point -> State Pattern (Result ComputeHelp (Point2d Meters BottomLeft))
 computePoint2d (Point info) =
     case info of
         Origin stuff ->
             StateResult.ok <|
-                Point2d.fromCoordinates ( stuff.x, stuff.y )
+                Point2d.meters stuff.x stuff.y
 
         FromOnePoint stuff ->
             let
                 toPoint2d basePoint direction distance =
                     Point2d.translateBy
-                        (Vector2d.withLength distance
-                            (Direction2d.fromAngle (pi * direction / 180))
-                        )
+                        (Vector2d.rTheta (Length.meters distance) direction)
                         basePoint
             in
             StateResult.ok toPoint2d
@@ -1525,7 +1531,7 @@ computePoint2d (Point info) =
         BetweenLength stuff ->
             let
                 toPoint2d basePointA basePointB distance =
-                    Point2d.betweenLength basePointA basePointB distance
+                    Point2d.betweenLength basePointA basePointB (Length.meters distance)
                         |> Result.fromMaybe PointsCoincide
             in
             StateResult.ok toPoint2d
@@ -1605,13 +1611,13 @@ computePoint2d (Point info) =
             StateResult.err NotComputableYet
 
 
-type Intersectable2d
-    = Axis2d Axis2d
-    | Circle2d Circle2d
-    | Curve2d Curve2d
+type Intersectable2d u c
+    = Axis2d (Axis2d u c)
+    | Circle2d (Circle2d u c)
+    | Curve2d (Curve2d u c)
 
 
-intersectable2d : A Intersectable -> State Pattern (Result ComputeHelp Intersectable2d)
+intersectable2d : A Intersectable -> State Pattern (Result ComputeHelp (Intersectable2d Meters BottomLeft))
 intersectable2d aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -1702,7 +1708,7 @@ intersectable2d aIntersectable =
                 |> StateResult.map Curve2d
 
 
-axis2d : A Axis -> State Pattern (Result ComputeHelp Axis2d)
+axis2d : A Axis -> State Pattern (Result ComputeHelp (Axis2d Meters BottomLeft))
 axis2d aAxis =
     case aAxis of
         That name_ ->
@@ -1738,11 +1744,11 @@ axis2d aAxis =
             computeAxis2d axis
 
 
-computeAxis2d : Axis -> State Pattern (Result ComputeHelp Axis2d)
+computeAxis2d : Axis -> State Pattern (Result ComputeHelp (Axis2d Meters BottomLeft))
 computeAxis2d (Axis info) =
     case info of
         ThroughOnePoint stuff ->
-            StateResult.ok Axis2d.throughOnePoint
+            StateResult.ok Axis2d.through
                 |> StateResult.with (point2d stuff.point)
                 |> StateResult.with (computeOrientation stuff.orientation)
 
@@ -1761,7 +1767,7 @@ computeAxis2d (Axis info) =
             StateResult.err NotComputableYet
 
 
-circle2d : A Circle -> State Pattern (Result ComputeHelp Circle2d)
+circle2d : A Circle -> State Pattern (Result ComputeHelp (Circle2d Meters BottomLeft))
 circle2d aCircle =
     case aCircle of
         That name_ ->
@@ -1797,11 +1803,15 @@ circle2d aCircle =
             computeCircle2d circle
 
 
-computeCircle2d : Circle -> State Pattern (Result ComputeHelp Circle2d)
+computeCircle2d : Circle -> State Pattern (Result ComputeHelp (Circle2d Meters BottomLeft))
 computeCircle2d (Circle info) =
     case info of
         WithRadius stuff ->
-            StateResult.ok Circle2d.withRadius
+            let
+                toCircle2d radius center =
+                    Circle2d.withRadius (Length.meters radius) center
+            in
+            StateResult.ok toCircle2d
                 |> StateResult.with (computeExpr stuff.radius)
                 |> StateResult.with (point2d stuff.centerPoint)
 
@@ -1821,13 +1831,13 @@ computeCircle2d (Circle info) =
             StateResult.err NotComputableYet
 
 
-type Curve2d
-    = LineSegment2d LineSegment2d
-    | QuadraticSpline2d QuadraticSpline2d
-    | CubicSpline2d CubicSpline2d
+type Curve2d u c
+    = LineSegment2d (LineSegment2d u c)
+    | QuadraticSpline2d (QuadraticSpline2d u c)
+    | CubicSpline2d (CubicSpline2d u c)
 
 
-startPoint : Curve2d -> Point2d
+startPoint : Curve2d Meters BottomLeft -> Point2d Meters BottomLeft
 startPoint curve =
     case curve of
         LineSegment2d lineSegment2d ->
@@ -1840,7 +1850,7 @@ startPoint curve =
             CubicSpline2d.startPoint cubicSpline2d
 
 
-endPoint : Curve2d -> Point2d
+endPoint : Curve2d Meters BottomLeft -> Point2d Meters BottomLeft
 endPoint curve =
     case curve of
         LineSegment2d lineSegment2d ->
@@ -1853,7 +1863,7 @@ endPoint curve =
             CubicSpline2d.endPoint cubicSpline2d
 
 
-reverseCurve : Curve2d -> Curve2d
+reverseCurve : Curve2d Meters BottomLeft -> Curve2d Meters BottomLeft
 reverseCurve curve =
     case curve of
         LineSegment2d lineSegment2d ->
@@ -1866,7 +1876,7 @@ reverseCurve curve =
             CubicSpline2d (CubicSpline2d.reverse cubicSpline2d)
 
 
-reverseIf : Bool -> Curve2d -> Curve2d
+reverseIf : Bool -> Curve2d Meters BottomLeft -> Curve2d Meters BottomLeft
 reverseIf bool curve =
     if bool then
         reverseCurve curve
@@ -1875,7 +1885,7 @@ reverseIf bool curve =
         curve
 
 
-curve2d : A Curve -> State Pattern (Result ComputeHelp Curve2d)
+curve2d : A Curve -> State Pattern (Result ComputeHelp (Curve2d Meters BottomLeft))
 curve2d aCurve =
     case aCurve of
         That name_ ->
@@ -1911,7 +1921,7 @@ curve2d aCurve =
             computeCurve2d curve
 
 
-computeCurve2d : Curve -> State Pattern (Result ComputeHelp Curve2d)
+computeCurve2d : Curve -> State Pattern (Result ComputeHelp (Curve2d Meters BottomLeft))
 computeCurve2d (Curve info) =
     case info of
         Straight stuff ->
@@ -1927,11 +1937,10 @@ computeCurve2d (Curve info) =
             let
                 toCurve2d startPoint_ controlPoint endPoint_ =
                     QuadraticSpline2d <|
-                        QuadraticSpline2d.with
-                            { startPoint = startPoint_
-                            , controlPoint = controlPoint
-                            , endPoint = endPoint_
-                            }
+                        QuadraticSpline2d.fromControlPoints
+                            startPoint_
+                            controlPoint
+                            endPoint_
             in
             StateResult.ok toCurve2d
                 |> StateResult.with (point2d stuff.startPoint)
@@ -1942,12 +1951,11 @@ computeCurve2d (Curve info) =
             let
                 toCurve2d startPoint_ startControlPoint endControlPoint endPoint_ =
                     CubicSpline2d <|
-                        CubicSpline2d.with
-                            { startPoint = startPoint_
-                            , startControlPoint = startControlPoint
-                            , endControlPoint = endControlPoint
-                            , endPoint = endPoint_
-                            }
+                        CubicSpline2d.fromControlPoints
+                            startPoint_
+                            startControlPoint
+                            endControlPoint
+                            endPoint_
             in
             StateResult.ok toCurve2d
                 |> StateResult.with (point2d stuff.startPoint)
@@ -1959,40 +1967,40 @@ computeCurve2d (Curve info) =
             StateResult.err NotComputableYet
 
 
-type alias Detail2d =
-    { firstPoint : Point2d
-    , nextCurves : List NextCurve2d
-    , lastCurve : LastCurve2d
+type alias Detail2d u c =
+    { firstPoint : Point2d u c
+    , nextCurves : List (NextCurve2d u c)
+    , lastCurve : LastCurve2d u c
     }
 
 
-type NextCurve2d
+type NextCurve2d u c
     = NextLineSegment2d
-        { endPoint : Point2d
+        { endPoint : Point2d u c
         }
     | NextQuadraticSpline2d
-        { controlPoint : Point2d
-        , endPoint : Point2d
+        { controlPoint : Point2d u c
+        , endPoint : Point2d u c
         }
     | NextCubicSpline2d
-        { startControlPoint : Point2d
-        , endControlPoint : Point2d
-        , endPoint : Point2d
+        { startControlPoint : Point2d u c
+        , endControlPoint : Point2d u c
+        , endPoint : Point2d u c
         }
 
 
-type LastCurve2d
+type LastCurve2d u c
     = LastLineSegment2d
     | LastQuadraticSpline2d
-        { controlPoint : Point2d
+        { controlPoint : Point2d u c
         }
     | LastCubicSpline2d
-        { startControlPoint : Point2d
-        , endControlPoint : Point2d
+        { startControlPoint : Point2d u c
+        , endControlPoint : Point2d u c
         }
 
 
-detail2d : A Detail -> State Pattern (Result ComputeHelp Detail2d)
+detail2d : A Detail -> State Pattern (Result ComputeHelp (Detail2d Meters BottomLeft))
 detail2d aDetail =
     case aDetail of
         That name_ ->
@@ -2028,7 +2036,7 @@ detail2d aDetail =
             computeDetail2d curve
 
 
-computeDetail2d : Detail -> State Pattern (Result ComputeHelp Detail2d)
+computeDetail2d : Detail -> State Pattern (Result ComputeHelp (Detail2d Meters BottomLeft))
 computeDetail2d (Detail info) =
     StateResult.ok Detail2d
         |> StateResult.with
@@ -2159,19 +2167,13 @@ computeDetail2d (Detail info) =
 
                                 QuadraticSpline2d quadraticSpline2d ->
                                     LastQuadraticSpline2d
-                                        { controlPoint =
-                                            QuadraticSpline2d.controlPoint
-                                                quadraticSpline2d
+                                        { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
                                         }
 
                                 CubicSpline2d cubicSpline2d ->
                                     LastCubicSpline2d
-                                        { startControlPoint =
-                                            CubicSpline2d.startControlPoint
-                                                cubicSpline2d
-                                        , endControlPoint =
-                                            CubicSpline2d.endControlPoint
-                                                cubicSpline2d
+                                        { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                        , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
                                         }
                     in
                     StateResult.ok toLastCurve
@@ -2208,7 +2210,7 @@ secondCurve2d :
     FirstCurve
     -> List NextCurve
     -> LastCurve
-    -> State Pattern (Result ComputeHelp NextCurve2d)
+    -> State Pattern (Result ComputeHelp (NextCurve2d Meters BottomLeft))
 secondCurve2d firstCurve nextCurves lastCurve =
     case firstCurve of
         FirstStraight stuff ->
@@ -2288,17 +2290,14 @@ secondCurve2d firstCurve nextCurves lastCurve =
 
                         QuadraticSpline2d quadraticSpline2d ->
                             NextQuadraticSpline2d
-                                { controlPoint =
-                                    QuadraticSpline2d.controlPoint quadraticSpline2d
+                                { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
                                 , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
                                 }
 
                         CubicSpline2d cubicSpline2d ->
                             NextCubicSpline2d
-                                { startControlPoint =
-                                    CubicSpline2d.startControlPoint cubicSpline2d
-                                , endControlPoint =
-                                    CubicSpline2d.endControlPoint cubicSpline2d
+                                { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
                                 , endPoint = CubicSpline2d.endPoint cubicSpline2d
                                 }
             in
@@ -2332,7 +2331,7 @@ secondCurve2d firstCurve nextCurves lastCurve =
                 |> StateResult.join
 
 
-nextCurve2d : NextCurve -> State Pattern (Result ComputeHelp NextCurve2d)
+nextCurve2d : NextCurve -> State Pattern (Result ComputeHelp (NextCurve2d Meters BottomLeft))
 nextCurve2d nextCurve =
     case nextCurve of
         NextStraight stuff ->
@@ -2383,17 +2382,14 @@ nextCurve2d nextCurve =
 
                         QuadraticSpline2d quadraticSpline2d ->
                             NextQuadraticSpline2d
-                                { controlPoint =
-                                    QuadraticSpline2d.controlPoint quadraticSpline2d
+                                { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
                                 , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
                                 }
 
                         CubicSpline2d cubicSpline2d ->
                             NextCubicSpline2d
-                                { startControlPoint =
-                                    CubicSpline2d.startControlPoint cubicSpline2d
-                                , endControlPoint =
-                                    CubicSpline2d.endControlPoint cubicSpline2d
+                                { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
                                 , endPoint = CubicSpline2d.endPoint cubicSpline2d
                                 }
             in
@@ -2405,11 +2401,11 @@ nextCurve2d nextCurve =
 
 
 startPointWith :
-    { nextCurve : Maybe Curve2d
-    , previousCurve : Maybe Curve2d
+    { nextCurve : Maybe (Curve2d Meters BottomLeft)
+    , previousCurve : Maybe (Curve2d Meters BottomLeft)
     }
-    -> Curve2d
-    -> Maybe Point2d
+    -> Curve2d Meters BottomLeft
+    -> Maybe (Point2d Meters BottomLeft)
 startPointWith constraints curve =
     let
         connectedTo curve_ point =
@@ -2458,11 +2454,11 @@ startPointWith constraints curve =
 
 
 endPointWith :
-    { nextCurve : Maybe Curve2d
-    , previousCurve : Maybe Curve2d
+    { nextCurve : Maybe (Curve2d Meters BottomLeft)
+    , previousCurve : Maybe (Curve2d Meters BottomLeft)
     }
-    -> Curve2d
-    -> Maybe Point2d
+    -> Curve2d Meters BottomLeft
+    -> Maybe (Point2d Meters BottomLeft)
 endPointWith constraints curve =
     let
         connectedTo curve_ point =
@@ -2542,36 +2538,38 @@ float variable =
         |> State.andThen modifyWhenNeeded
 
 
-computeDirection : Direction -> State Pattern (Result ComputeHelp Float)
+computeDirection : Direction -> State Pattern (Result ComputeHelp Angle)
 computeDirection direction =
     case direction of
         Leftward ->
-            StateResult.ok 180
+            StateResult.ok (Angle.degrees 180)
 
         Rightward ->
-            StateResult.ok 0
+            StateResult.ok (Angle.degrees 0)
 
         Up ->
-            StateResult.ok 270
+            StateResult.ok (Angle.degrees 270)
 
         Down ->
-            StateResult.ok 90
+            StateResult.ok (Angle.degrees 90)
 
         DirectionAngle angle ->
             computeExpr angle
+                |> StateResult.map Angle.degrees
 
 
-computeOrientation : Orientation -> State Pattern (Result ComputeHelp Float)
+computeOrientation : Orientation -> State Pattern (Result ComputeHelp (Direction2d c))
 computeOrientation orientation =
     case orientation of
         Horizontal ->
-            StateResult.ok 0
+            StateResult.ok (Direction2d.degrees 0)
 
         Vertical ->
-            StateResult.ok 90
+            StateResult.ok (Direction2d.degrees 90)
 
         OrientationAngle angle ->
             computeExpr angle
+                |> StateResult.map Direction2d.degrees
 
 
 computeExpr : String -> State Pattern (Result ComputeHelp Float)
@@ -2608,6 +2606,7 @@ evaluateExpr expr =
                             StateResult.ok Point2d.distanceFrom
                                 |> StateResult.with (point2d (That nameA))
                                 |> StateResult.with (point2d (That nameB))
+                                |> StateResult.map Length.inMeters
 
                         _ ->
                             StateResult.err <|
@@ -2623,7 +2622,7 @@ evaluateExpr expr =
                             let
                                 toAngle point2dA point2dB =
                                     Direction2d.from point2dA point2dB
-                                        |> Maybe.map (Direction2d.toAngle >> toDegree)
+                                        |> Maybe.map (Direction2d.toAngle >> Angle.inDegrees)
 
                                 toDegree radian =
                                     180 * radian / pi
