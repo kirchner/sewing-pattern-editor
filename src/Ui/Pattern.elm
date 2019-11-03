@@ -3,9 +3,12 @@ module Ui.Pattern exposing
     , Intersectable(..)
     , Axis, AxisInfo(..)
     , Circle, CircleInfo(..)
+    , Curve(..), LineSegmentData, QuadraticSplineData, CubicSplineData
+    , LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
     , PointConfig, drawPoint
     , AxisConfig, drawAxis
     , CircleConfig, drawCircle
+    , CurveConfig, drawCurve
     )
 
 {-|
@@ -14,24 +17,30 @@ module Ui.Pattern exposing
 @docs Intersectable
 @docs Axis, AxisInfo
 @docs Circle, CircleInfo
+@docs Curve, LineSegmentData, QuadraticSplineData, CubicSplineData
+@docs LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
 
 @docs PointConfig, drawPoint
 @docs AxisConfig, drawAxis
 @docs CircleConfig, drawCircle
+@docs CurveConfig, drawCurve
 
 -}
 
 import Angle
 import Axis2d exposing (Axis2d)
 import Circle2d exposing (Circle2d)
+import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
 import Element exposing (Color)
 import Geometry.Svg as Svg
 import Length exposing (Meters)
-import LineSegment2d
+import LineSegment2d exposing (LineSegment2d)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
+import QuadraticSpline2d exposing (QuadraticSpline2d)
 import Quantity exposing (Quantity, Rate)
+import Rectangle2d
 import Svg exposing (Attribute, Svg)
 import Svg.Attributes
 import Ui.Color
@@ -102,6 +111,51 @@ type CircleInfo coordinates
         , pointB : Point coordinates
         , pointC : Point coordinates
         }
+
+
+type Curve coordinates
+    = LineSegment (LineSegmentData coordinates)
+    | QuadraticSpline (QuadraticSplineData coordinates)
+    | CubicSpline (CubicSplineData coordinates)
+
+
+type alias LineSegmentData coordinates =
+    { lineSegment2d : LineSegment2d Meters coordinates
+    , info : Maybe (LineSegmentInfo coordinates)
+    }
+
+
+type alias QuadraticSplineData coordinates =
+    { quadraticSpline2d : QuadraticSpline2d Meters coordinates
+    , info : Maybe (QuadraticSplineInfo coordinates)
+    }
+
+
+type alias CubicSplineData coordinates =
+    { cubicSpline2d : CubicSpline2d Meters coordinates
+    , info : Maybe (CubicSplineInfo coordinates)
+    }
+
+
+type alias LineSegmentInfo coordinates =
+    { startPoint : Point coordinates
+    , endPoint : Point coordinates
+    }
+
+
+type alias QuadraticSplineInfo coordinates =
+    { firstControlPoint : Point coordinates
+    , secondControlPoint : Point coordinates
+    , thirdControlPoint : Point coordinates
+    }
+
+
+type alias CubicSplineInfo coordinates =
+    { firstControlPoint : Point coordinates
+    , secondControlPoint : Point coordinates
+    , thirdControlPoint : Point coordinates
+    , fourthControlPoint : Point coordinates
+    }
 
 
 
@@ -713,6 +767,136 @@ actualCircle hovered focused circle2d =
         , Svg.Attributes.fill "none"
         ]
         circle2d
+
+
+
+---- CURVE
+
+
+type alias CurveConfig =
+    { focused : Bool
+    , hovered : Bool
+    , name : String
+    }
+
+
+drawCurve : Resolution -> CurveConfig -> Curve coordinates -> Svg msg
+drawCurve resolution cfg curve =
+    case curve of
+        LineSegment stuff ->
+            drawLineSegment resolution cfg stuff
+
+        QuadraticSpline stuff ->
+            drawQuadraticSpline resolution cfg stuff
+
+        CubicSpline stuff ->
+            drawCubicSpline resolution cfg stuff
+
+
+drawLineSegment : Resolution -> CurveConfig -> LineSegmentData coordinates -> Svg msg
+drawLineSegment resolution cfg lineSegment =
+    let
+        lineSegment2d =
+            LineSegment2d.at resolution lineSegment.lineSegment2d
+    in
+    Svg.g []
+        [ if cfg.focused || cfg.hovered then
+            lineSegmentLabel lineSegment2d cfg.name
+
+          else
+            Svg.text ""
+        , if cfg.focused || cfg.hovered then
+            lineSegmentInfo resolution cfg.hovered lineSegment
+
+          else
+            Svg.text ""
+        , if cfg.focused then
+            lineSegmentFocusOutline lineSegment2d
+
+          else
+            Svg.text ""
+        , actualLineSegment cfg.hovered lineSegment2d
+        ]
+
+
+lineSegmentLabel : LineSegment2d Pixels coordinates -> String -> Svg msg
+lineSegmentLabel lineSegment2d label =
+    let
+        labelPosition =
+            lineSegment2d
+                |> LineSegment2d.midpoint
+                |> Point2d.translateBy (Vector2d.pixels 23 19)
+                |> Point2d.toPixels
+    in
+    Svg.text_
+        [ Svg.Attributes.x (String.fromFloat labelPosition.x)
+        , Svg.Attributes.y (String.fromFloat labelPosition.y)
+        , Svg.Attributes.textAnchor "middle"
+        , font
+        , Svg.Attributes.fill (toColor Ui.Color.primary)
+        ]
+        [ Svg.text label ]
+
+
+lineSegmentInfo : Resolution -> Bool -> LineSegmentData coordinates -> Svg msg
+lineSegmentInfo resolution hovered lineSegment =
+    case lineSegment.info of
+        Nothing ->
+            Svg.text ""
+
+        Just info ->
+            Svg.g []
+                [ actualInfoPoint hovered (Point2d.at resolution info.startPoint.point2d)
+                , actualInfoPoint hovered (Point2d.at resolution info.endPoint.point2d)
+                ]
+
+
+lineSegmentFocusOutline : LineSegment2d Pixels coordinates -> Svg msg
+lineSegmentFocusOutline lineSegment2d =
+    case LineSegment2d.direction lineSegment2d of
+        Nothing ->
+            Svg.text ""
+
+        Just direction ->
+            Svg.rectangle2d
+                [ Svg.Attributes.stroke (toColor Ui.Color.primary)
+                , Svg.Attributes.strokeWidth "2"
+                , Svg.Attributes.strokeDasharray "4 7"
+                , Svg.Attributes.strokeLinecap "round"
+                , Svg.Attributes.fill "none"
+                ]
+                (Rectangle2d.withDimensions
+                    ( Quantity.plus (pixels 10) (LineSegment2d.length lineSegment2d)
+                    , pixels 10
+                    )
+                    (Direction2d.toAngle direction)
+                    (LineSegment2d.midpoint lineSegment2d)
+                )
+
+
+actualLineSegment : Bool -> LineSegment2d Pixels coordinates -> Svg msg
+actualLineSegment hovered lineSegment2d =
+    Svg.lineSegment2d
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke <|
+            if hovered then
+                toColor Ui.Color.primary
+
+            else
+                toColor Ui.Color.black
+        , Svg.Attributes.strokeWidth "1"
+        ]
+        lineSegment2d
+
+
+drawQuadraticSpline : Resolution -> CurveConfig -> QuadraticSplineData coordinates -> Svg msg
+drawQuadraticSpline resolution cfg quadraticSpline =
+    Svg.g [] []
+
+
+drawCubicSpline : Resolution -> CurveConfig -> CubicSplineData coordinates -> Svg msg
+drawCubicSpline resolution cfg cubicSpline =
+    Svg.g [] []
 
 
 

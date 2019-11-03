@@ -17,6 +17,7 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import Length
+import LineSegment2d
 import Pixels
 import Point2d
 import Quantity
@@ -1106,6 +1107,32 @@ viewObjects model =
                                 }
                             }
                 }
+
+        -- CURVES
+        lineSegment focused hovered xOffset =
+            Ui.Pattern.drawCurve resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Curve"
+                }
+                (Ui.Pattern.LineSegment
+                    { lineSegment2d =
+                        LineSegment2d.from
+                            (Point2d.millimeters (xOffset + 32) -64)
+                            (Point2d.millimeters (xOffset - 32) 64)
+                    , info =
+                        Just <|
+                            { startPoint =
+                                { point2d = Point2d.millimeters (xOffset + 32) -64
+                                , info = Nothing
+                                }
+                            , endPoint =
+                                { point2d = Point2d.millimeters (xOffset - 32) 64
+                                , info = Nothing
+                                }
+                            }
+                    }
+                )
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1173,6 +1200,13 @@ viewObjects model =
             , throughThreePoints False True 16 -48
             , throughThreePoints True False -48 48
             , throughThreePoints True True 64 48
+            ]
+        , Ui.Typography.headingThree "Curves"
+        , viewObject 192
+            [ lineSegment False False -96
+            , lineSegment False True -32
+            , lineSegment True False 32
+            , lineSegment True True 96
             ]
         ]
 
