@@ -20,6 +20,7 @@ import Length
 import LineSegment2d
 import Pixels
 import Point2d
+import QuadraticSpline2d
 import Quantity
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -1133,6 +1134,46 @@ viewObjects model =
                             }
                     }
                 )
+
+        quadraticSpline focused hovered xOffset =
+            let
+                firstControlPoint =
+                    Point2d.millimeters (xOffset + 24) -64
+
+                secondControlPoint =
+                    Point2d.millimeters (xOffset + 16) 32
+
+                thirdControlPoint =
+                    Point2d.millimeters (xOffset - 32) 64
+            in
+            Ui.Pattern.drawCurve resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Curve"
+                }
+                (Ui.Pattern.QuadraticSpline
+                    { quadraticSpline2d =
+                        QuadraticSpline2d.fromControlPoints
+                            firstControlPoint
+                            secondControlPoint
+                            thirdControlPoint
+                    , info =
+                        Just <|
+                            { firstControlPoint =
+                                { point2d = firstControlPoint
+                                , info = Nothing
+                                }
+                            , secondControlPoint =
+                                { point2d = secondControlPoint
+                                , info = Nothing
+                                }
+                            , thirdControlPoint =
+                                { point2d = thirdControlPoint
+                                , info = Nothing
+                                }
+                            }
+                    }
+                )
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1207,6 +1248,12 @@ viewObjects model =
             , lineSegment False True -32
             , lineSegment True False 32
             , lineSegment True True 96
+            ]
+        , viewObject 192
+            [ quadraticSpline False False -96
+            , quadraticSpline False True -32
+            , quadraticSpline True False 32
+            , quadraticSpline True True 96
             ]
         ]
 
