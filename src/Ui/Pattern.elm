@@ -2,8 +2,10 @@ module Ui.Pattern exposing
     ( Point, PointInfo(..)
     , Intersectable(..)
     , Axis, AxisInfo(..)
+    , Circle, CircleInfo(..)
     , PointConfig, drawPoint
     , AxisConfig, drawAxis
+    , CircleConfig, drawCircle
     )
 
 {-|
@@ -11,9 +13,11 @@ module Ui.Pattern exposing
 @docs Point, PointInfo
 @docs Intersectable
 @docs Axis, AxisInfo
+@docs Circle, CircleInfo
 
 @docs PointConfig, drawPoint
 @docs AxisConfig, drawAxis
+@docs CircleConfig, drawCircle
 
 -}
 
@@ -579,6 +583,136 @@ actualAxis hovered focused axis2d =
             (pixels -1000)
             (pixels 1000)
         )
+
+
+
+---- CIRCLE
+
+
+type alias CircleConfig =
+    { focused : Bool
+    , hovered : Bool
+    , name : String
+    }
+
+
+drawCircle : Resolution -> CircleConfig -> Circle coordinates -> Svg msg
+drawCircle resolution cfg circle =
+    let
+        circle2d =
+            Circle2d.at resolution circle.circle2d
+    in
+    Svg.g []
+        [ if cfg.focused || cfg.hovered then
+            circleLabel circle2d cfg.name
+
+          else
+            Svg.text ""
+        , if cfg.focused || cfg.hovered then
+            circleInfo resolution cfg.hovered cfg.focused circle
+
+          else
+            Svg.text ""
+        , if cfg.focused then
+            circleFocusOutline circle2d
+
+          else
+            Svg.text ""
+        , actualCircle cfg.hovered cfg.focused circle2d
+        ]
+
+
+circleLabel : Circle2d Pixels coordinates -> String -> Svg msg
+circleLabel circle2d label =
+    let
+        labelPosition =
+            circle2d
+                |> Circle2d.centerPoint
+                |> Point2d.translateBy
+                    (Vector2d.rTheta
+                        (Circle2d.radius circle2d)
+                        (Angle.degrees 30)
+                    )
+                |> Point2d.translateBy (Vector2d.pixels 23 19)
+                |> Point2d.toPixels
+    in
+    Svg.text_
+        [ Svg.Attributes.x (String.fromFloat labelPosition.x)
+        , Svg.Attributes.y (String.fromFloat labelPosition.y)
+        , Svg.Attributes.textAnchor "middle"
+        , font
+        , Svg.Attributes.fill (toColor Ui.Color.primary)
+        ]
+        [ Svg.text label ]
+
+
+circleInfo : Resolution -> Bool -> Bool -> Circle coordinates -> Svg msg
+circleInfo resolution hovered focused circle =
+    case circle.info of
+        Nothing ->
+            Svg.text ""
+
+        Just (WithRadius info) ->
+            let
+                centerPoint2d =
+                    Point2d.at resolution info.centerPoint.point2d
+            in
+            actualInfoPoint hovered centerPoint2d
+
+        Just (ThroughThreePoints info) ->
+            let
+                pointA2d =
+                    Point2d.at resolution info.pointA.point2d
+
+                pointB2d =
+                    Point2d.at resolution info.pointB.point2d
+
+                pointC2d =
+                    Point2d.at resolution info.pointC.point2d
+            in
+            Svg.g []
+                [ pointInfo resolution hovered focused 3 info.pointA
+                , actualInfoPoint hovered pointA2d
+                , pointInfo resolution hovered focused 3 info.pointB
+                , actualInfoPoint hovered pointB2d
+                , pointInfo resolution hovered focused 3 info.pointC
+                , actualInfoPoint hovered pointC2d
+                ]
+
+
+circleFocusOutline : Circle2d Pixels coordinates -> Svg msg
+circleFocusOutline circle2d =
+    Svg.circle2d
+        [ Svg.Attributes.stroke (toColor Ui.Color.primary)
+        , Svg.Attributes.strokeWidth "2"
+        , Svg.Attributes.strokeDasharray "4 7"
+        , Svg.Attributes.strokeLinecap "round"
+        , Svg.Attributes.fill "none"
+        ]
+        (Circle2d.withRadius
+            (Quantity.plus (pixels 5) (Circle2d.radius circle2d))
+            (Circle2d.centerPoint circle2d)
+        )
+
+
+actualCircle : Bool -> Bool -> Circle2d Pixels coordinates -> Svg msg
+actualCircle hovered focused circle2d =
+    Svg.circle2d
+        [ Svg.Attributes.stroke <|
+            if hovered then
+                toColor Ui.Color.primary
+
+            else
+                toColor Ui.Color.black
+        , Svg.Attributes.strokeWidth <|
+            if focused then
+                "1.5"
+
+            else
+                "1"
+        , Svg.Attributes.fill "none"
+        ]
+        circle2d
 
 
 

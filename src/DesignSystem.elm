@@ -4,6 +4,7 @@ import Axis2d
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
+import Circle2d
 import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
@@ -1044,6 +1045,67 @@ viewObjects model =
                                 }
                             }
                 }
+
+        -- CIRCLES
+        withRadius focused hovered xOffset yOffset =
+            Ui.Pattern.drawCircle resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Circle"
+                }
+                { circle2d =
+                    Circle2d.withRadius (Length.millimeters 32)
+                        (Point2d.millimeters xOffset yOffset)
+                , info =
+                    Just <|
+                        Ui.Pattern.WithRadius
+                            { centerPoint =
+                                { point2d = Point2d.millimeters xOffset yOffset
+                                , info = Nothing
+                                }
+                            , label = "r"
+                            }
+                }
+
+        throughThreePoints focused hovered xOffset yOffset =
+            let
+                pointA =
+                    Point2d.millimeters (xOffset - 16) (yOffset + 16)
+
+                pointB =
+                    Point2d.millimeters xOffset (yOffset - 32)
+
+                pointC =
+                    Point2d.millimeters (xOffset + 16) (yOffset + 16)
+            in
+            Ui.Pattern.drawCircle resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "Circle"
+                }
+                { circle2d =
+                    Circle2d.throughPoints pointA pointB pointC
+                        |> Maybe.withDefault
+                            (Circle2d.withRadius (Length.millimeters 32)
+                                (Point2d.millimeters xOffset yOffset)
+                            )
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughThreePoints
+                            { pointA =
+                                { point2d = pointA
+                                , info = Nothing
+                                }
+                            , pointB =
+                                { point2d = pointB
+                                , info = Nothing
+                                }
+                            , pointC =
+                                { point2d = pointC
+                                , info = Nothing
+                                }
+                            }
+                }
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1098,6 +1160,19 @@ viewObjects model =
             , throughTwoPoints False True -24
             , throughTwoPoints True False 24
             , throughTwoPoints True True 64
+            ]
+        , Ui.Typography.headingThree "Circles"
+        , viewObject 224
+            [ withRadius False False -96 -48
+            , withRadius False True 16 -48
+            , withRadius True False -48 48
+            , withRadius True True 64 48
+            ]
+        , viewObject 224
+            [ throughThreePoints False False -96 -48
+            , throughThreePoints False True 16 -48
+            , throughThreePoints True False -48 48
+            , throughThreePoints True True 64 48
             ]
         ]
 
