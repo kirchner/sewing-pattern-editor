@@ -116,6 +116,13 @@ drawPoint resolution cfg point =
     let
         point2d =
             Point2d.at resolution point.point2d
+
+        offsetPointFactor =
+            if cfg.focused then
+                9.5
+
+            else
+                5
     in
     Svg.g []
         [ if cfg.focused || cfg.hovered then
@@ -124,7 +131,7 @@ drawPoint resolution cfg point =
           else
             Svg.text ""
         , if cfg.focused || cfg.hovered then
-            pointInfo resolution cfg point
+            pointInfo resolution cfg.hovered cfg.focused offsetPointFactor point
 
           else
             Svg.text ""
@@ -155,8 +162,8 @@ pointLabel point2d label =
         [ Svg.text label ]
 
 
-pointInfo : Resolution -> PointConfig -> Point coordinates -> Svg msg
-pointInfo resolution cfg point =
+pointInfo : Resolution -> Bool -> Bool -> Float -> Point coordinates -> Svg msg
+pointInfo resolution hovered focused offsetPointFactor point =
     let
         point2d =
             Point2d.at resolution point.point2d
@@ -192,13 +199,6 @@ pointInfo resolution cfg point =
                                 |> Point2d.translateBy
                                     (Vector2d.withLength (pixels offsetPointFactor) direction)
 
-                offsetPointFactor =
-                    if cfg.focused then
-                        9.5
-
-                    else
-                        5
-
                 length =
                     Vector2d.from offsetPoint2d offsetBasePoint2d
                         |> Vector2d.length
@@ -206,18 +206,19 @@ pointInfo resolution cfg point =
 
                 color =
                     toColor <|
-                        if cfg.hovered then
+                        if hovered then
                             Ui.Color.primary
 
                         else
                             Ui.Color.black
             in
             Svg.g []
-                [ actualInfoPoint cfg.hovered basePoint2d
+                [ pointInfo resolution hovered focused 3 info.basePoint
+                , actualInfoPoint hovered basePoint2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
-                        if cfg.focused then
+                        if focused then
                             "1.5"
 
                         else
@@ -226,7 +227,7 @@ pointInfo resolution cfg point =
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from offsetPoint2d offsetBasePoint2d)
-                , lineLabel cfg.hovered basePoint2d point2d info.label
+                , lineLabel hovered basePoint2d point2d info.label
                 ]
 
         Just (BetweenTwoPoints info) ->
@@ -287,27 +288,22 @@ pointInfo resolution cfg point =
                         |> Vector2d.length
                         |> Pixels.inPixels
 
-                offsetPointFactor =
-                    if cfg.focused then
-                        9.5
-
-                    else
-                        5
-
                 color =
                     toColor <|
-                        if cfg.hovered then
+                        if hovered then
                             Ui.Color.primary
 
                         else
                             Ui.Color.black
             in
             Svg.g []
-                [ actualInfoPoint cfg.hovered basePointA2d
+                [ -- BASE POINT A
+                  pointInfo resolution hovered focused 3 info.basePointA
+                , actualInfoPoint hovered basePointA2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
-                        if cfg.focused then
+                        if focused then
                             "1.5"
 
                         else
@@ -316,12 +312,15 @@ pointInfo resolution cfg point =
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from offsetPointA2d offsetBasePointA2d)
-                , lineLabel cfg.hovered basePointA2d point2d info.label
-                , actualInfoPoint cfg.hovered basePointB2d
+                , lineLabel hovered basePointA2d point2d info.label
+
+                -- BASE POINT B
+                , pointInfo resolution hovered focused 3 info.basePointB
+                , actualInfoPoint hovered basePointB2d
                 , Svg.lineSegment2d
                     [ Svg.Attributes.stroke color
                     , Svg.Attributes.strokeWidth <|
-                        if cfg.focused then
+                        if focused then
                             "1.5"
 
                         else
@@ -336,17 +335,23 @@ pointInfo resolution cfg point =
             Svg.g []
                 [ case info.intersectableA of
                     IntersectableAxis axisA ->
-                        actualAxis cfg.hovered cfg.focused (Axis2d.at resolution axisA.axis2d)
+                        Svg.g []
+                            [ axisInfo resolution hovered axisA
+                            , actualAxis hovered focused (Axis2d.at resolution axisA.axis2d)
+                            ]
 
                     IntersectableCircle _ ->
                         Svg.text ""
                 , case info.intersectableB of
                     IntersectableAxis axisB ->
-                        actualAxis cfg.hovered cfg.focused (Axis2d.at resolution axisB.axis2d)
+                        Svg.g []
+                            [ axisInfo resolution hovered axisB
+                            , actualAxis hovered focused (Axis2d.at resolution axisB.axis2d)
+                            ]
 
                     IntersectableCircle _ ->
                         Svg.text ""
-                , if cfg.focused then
+                , if focused then
                     Svg.circle2d
                         [ Svg.Attributes.fill (toColor Ui.Color.white) ]
                         (Circle2d.withRadius (pixels 8) point2d)
@@ -478,7 +483,7 @@ drawAxis resolution cfg axis =
           else
             Svg.text ""
         , if cfg.focused || cfg.hovered then
-            axisInfo resolution cfg axis
+            axisInfo resolution cfg.hovered axis
 
           else
             Svg.text ""
@@ -510,19 +515,19 @@ axisLabel axis2d label =
         [ Svg.text label ]
 
 
-axisInfo : Resolution -> AxisConfig -> Axis coordinates -> Svg msg
-axisInfo resolution cfg axis =
+axisInfo : Resolution -> Bool -> Axis coordinates -> Svg msg
+axisInfo resolution hovered axis =
     case axis.info of
         Nothing ->
             Svg.text ""
 
         Just (ThroughOnePoint info) ->
-            actualInfoPoint cfg.hovered (Point2d.at resolution info.point.point2d)
+            actualInfoPoint hovered (Point2d.at resolution info.point.point2d)
 
         Just (ThroughTwoPoints info) ->
             Svg.g []
-                [ actualInfoPoint cfg.hovered (Point2d.at resolution info.pointA.point2d)
-                , actualInfoPoint cfg.hovered (Point2d.at resolution info.pointB.point2d)
+                [ actualInfoPoint hovered (Point2d.at resolution info.pointA.point2d)
+                , actualInfoPoint hovered (Point2d.at resolution info.pointB.point2d)
                 ]
 
 

@@ -861,6 +861,7 @@ viewObjects model =
             Pixels.pixels 1
                 |> Quantity.per (Length.millimeters 1)
 
+        -- POINTS
         origin focused hovered xOffset =
             Ui.Pattern.drawPoint resolution
                 { focused = focused
@@ -938,6 +939,74 @@ viewObjects model =
                             }
                 }
 
+        fromOnePointFromOnePoint focused hovered xOffset =
+            Ui.Pattern.drawPoint resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset 64
+                , info =
+                    Just <|
+                        Ui.Pattern.FromOnePoint
+                            { basePoint =
+                                { point2d = Point2d.millimeters xOffset -64
+                                , info =
+                                    Just <|
+                                        Ui.Pattern.FromOnePoint
+                                            { basePoint =
+                                                { point2d = Point2d.millimeters (xOffset - 32) -64
+                                                , info = Nothing
+                                                }
+                                            , label = "width"
+                                            }
+                                }
+                            , label = "height"
+                            }
+                }
+
+        lineLinePointThroughOnePoint focused hovered xOffset yOffset =
+            Ui.Pattern.drawPoint resolution
+                { focused = focused
+                , hovered = hovered
+                , name = "A42"
+                }
+                { point2d = Point2d.millimeters xOffset yOffset
+                , info =
+                    Just <|
+                        Ui.Pattern.Intersection
+                            { intersectableA =
+                                IntersectableAxis
+                                    { axis2d =
+                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                            Direction2d.positiveY
+                                    , info =
+                                        Just <|
+                                            Ui.Pattern.ThroughOnePoint
+                                                { point =
+                                                    { point2d = Point2d.millimeters xOffset (yOffset - 48)
+                                                    , info = Nothing
+                                                    }
+                                                }
+                                    }
+                            , intersectableB =
+                                IntersectableAxis
+                                    { axis2d =
+                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
+                                            Direction2d.positiveX
+                                    , info =
+                                        Just <|
+                                            Ui.Pattern.ThroughOnePoint
+                                                { point =
+                                                    { point2d = Point2d.millimeters (xOffset - 32) yOffset
+                                                    , info = Nothing
+                                                    }
+                                                }
+                                    }
+                            }
+                }
+
+        -- AXES
         throughOnePoint focused hovered xOffset =
             Ui.Pattern.drawAxis resolution
                 { focused = focused
@@ -1004,6 +1073,18 @@ viewObjects model =
             , lineLinePoint False True 32 -16
             , lineLinePoint True False -32 16
             , lineLinePoint True True 96 48
+            ]
+        , viewObject 192
+            [ fromOnePointFromOnePoint False False -96
+            , fromOnePointFromOnePoint False True -32
+            , fromOnePointFromOnePoint True False 32
+            , fromOnePointFromOnePoint True True 96
+            ]
+        , viewObject 224
+            [ lineLinePointThroughOnePoint False False -96 -48
+            , lineLinePointThroughOnePoint False True 32 -16
+            , lineLinePointThroughOnePoint True False -32 16
+            , lineLinePointThroughOnePoint True True 96 48
             ]
         , Ui.Typography.headingThree "Axes"
         , viewObject 192
