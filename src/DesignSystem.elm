@@ -2,6 +2,7 @@ module DesignSystem exposing (main)
 
 import Axis2d
 import Browser exposing (Document, UrlRequest(..))
+import Browser.Dom
 import Browser.Events
 import Browser.Navigation exposing (Key)
 import Circle2d
@@ -19,12 +20,14 @@ import Html.Events
 import Json.Decode as Decode
 import Length
 import LineSegment2d
+import List.Extra as List
 import Pixels
 import Point2d
 import QuadraticSpline2d
 import Quantity
 import Svg exposing (Svg)
 import Svg.Attributes
+import Task
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
@@ -64,6 +67,19 @@ type alias Model =
     , positionAppended : Position
     , positionNested : Position
     , showFormula : Bool
+    , objectsContainerWidth : Maybe Float
+    , points : List (Object (Ui.Pattern.Point ()))
+    , axes : List (Object (Ui.Pattern.Axis ()))
+    , circles : List (Object (Ui.Pattern.Circle ()))
+    , curves : List (Object (Ui.Pattern.Curve ()))
+    }
+
+
+type alias Object object =
+    { focused : Bool
+    , hovered : Bool
+    , name : String
+    , object : object
     }
 
 
@@ -236,6 +252,9 @@ init { width, height } url key =
                 { width = width
                 , height = height
                 }
+
+        objects =
+            initObjects
     in
     changeRouteTo (routeFromUrl url)
         { key = key
@@ -254,7 +273,309 @@ init { width, height } url key =
         , positionAppended = Left
         , positionNested = Left
         , showFormula = True
+        , objectsContainerWidth = Nothing
+        , points = objects.points
+        , axes = objects.axes
+        , circles = objects.circles
+        , curves = objects.curves
         }
+
+
+initObjects :
+    { points : List (Object (Ui.Pattern.Point ()))
+    , axes : List (Object (Ui.Pattern.Axis ()))
+    , circles : List (Object (Ui.Pattern.Circle ()))
+    , curves : List (Object (Ui.Pattern.Curve ()))
+    }
+initObjects =
+    let
+        point2dA =
+            Point2d.millimeters -96 -64
+
+        point2dB =
+            Point2d.millimeters -96 64
+
+        point2dC =
+            Point2d.millimeters -96 32
+
+        point2dD =
+            Point2d.millimeters 0 32
+
+        point2dDHelp =
+            Point2d.millimeters 0 0
+
+        point2dE =
+            Point2d.millimeters 64 -32
+
+        point2dEHelp =
+            Point2d.millimeters 64 -64
+
+        point2dQuadraticSplineHelp =
+            Point2d.millimeters 64 -80
+
+        point2dCubicSplineHelp1 =
+            Point2d.millimeters -32 80
+
+        point2dCubicSplineHelp2 =
+            Point2d.millimeters 32 80
+
+        toObjects =
+            List.map toObject
+
+        toObject ( name, object ) =
+            { focused = False
+            , hovered = False
+            , name = name
+            , object = object
+            }
+    in
+    { points =
+        toObjects
+            [ ( "A"
+              , { point2d = point2dA
+                , info = Just Ui.Pattern.Origin
+                }
+              )
+            , ( "B"
+              , { point2d = point2dB
+                , info =
+                    Just <|
+                        Ui.Pattern.FromOnePoint
+                            { basePoint =
+                                { point2d = point2dA
+                                , info = Nothing
+                                }
+                            , label = "height"
+                            }
+                }
+              )
+            , ( "C"
+              , { point2d = point2dC
+                , info =
+                    Just <|
+                        Ui.Pattern.BetweenTwoPoints
+                            { basePointA =
+                                { point2d = point2dA
+                                , info = Nothing
+                                }
+                            , basePointB =
+                                { point2d = point2dB
+                                , info = Nothing
+                                }
+                            , label = "height"
+                            }
+                }
+              )
+            , ( "D"
+              , { point2d = point2dD
+                , info =
+                    Just <|
+                        Ui.Pattern.Intersection
+                            { intersectableA =
+                                IntersectableAxis
+                                    { axis2d = Axis2d.through point2dC Direction2d.positiveX
+                                    , info =
+                                        Just <|
+                                            Ui.Pattern.ThroughOnePoint
+                                                { point =
+                                                    { point2d = point2dC
+                                                    , info = Nothing
+                                                    }
+                                                }
+                                    }
+                            , intersectableB =
+                                IntersectableAxis
+                                    { axis2d = Axis2d.through point2dDHelp Direction2d.positiveY
+                                    , info =
+                                        Just <|
+                                            Ui.Pattern.ThroughOnePoint
+                                                { point =
+                                                    { point2d = point2dDHelp
+                                                    , info =
+                                                        Just <|
+                                                            Ui.Pattern.FromOnePoint
+                                                                { basePoint =
+                                                                    { point2d = point2dA
+                                                                    , info = Nothing
+                                                                    }
+                                                                , label = "distance"
+                                                                }
+                                                    }
+                                                }
+                                    }
+                            }
+                }
+              )
+            , ( "E"
+              , { point2d = point2dE
+                , info =
+                    Just <|
+                        Ui.Pattern.FromOnePoint
+                            { basePoint =
+                                { point2d = point2dEHelp
+                                , info =
+                                    Just <|
+                                        Ui.Pattern.FromOnePoint
+                                            { basePoint =
+                                                { point2d = point2dA
+                                                , info = Nothing
+                                                }
+                                            , label = "b"
+                                            }
+                                }
+                            , label = "a"
+                            }
+                }
+              )
+            ]
+    , axes =
+        toObjects
+            [ ( "Axis1"
+              , { axis2d = Axis2d.through point2dE Direction2d.positiveX
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughOnePoint
+                            { point =
+                                { point2d = point2dE
+                                , info = Nothing
+                                }
+                            }
+                }
+              )
+            , ( "Axis2"
+              , { axis2d =
+                    Direction2d.from point2dB point2dD
+                        |> Maybe.map (Axis2d.through point2dB)
+                        |> Maybe.withDefault Axis2d.x
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughTwoPoints
+                            { pointA =
+                                { point2d = point2dB
+                                , info = Nothing
+                                }
+                            , pointB =
+                                { point2d = point2dD
+                                , info = Nothing
+                                }
+                            }
+                }
+              )
+            ]
+    , circles =
+        toObjects
+            [ ( "Circle1"
+              , { circle2d = Circle2d.withRadius (Length.millimeters 32) point2dE
+                , info =
+                    Just <|
+                        Ui.Pattern.WithRadius
+                            { centerPoint =
+                                { point2d = point2dE
+                                , info = Nothing
+                                }
+                            , label = "r"
+                            }
+                }
+              )
+            , ( "Circle2"
+              , { circle2d =
+                    Circle2d.throughPoints point2dB point2dC point2dD
+                        |> Maybe.withDefault (Circle2d.withRadius (Length.meters 0) Point2d.origin)
+                , info =
+                    Just <|
+                        Ui.Pattern.ThroughThreePoints
+                            { pointA = { point2d = point2dB, info = Nothing }
+                            , pointB = { point2d = point2dC, info = Nothing }
+                            , pointC = { point2d = point2dD, info = Nothing }
+                            }
+                }
+              )
+            ]
+    , curves =
+        toObjects
+            [ ( "LineSegment"
+              , Ui.Pattern.LineSegment
+                    { lineSegment2d = LineSegment2d.from point2dD point2dE
+                    , info =
+                        Just <|
+                            { startPoint =
+                                { point2d = point2dD
+                                , info = Nothing
+                                }
+                            , endPoint =
+                                { point2d = point2dE
+                                , info = Nothing
+                                }
+                            }
+                    }
+              )
+            , ( "QuadraticSpline"
+              , Ui.Pattern.QuadraticSpline
+                    { quadraticSpline2d =
+                        QuadraticSpline2d.fromControlPoints
+                            point2dA
+                            point2dQuadraticSplineHelp
+                            point2dE
+                    , info =
+                        Just <|
+                            { firstControlPoint =
+                                { point2d = point2dA
+                                , info = Nothing
+                                }
+                            , secondControlPoint =
+                                { point2d = point2dQuadraticSplineHelp
+                                , info =
+                                    Just <|
+                                        Ui.Pattern.FromOnePoint
+                                            { basePoint =
+                                                { point2d = point2dE
+                                                , info = Nothing
+                                                }
+                                            , label = "length"
+                                            }
+                                }
+                            , thirdControlPoint =
+                                { point2d = point2dE
+                                , info = Nothing
+                                }
+                            }
+                    }
+              )
+            , ( "CubicSpline"
+              , Ui.Pattern.CubicSpline
+                    { cubicSpline2d =
+                        CubicSpline2d.fromControlPoints
+                            point2dC
+                            point2dCubicSplineHelp1
+                            point2dCubicSplineHelp2
+                            point2dE
+                    , info =
+                        Just <|
+                            { firstControlPoint = { point2d = point2dC, info = Nothing }
+                            , secondControlPoint =
+                                { point2d = point2dCubicSplineHelp1
+                                , info =
+                                    Just <|
+                                        Ui.Pattern.FromOnePoint
+                                            { basePoint = { point2d = point2dC, info = Nothing }
+                                            , label = "a"
+                                            }
+                                }
+                            , thirdControlPoint =
+                                { point2d = point2dCubicSplineHelp2
+                                , info =
+                                    Just <|
+                                        Ui.Pattern.FromOnePoint
+                                            { basePoint = { point2d = point2dE, info = Nothing }
+                                            , label = "b"
+                                            }
+                                }
+                            , fourthControlPoint = { point2d = point2dE, info = Nothing }
+                            }
+                    }
+              )
+            ]
+    }
 
 
 
@@ -862,479 +1183,106 @@ viewObjects : Model -> Element Msg
 viewObjects model =
     let
         resolution =
-            Pixels.pixels 1
+            Pixels.pixels (Maybe.withDefault 336 model.objectsContainerWidth / 336)
                 |> Quantity.per (Length.millimeters 1)
-
-        -- POINTS
-        origin focused hovered xOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset 0
-                , info = Just Ui.Pattern.Origin
-                }
-
-        fromOnePoint focused hovered xOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset 48
-                , info =
-                    Just <|
-                        Ui.Pattern.FromOnePoint
-                            { basePoint =
-                                { point2d = Point2d.millimeters (xOffset - 32) -64
-                                , info = Nothing
-                                }
-                            , label = "height"
-                            }
-                }
-
-        betweenTwoPoints focused hovered xOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset 0
-                , info =
-                    Just <|
-                        Ui.Pattern.BetweenTwoPoints
-                            { basePointA =
-                                { point2d = Point2d.millimeters (xOffset + 32) -64
-                                , info = Nothing
-                                }
-                            , basePointB =
-                                { point2d = Point2d.millimeters (xOffset - 32) 64
-                                , info = Nothing
-                                }
-                            , label = "height"
-                            }
-                }
-
-        lineLinePoint focused hovered xOffset yOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset yOffset
-                , info =
-                    Just <|
-                        Ui.Pattern.Intersection
-                            { intersectableA =
-                                IntersectableAxis
-                                    { axis2d =
-                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                            Direction2d.positiveY
-                                    , info = Nothing
-                                    }
-                            , intersectableB =
-                                IntersectableAxis
-                                    { axis2d =
-                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                            Direction2d.positiveX
-                                    , info = Nothing
-                                    }
-                            }
-                }
-
-        fromOnePointFromOnePoint focused hovered xOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset 64
-                , info =
-                    Just <|
-                        Ui.Pattern.FromOnePoint
-                            { basePoint =
-                                { point2d = Point2d.millimeters xOffset -64
-                                , info =
-                                    Just <|
-                                        Ui.Pattern.FromOnePoint
-                                            { basePoint =
-                                                { point2d = Point2d.millimeters (xOffset - 32) -64
-                                                , info = Nothing
-                                                }
-                                            , label = "width"
-                                            }
-                                }
-                            , label = "height"
-                            }
-                }
-
-        lineLinePointThroughOnePoint focused hovered xOffset yOffset =
-            Ui.Pattern.drawPoint resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "A42"
-                }
-                { point2d = Point2d.millimeters xOffset yOffset
-                , info =
-                    Just <|
-                        Ui.Pattern.Intersection
-                            { intersectableA =
-                                IntersectableAxis
-                                    { axis2d =
-                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                            Direction2d.positiveY
-                                    , info =
-                                        Just <|
-                                            Ui.Pattern.ThroughOnePoint
-                                                { point =
-                                                    { point2d = Point2d.millimeters xOffset (yOffset - 48)
-                                                    , info = Nothing
-                                                    }
-                                                }
-                                    }
-                            , intersectableB =
-                                IntersectableAxis
-                                    { axis2d =
-                                        Axis2d.through (Point2d.millimeters xOffset yOffset)
-                                            Direction2d.positiveX
-                                    , info =
-                                        Just <|
-                                            Ui.Pattern.ThroughOnePoint
-                                                { point =
-                                                    { point2d = Point2d.millimeters (xOffset - 32) yOffset
-                                                    , info = Nothing
-                                                    }
-                                                }
-                                    }
-                            }
-                }
-
-        -- AXES
-        throughOnePoint focused hovered xOffset =
-            Ui.Pattern.drawAxis resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Axis"
-                }
-                { axis2d = Axis2d.through (Point2d.millimeters xOffset 0) Direction2d.positiveY
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughOnePoint
-                            { point =
-                                { point2d = Point2d.millimeters xOffset 0
-                                , info = Nothing
-                                }
-                            }
-                }
-
-        throughTwoPoints focused hovered yOffset =
-            Ui.Pattern.drawAxis resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Axis"
-                }
-                { axis2d = Axis2d.through (Point2d.millimeters -96 yOffset) Direction2d.positiveX
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughTwoPoints
-                            { pointA =
-                                { point2d = Point2d.millimeters -96 yOffset
-                                , info = Nothing
-                                }
-                            , pointB =
-                                { point2d = Point2d.millimeters 96 yOffset
-                                , info = Nothing
-                                }
-                            }
-                }
-
-        -- CIRCLES
-        withRadius focused hovered xOffset yOffset =
-            Ui.Pattern.drawCircle resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Circle"
-                }
-                { circle2d =
-                    Circle2d.withRadius (Length.millimeters 32)
-                        (Point2d.millimeters xOffset yOffset)
-                , info =
-                    Just <|
-                        Ui.Pattern.WithRadius
-                            { centerPoint =
-                                { point2d = Point2d.millimeters xOffset yOffset
-                                , info = Nothing
-                                }
-                            , label = "r"
-                            }
-                }
-
-        throughThreePoints focused hovered xOffset yOffset =
-            let
-                pointA =
-                    Point2d.millimeters (xOffset - 16) (yOffset + 16)
-
-                pointB =
-                    Point2d.millimeters xOffset (yOffset - 32)
-
-                pointC =
-                    Point2d.millimeters (xOffset + 16) (yOffset + 16)
-            in
-            Ui.Pattern.drawCircle resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Circle"
-                }
-                { circle2d =
-                    Circle2d.throughPoints pointA pointB pointC
-                        |> Maybe.withDefault
-                            (Circle2d.withRadius (Length.millimeters 32)
-                                (Point2d.millimeters xOffset yOffset)
-                            )
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughThreePoints
-                            { pointA =
-                                { point2d = pointA
-                                , info = Nothing
-                                }
-                            , pointB =
-                                { point2d = pointB
-                                , info = Nothing
-                                }
-                            , pointC =
-                                { point2d = pointC
-                                , info = Nothing
-                                }
-                            }
-                }
-
-        -- CURVES
-        lineSegment focused hovered xOffset =
-            Ui.Pattern.drawCurve resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Curve"
-                }
-                (Ui.Pattern.LineSegment
-                    { lineSegment2d =
-                        LineSegment2d.from
-                            (Point2d.millimeters (xOffset + 32) -64)
-                            (Point2d.millimeters (xOffset - 32) 64)
-                    , info =
-                        Just <|
-                            { startPoint =
-                                { point2d = Point2d.millimeters (xOffset + 32) -64
-                                , info = Nothing
-                                }
-                            , endPoint =
-                                { point2d = Point2d.millimeters (xOffset - 32) 64
-                                , info = Nothing
-                                }
-                            }
-                    }
-                )
-
-        quadraticSpline focused hovered xOffset =
-            let
-                firstControlPoint =
-                    Point2d.millimeters (xOffset + 24) -64
-
-                secondControlPoint =
-                    Point2d.millimeters (xOffset + 16) 32
-
-                thirdControlPoint =
-                    Point2d.millimeters (xOffset - 32) 64
-            in
-            Ui.Pattern.drawCurve resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Curve"
-                }
-                (Ui.Pattern.QuadraticSpline
-                    { quadraticSpline2d =
-                        QuadraticSpline2d.fromControlPoints
-                            firstControlPoint
-                            secondControlPoint
-                            thirdControlPoint
-                    , info =
-                        Just <|
-                            { firstControlPoint =
-                                { point2d = firstControlPoint
-                                , info = Nothing
-                                }
-                            , secondControlPoint =
-                                { point2d = secondControlPoint
-                                , info = Nothing
-                                }
-                            , thirdControlPoint =
-                                { point2d = thirdControlPoint
-                                , info = Nothing
-                                }
-                            }
-                    }
-                )
-
-        cubicSpline focused hovered xOffset =
-            let
-                firstControlPoint =
-                    Point2d.millimeters (xOffset + 24) -64
-
-                secondControlPoint =
-                    Point2d.millimeters (xOffset + 16) 0
-
-                thirdControlPoint =
-                    Point2d.millimeters xOffset 48
-
-                fourthControlPoint =
-                    Point2d.millimeters (xOffset - 32) 64
-            in
-            Ui.Pattern.drawCurve resolution
-                { focused = focused
-                , hovered = hovered
-                , name = "Curve"
-                }
-                (Ui.Pattern.CubicSpline
-                    { cubicSpline2d =
-                        CubicSpline2d.fromControlPoints
-                            firstControlPoint
-                            secondControlPoint
-                            thirdControlPoint
-                            fourthControlPoint
-                    , info =
-                        Just <|
-                            { firstControlPoint =
-                                { point2d = firstControlPoint
-                                , info = Nothing
-                                }
-                            , secondControlPoint =
-                                { point2d = secondControlPoint
-                                , info = Nothing
-                                }
-                            , thirdControlPoint =
-                                { point2d = thirdControlPoint
-                                , info = Nothing
-                                }
-                            , fourthControlPoint =
-                                { point2d = fourthControlPoint
-                                , info = Nothing
-                                }
-                            }
-                    }
-                )
     in
     Element.column
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
+        , Element.htmlAttribute (Html.Attributes.id "objects-container")
         ]
-        [ Ui.Typography.headingThree "Points"
-        , viewObject 96
-            [ origin False False -96
-            , origin False True -32
-            , origin True False 32
-            , origin True True 96
-            ]
-        , viewObject 192
-            [ fromOnePoint False False -96
-            , fromOnePoint False True -32
-            , fromOnePoint True False 32
-            , fromOnePoint True True 96
-            ]
-        , viewObject 192
-            [ betweenTwoPoints False False -96
-            , betweenTwoPoints False True -32
-            , betweenTwoPoints True False 32
-            , betweenTwoPoints True True 96
-            ]
-        , viewObject 224
-            [ lineLinePoint False False -96 -48
-            , lineLinePoint False True 32 -16
-            , lineLinePoint True False -32 16
-            , lineLinePoint True True 96 48
-            ]
-        , viewObject 192
-            [ fromOnePointFromOnePoint False False -96
-            , fromOnePointFromOnePoint False True -32
-            , fromOnePointFromOnePoint True False 32
-            , fromOnePointFromOnePoint True True 96
-            ]
-        , viewObject 224
-            [ lineLinePointThroughOnePoint False False -96 -48
-            , lineLinePointThroughOnePoint False True 32 -16
-            , lineLinePointThroughOnePoint True False -32 16
-            , lineLinePointThroughOnePoint True True 96 48
-            ]
-        , Ui.Typography.headingThree "Axes"
-        , viewObject 192
-            [ throughOnePoint False False -96
-            , throughOnePoint False True -32
-            , throughOnePoint True False 32
-            , throughOnePoint True True 96
-            ]
-        , viewObject 224
-            [ throughTwoPoints False False -64
-            , throughTwoPoints False True -24
-            , throughTwoPoints True False 24
-            , throughTwoPoints True True 64
-            ]
-        , Ui.Typography.headingThree "Circles"
-        , viewObject 224
-            [ withRadius False False -96 -48
-            , withRadius False True 16 -48
-            , withRadius True False -48 48
-            , withRadius True True 64 48
-            ]
-        , viewObject 224
-            [ throughThreePoints False False -96 -48
-            , throughThreePoints False True 16 -48
-            , throughThreePoints True False -48 48
-            , throughThreePoints True True 64 48
-            ]
-        , Ui.Typography.headingThree "Curves"
-        , viewObject 192
-            [ lineSegment False False -96
-            , lineSegment False True -32
-            , lineSegment True False 32
-            , lineSegment True True 96
-            ]
-        , viewObject 192
-            [ quadraticSpline False False -96
-            , quadraticSpline False True -32
-            , quadraticSpline True False 32
-            , quadraticSpline True True 96
-            ]
-        , viewObject 192
-            [ cubicSpline False False -96
-            , cubicSpline False True -32
-            , cubicSpline True False 32
-            , cubicSpline True True 96
-            ]
-        ]
-
-
-viewObject : Float -> List (Svg Msg) -> Element Msg
-viewObject height svgElements =
-    let
-        width =
-            5 * 64
-    in
-    Element.el [ Border.width 1, Border.color Ui.Color.grayDark ] <|
-        Element.html <|
-            Svg.svg
-                [ Svg.Attributes.viewBox <|
-                    String.join " "
-                        [ String.fromFloat (width / -2)
-                        , String.fromFloat (height / -2)
-                        , String.fromFloat width
-                        , String.fromFloat height
-                        ]
-                , Html.Attributes.style "user-select" "none"
-                , Html.Attributes.style "width" (String.fromFloat width ++ "px")
-                , Html.Attributes.style "height" (String.fromFloat height ++ "px")
-                , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+        [ viewObject model.objectsContainerWidth <|
+            List.concat
+                [ List.indexedMap
+                    (\index { focused, hovered, name, object } ->
+                        Ui.Pattern.drawPoint resolution
+                            { focused = focused
+                            , hovered = hovered
+                            , name = name
+                            , onHover = HoveredPoint index
+                            , onLeave = LeftPoint index
+                            , onFocus = FocusedPoint index
+                            , onBlur = BluredPoint index
+                            }
+                            object
+                    )
+                    model.points
+                , List.indexedMap
+                    (\index { focused, hovered, name, object } ->
+                        Ui.Pattern.drawAxis resolution
+                            { focused = focused
+                            , hovered = hovered
+                            , name = name
+                            , onHover = HoveredAxis index
+                            , onLeave = LeftAxis index
+                            , onFocus = FocusedAxis index
+                            , onBlur = BluredAxis index
+                            }
+                            object
+                    )
+                    model.axes
+                , List.indexedMap
+                    (\index { focused, hovered, name, object } ->
+                        Ui.Pattern.drawCircle resolution
+                            { focused = focused
+                            , hovered = hovered
+                            , name = name
+                            , onHover = HoveredCircle index
+                            , onLeave = LeftCircle index
+                            , onFocus = FocusedCircle index
+                            , onBlur = BluredCircle index
+                            }
+                            object
+                    )
+                    model.circles
+                , List.indexedMap
+                    (\index { focused, hovered, name, object } ->
+                        Ui.Pattern.drawCurve resolution
+                            { focused = focused
+                            , hovered = hovered
+                            , name = name
+                            , onHover = HoveredCurve index
+                            , onLeave = LeftCurve index
+                            , onFocus = FocusedCurve index
+                            , onBlur = BluredCurve index
+                            }
+                            object
+                    )
+                    model.curves
                 ]
-                svgElements
+        ]
+
+
+viewObject : Maybe Float -> List (Svg Msg) -> Element Msg
+viewObject maybeWidth svgElements =
+    case maybeWidth of
+        Nothing ->
+            Element.none
+
+        Just width ->
+            let
+                height =
+                    2 * width / 3
+            in
+            Element.el
+                [ Border.width 1
+                , Border.color Ui.Color.grayDark
+                , Element.width Element.fill
+                ]
+                (Element.html <|
+                    Svg.svg
+                        [ Svg.Attributes.viewBox <|
+                            String.join " "
+                                [ String.fromFloat (width / -2)
+                                , String.fromFloat (height / -2)
+                                , String.fromFloat width
+                                , String.fromFloat height
+                                ]
+                        , Html.Attributes.style "user-select" "none"
+                        , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                        ]
+                        svgElements
+                )
 
 
 
@@ -1559,6 +1507,28 @@ type Msg
     | ChangedPositionNested Position
     | ChangedFormula String
     | ClickedShowFormula
+    | RenderedPage
+    | GotViewportOfObjectsContainer (Result Browser.Dom.Error Browser.Dom.Viewport)
+      -- POINTS
+    | HoveredPoint Int
+    | LeftPoint Int
+    | FocusedPoint Int
+    | BluredPoint Int
+      -- AXES
+    | HoveredAxis Int
+    | LeftAxis Int
+    | FocusedAxis Int
+    | BluredAxis Int
+      -- CIRCLES
+    | HoveredCircle Int
+    | LeftCircle Int
+    | FocusedCircle Int
+    | BluredCircle Int
+      -- CURVES
+    | HoveredCurve Int
+    | LeftCurve Int
+    | FocusedCurve Int
+    | BluredCurve Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1584,8 +1554,8 @@ update msg model =
                         , height = height
                         }
             in
-            if class /= model.deviceClass || orientation /= model.orientation then
-                ( { model
+            ( if class /= model.deviceClass || orientation /= model.orientation then
+                { model
                     | deviceClass = class
                     , orientation = orientation
                     , showNavigation =
@@ -1594,12 +1564,13 @@ update msg model =
 
                         else
                             model.showNavigation
-                  }
-                , Cmd.none
-                )
+                }
 
-            else
-                ( model, Cmd.none )
+              else
+                model
+            , Browser.Dom.getViewportOf "objects-container"
+                |> Task.attempt GotViewportOfObjectsContainer
+            )
 
         ClickedNavigationMenu ->
             ( { model | showNavigation = not model.showNavigation }, Cmd.none )
@@ -1659,6 +1630,136 @@ update msg model =
         ClickedShowFormula ->
             ( { model | showFormula = not model.showFormula }, Cmd.none )
 
+        RenderedPage ->
+            ( model
+            , Browser.Dom.getViewportOf "objects-container"
+                |> Task.attempt GotViewportOfObjectsContainer
+            )
+
+        GotViewportOfObjectsContainer (Err error) ->
+            ( model, Cmd.none )
+
+        GotViewportOfObjectsContainer (Ok { viewport }) ->
+            ( { model | objectsContainerWidth = Just viewport.width }
+            , Cmd.none
+            )
+
+        -- POINTS
+        HoveredPoint index ->
+            ( { model
+                | points = List.updateAt index (\stuff -> { stuff | hovered = True }) model.points
+              }
+            , Cmd.none
+            )
+
+        LeftPoint index ->
+            ( { model
+                | points = List.updateAt index (\stuff -> { stuff | hovered = False }) model.points
+              }
+            , Cmd.none
+            )
+
+        FocusedPoint index ->
+            ( { model
+                | points = List.updateAt index (\stuff -> { stuff | focused = True }) model.points
+              }
+            , Cmd.none
+            )
+
+        BluredPoint index ->
+            ( { model
+                | points = List.updateAt index (\stuff -> { stuff | focused = False }) model.points
+              }
+            , Cmd.none
+            )
+
+        -- AXES
+        HoveredAxis index ->
+            ( { model
+                | axes = List.updateAt index (\stuff -> { stuff | hovered = True }) model.axes
+              }
+            , Cmd.none
+            )
+
+        LeftAxis index ->
+            ( { model
+                | axes = List.updateAt index (\stuff -> { stuff | hovered = False }) model.axes
+              }
+            , Cmd.none
+            )
+
+        FocusedAxis index ->
+            ( { model
+                | axes = List.updateAt index (\stuff -> { stuff | focused = True }) model.axes
+              }
+            , Cmd.none
+            )
+
+        BluredAxis index ->
+            ( { model
+                | axes = List.updateAt index (\stuff -> { stuff | focused = False }) model.axes
+              }
+            , Cmd.none
+            )
+
+        -- CIRCLES
+        HoveredCircle index ->
+            ( { model
+                | circles = List.updateAt index (\stuff -> { stuff | hovered = True }) model.circles
+              }
+            , Cmd.none
+            )
+
+        LeftCircle index ->
+            ( { model
+                | circles = List.updateAt index (\stuff -> { stuff | hovered = False }) model.circles
+              }
+            , Cmd.none
+            )
+
+        FocusedCircle index ->
+            ( { model
+                | circles = List.updateAt index (\stuff -> { stuff | focused = True }) model.circles
+              }
+            , Cmd.none
+            )
+
+        BluredCircle index ->
+            ( { model
+                | circles = List.updateAt index (\stuff -> { stuff | focused = False }) model.circles
+              }
+            , Cmd.none
+            )
+
+        -- CURVES
+        HoveredCurve index ->
+            ( { model
+                | curves = List.updateAt index (\stuff -> { stuff | hovered = True }) model.curves
+              }
+            , Cmd.none
+            )
+
+        LeftCurve index ->
+            ( { model
+                | curves = List.updateAt index (\stuff -> { stuff | hovered = False }) model.curves
+              }
+            , Cmd.none
+            )
+
+        FocusedCurve index ->
+            ( { model
+                | curves = List.updateAt index (\stuff -> { stuff | focused = True }) model.curves
+              }
+            , Cmd.none
+            )
+
+        BluredCurve index ->
+            ( { model
+                | curves = List.updateAt index (\stuff -> { stuff | focused = False }) model.curves
+              }
+            , Cmd.none
+            )
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -1685,4 +1786,9 @@ subscriptions model =
         [ Browser.Events.onResize ResizedBrowser
         , Sub.map DropdownMsg (Ui.Atom.Dropdown.subscriptions model.dropdown)
         , Sub.map DropdownAppendedMsg (Ui.Atom.Dropdown.subscriptions model.dropdownAppended)
+        , if model.objectsContainerWidth == Nothing then
+            Browser.Events.onAnimationFrame (\_ -> RenderedPage)
+
+          else
+            Sub.none
         ]
