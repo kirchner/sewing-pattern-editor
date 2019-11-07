@@ -30,7 +30,6 @@ module Pattern exposing
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
     , Curve2d(..)
-    , Detail2d, NextCurve2d(..), LastCurve2d(..)
     , Intersectable2d(..)
     , ComputeHelp(..)
     , Objects
@@ -129,8 +128,6 @@ module Pattern exposing
 
 @docs Curve2d
 
-@docs Detail2d, NextCurve2d, LastCurve2d
-
 @docs Intersectable2d
 
 @docs ComputeHelp
@@ -221,6 +218,7 @@ import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import CubicSpline2d exposing (CubicSpline2d)
+import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
@@ -1965,39 +1963,6 @@ computeCurve2d (Curve info) =
 
         TransformedCurve stuff ->
             StateResult.err NotComputableYet
-
-
-type alias Detail2d u c =
-    { firstPoint : Point2d u c
-    , nextCurves : List (NextCurve2d u c)
-    , lastCurve : LastCurve2d u c
-    }
-
-
-type NextCurve2d u c
-    = NextLineSegment2d
-        { endPoint : Point2d u c
-        }
-    | NextQuadraticSpline2d
-        { controlPoint : Point2d u c
-        , endPoint : Point2d u c
-        }
-    | NextCubicSpline2d
-        { startControlPoint : Point2d u c
-        , endControlPoint : Point2d u c
-        , endPoint : Point2d u c
-        }
-
-
-type LastCurve2d u c
-    = LastLineSegment2d
-    | LastQuadraticSpline2d
-        { controlPoint : Point2d u c
-        }
-    | LastCubicSpline2d
-        { startControlPoint : Point2d u c
-        , endControlPoint : Point2d u c
-        }
 
 
 detail2d : A Detail -> State Pattern (Result ComputeHelp (Detail2d Meters BottomLeft))
