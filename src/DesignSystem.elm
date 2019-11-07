@@ -1283,10 +1283,10 @@ viewObjects model =
                 , pointLayers.outlineList
 
                 -- EVENTS
-                , circleLayers.eventsList
-                , axisLayers.eventsList
-                , curveLayers.eventsList
-                , pointLayers.eventsList
+                , List.reverse circleLayers.eventsList
+                , List.reverse axisLayers.eventsList
+                , List.reverse curveLayers.eventsList
+                , List.reverse pointLayers.eventsList
                 ]
         ]
 

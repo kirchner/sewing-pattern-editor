@@ -25,6 +25,7 @@ module Ui.Pattern exposing
 
 import Angle
 import Axis2d exposing (Axis2d)
+import BoundingBox2d
 import Circle2d exposing (Circle2d)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
@@ -677,8 +678,8 @@ axisOutline axis2d =
                 )
     in
     Svg.g []
-        [ outline 5
-        , outline -5
+        [ outline 8
+        , outline -8
         ]
 
 
@@ -846,7 +847,7 @@ circleOutline circle2d =
         , Svg.Attributes.fill "none"
         ]
         (Circle2d.withRadius
-            (Quantity.plus (pixels 5) (Circle2d.radius circle2d))
+            (Quantity.plus (pixels 8) (Circle2d.radius circle2d))
             (Circle2d.centerPoint circle2d)
         )
 
@@ -995,25 +996,16 @@ lineSegmentInfo lineSegment resolution focused hovered =
 
 lineSegmentOutline : LineSegment2d Pixels coordinates -> Svg msg
 lineSegmentOutline lineSegment2d =
-    case LineSegment2d.direction lineSegment2d of
-        Nothing ->
-            Svg.text ""
-
-        Just direction ->
-            Svg.rectangle2d
-                [ Svg.Attributes.stroke (toColor Ui.Color.primary)
-                , Svg.Attributes.strokeWidth "2"
-                , Svg.Attributes.strokeDasharray "4 7"
-                , Svg.Attributes.strokeLinecap "round"
-                , Svg.Attributes.fill "none"
-                ]
-                (Rectangle2d.withDimensions
-                    ( Quantity.plus (pixels 10) (LineSegment2d.length lineSegment2d)
-                    , pixels 10
-                    )
-                    (Direction2d.toAngle direction)
-                    (LineSegment2d.midpoint lineSegment2d)
-                )
+    Svg.boundingBox2d
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke (toColor Ui.Color.primary)
+        , Svg.Attributes.strokeWidth "2"
+        , Svg.Attributes.strokeDasharray "4 7"
+        , Svg.Attributes.strokeLinecap "round"
+        ]
+        (LineSegment2d.boundingBox lineSegment2d
+            |> BoundingBox2d.expandBy (pixels 8)
+        )
 
 
 lineSegmentReferenced : LineSegment2d Pixels coordinates -> Bool -> Svg msg
@@ -1139,7 +1131,16 @@ quadraticSplineInfo quadraticSpline resolution focused hovered =
 
 quadraticSplineOutline : QuadraticSpline2d Pixels coordinates -> Svg msg
 quadraticSplineOutline quadraticSpline2d =
-    Svg.text "TODO"
+    Svg.boundingBox2d
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke (toColor Ui.Color.primary)
+        , Svg.Attributes.strokeWidth "2"
+        , Svg.Attributes.strokeDasharray "4 7"
+        , Svg.Attributes.strokeLinecap "round"
+        ]
+        (QuadraticSpline2d.boundingBox quadraticSpline2d
+            |> BoundingBox2d.expandBy (pixels 8)
+        )
 
 
 quadraticSplineReferenced : QuadraticSpline2d Pixels coordinates -> Bool -> Svg msg
@@ -1267,7 +1268,16 @@ cubicSplineInfo cubicSpline resolution focused hovered =
 
 cubicSplineOutline : CubicSpline2d Pixels coordinates -> Svg msg
 cubicSplineOutline cubicSpline2d =
-    Svg.text "TODO"
+    Svg.boundingBox2d
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke (toColor Ui.Color.primary)
+        , Svg.Attributes.strokeWidth "2"
+        , Svg.Attributes.strokeDasharray "4 7"
+        , Svg.Attributes.strokeLinecap "round"
+        ]
+        (CubicSpline2d.boundingBox cubicSpline2d
+            |> BoundingBox2d.expandBy (pixels 8)
+        )
 
 
 cubicSplineReferenced : CubicSpline2d Pixels coordinates -> Bool -> Svg msg
