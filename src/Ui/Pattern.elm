@@ -5,10 +5,8 @@ module Ui.Pattern exposing
     , Circle, CircleInfo(..)
     , Curve(..), LineSegmentData, QuadraticSplineData, CubicSplineData
     , LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
-    , PointConfig, drawPoint
-    , AxisConfig, drawAxis
-    , CircleConfig, drawCircle
-    , CurveConfig, drawCurve
+    , Config
+    , drawPoint, drawAxis, drawCircle, drawCurve
     )
 
 {-|
@@ -20,10 +18,8 @@ module Ui.Pattern exposing
 @docs Curve, LineSegmentData, QuadraticSplineData, CubicSplineData
 @docs LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
 
-@docs PointConfig, drawPoint
-@docs AxisConfig, drawAxis
-@docs CircleConfig, drawCircle
-@docs CurveConfig, drawCurve
+@docs Config
+@docs drawPoint, drawAxis, drawCircle, drawCurve
 
 -}
 
@@ -52,6 +48,14 @@ import VirtualDom
 
 type alias Resolution =
     Quantity Float (Rate Pixels Meters)
+
+
+type alias Layers msg =
+    { inactive : Svg msg
+    , active : Svg msg
+    , outline : Svg msg
+    , events : Svg msg
+    }
 
 
 type alias Point coordinates =
@@ -167,56 +171,81 @@ type alias Detail coordinates =
 
 
 
----- POINT
+---- DRAW
 
 
-type alias PointConfig msg =
-    { focused : Bool
-    , hovered : Bool
-    , name : String
-    , onHover : msg
+type alias Config msg =
+    { onHover : msg
     , onLeave : msg
     , onFocus : msg
     , onBlur : msg
     }
 
 
-drawPoint : Resolution -> PointConfig msg -> Point coordinates -> Svg msg
-drawPoint resolution cfg point =
+
+---- POINT
+
+
+drawPoint : Config msg -> String -> Point coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawPoint cfg name point resolution focused hovered =
     let
         point2d =
             Point2d.at resolution point.point2d
 
         offsetPointFactor =
-            if cfg.focused then
+            if focused then
                 9.5
 
             else
                 5
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            pointLabel point2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = pointInactive point2d
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = pointEvents cfg point2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            pointInfo resolution cfg.hovered cfg.focused offsetPointFactor point
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ pointInfo offsetPointFactor point resolution focused hovered
+                    , pointLabel name point2d
+                    , pointInactive point2d
+                    ]
+            , outline = pointOutline point2d
+            , events = pointEvents cfg point2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            focusOutline point2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ pointInfo offsetPointFactor point resolution focused hovered
+                    , pointLabel name point2d
+                    , pointHovered point2d
+                    ]
+            , outline = Svg.text ""
+            , events = pointEvents cfg point2d
+            }
 
-          else
-            Svg.text ""
-        , actualPoint cfg.hovered point2d
-        , pointEventListener cfg point2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ pointInfo offsetPointFactor point resolution focused hovered
+                    , pointLabel name point2d
+                    , pointHovered point2d
+                    ]
+            , outline = pointOutline point2d
+            , events = pointEvents cfg point2d
+            }
 
 
-pointLabel : Point2d Pixels coordinates -> String -> Svg msg
-pointLabel point2d label =
+pointLabel : String -> Point2d Pixels coordinates -> Svg msg
+pointLabel label point2d =
     let
         labelPosition =
             point2d
@@ -233,11 +262,25 @@ pointLabel point2d label =
         [ Svg.text label ]
 
 
-pointInfo : Resolution -> Bool -> Bool -> Float -> Point coordinates -> Svg msg
-pointInfo resolution hovered focused offsetPointFactor point =
+pointInfo : Float -> Point coordinates -> Resolution -> Bool -> Bool -> Svg msg
+pointInfo offsetPointFactor point resolution focused hovered =
     let
         point2d =
             Point2d.at resolution point.point2d
+
+        color =
+            if hovered then
+                Ui.Color.primary
+
+            else
+                Ui.Color.black
+
+        strokeWidth =
+            if focused then
+                "1.5"
+
+            else
+                "1"
     in
     case point.info of
         Nothing ->
@@ -274,26 +317,13 @@ pointInfo resolution hovered focused offsetPointFactor point =
                     Vector2d.from offsetPoint2d offsetBasePoint2d
                         |> Vector2d.length
                         |> Pixels.inPixels
-
-                color =
-                    toColor <|
-                        if hovered then
-                            Ui.Color.primary
-
-                        else
-                            Ui.Color.black
             in
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.basePoint
-                , actualInfoPoint hovered basePoint2d
+                [ pointInfo 3 info.basePoint resolution focused hovered
+                , pointReferenced basePoint2d hovered
                 , Svg.lineSegment2d
-                    [ Svg.Attributes.stroke color
-                    , Svg.Attributes.strokeWidth <|
-                        if focused then
-                            "1.5"
-
-                        else
-                            "1"
+                    [ Svg.Attributes.stroke (toColor color)
+                    , Svg.Attributes.strokeWidth strokeWidth
                     , strokeDasharray length 8 10
                     , Svg.Attributes.strokeLinecap "round"
                     ]
@@ -358,27 +388,14 @@ pointInfo resolution hovered focused offsetPointFactor point =
                     Vector2d.from offsetPointB2d offsetBasePointB2d
                         |> Vector2d.length
                         |> Pixels.inPixels
-
-                color =
-                    toColor <|
-                        if hovered then
-                            Ui.Color.primary
-
-                        else
-                            Ui.Color.black
             in
             Svg.g []
                 [ -- BASE POINT A
-                  pointInfo resolution hovered focused 3 info.basePointA
-                , actualInfoPoint hovered basePointA2d
+                  pointInfo 3 info.basePointA resolution focused hovered
+                , pointReferenced basePointA2d hovered
                 , Svg.lineSegment2d
-                    [ Svg.Attributes.stroke color
-                    , Svg.Attributes.strokeWidth <|
-                        if focused then
-                            "1.5"
-
-                        else
-                            "1"
+                    [ Svg.Attributes.stroke (toColor color)
+                    , Svg.Attributes.strokeWidth strokeWidth
                     , strokeDasharray lengthA 8 10
                     , Svg.Attributes.strokeLinecap "round"
                     ]
@@ -386,16 +403,11 @@ pointInfo resolution hovered focused offsetPointFactor point =
                 , lineLabel hovered basePointA2d point2d info.label
 
                 -- BASE POINT B
-                , pointInfo resolution hovered focused 3 info.basePointB
-                , actualInfoPoint hovered basePointB2d
+                , pointInfo 3 info.basePointB resolution focused hovered
+                , pointReferenced basePointB2d hovered
                 , Svg.lineSegment2d
-                    [ Svg.Attributes.stroke color
-                    , Svg.Attributes.strokeWidth <|
-                        if focused then
-                            "1.5"
-
-                        else
-                            "1"
+                    [ Svg.Attributes.stroke (toColor color)
+                    , Svg.Attributes.strokeWidth strokeWidth
                     , strokeDasharray lengthB 8 10
                     , Svg.Attributes.strokeLinecap "round"
                     ]
@@ -407,8 +419,8 @@ pointInfo resolution hovered focused offsetPointFactor point =
                 [ case info.intersectableA of
                     IntersectableAxis axisA ->
                         Svg.g []
-                            [ axisInfo resolution hovered focused axisA
-                            , actualAxis hovered focused (Axis2d.at resolution axisA.axis2d)
+                            [ axisInfo axisA resolution focused hovered
+                            , axisReferenced (Axis2d.at resolution axisA.axis2d) focused hovered
                             ]
 
                     IntersectableCircle _ ->
@@ -416,8 +428,8 @@ pointInfo resolution hovered focused offsetPointFactor point =
                 , case info.intersectableB of
                     IntersectableAxis axisB ->
                         Svg.g []
-                            [ axisInfo resolution hovered focused axisB
-                            , actualAxis hovered focused (Axis2d.at resolution axisB.axis2d)
+                            [ axisInfo axisB resolution focused hovered
+                            , axisReferenced (Axis2d.at resolution axisB.axis2d) focused hovered
                             ]
 
                     IntersectableCircle _ ->
@@ -433,15 +445,15 @@ pointInfo resolution hovered focused offsetPointFactor point =
 
 
 lineLabel : Bool -> Point2d Pixels coordinates -> Point2d Pixels coordinates -> String -> Svg msg
-lineLabel hovered basePoint point label =
+lineLabel hovered basePoint2d point2d label =
     let
         position =
-            basePoint
-                |> Point2d.translateBy (Vector2d.from basePoint point |> Vector2d.scaleBy 0.5)
+            basePoint2d
+                |> Point2d.translateBy (Vector2d.from basePoint2d point2d |> Vector2d.scaleBy 0.5)
                 |> Point2d.toPixels
 
         addTransform attrs =
-            Vector2d.from basePoint point
+            Vector2d.from basePoint2d point2d
                 |> Vector2d.direction
                 |> Maybe.map (Direction2d.toAngle >> Angle.inDegrees >> addRotateTransform attrs)
                 |> Maybe.withDefault attrs
@@ -485,8 +497,8 @@ lineLabel hovered basePoint point label =
         [ Svg.text label ]
 
 
-focusOutline : Point2d Pixels coordinates -> Svg msg
-focusOutline point2d =
+pointOutline : Point2d Pixels coordinates -> Svg msg
+pointOutline point2d =
     Svg.circle2d
         [ Svg.Attributes.fill "none"
         , Svg.Attributes.stroke (toColor Ui.Color.primary)
@@ -497,41 +509,43 @@ focusOutline point2d =
         (Circle2d.withRadius (pixels 9) point2d)
 
 
-actualPoint : Bool -> Point2d Pixels coordinates -> Svg msg
-actualPoint hovered point2d =
+pointHovered : Point2d Pixels coordinates -> Svg msg
+pointHovered point2d =
     Svg.circle2d
-        [ Svg.Attributes.fill <|
-            if hovered then
-                toColor Ui.Color.primary
-
-            else
-                "none"
-        , Svg.Attributes.stroke <|
-            if hovered then
-                toColor Ui.Color.primary
-
-            else
-                toColor Ui.Color.black
+        [ Svg.Attributes.fill (toColor Ui.Color.primary)
+        , Svg.Attributes.stroke (toColor Ui.Color.primary)
         , Svg.Attributes.strokeWidth "1"
         ]
         (Circle2d.withRadius (pixels 5) point2d)
 
 
-actualInfoPoint : Bool -> Point2d Pixels coordinates -> Svg msg
-actualInfoPoint hovered point2d =
+pointInactive : Point2d Pixels coordinates -> Svg msg
+pointInactive point2d =
     Svg.circle2d
-        [ Svg.Attributes.fill <|
+        [ Svg.Attributes.fill "none"
+        , Svg.Attributes.stroke (toColor Ui.Color.black)
+        , Svg.Attributes.strokeWidth "1"
+        ]
+        (Circle2d.withRadius (pixels 5) point2d)
+
+
+pointReferenced : Point2d Pixels coordinates -> Bool -> Svg msg
+pointReferenced point2d hovered =
+    let
+        color =
             if hovered then
-                toColor Ui.Color.primary
+                Ui.Color.primary
 
             else
-                toColor Ui.Color.black
-        ]
+                Ui.Color.black
+    in
+    Svg.circle2d
+        [ Svg.Attributes.fill (toColor color) ]
         (Circle2d.withRadius (pixels 3) point2d)
 
 
-pointEventListener : PointConfig msg -> Point2d Pixels coordinates -> Svg msg
-pointEventListener cfg point2d =
+pointEvents : Config msg -> Point2d Pixels coordinates -> Svg msg
+pointEvents cfg point2d =
     Svg.circle2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.fill "transparent"
@@ -549,46 +563,59 @@ pointEventListener cfg point2d =
 ---- AXIS
 
 
-type alias AxisConfig msg =
-    { focused : Bool
-    , hovered : Bool
-    , name : String
-    , onHover : msg
-    , onLeave : msg
-    , onFocus : msg
-    , onBlur : msg
-    }
-
-
-drawAxis : Resolution -> AxisConfig msg -> Axis coordinates -> Svg msg
-drawAxis resolution cfg axis =
+drawAxis : Config msg -> String -> Axis coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawAxis cfg name axis resolution focused hovered =
     let
         axis2d =
             Axis2d.at resolution axis.axis2d
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            axisLabel axis2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = axisReferenced axis2d False False
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = axisEvents cfg axis2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            axisInfo resolution cfg.hovered cfg.focused axis
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ axisInfo axis resolution focused hovered
+                    , axisLabel name axis2d
+                    , axisReferenced axis2d True False
+                    ]
+            , outline = axisOutline axis2d
+            , events = axisEvents cfg axis2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            axisFocusOutline axis2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ axisInfo axis resolution focused hovered
+                    , axisLabel name axis2d
+                    , axisReferenced axis2d False True
+                    ]
+            , outline = Svg.text ""
+            , events = axisEvents cfg axis2d
+            }
 
-          else
-            Svg.text ""
-        , actualAxis cfg.hovered cfg.focused axis2d
-        , axisEventListener cfg axis2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ axisInfo axis resolution focused hovered
+                    , axisLabel name axis2d
+                    , axisReferenced axis2d True True
+                    ]
+            , outline = axisOutline axis2d
+            , events = axisEvents cfg axis2d
+            }
 
 
-axisLabel : Axis2d Pixels coordinates -> String -> Svg msg
-axisLabel axis2d label =
+axisLabel : String -> Axis2d Pixels coordinates -> Svg msg
+axisLabel label axis2d =
     let
         labelPosition =
             axis2d
@@ -606,29 +633,29 @@ axisLabel axis2d label =
         [ Svg.text label ]
 
 
-axisInfo : Resolution -> Bool -> Bool -> Axis coordinates -> Svg msg
-axisInfo resolution hovered focused axis =
+axisInfo : Axis coordinates -> Resolution -> Bool -> Bool -> Svg msg
+axisInfo axis resolution focused hovered =
     case axis.info of
         Nothing ->
             Svg.text ""
 
         Just (ThroughOnePoint info) ->
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.point
-                , actualInfoPoint hovered (Point2d.at resolution info.point.point2d)
+                [ pointInfo 3 info.point resolution focused hovered
+                , pointReferenced (Point2d.at resolution info.point.point2d) hovered
                 ]
 
         Just (ThroughTwoPoints info) ->
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.pointA
-                , pointInfo resolution hovered focused 3 info.pointB
-                , actualInfoPoint hovered (Point2d.at resolution info.pointA.point2d)
-                , actualInfoPoint hovered (Point2d.at resolution info.pointB.point2d)
+                [ pointInfo 3 info.pointA resolution focused hovered
+                , pointInfo 3 info.pointB resolution focused hovered
+                , pointReferenced (Point2d.at resolution info.pointA.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.pointB.point2d) hovered
                 ]
 
 
-axisFocusOutline : Axis2d Pixels coordinates -> Svg msg
-axisFocusOutline axis2d =
+axisOutline : Axis2d Pixels coordinates -> Svg msg
+axisOutline axis2d =
     let
         outline offset =
             Svg.lineSegment2d
@@ -655,8 +682,8 @@ axisFocusOutline axis2d =
         ]
 
 
-actualAxis : Bool -> Bool -> Axis2d Pixels coordinates -> Svg msg
-actualAxis hovered focused axis2d =
+axisReferenced : Axis2d Pixels coordinates -> Bool -> Bool -> Svg msg
+axisReferenced axis2d focused hovered =
     Svg.lineSegment2d
         [ Svg.Attributes.stroke <|
             if hovered then
@@ -677,8 +704,8 @@ actualAxis hovered focused axis2d =
         )
 
 
-axisEventListener : AxisConfig msg -> Axis2d Pixels coordinates -> Svg msg
-axisEventListener cfg axis2d =
+axisEvents : Config msg -> Axis2d Pixels coordinates -> Svg msg
+axisEvents cfg axis2d =
     Svg.lineSegment2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.strokeWidth "8"
@@ -700,46 +727,59 @@ axisEventListener cfg axis2d =
 ---- CIRCLE
 
 
-type alias CircleConfig msg =
-    { focused : Bool
-    , hovered : Bool
-    , name : String
-    , onHover : msg
-    , onLeave : msg
-    , onFocus : msg
-    , onBlur : msg
-    }
-
-
-drawCircle : Resolution -> CircleConfig msg -> Circle coordinates -> Svg msg
-drawCircle resolution cfg circle =
+drawCircle : Config msg -> String -> Circle coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawCircle cfg name circle resolution focused hovered =
     let
         circle2d =
             Circle2d.at resolution circle.circle2d
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            circleLabel circle2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = circleReferenced circle2d False False
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = circleEvents cfg circle2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            circleInfo resolution cfg.hovered cfg.focused circle
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ circleInfo circle resolution focused hovered
+                    , circleLabel name circle2d
+                    , circleReferenced circle2d True False
+                    ]
+            , outline = circleOutline circle2d
+            , events = circleEvents cfg circle2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            circleFocusOutline circle2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ circleInfo circle resolution focused hovered
+                    , circleLabel name circle2d
+                    , circleReferenced circle2d False True
+                    ]
+            , outline = Svg.text ""
+            , events = circleEvents cfg circle2d
+            }
 
-          else
-            Svg.text ""
-        , actualCircle cfg.hovered cfg.focused circle2d
-        , circleEventListener cfg circle2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ circleInfo circle resolution focused hovered
+                    , circleLabel name circle2d
+                    , circleReferenced circle2d True True
+                    ]
+            , outline = circleOutline circle2d
+            , events = circleEvents cfg circle2d
+            }
 
 
-circleLabel : Circle2d Pixels coordinates -> String -> Svg msg
-circleLabel circle2d label =
+circleLabel : String -> Circle2d Pixels coordinates -> Svg msg
+circleLabel label circle2d =
     let
         labelPosition =
             circle2d
@@ -762,8 +802,8 @@ circleLabel circle2d label =
         [ Svg.text label ]
 
 
-circleInfo : Resolution -> Bool -> Bool -> Circle coordinates -> Svg msg
-circleInfo resolution hovered focused circle =
+circleInfo : Circle coordinates -> Resolution -> Bool -> Bool -> Svg msg
+circleInfo circle resolution focused hovered =
     case circle.info of
         Nothing ->
             Svg.text ""
@@ -773,7 +813,7 @@ circleInfo resolution hovered focused circle =
                 centerPoint2d =
                     Point2d.at resolution info.centerPoint.point2d
             in
-            actualInfoPoint hovered centerPoint2d
+            pointReferenced centerPoint2d hovered
 
         Just (ThroughThreePoints info) ->
             let
@@ -787,17 +827,17 @@ circleInfo resolution hovered focused circle =
                     Point2d.at resolution info.pointC.point2d
             in
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.pointA
-                , actualInfoPoint hovered pointA2d
-                , pointInfo resolution hovered focused 3 info.pointB
-                , actualInfoPoint hovered pointB2d
-                , pointInfo resolution hovered focused 3 info.pointC
-                , actualInfoPoint hovered pointC2d
+                [ pointInfo 3 info.pointA resolution focused hovered
+                , pointInfo 3 info.pointB resolution focused hovered
+                , pointInfo 3 info.pointC resolution focused hovered
+                , pointReferenced pointA2d hovered
+                , pointReferenced pointB2d hovered
+                , pointReferenced pointC2d hovered
                 ]
 
 
-circleFocusOutline : Circle2d Pixels coordinates -> Svg msg
-circleFocusOutline circle2d =
+circleOutline : Circle2d Pixels coordinates -> Svg msg
+circleOutline circle2d =
     Svg.circle2d
         [ Svg.Attributes.stroke (toColor Ui.Color.primary)
         , Svg.Attributes.strokeWidth "2"
@@ -811,8 +851,8 @@ circleFocusOutline circle2d =
         )
 
 
-actualCircle : Bool -> Bool -> Circle2d Pixels coordinates -> Svg msg
-actualCircle hovered focused circle2d =
+circleReferenced : Circle2d Pixels coordinates -> Bool -> Bool -> Svg msg
+circleReferenced circle2d focused hovered =
     Svg.circle2d
         [ Svg.Attributes.stroke <|
             if hovered then
@@ -831,12 +871,12 @@ actualCircle hovered focused circle2d =
         circle2d
 
 
-circleEventListener : CircleConfig msg -> Circle2d Pixels coordinates -> Svg msg
-circleEventListener cfg circle2d =
+circleEvents : Config msg -> Circle2d Pixels coordinates -> Svg msg
+circleEvents cfg circle2d =
     Svg.circle2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.strokeWidth "8"
-        , Svg.Attributes.fill "transparent"
+        , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
         , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
@@ -851,63 +891,76 @@ circleEventListener cfg circle2d =
 ---- CURVE
 
 
-type alias CurveConfig msg =
-    { focused : Bool
-    , hovered : Bool
-    , name : String
-    , onHover : msg
-    , onLeave : msg
-    , onFocus : msg
-    , onBlur : msg
-    }
-
-
-drawCurve : Resolution -> CurveConfig msg -> Curve coordinates -> Svg msg
-drawCurve resolution cfg curve =
+drawCurve : Config msg -> String -> Curve coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawCurve cfg name curve resolution focused hovered =
     case curve of
         LineSegment stuff ->
-            drawLineSegment resolution cfg stuff
+            drawLineSegment cfg name stuff resolution focused hovered
 
         QuadraticSpline stuff ->
-            drawQuadraticSpline resolution cfg stuff
+            drawQuadraticSpline cfg name stuff resolution focused hovered
 
         CubicSpline stuff ->
-            drawCubicSpline resolution cfg stuff
+            drawCubicSpline cfg name stuff resolution focused hovered
 
 
 
 -- LINE SEGMENT
 
 
-drawLineSegment : Resolution -> CurveConfig msg -> LineSegmentData coordinates -> Svg msg
-drawLineSegment resolution cfg lineSegment =
+drawLineSegment : Config msg -> String -> LineSegmentData coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawLineSegment cfg name lineSegment resolution focused hovered =
     let
         lineSegment2d =
             LineSegment2d.at resolution lineSegment.lineSegment2d
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            lineSegmentLabel lineSegment2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = lineSegmentReferenced lineSegment2d False
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = lineSegmentEvents cfg lineSegment2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            lineSegmentInfo resolution cfg.hovered cfg.focused lineSegment
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ lineSegmentInfo lineSegment resolution focused hovered
+                    , lineSegmentLabel name lineSegment2d
+                    , lineSegmentReferenced lineSegment2d False
+                    ]
+            , outline = lineSegmentOutline lineSegment2d
+            , events = lineSegmentEvents cfg lineSegment2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            lineSegmentFocusOutline lineSegment2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ lineSegmentInfo lineSegment resolution focused hovered
+                    , lineSegmentLabel name lineSegment2d
+                    , lineSegmentReferenced lineSegment2d True
+                    ]
+            , outline = Svg.text ""
+            , events = lineSegmentEvents cfg lineSegment2d
+            }
 
-          else
-            Svg.text ""
-        , actualLineSegment cfg.hovered lineSegment2d
-        , lineSegmentEventListener cfg lineSegment2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ lineSegmentInfo lineSegment resolution focused hovered
+                    , lineSegmentLabel name lineSegment2d
+                    , lineSegmentReferenced lineSegment2d True
+                    ]
+            , outline = lineSegmentOutline lineSegment2d
+            , events = lineSegmentEvents cfg lineSegment2d
+            }
 
 
-lineSegmentLabel : LineSegment2d Pixels coordinates -> String -> Svg msg
-lineSegmentLabel lineSegment2d label =
+lineSegmentLabel : String -> LineSegment2d Pixels coordinates -> Svg msg
+lineSegmentLabel label lineSegment2d =
     let
         labelPosition =
             lineSegment2d
@@ -925,23 +978,23 @@ lineSegmentLabel lineSegment2d label =
         [ Svg.text label ]
 
 
-lineSegmentInfo : Resolution -> Bool -> Bool -> LineSegmentData coordinates -> Svg msg
-lineSegmentInfo resolution hovered focused lineSegment =
+lineSegmentInfo : LineSegmentData coordinates -> Resolution -> Bool -> Bool -> Svg msg
+lineSegmentInfo lineSegment resolution focused hovered =
     case lineSegment.info of
         Nothing ->
             Svg.text ""
 
         Just info ->
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.startPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.startPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.endPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.endPoint.point2d)
+                [ pointInfo 3 info.startPoint resolution focused hovered
+                , pointInfo 3 info.endPoint resolution focused hovered
+                , pointReferenced (Point2d.at resolution info.startPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.endPoint.point2d) hovered
                 ]
 
 
-lineSegmentFocusOutline : LineSegment2d Pixels coordinates -> Svg msg
-lineSegmentFocusOutline lineSegment2d =
+lineSegmentOutline : LineSegment2d Pixels coordinates -> Svg msg
+lineSegmentOutline lineSegment2d =
     case LineSegment2d.direction lineSegment2d of
         Nothing ->
             Svg.text ""
@@ -963,8 +1016,8 @@ lineSegmentFocusOutline lineSegment2d =
                 )
 
 
-actualLineSegment : Bool -> LineSegment2d Pixels coordinates -> Svg msg
-actualLineSegment hovered lineSegment2d =
+lineSegmentReferenced : LineSegment2d Pixels coordinates -> Bool -> Svg msg
+lineSegmentReferenced lineSegment2d hovered =
     Svg.lineSegment2d
         [ Svg.Attributes.fill "none"
         , Svg.Attributes.stroke <|
@@ -978,12 +1031,12 @@ actualLineSegment hovered lineSegment2d =
         lineSegment2d
 
 
-lineSegmentEventListener : CurveConfig msg -> LineSegment2d Pixels coordinates -> Svg msg
-lineSegmentEventListener cfg lineSegment2d =
+lineSegmentEvents : Config msg -> LineSegment2d Pixels coordinates -> Svg msg
+lineSegmentEvents cfg lineSegment2d =
     Svg.lineSegment2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.strokeWidth "8"
-        , Svg.Attributes.fill "transparent"
+        , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
         , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
@@ -998,35 +1051,59 @@ lineSegmentEventListener cfg lineSegment2d =
 -- QUADRATIC SPLINE
 
 
-drawQuadraticSpline : Resolution -> CurveConfig msg -> QuadraticSplineData coordinates -> Svg msg
-drawQuadraticSpline resolution cfg quadraticSpline =
+drawQuadraticSpline : Config msg -> String -> QuadraticSplineData coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawQuadraticSpline cfg name quadraticSpline resolution focused hovered =
     let
         quadraticSpline2d =
             QuadraticSpline2d.at resolution quadraticSpline.quadraticSpline2d
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            quadraticSplineLabel quadraticSpline2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = quadraticSplineReferenced quadraticSpline2d False
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = quadraticSplineEvents cfg quadraticSpline2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            quadraticSplineInfo resolution cfg.hovered cfg.focused quadraticSpline
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ quadraticSplineInfo quadraticSpline resolution focused hovered
+                    , quadraticSplineLabel name quadraticSpline2d
+                    , quadraticSplineReferenced quadraticSpline2d False
+                    ]
+            , outline = quadraticSplineOutline quadraticSpline2d
+            , events = quadraticSplineEvents cfg quadraticSpline2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            quadraticSplineFocusOutline quadraticSpline2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ quadraticSplineInfo quadraticSpline resolution focused hovered
+                    , quadraticSplineLabel name quadraticSpline2d
+                    , quadraticSplineReferenced quadraticSpline2d True
+                    ]
+            , outline = Svg.text ""
+            , events = quadraticSplineEvents cfg quadraticSpline2d
+            }
 
-          else
-            Svg.text ""
-        , actualQuadraticSpline cfg.hovered quadraticSpline2d
-        , quadraticSplineEventListener cfg quadraticSpline2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ quadraticSplineInfo quadraticSpline resolution focused hovered
+                    , quadraticSplineLabel name quadraticSpline2d
+                    , quadraticSplineReferenced quadraticSpline2d True
+                    ]
+            , outline = quadraticSplineOutline quadraticSpline2d
+            , events = quadraticSplineEvents cfg quadraticSpline2d
+            }
 
 
-quadraticSplineLabel : QuadraticSpline2d Pixels coordinates -> String -> Svg msg
-quadraticSplineLabel quadraticSpline2d label =
+quadraticSplineLabel : String -> QuadraticSpline2d Pixels coordinates -> Svg msg
+quadraticSplineLabel label quadraticSpline2d =
     let
         labelPosition =
             QuadraticSpline2d.pointOn quadraticSpline2d 0.3
@@ -1043,30 +1120,30 @@ quadraticSplineLabel quadraticSpline2d label =
         [ Svg.text label ]
 
 
-quadraticSplineInfo : Resolution -> Bool -> Bool -> QuadraticSplineData coordinates -> Svg msg
-quadraticSplineInfo resolution hovered focused quadraticSpline =
+quadraticSplineInfo : QuadraticSplineData coordinates -> Resolution -> Bool -> Bool -> Svg msg
+quadraticSplineInfo quadraticSpline resolution focused hovered =
     case quadraticSpline.info of
         Nothing ->
             Svg.text ""
 
         Just info ->
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.firstControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.firstControlPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.secondControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.secondControlPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.thirdControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.thirdControlPoint.point2d)
+                [ pointInfo 3 info.firstControlPoint resolution focused hovered
+                , pointInfo 3 info.secondControlPoint resolution focused hovered
+                , pointInfo 3 info.thirdControlPoint resolution focused hovered
+                , pointReferenced (Point2d.at resolution info.firstControlPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.secondControlPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.thirdControlPoint.point2d) hovered
                 ]
 
 
-quadraticSplineFocusOutline : QuadraticSpline2d Pixels coordinates -> Svg msg
-quadraticSplineFocusOutline quadraticSpline2d =
+quadraticSplineOutline : QuadraticSpline2d Pixels coordinates -> Svg msg
+quadraticSplineOutline quadraticSpline2d =
     Svg.text "TODO"
 
 
-actualQuadraticSpline : Bool -> QuadraticSpline2d Pixels coordinates -> Svg msg
-actualQuadraticSpline hovered quadraticSpline2d =
+quadraticSplineReferenced : QuadraticSpline2d Pixels coordinates -> Bool -> Svg msg
+quadraticSplineReferenced quadraticSpline2d hovered =
     Svg.quadraticSpline2d
         [ Svg.Attributes.fill "none"
         , Svg.Attributes.stroke <|
@@ -1080,12 +1157,12 @@ actualQuadraticSpline hovered quadraticSpline2d =
         quadraticSpline2d
 
 
-quadraticSplineEventListener : CurveConfig msg -> QuadraticSpline2d Pixels coordinates -> Svg msg
-quadraticSplineEventListener cfg quadraticSpline2d =
+quadraticSplineEvents : Config msg -> QuadraticSpline2d Pixels coordinates -> Svg msg
+quadraticSplineEvents cfg quadraticSpline2d =
     Svg.quadraticSpline2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.strokeWidth "8"
-        , Svg.Attributes.fill "transparent"
+        , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
         , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
@@ -1100,35 +1177,59 @@ quadraticSplineEventListener cfg quadraticSpline2d =
 -- CUBIC SPLINE
 
 
-drawCubicSpline : Resolution -> CurveConfig msg -> CubicSplineData coordinates -> Svg msg
-drawCubicSpline resolution cfg cubicSpline =
+drawCubicSpline : Config msg -> String -> CubicSplineData coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawCubicSpline cfg name cubicSpline resolution focused hovered =
     let
         cubicSpline2d =
             CubicSpline2d.at resolution cubicSpline.cubicSpline2d
     in
-    Svg.g []
-        [ if cfg.focused || cfg.hovered then
-            cubicSplineLabel cubicSpline2d cfg.name
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive = cubicSplineReferenced cubicSpline2d False
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = cubicSplineEvents cfg cubicSpline2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused || cfg.hovered then
-            cubicSplineInfo resolution cfg.hovered cfg.focused cubicSpline
+        ( True, False ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ cubicSplineInfo cubicSpline resolution focused hovered
+                    , cubicSplineLabel name cubicSpline2d
+                    , cubicSplineReferenced cubicSpline2d False
+                    ]
+            , outline = cubicSplineOutline cubicSpline2d
+            , events = cubicSplineEvents cfg cubicSpline2d
+            }
 
-          else
-            Svg.text ""
-        , if cfg.focused then
-            cubicSplineFocusOutline cubicSpline2d
+        ( False, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ cubicSplineInfo cubicSpline resolution focused hovered
+                    , cubicSplineLabel name cubicSpline2d
+                    , cubicSplineReferenced cubicSpline2d True
+                    ]
+            , outline = Svg.text ""
+            , events = cubicSplineEvents cfg cubicSpline2d
+            }
 
-          else
-            Svg.text ""
-        , actualCubicSpline cfg.hovered cubicSpline2d
-        , cubicSplineEventListener cfg cubicSpline2d
-        ]
+        ( True, True ) ->
+            { inactive = Svg.text ""
+            , active =
+                Svg.g []
+                    [ cubicSplineInfo cubicSpline resolution focused hovered
+                    , cubicSplineLabel name cubicSpline2d
+                    , cubicSplineReferenced cubicSpline2d True
+                    ]
+            , outline = cubicSplineOutline cubicSpline2d
+            , events = cubicSplineEvents cfg cubicSpline2d
+            }
 
 
-cubicSplineLabel : CubicSpline2d Pixels coordinates -> String -> Svg msg
-cubicSplineLabel cubicSpline2d label =
+cubicSplineLabel : String -> CubicSpline2d Pixels coordinates -> Svg msg
+cubicSplineLabel label cubicSpline2d =
     let
         labelPosition =
             CubicSpline2d.pointOn cubicSpline2d 0.3
@@ -1145,32 +1246,32 @@ cubicSplineLabel cubicSpline2d label =
         [ Svg.text label ]
 
 
-cubicSplineInfo : Resolution -> Bool -> Bool -> CubicSplineData coordinates -> Svg msg
-cubicSplineInfo resolution hovered focused cubicSpline =
+cubicSplineInfo : CubicSplineData coordinates -> Resolution -> Bool -> Bool -> Svg msg
+cubicSplineInfo cubicSpline resolution focused hovered =
     case cubicSpline.info of
         Nothing ->
             Svg.text ""
 
         Just info ->
             Svg.g []
-                [ pointInfo resolution hovered focused 3 info.firstControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.firstControlPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.secondControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.secondControlPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.thirdControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.thirdControlPoint.point2d)
-                , pointInfo resolution hovered focused 3 info.fourthControlPoint
-                , actualInfoPoint hovered (Point2d.at resolution info.fourthControlPoint.point2d)
+                [ pointInfo 3 info.firstControlPoint resolution focused hovered
+                , pointInfo 3 info.secondControlPoint resolution focused hovered
+                , pointInfo 3 info.thirdControlPoint resolution focused hovered
+                , pointInfo 3 info.fourthControlPoint resolution focused hovered
+                , pointReferenced (Point2d.at resolution info.firstControlPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.secondControlPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.thirdControlPoint.point2d) hovered
+                , pointReferenced (Point2d.at resolution info.fourthControlPoint.point2d) hovered
                 ]
 
 
-cubicSplineFocusOutline : CubicSpline2d Pixels coordinates -> Svg msg
-cubicSplineFocusOutline cubicSpline2d =
+cubicSplineOutline : CubicSpline2d Pixels coordinates -> Svg msg
+cubicSplineOutline cubicSpline2d =
     Svg.text "TODO"
 
 
-actualCubicSpline : Bool -> CubicSpline2d Pixels coordinates -> Svg msg
-actualCubicSpline hovered cubicSpline2d =
+cubicSplineReferenced : CubicSpline2d Pixels coordinates -> Bool -> Svg msg
+cubicSplineReferenced cubicSpline2d hovered =
     Svg.cubicSpline2d
         [ Svg.Attributes.fill "none"
         , Svg.Attributes.stroke <|
@@ -1184,12 +1285,12 @@ actualCubicSpline hovered cubicSpline2d =
         cubicSpline2d
 
 
-cubicSplineEventListener : CurveConfig msg -> CubicSpline2d Pixels coordinates -> Svg msg
-cubicSplineEventListener cfg cubicSpline2d =
+cubicSplineEvents : Config msg -> CubicSpline2d Pixels coordinates -> Svg msg
+cubicSplineEvents cfg cubicSpline2d =
     Svg.cubicSpline2d
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.strokeWidth "8"
-        , Svg.Attributes.fill "transparent"
+        , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
         , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover

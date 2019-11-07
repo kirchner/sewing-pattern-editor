@@ -1185,6 +1185,77 @@ viewObjects model =
         resolution =
             Pixels.pixels (Maybe.withDefault 336 model.objectsContainerWidth / 336)
                 |> Quantity.per (Length.millimeters 1)
+
+        objectLayers drawObject on objects =
+            List.foldl
+                (\{ focused, hovered, name, object } ( index, layers ) ->
+                    let
+                        { inactive, active, outline, events } =
+                            drawObject
+                                { onHover = on.hovered index
+                                , onLeave = on.left index
+                                , onFocus = on.focused index
+                                , onBlur = on.blured index
+                                }
+                                name
+                                object
+                                resolution
+                                focused
+                                hovered
+                    in
+                    ( index + 1
+                    , { inactiveList = inactive :: layers.inactiveList
+                      , activeList = active :: layers.activeList
+                      , outlineList = outline :: layers.outlineList
+                      , eventsList = events :: layers.eventsList
+                      }
+                    )
+                )
+                ( 0
+                , { inactiveList = []
+                  , activeList = []
+                  , outlineList = []
+                  , eventsList = []
+                  }
+                )
+                objects
+                |> Tuple.second
+
+        pointLayers =
+            objectLayers Ui.Pattern.drawPoint
+                { hovered = HoveredPoint
+                , left = LeftPoint
+                , focused = FocusedPoint
+                , blured = BluredPoint
+                }
+                model.points
+
+        axisLayers =
+            objectLayers Ui.Pattern.drawAxis
+                { hovered = HoveredAxis
+                , left = LeftAxis
+                , focused = FocusedAxis
+                , blured = BluredAxis
+                }
+                model.axes
+
+        circleLayers =
+            objectLayers Ui.Pattern.drawCircle
+                { hovered = HoveredCircle
+                , left = LeftCircle
+                , focused = FocusedCircle
+                , blured = BluredCircle
+                }
+                model.circles
+
+        curveLayers =
+            objectLayers Ui.Pattern.drawCurve
+                { hovered = HoveredCurve
+                , left = LeftCurve
+                , focused = FocusedCurve
+                , blured = BluredCurve
+                }
+                model.curves
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1193,62 +1264,29 @@ viewObjects model =
         ]
         [ viewObject model.objectsContainerWidth <|
             List.concat
-                [ List.indexedMap
-                    (\index { focused, hovered, name, object } ->
-                        Ui.Pattern.drawPoint resolution
-                            { focused = focused
-                            , hovered = hovered
-                            , name = name
-                            , onHover = HoveredPoint index
-                            , onLeave = LeftPoint index
-                            , onFocus = FocusedPoint index
-                            , onBlur = BluredPoint index
-                            }
-                            object
-                    )
-                    model.points
-                , List.indexedMap
-                    (\index { focused, hovered, name, object } ->
-                        Ui.Pattern.drawAxis resolution
-                            { focused = focused
-                            , hovered = hovered
-                            , name = name
-                            , onHover = HoveredAxis index
-                            , onLeave = LeftAxis index
-                            , onFocus = FocusedAxis index
-                            , onBlur = BluredAxis index
-                            }
-                            object
-                    )
-                    model.axes
-                , List.indexedMap
-                    (\index { focused, hovered, name, object } ->
-                        Ui.Pattern.drawCircle resolution
-                            { focused = focused
-                            , hovered = hovered
-                            , name = name
-                            , onHover = HoveredCircle index
-                            , onLeave = LeftCircle index
-                            , onFocus = FocusedCircle index
-                            , onBlur = BluredCircle index
-                            }
-                            object
-                    )
-                    model.circles
-                , List.indexedMap
-                    (\index { focused, hovered, name, object } ->
-                        Ui.Pattern.drawCurve resolution
-                            { focused = focused
-                            , hovered = hovered
-                            , name = name
-                            , onHover = HoveredCurve index
-                            , onLeave = LeftCurve index
-                            , onFocus = FocusedCurve index
-                            , onBlur = BluredCurve index
-                            }
-                            object
-                    )
-                    model.curves
+                [ -- INACTIVE
+                  circleLayers.inactiveList
+                , axisLayers.inactiveList
+                , curveLayers.inactiveList
+                , pointLayers.inactiveList
+
+                -- ACTIVE
+                , circleLayers.activeList
+                , axisLayers.activeList
+                , curveLayers.activeList
+                , pointLayers.activeList
+
+                -- OUTLINE
+                , circleLayers.outlineList
+                , axisLayers.outlineList
+                , curveLayers.outlineList
+                , pointLayers.outlineList
+
+                -- EVENTS
+                , circleLayers.eventsList
+                , axisLayers.eventsList
+                , curveLayers.eventsList
+                , pointLayers.eventsList
                 ]
         ]
 
