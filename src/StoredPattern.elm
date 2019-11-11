@@ -28,16 +28,16 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Length exposing (Meters)
-import Pattern exposing (BottomLeft, Pattern)
+import Pattern exposing (Pattern)
 import Point2d exposing (Point2d)
 
 
-type alias StoredPattern =
+type alias StoredPattern coordinates =
     { slug : String
     , name : String
-    , pattern : Pattern
+    , pattern : Pattern coordinates
     , zoom : Float
-    , center : Point2d Meters BottomLeft
+    , center : Point2d Meters coordinates
     }
 
 
@@ -47,7 +47,7 @@ type alias Position =
     }
 
 
-init : String -> String -> StoredPattern
+init : String -> String -> StoredPattern coordinates
 init slug name =
     { slug = slug
     , name = name
@@ -63,7 +63,7 @@ init slug name =
     }
 
 
-decoder : Decoder StoredPattern
+decoder : Decoder (StoredPattern coordinates)
 decoder =
     Decode.succeed StoredPattern
         |> Decode.required "slug" Decode.string
@@ -73,14 +73,14 @@ decoder =
         |> Decode.required "center" point2dDecoder
 
 
-point2dDecoder : Decoder (Point2d Meters BottomLeft)
+point2dDecoder : Decoder (Point2d Meters coordinates)
 point2dDecoder =
     Decode.succeed Point2d.meters
         |> Decode.required "x" Decode.float
         |> Decode.required "y" Decode.float
 
 
-encode : StoredPattern -> Value
+encode : StoredPattern coordinates -> Value
 encode { slug, name, pattern, zoom, center } =
     Encode.object
         [ ( "slug", Encode.string slug )
@@ -91,7 +91,7 @@ encode { slug, name, pattern, zoom, center } =
         ]
 
 
-encodePoint2d : Point2d Meters BottomLeft -> Value
+encodePoint2d : Point2d Meters coordinates -> Value
 encodePoint2d point =
     Encode.object
         [ ( "x", Encode.float (Length.inMeters (Point2d.xCoordinate point)) )

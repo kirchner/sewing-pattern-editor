@@ -379,7 +379,7 @@ createDetail =
 
 
 {-| -}
-editPoint : Pattern -> A Pattern.Point -> Maybe Edit
+editPoint : Pattern coordinates -> A Pattern.Point -> Maybe Edit
 editPoint pattern aPoint =
     let
         objects =
@@ -396,7 +396,7 @@ editPoint pattern aPoint =
         (initPointFormWith pattern aPoint)
 
 
-initPointFormWith : Pattern -> A Point -> Maybe PointForm
+initPointFormWith : Pattern coordinates -> A Point -> Maybe PointForm
 initPointFormWith pattern aPoint =
     case Pattern.pointInfo aPoint pattern of
         Nothing ->
@@ -491,7 +491,7 @@ initIntersectable =
 
 
 {-| -}
-editAxis : Pattern -> A Pattern.Axis -> Maybe Edit
+editAxis : Pattern coordinates -> A Pattern.Axis -> Maybe Edit
 editAxis pattern aAxis =
     let
         objects =
@@ -508,7 +508,7 @@ editAxis pattern aAxis =
         (initAxisFormWith pattern aAxis)
 
 
-initAxisFormWith : Pattern -> A Axis -> Maybe AxisForm
+initAxisFormWith : Pattern coordinates -> A Axis -> Maybe AxisForm
 initAxisFormWith pattern aAxis =
     case Pattern.axisInfo aAxis pattern of
         Nothing ->
@@ -543,7 +543,7 @@ initAxisFormWith pattern aAxis =
 
 
 {-| -}
-editCircle : Pattern -> A Pattern.Circle -> Maybe Edit
+editCircle : Pattern coordinates -> A Pattern.Circle -> Maybe Edit
 editCircle pattern aCircle =
     let
         objects =
@@ -560,7 +560,7 @@ editCircle pattern aCircle =
         (initCircleFormWith pattern aCircle)
 
 
-initCircleFormWith : Pattern -> A Circle -> Maybe CircleForm
+initCircleFormWith : Pattern coordinates -> A Circle -> Maybe CircleForm
 initCircleFormWith pattern aCircle =
     case Pattern.circleInfo aCircle pattern of
         Nothing ->
@@ -597,7 +597,7 @@ initCircleFormWith pattern aCircle =
 
 
 {-| -}
-editCurve : Pattern -> A Pattern.Curve -> Maybe Edit
+editCurve : Pattern coordinates -> A Pattern.Curve -> Maybe Edit
 editCurve pattern aCurve =
     let
         objects =
@@ -614,7 +614,7 @@ editCurve pattern aCurve =
         (initCurveFormWith pattern aCurve)
 
 
-initCurveFormWith : Pattern -> A Curve -> Maybe CurveForm
+initCurveFormWith : Pattern coordinates -> A Curve -> Maybe CurveForm
 initCurveFormWith pattern aCurve =
     case Pattern.curveInfo aCurve pattern of
         Nothing ->
@@ -672,7 +672,7 @@ initCurveFormWith pattern aCurve =
 
 
 {-| -}
-editDetail : Pattern -> A Pattern.Detail -> Maybe Edit
+editDetail : Pattern coordinates -> A Pattern.Detail -> Maybe Edit
 editDetail pattern aDetail =
     case Detail.initWith (OtherPoint.initWith initPointFormWith) pattern aDetail of
         Nothing ->
@@ -812,7 +812,7 @@ initCubicForm =
 
 {-| -}
 createView :
-    { pattern : Pattern, hoveredInCanvas : Maybe ThatObject }
+    { pattern : Pattern coordinates, hoveredInCanvas : Maybe ThatObject }
     -> Create
     -> Element CreateMsg
 createView { pattern } (Create { name, nameHelp, dialog }) =
@@ -880,7 +880,7 @@ viewActions name nameHelp =
 ---- VIEW CREATE POINT DIALOG
 
 
-viewPointForm : Pattern -> Pattern.Objects -> String -> Maybe String -> PointForm -> Element CreateMsg
+viewPointForm : Pattern coordinates -> Pattern.Objects -> String -> Maybe String -> PointForm -> Element CreateMsg
 viewPointForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
@@ -928,7 +928,7 @@ viewPointForm pattern objects name nameHelp form =
         ]
 
 
-viewPointFormHelp : Pattern -> Pattern.Objects -> { point : PointForm, id : String } -> Element PointMsg
+viewPointFormHelp : Pattern coordinates -> Pattern.Objects -> { point : PointForm, id : String } -> Element PointMsg
 viewPointFormHelp pattern objects { point, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1055,7 +1055,7 @@ viewIntersectable =
 
 
 viewAxisForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> String
     -> Maybe String
@@ -1077,7 +1077,7 @@ viewAxisForm pattern objects name nameHelp form =
         ]
 
 
-viewAxisFormHelp : Pattern -> Pattern.Objects -> { axis : AxisForm, id : String } -> Element AxisMsg
+viewAxisFormHelp : Pattern coordinates -> Pattern.Objects -> { axis : AxisForm, id : String } -> Element AxisMsg
 viewAxisFormHelp pattern objects { axis, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1131,7 +1131,7 @@ viewAxisFormHelp pattern objects { axis, id } =
 
 
 viewCircleForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> String
     -> Maybe String
@@ -1154,7 +1154,7 @@ viewCircleForm pattern objects name nameHelp form =
 
 
 viewCircleFormHelp :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> { circle : CircleForm, id : String }
     -> Element CircleMsg
@@ -1221,7 +1221,7 @@ viewCircleFormHelp pattern objects { circle, id } =
 
 
 viewCurveForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> String
     -> Maybe String
@@ -1243,7 +1243,7 @@ viewCurveForm pattern objects name nameHelp form =
         ]
 
 
-viewCurveFormHelp : Pattern -> Pattern.Objects -> { curve : CurveForm, id : String } -> Element CurveMsg
+viewCurveFormHelp : Pattern coordinates -> Pattern.Objects -> { curve : CurveForm, id : String } -> Element CurveMsg
 viewCurveFormHelp pattern objects { curve, id } =
     Ui.Atom.segmentControl
         { id = id
@@ -1343,7 +1343,7 @@ viewCurveFormHelp pattern objects { curve, id } =
 
 
 viewDetailForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> String
     -> Maybe String
@@ -1368,7 +1368,7 @@ viewDetailForm pattern objects name nameHelp detail =
 
 {-| -}
 editView :
-    { pattern : Pattern
+    { pattern : Pattern coordinates
     , name : String
     , hoveredInCanvas : Maybe ThatObject
     }
@@ -1721,14 +1721,14 @@ type OrientationMsg
 
 
 {-| -}
-type CreateResult
+type CreateResult coordinates
     = CreateOpen ( Create, Cmd CreateMsg )
-    | CreateSucceeded Pattern
+    | CreateSucceeded (Pattern coordinates)
     | CreateCanceled
 
 
 {-| -}
-createUpdate : Pattern -> CreateMsg -> Create -> CreateResult
+createUpdate : Pattern coordinates -> CreateMsg -> Create -> CreateResult coordinates
 createUpdate pattern msg ((Create stuff) as create) =
     case msg of
         NameChanged newName ->
@@ -1977,7 +1977,7 @@ createUpdate pattern msg ((Create stuff) as create) =
 
 
 updatePointForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> PointMsg
     -> PointForm
@@ -2164,7 +2164,7 @@ intersectableUpdateConfig =
 
 
 updateAxisForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> AxisMsg
     -> AxisForm
@@ -2226,7 +2226,7 @@ updateAxisForm pattern objects axisMsg form =
 
 
 updateCircleForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> CircleMsg
     -> CircleForm
@@ -2296,7 +2296,7 @@ updateCircleForm pattern objects circleMsg form =
 
 
 updateCurveForm :
-    Pattern
+    Pattern coordinates
     -> Pattern.Objects
     -> CurveMsg
     -> CurveForm
@@ -2469,7 +2469,7 @@ updateOrientation orientationMsg orientation =
 ---- NEW
 
 
-newPointFrom : PointForm -> Pattern -> Result PointForm Point
+newPointFrom : PointForm -> Pattern coordinates -> Result PointForm Point
 newPointFrom form pattern =
     case form of
         FromOnePointForm stuff ->
@@ -2611,7 +2611,7 @@ newIntersectable =
     }
 
 
-newAxisFrom : AxisForm -> Pattern -> Result AxisForm Axis
+newAxisFrom : AxisForm -> Pattern coordinates -> Result AxisForm Axis
 newAxisFrom form pattern =
     case form of
         ThroughOnePointForm stuff ->
@@ -2670,7 +2670,7 @@ newAxisFrom form pattern =
                 |> Result.mapError ThroughTwoPointsForm
 
 
-newCircleFrom : CircleForm -> Pattern -> Result CircleForm Circle
+newCircleFrom : CircleForm -> Pattern coordinates -> Result CircleForm Circle
 newCircleFrom form pattern =
     case form of
         WithRadiusForm stuff ->
@@ -2742,7 +2742,7 @@ newCircleFrom form pattern =
                 |> Result.mapError ThroughThreePointsForm
 
 
-newCurveFrom : CurveForm -> Pattern -> Result CurveForm Curve
+newCurveFrom : CurveForm -> Pattern coordinates -> Result CurveForm Curve
 newCurveFrom form pattern =
     case form of
         StraightForm stuff ->
@@ -2902,7 +2902,7 @@ newCurveFrom form pattern =
 -- ADDING HELP
 
 
-checkOtherPoint : Pattern -> OtherPoint.Form PointForm -> OtherPoint.Form PointForm
+checkOtherPoint : Pattern coordinates -> OtherPoint.Form PointForm -> OtherPoint.Form PointForm
 checkOtherPoint pattern otherPoint =
     case OtherPoint.new newPointFrom otherPoint pattern of
         Err otherPointWithHelp ->
@@ -2913,7 +2913,7 @@ checkOtherPoint pattern otherPoint =
 
 
 checkOtherIntersectableObject :
-    Pattern
+    Pattern coordinates
     -> Intersectable.Form AxisForm CircleForm CurveForm
     -> Intersectable.Form AxisForm CircleForm CurveForm
 checkOtherIntersectableObject pattern otherIntersectable =
@@ -2925,7 +2925,7 @@ checkOtherIntersectableObject pattern otherIntersectable =
             otherIntersectable
 
 
-checkTwoPointsPosition : Pattern -> TwoPointsPosition -> TwoPointsPosition
+checkTwoPointsPosition : Pattern coordinates -> TwoPointsPosition -> TwoPointsPosition
 checkTwoPointsPosition pattern twoPointsPosition =
     case twoPointsPosition of
         TwoPointsPositionRatio stuff_ ->
@@ -2956,7 +2956,7 @@ checkTwoPointsPosition pattern twoPointsPosition =
                         { stuff_ | distanceHelp = Just (printComputeHelp help) }
 
 
-checkDirection : Pattern -> Direction -> Maybe String
+checkDirection : Pattern coordinates -> Direction -> Maybe String
 checkDirection pattern direction =
     case direction of
         DirectionAngle angle ->
@@ -2967,13 +2967,13 @@ checkDirection pattern direction =
             Nothing
 
 
-checkExpr : Pattern -> String -> Maybe String
+checkExpr : Pattern coordinates -> String -> Maybe String
 checkExpr pattern =
     Pattern.checkExpr pattern
         >> Maybe.map printComputeHelp
 
 
-checkOrientation : Pattern -> Orientation -> Maybe String
+checkOrientation : Pattern coordinates -> Orientation -> Maybe String
 checkOrientation pattern orientation =
     case orientation of
         Horizontal ->
@@ -3248,14 +3248,14 @@ clearCurveForm form =
 
 
 {-| -}
-type EditResult
+type EditResult coordinates
     = EditOpen ( Edit, Cmd EditMsg )
-    | EditSucceeded Pattern
+    | EditSucceeded (Pattern coordinates)
     | EditCanceled
 
 
 {-| -}
-editUpdate : Pattern -> EditMsg -> Edit -> EditResult
+editUpdate : Pattern coordinates -> EditMsg -> Edit -> EditResult coordinates
 editUpdate pattern msg edit =
     case msg of
         UpdatePressed ->

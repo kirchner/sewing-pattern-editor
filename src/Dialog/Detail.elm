@@ -346,8 +346,8 @@ initOtherCurveForm =
 
 {-| -}
 initWith :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> A Pattern.Detail
     -> Maybe (Form point)
 initWith initPointWith pattern aDetail =
@@ -373,8 +373,8 @@ initWith initPointWith pattern aDetail =
 
 
 initFCurveWith :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> FirstCurve
     -> Maybe (FCurve point)
 initFCurveWith initPointWith pattern firstCurve =
@@ -416,8 +416,8 @@ initFCurveWith initPointWith pattern firstCurve =
 
 
 initNextCurvesFormWith :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> List NextCurve
     -> Maybe (List (NCurve point))
 initNextCurvesFormWith initPointWith pattern nextCurves =
@@ -425,8 +425,8 @@ initNextCurvesFormWith initPointWith pattern nextCurves =
 
 
 initNextCurvesFormWithHelp :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> List NextCurve
     -> List (NCurve point)
     -> Maybe (List (NCurve point))
@@ -448,8 +448,8 @@ initNextCurvesFormWithHelp initPointWith pattern nextCurves collected =
 
 
 nextCurveFormWith :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> NextCurve
     -> Maybe (NCurve point)
 nextCurveFormWith initPointWith pattern nextCurve =
@@ -483,8 +483,8 @@ nextCurveFormWith initPointWith pattern nextCurve =
 
 
 initLCurveWith :
-    (Pattern -> A Point -> Maybe point)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe point)
+    -> Pattern coordinates
     -> LastCurve
     -> Maybe (LCurve point)
 initLCurveWith initPointWith pattern lastCurve =
@@ -519,10 +519,10 @@ initLCurveWith initPointWith pattern lastCurve =
 
 {-| -}
 new :
-    (point -> Pattern -> Result point (A Point))
-    -> (Pattern -> point -> point)
+    (point -> Pattern coordinates -> Result point (A Point))
+    -> (Pattern coordinates -> point -> point)
     -> Form point
-    -> Pattern
+    -> Pattern coordinates
     -> Result (Form point) Detail
 new newPoint checkPoint form pattern =
     let
@@ -605,10 +605,10 @@ new newPoint checkPoint form pattern =
 
 
 newFirstCurveFrom :
-    (point -> Pattern -> Result point (A Point))
-    -> (Pattern -> point -> point)
+    (point -> Pattern coordinates -> Result point (A Point))
+    -> (Pattern coordinates -> point -> point)
     -> FCurve point
-    -> Pattern
+    -> Pattern coordinates
     -> Result (FCurve point) FirstCurve
 newFirstCurveFrom newPoint checkPoint form pattern =
     case form of
@@ -755,10 +755,10 @@ newFirstCurveFrom newPoint checkPoint form pattern =
 
 
 newNextCurveFrom :
-    (point -> Pattern -> Result point (A Point))
-    -> (Pattern -> point -> point)
+    (point -> Pattern coordinates -> Result point (A Point))
+    -> (Pattern coordinates -> point -> point)
     -> NCurve point
-    -> Pattern
+    -> Pattern coordinates
     -> Result (NCurve point) NextCurve
 newNextCurveFrom newPoint checkPoint form pattern =
     case form of
@@ -862,7 +862,11 @@ newNextCurveFrom newPoint checkPoint form pattern =
                             }
 
 
-checkNextCurve : (Pattern -> point -> point) -> Pattern -> NCurve point -> NCurve point
+checkNextCurve :
+    (Pattern coordinates -> point -> point)
+    -> Pattern coordinates
+    -> NCurve point
+    -> NCurve point
 checkNextCurve checkPoint pattern form =
     let
         check =
@@ -893,10 +897,10 @@ checkNextCurve checkPoint pattern form =
 
 
 newLastCurveFrom :
-    (point -> Pattern -> Result point (A Point))
-    -> (Pattern -> point -> point)
+    (point -> Pattern coordinates -> Result point (A Point))
+    -> (Pattern coordinates -> point -> point)
     -> LCurve point
-    -> Pattern
+    -> Pattern coordinates
     -> Result (LCurve point) LastCurve
 newLastCurveFrom newPoint checkPoint form pattern =
     case form of
@@ -960,7 +964,11 @@ newLastCurveFrom newPoint checkPoint form pattern =
                             }
 
 
-checkLastCurve : (Pattern -> point -> point) -> Pattern -> LCurve point -> LCurve point
+checkLastCurve :
+    (Pattern coordinates -> point -> point)
+    -> Pattern coordinates
+    -> LCurve point
+    -> LCurve point
 checkLastCurve checkPoint pattern form =
     case form of
         LStraight ->
@@ -1087,8 +1095,8 @@ clearOtherCurveHelp form =
 
 {-| -}
 view :
-    (Pattern -> Objects -> { otherPoint : point, id : String, label : String } -> Element pointMsg)
-    -> Pattern
+    (Pattern coordinates -> Objects -> { otherPoint : point, id : String, label : String } -> Element pointMsg)
+    -> Pattern coordinates
     -> Objects
     -> { detail : Form point, id : String }
     -> Element (Msg pointMsg)
@@ -1300,8 +1308,8 @@ view viewPointHelp pattern objects { detail, id } =
 
 
 viewNextCurve :
-    (Pattern -> Objects -> { otherPoint : point, id : String, label : String } -> Element pointMsg)
-    -> Pattern
+    (Pattern coordinates -> Objects -> { otherPoint : point, id : String, label : String } -> Element pointMsg)
+    -> Pattern coordinates
     -> Objects
     -> String
     -> Int
@@ -1557,9 +1565,9 @@ type ActionMenuMsg
 
 {-| -}
 update :
-    (Pattern -> Objects -> pointMsg -> point -> ( point, Cmd pointMsg ))
+    (Pattern coordinates -> Objects -> pointMsg -> point -> ( point, Cmd pointMsg ))
     -> point
-    -> Pattern
+    -> Pattern coordinates
     -> Pattern.Objects
     -> Msg pointMsg
     -> Form point

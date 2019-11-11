@@ -72,8 +72,8 @@ initInlined expanded initFromOnePointForm =
 
 {-| -}
 initWith :
-    (Pattern -> A Point -> Maybe pointForm)
-    -> Pattern
+    (Pattern coordinates -> A Point -> Maybe pointForm)
+    -> Pattern coordinates
     -> A Point
     -> Maybe (Form pointForm)
 initWith initPointFormWith pattern aPoint =
@@ -98,9 +98,9 @@ initWith initPointFormWith pattern aPoint =
 
 {-| -}
 new :
-    (pointForm -> Pattern -> Result pointForm Point)
+    (pointForm -> Pattern coordinates -> Result pointForm Point)
     -> Form pointForm
-    -> Pattern
+    -> Pattern coordinates
     -> Result (Form pointForm) (A Point)
 new newPointFrom form pattern =
     case form of
@@ -147,8 +147,8 @@ type Msg pointMsg
 {-| -}
 update :
     pointForm
-    -> (Pattern -> Objects -> pointMsg -> pointForm -> ( pointForm, Cmd pointMsg ))
-    -> Pattern
+    -> (Pattern coordinates -> Objects -> pointMsg -> pointForm -> ( pointForm, Cmd pointMsg ))
+    -> Pattern coordinates
     -> Objects
     -> Msg pointMsg
     -> Form pointForm
@@ -221,8 +221,8 @@ update initFromOnePointForm updatePointForm pattern objects msg form =
 
 {-| -}
 view :
-    (Pattern -> Objects -> { point : pointForm, id : String } -> Element pointMsg)
-    -> Pattern
+    (Pattern coordinates -> Objects -> { point : pointForm, id : String } -> Element pointMsg)
+    -> Pattern coordinates
     -> Objects
     -> { otherPoint : Form pointForm, id : String, label : String }
     -> Element (Msg pointMsg)

@@ -70,7 +70,7 @@ tags =
 
 
 {-| -}
-intersectableTagFromForm : Pattern -> Form axisForm circleForm curveForm -> Maybe IntersectableTag
+intersectableTagFromForm : Pattern coordinates -> Form axisForm circleForm curveForm -> Maybe IntersectableTag
 intersectableTagFromForm pattern form =
     case form of
         Referenced { maybeAIntersectable } ->
@@ -121,17 +121,17 @@ initInlinedCurve initCurve =
         }
 
 
-type alias InitConfig axisForm circleForm curveForm =
-    { axis : Pattern -> A Axis -> Maybe axisForm
-    , circle : Pattern -> A Circle -> Maybe circleForm
-    , curve : Pattern -> A Curve -> Maybe curveForm
+type alias InitConfig coordinates axisForm circleForm curveForm =
+    { axis : Pattern coordinates -> A Axis -> Maybe axisForm
+    , circle : Pattern coordinates -> A Circle -> Maybe circleForm
+    , curve : Pattern coordinates -> A Curve -> Maybe curveForm
     }
 
 
 {-| -}
 initWith :
-    InitConfig axisForm circleForm curveForm
-    -> Pattern
+    InitConfig coordinates axisForm circleForm curveForm
+    -> Pattern coordinates
     -> A Intersectable
     -> Maybe (Form axisForm circleForm curveForm)
 initWith initIntersectable pattern aIntersectable =
@@ -201,18 +201,18 @@ otherIntersectableFormExpanded form =
             expanded
 
 
-type alias NewConfig axisForm circleForm curveForm =
-    { axis : axisForm -> Pattern -> Result axisForm Axis
-    , circle : circleForm -> Pattern -> Result circleForm Circle
-    , curve : curveForm -> Pattern -> Result curveForm Curve
+type alias NewConfig coordinates axisForm circleForm curveForm =
+    { axis : axisForm -> Pattern coordinates -> Result axisForm Axis
+    , circle : circleForm -> Pattern coordinates -> Result circleForm Circle
+    , curve : curveForm -> Pattern coordinates -> Result curveForm Curve
     }
 
 
 {-| -}
 new :
-    NewConfig axisForm circleForm curveForm
+    NewConfig coordinates axisForm circleForm curveForm
     -> Form axisForm circleForm curveForm
-    -> Pattern
+    -> Pattern coordinates
     -> Result (Form axisForm circleForm curveForm) (A Intersectable)
 new newIntersectable form pattern =
     case form of
@@ -282,17 +282,17 @@ clear clearIntersectable form =
 ---- VIEW
 
 
-type alias ViewConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg =
-    { axis : Pattern -> Pattern.Objects -> { axis : axisForm, id : String } -> Element axisMsg
-    , circle : Pattern -> Pattern.Objects -> { circle : circleForm, id : String } -> Element circleMsg
-    , curve : Pattern -> Pattern.Objects -> { curve : curveForm, id : String } -> Element curveMsg
+type alias ViewConfig coordinates axisForm axisMsg circleForm circleMsg curveForm curveMsg =
+    { axis : Pattern coordinates -> Pattern.Objects -> { axis : axisForm, id : String } -> Element axisMsg
+    , circle : Pattern coordinates -> Pattern.Objects -> { circle : circleForm, id : String } -> Element circleMsg
+    , curve : Pattern coordinates -> Pattern.Objects -> { curve : curveForm, id : String } -> Element curveMsg
     }
 
 
 {-| -}
 view :
-    ViewConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
-    -> Pattern
+    ViewConfig coordinates axisForm axisMsg circleForm circleMsg curveForm curveMsg
+    -> Pattern coordinates
     -> Pattern.Objects
     ->
         { otherIntersectable : Form axisForm circleForm curveForm
@@ -397,10 +397,10 @@ type Msg axisMsg circleMsg curveMsg
     | InlinedIntersectableExpandToggled
 
 
-type alias UpdateConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg =
-    { updateAxis : Pattern -> Pattern.Objects -> axisMsg -> axisForm -> ( axisForm, Cmd axisMsg )
-    , updateCircle : Pattern -> Pattern.Objects -> circleMsg -> circleForm -> ( circleForm, Cmd circleMsg )
-    , updateCurve : Pattern -> Pattern.Objects -> curveMsg -> curveForm -> ( curveForm, Cmd curveMsg )
+type alias UpdateConfig coordinates axisForm axisMsg circleForm circleMsg curveForm curveMsg =
+    { updateAxis : Pattern coordinates -> Pattern.Objects -> axisMsg -> axisForm -> ( axisForm, Cmd axisMsg )
+    , updateCircle : Pattern coordinates -> Pattern.Objects -> circleMsg -> circleForm -> ( circleForm, Cmd circleMsg )
+    , updateCurve : Pattern coordinates -> Pattern.Objects -> curveMsg -> curveForm -> ( curveForm, Cmd curveMsg )
     , initAxis : axisForm
     , initCircle : circleForm
     , initCurve : curveForm
@@ -409,8 +409,8 @@ type alias UpdateConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
 
 {-| -}
 update :
-    UpdateConfig axisForm axisMsg circleForm circleMsg curveForm curveMsg
-    -> Pattern
+    UpdateConfig coordinates axisForm axisMsg circleForm circleMsg curveForm curveMsg
+    -> Pattern coordinates
     -> Pattern.Objects
     -> Msg axisMsg circleMsg curveMsg
     -> Form axisForm circleForm curveForm
