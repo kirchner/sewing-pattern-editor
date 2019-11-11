@@ -12,39 +12,39 @@ detail2d attributes { firstPoint, nextCurves, lastCurve } =
     let
         step nextCurve2d =
             case nextCurve2d of
-                NextLineSegment2d stuff ->
-                    "L " ++ coordinatesString stuff.endPoint
+                NextLineSegment2d { endPoint } ->
+                    "L " ++ coordinatesString endPoint
 
-                NextQuadraticSpline2d stuff ->
+                NextQuadraticSpline2d { secondControlPoint, thirdControlPoint } ->
                     "Q "
-                        ++ coordinatesString stuff.controlPoint
+                        ++ coordinatesString secondControlPoint
                         ++ ", "
-                        ++ coordinatesString stuff.endPoint
+                        ++ coordinatesString thirdControlPoint
 
-                NextCubicSpline2d stuff ->
+                NextCubicSpline2d { secondControlPoint, thirdControlPoint, fourthControlPoint } ->
                     "C "
-                        ++ coordinatesString stuff.startControlPoint
+                        ++ coordinatesString secondControlPoint
                         ++ ", "
-                        ++ coordinatesString stuff.endControlPoint
+                        ++ coordinatesString thirdControlPoint
                         ++ ", "
-                        ++ coordinatesString stuff.endPoint
+                        ++ coordinatesString fourthControlPoint
 
         lastStep =
             case lastCurve of
                 LastLineSegment2d ->
                     "L " ++ coordinatesString firstPoint
 
-                LastQuadraticSpline2d stuff ->
+                LastQuadraticSpline2d { secondControlPoint } ->
                     "Q "
-                        ++ coordinatesString stuff.controlPoint
+                        ++ coordinatesString secondControlPoint
                         ++ ", "
                         ++ coordinatesString firstPoint
 
-                LastCubicSpline2d stuff ->
+                LastCubicSpline2d { secondControlPoint, thirdControlPoint } ->
                     "C "
-                        ++ coordinatesString stuff.startControlPoint
+                        ++ coordinatesString secondControlPoint
                         ++ ", "
-                        ++ coordinatesString stuff.endControlPoint
+                        ++ coordinatesString thirdControlPoint
                         ++ ", "
                         ++ coordinatesString firstPoint
     in

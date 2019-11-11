@@ -5,8 +5,9 @@ module Ui.Pattern exposing
     , Circle, CircleInfo(..)
     , Curve(..), LineSegmentData, QuadraticSplineData, CubicSplineData
     , LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
+    , Detail
     , Config
-    , drawPoint, drawAxis, drawCircle, drawCurve
+    , drawPoint, drawAxis, drawCircle, drawCurve, drawDetail
     )
 
 {-|
@@ -17,9 +18,10 @@ module Ui.Pattern exposing
 @docs Circle, CircleInfo
 @docs Curve, LineSegmentData, QuadraticSplineData, CubicSplineData
 @docs LineSegmentInfo, QuadraticSplineInfo, CubicSplineInfo
+@docs Detail
 
 @docs Config
-@docs drawPoint, drawAxis, drawCircle, drawCurve
+@docs drawPoint, drawAxis, drawCircle, drawCurve, drawDetail
 
 -}
 
@@ -204,8 +206,8 @@ type alias CurveInfo coordinates =
 
 type alias Detail coordinates =
     { detail2d : Detail2d Meters coordinates
-    , pointInfos : List (PointInfo coordinates)
-    , curveInfos : List (CurveInfo coordinates)
+    , points : List (Point coordinates)
+    , curves : List (Curve coordinates)
     }
 
 
@@ -1339,6 +1341,164 @@ cubicSplineEvents cfg cubicSpline2d =
 
 
 ---- DETAIL
+
+
+drawDetail : Config msg -> String -> Detail coordinates -> Resolution -> Bool -> Bool -> Layers msg
+drawDetail cfg name detail resolution focused hovered =
+    let
+        detail2d =
+            Detail2d.at resolution detail.detail2d
+    in
+    case ( focused, hovered ) of
+        ( False, False ) ->
+            { inactive =
+                Svg.g []
+                    [ detailBackground detail2d False False
+                    , detailReferenced detail2d False False
+                    ]
+            , active = Svg.text ""
+            , outline = Svg.text ""
+            , events = detailEvents cfg detail2d
+            }
+
+        ( True, False ) ->
+            { inactive = detailBackground detail2d True False
+            , active =
+                Svg.g []
+                    [ detailInfo detail resolution focused hovered
+                    , detailLabel name detail2d
+                    , detailReferenced detail2d True False
+                    ]
+            , outline = detailOutline detail2d
+            , events = detailEvents cfg detail2d
+            }
+
+        ( False, True ) ->
+            { inactive = detailBackground detail2d False True
+            , active =
+                Svg.g []
+                    [ detailInfo detail resolution focused hovered
+                    , detailLabel name detail2d
+                    , detailReferenced detail2d False True
+                    ]
+            , outline = Svg.text ""
+            , events = detailEvents cfg detail2d
+            }
+
+        ( True, True ) ->
+            { inactive = detailBackground detail2d True True
+            , active =
+                Svg.g []
+                    [ detailInfo detail resolution focused hovered
+                    , detailLabel name detail2d
+                    , detailReferenced detail2d True True
+                    ]
+            , outline = detailOutline detail2d
+            , events = detailEvents cfg detail2d
+            }
+
+
+detailLabel : String -> Detail2d Pixels coordinates -> Svg msg
+detailLabel label detail2d =
+    let
+        labelPosition =
+            Point2d.origin
+                |> Point2d.toPixels
+    in
+    Svg.text_
+        [ Svg.Attributes.x (String.fromFloat labelPosition.x)
+        , Svg.Attributes.y (String.fromFloat labelPosition.y)
+        , Svg.Attributes.textAnchor "middle"
+        , font
+        , Svg.Attributes.fill (toColor Ui.Color.primary)
+        ]
+        [ Svg.text label ]
+
+
+detailInfo : Detail coordinates -> Resolution -> Bool -> Bool -> Svg msg
+detailInfo detail resolution focused hovered =
+    let
+        detailPointInfo point =
+            [ pointInfo 3 point resolution focused hovered
+            , pointReferenced (Point2d.at resolution point.point2d) hovered
+            ]
+
+        detailCurveInfo curve =
+            [ Svg.text "TODO" ]
+    in
+    Svg.g []
+        [ Svg.g [] (List.concatMap detailPointInfo detail.points)
+        , Svg.g [] (List.concatMap detailCurveInfo detail.curves)
+        ]
+
+
+detailOutline : Detail2d Pixels coordinates -> Svg msg
+detailOutline detail2d =
+    case Detail2d.boundingBox detail2d of
+        Nothing ->
+            Svg.text ""
+
+        Just boundingBox2d ->
+            Svg.boundingBox2d
+                [ Svg.Attributes.fill "none"
+                , Svg.Attributes.stroke (toColor Ui.Color.primary)
+                , Svg.Attributes.strokeWidth "2"
+                , Svg.Attributes.strokeDasharray "4 7"
+                , Svg.Attributes.strokeLinecap "round"
+                ]
+                (BoundingBox2d.expandBy (pixels 8) boundingBox2d)
+
+
+detailReferenced : Detail2d Pixels coordinates -> Bool -> Bool -> Svg msg
+detailReferenced detail2d focused hovered =
+    Svg.detail2d
+        [ Svg.Attributes.stroke <|
+            if hovered then
+                toColor Ui.Color.primary
+
+            else
+                toColor Ui.Color.black
+        , Svg.Attributes.strokeWidth <|
+            if focused then
+                "1.5"
+
+            else
+                "1"
+        , Svg.Attributes.fill "none"
+        ]
+        detail2d
+
+
+detailBackground : Detail2d Pixels coordinates -> Bool -> Bool -> Svg msg
+detailBackground detail2d focused hovered =
+    Svg.detail2d
+        [ Svg.Attributes.fill <|
+            if hovered then
+                toColor Ui.Color.secondaryDark
+
+            else
+                toColor Ui.Color.secondary
+        ]
+        detail2d
+
+
+detailEvents : Config msg -> Detail2d Pixels coordinates -> Svg msg
+detailEvents cfg detail2d =
+    Svg.detail2d
+        [ Svg.Attributes.stroke "transparent"
+        , Svg.Attributes.strokeWidth "8"
+        , Svg.Attributes.fill "transparent"
+        , Svg.Attributes.style "outline: none;"
+        , VirtualDom.attribute "tabindex" "0"
+        , Svg.Events.onMouseOver cfg.onHover
+        , Svg.Events.onMouseOut cfg.onLeave
+        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
+        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        ]
+        detail2d
+
+
+
 ---- HELPER
 
 

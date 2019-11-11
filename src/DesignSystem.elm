@@ -7,6 +7,7 @@ import Browser.Events
 import Browser.Navigation exposing (Key)
 import Circle2d
 import CubicSpline2d
+import Detail2d exposing (LastCurve2d(..), NextCurve2d(..))
 import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
@@ -72,6 +73,7 @@ type alias Model =
     , axes : List (Object (Ui.Pattern.Axis ()))
     , circles : List (Object (Ui.Pattern.Circle ()))
     , curves : List (Object (Ui.Pattern.Curve ()))
+    , details : List (Object (Ui.Pattern.Detail ()))
     }
 
 
@@ -278,6 +280,7 @@ init { width, height } url key =
         , axes = objects.axes
         , circles = objects.circles
         , curves = objects.curves
+        , details = objects.details
         }
 
 
@@ -286,6 +289,7 @@ initObjects :
     , axes : List (Object (Ui.Pattern.Axis ()))
     , circles : List (Object (Ui.Pattern.Circle ()))
     , curves : List (Object (Ui.Pattern.Curve ()))
+    , details : List (Object (Ui.Pattern.Detail ()))
     }
 initObjects =
     let
@@ -573,6 +577,28 @@ initObjects =
                             , fourthControlPoint = { point2d = point2dE, info = Nothing }
                             }
                     }
+              )
+            ]
+    , details =
+        toObjects
+            [ ( "Detail1"
+              , { detail2d =
+                    { firstPoint = point2dA
+                    , nextCurves =
+                        [ NextLineSegment2d { endPoint = point2dC }
+                        , NextLineSegment2d { endPoint = point2dD }
+                        ]
+                    , lastCurve = LastLineSegment2d
+                    }
+                , points =
+                    [ { point2d = point2dA
+                      , info = Nothing
+                      }
+                    , { point2d = point2dC, info = Nothing }
+                    , { point2d = point2dD, info = Nothing }
+                    ]
+                , curves = []
+                }
               )
             ]
     }
@@ -1256,6 +1282,15 @@ viewObjects model =
                 , blured = BluredCurve
                 }
                 model.curves
+
+        detailLayers =
+            objectLayers Ui.Pattern.drawDetail
+                { hovered = HoveredDetail
+                , left = LeftDetail
+                , focused = FocusedDetail
+                , blured = BluredDetail
+                }
+                model.details
     in
     Element.column
         [ Element.spacing Ui.Space.level4
@@ -1265,24 +1300,28 @@ viewObjects model =
         [ viewObject model.objectsContainerWidth <|
             List.concat
                 [ -- INACTIVE
-                  circleLayers.inactiveList
+                  detailLayers.inactiveList
+                , circleLayers.inactiveList
                 , axisLayers.inactiveList
                 , curveLayers.inactiveList
                 , pointLayers.inactiveList
 
                 -- ACTIVE
+                , detailLayers.activeList
                 , circleLayers.activeList
                 , axisLayers.activeList
                 , curveLayers.activeList
                 , pointLayers.activeList
 
                 -- OUTLINE
+                , detailLayers.outlineList
                 , circleLayers.outlineList
                 , axisLayers.outlineList
                 , curveLayers.outlineList
                 , pointLayers.outlineList
 
                 -- EVENTS
+                , List.reverse detailLayers.eventsList
                 , List.reverse circleLayers.eventsList
                 , List.reverse axisLayers.eventsList
                 , List.reverse curveLayers.eventsList
@@ -1567,6 +1606,11 @@ type Msg
     | LeftCurve Int
     | FocusedCurve Int
     | BluredCurve Int
+      -- DETAILS
+    | HoveredDetail Int
+    | LeftDetail Int
+    | FocusedDetail Int
+    | BluredDetail Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1794,6 +1838,35 @@ update msg model =
         BluredCurve index ->
             ( { model
                 | curves = List.updateAt index (\stuff -> { stuff | focused = False }) model.curves
+              }
+            , Cmd.none
+            )
+
+        -- DETAILS
+        HoveredDetail index ->
+            ( { model
+                | details = List.updateAt index (\stuff -> { stuff | hovered = True }) model.details
+              }
+            , Cmd.none
+            )
+
+        LeftDetail index ->
+            ( { model
+                | details = List.updateAt index (\stuff -> { stuff | hovered = False }) model.details
+              }
+            , Cmd.none
+            )
+
+        FocusedDetail index ->
+            ( { model
+                | details = List.updateAt index (\stuff -> { stuff | focused = True }) model.details
+              }
+            , Cmd.none
+            )
+
+        BluredDetail index ->
+            ( { model
+                | details = List.updateAt index (\stuff -> { stuff | focused = False }) model.details
               }
             , Cmd.none
             )
