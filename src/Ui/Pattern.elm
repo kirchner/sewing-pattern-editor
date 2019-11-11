@@ -32,6 +32,7 @@ import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Direction2d
 import Element exposing (Color)
 import Geometry.Svg as Svg
+import Geometry.Svg.Extra as Svg
 import Json.Decode as Decode
 import Length exposing (Meters)
 import LineSegment2d exposing (LineSegment2d)
