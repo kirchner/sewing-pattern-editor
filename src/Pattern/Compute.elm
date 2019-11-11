@@ -1,18 +1,44 @@
-module Pattern.Compute exposing (point, axis, circle, curve)
+module Pattern.Compute exposing
+    ( Objects, compute
+    , point, axis, circle, curve, detail
+    )
 
 {-|
 
-@docs point, axis, circle, curve
+@docs Objects, compute
+@docs point, axis, circle, curve, detail
 
 -}
 
 import Pattern exposing (A, ComputeHelp, Pattern)
-import StateResult exposing (StateResult, andThen, embed, map, map2, map3, map4, ok)
+import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, map4, ok, traverse)
 import Ui.Pattern
 
 
 type alias Result coordinates a =
     StateResult (Pattern coordinates) ComputeHelp a
+
+
+type alias Objects coordinates =
+    { points : List (Ui.Pattern.Point coordinates)
+    , axes : List (Ui.Pattern.Axis coordinates)
+    , circles : List (Ui.Pattern.Circle coordinates)
+    , details : List (Ui.Pattern.Detail coordinates)
+    }
+
+
+compute : Result coordinates (Objects coordinates)
+compute =
+    let
+        computeHelp pattern =
+            map4 Objects
+                (traverse point (Pattern.points pattern))
+                (traverse axis (Pattern.axes pattern))
+                (traverse circle (Pattern.circles pattern))
+                (traverse detail (Pattern.details pattern))
+    in
+    get
+        |> andThen computeHelp
 
 
 

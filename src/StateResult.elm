@@ -4,6 +4,7 @@ module StateResult exposing
     , combine
     , embed
     , err
+    , get
     , join
     , map
     , map2
@@ -49,6 +50,11 @@ ok a =
 err : err -> StateResult s err a
 err error =
     State.state (Err error)
+
+
+get : StateResult s err s
+get =
+    State.map Ok State.get
 
 
 traverse : (a -> StateResult s err b) -> List a -> StateResult s err (List b)
