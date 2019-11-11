@@ -2,10 +2,13 @@ module StateResult exposing
     ( StateResult
     , andThen
     , combine
+    , embed
     , err
     , join
     , map
     , map2
+    , map3
+    , map4
     , ok
     , traverse
     , with
@@ -120,6 +123,35 @@ map2 func =
     State.map2 (Result.map2 func)
 
 
+map3 :
+    (a -> b -> c -> d)
+    -> StateResult s err a
+    -> StateResult s err b
+    -> StateResult s err c
+    -> StateResult s err d
+map3 func =
+    State.map3 (Result.map3 func)
+
+
+map4 :
+    (a -> b -> c -> d -> e)
+    -> StateResult s err a
+    -> StateResult s err b
+    -> StateResult s err c
+    -> StateResult s err d
+    -> StateResult s err e
+map4 func a b c d =
+    State.map (Result.map4 func) a
+        |> State.andMap b
+        |> State.andMap c
+        |> State.andMap d
+
+
 with : StateResult s err a -> StateResult s err (a -> b) -> StateResult s err b
 with =
     \b a -> map2 (<|) a b
+
+
+embed : (s -> a) -> StateResult s err a
+embed f =
+    State.embed (Ok << f)

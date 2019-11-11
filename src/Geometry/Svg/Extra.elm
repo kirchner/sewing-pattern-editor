@@ -1,10 +1,31 @@
-module Geometry.Svg.Extra exposing (detail2d)
+module Geometry.Svg.Extra exposing (curve2d, detail2d)
 
+{-|
+
+@docs curve2d, detail2d
+
+-}
+
+import Curve2d exposing (Curve2d(..))
 import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
+import Geometry.Svg as Svg
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
 import Svg exposing (Svg)
 import Svg.Attributes
+
+
+curve2d : List (Svg.Attribute msg) -> Curve2d Pixels coordinates -> Svg msg
+curve2d attributes curve2d_ =
+    case curve2d_ of
+        LineSegment2d lineSegment2d ->
+            Svg.lineSegment2d attributes lineSegment2d
+
+        QuadraticSpline2d quadraticSpline2d ->
+            Svg.quadraticSpline2d attributes quadraticSpline2d
+
+        CubicSpline2d cubicSpline2d ->
+            Svg.cubicSpline2d attributes cubicSpline2d
 
 
 detail2d : List (Svg.Attribute msg) -> Detail2d Pixels coordinates -> Svg msg

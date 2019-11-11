@@ -2,7 +2,6 @@ module Pattern exposing
     ( Pattern, empty
     , Point, Axis, Circle, Curve, Detail
     , Intersectable
-    , BottomLeft
     , A, this, name, inlined, hash
     , intersectableAxis, intersectableCircle, intersectableCurve
     , axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
@@ -21,7 +20,7 @@ module Pattern exposing
     , pointInfo, PointInfo(..)
     , axisInfo, AxisInfo(..)
     , circleInfo, CircleInfo(..)
-    , curveInfo, CurveInfo(..)
+    , curveInfo, CurveInfo(..), StraightStuff, QuadraticStuff, CubicStuff
     , detailInfo, DetailInfo, FirstCurve(..), NextCurve(..), LastCurve(..)
     , transformationInfo, TransformationInfo(..)
     , variableInfo
@@ -29,7 +28,6 @@ module Pattern exposing
     , Direction(..), Orientation(..), OneInTwo(..)
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
-    , Curve2d(..)
     , Intersectable2d(..)
     , ComputeHelp(..)
     , Objects
@@ -65,7 +63,7 @@ module Pattern exposing
 
 @docs Point, Axis, Circle, Curve, Detail
 @docs Intersectable
-@docs BottomLeft
+@docs coordinates
 
 
 # Nest and reference
@@ -109,7 +107,7 @@ module Pattern exposing
 @docs pointInfo, PointInfo
 @docs axisInfo, AxisInfo
 @docs circleInfo, CircleInfo
-@docs curveInfo, CurveInfo
+@docs curveInfo, CurveInfo, StraightStuff, QuadraticStuff, CubicStuff
 @docs detailInfo, DetailInfo, FirstCurve, NextCurve, LastCurve
 @docs transformationInfo, TransformationInfo
 @docs variableInfo
@@ -218,6 +216,7 @@ import Axis2d exposing (Axis2d)
 import Axis2d.Extra as Axis2d
 import Circle2d exposing (Circle2d)
 import CubicSpline2d exposing (CubicSpline2d)
+import Curve2d exposing (Curve2d(..))
 import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
@@ -237,15 +236,11 @@ import StateResult
 import Vector2d
 
 
-type Pattern
-    = Pattern PatternData
+type Pattern coordinates
+    = Pattern (PatternData coordinates)
 
 
-type BottomLeft
-    = BottomLeft BottomLeft
-
-
-type alias PatternData =
+type alias PatternData coordinates =
     { points : Dict String Point
     , axes : Dict String Axis
     , circles : Dict String Circle
@@ -255,16 +250,16 @@ type alias PatternData =
     , variables : Dict String String
 
     -- CACHE
-    , point2ds : Dict String (Result ComputeHelp (Point2d Meters BottomLeft))
-    , axis2ds : Dict String (Result ComputeHelp (Axis2d Meters BottomLeft))
-    , circle2ds : Dict String (Result ComputeHelp (Circle2d Meters BottomLeft))
-    , curve2ds : Dict String (Result ComputeHelp (Curve2d Meters BottomLeft))
-    , detail2ds : Dict String (Result ComputeHelp (Detail2d Meters BottomLeft))
+    , point2ds : Dict String (Result ComputeHelp (Point2d Meters coordinates))
+    , axis2ds : Dict String (Result ComputeHelp (Axis2d Meters coordinates))
+    , circle2ds : Dict String (Result ComputeHelp (Circle2d Meters coordinates))
+    , curve2ds : Dict String (Result ComputeHelp (Curve2d Meters coordinates))
+    , detail2ds : Dict String (Result ComputeHelp (Detail2d Meters coordinates))
     , variablesCache : Dict String (Result ComputeHelp Float)
     }
 
 
-empty : Pattern
+empty : Pattern coordinates
 empty =
     Pattern
         { points = Dict.empty
@@ -409,7 +404,7 @@ intersectableCurve aCurve =
             This (IntersectableCurve curve)
 
 
-axisFromIntersectable : Pattern -> A Intersectable -> Maybe (A Axis)
+axisFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Axis)
 axisFromIntersectable pattern aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -427,7 +422,7 @@ axisFromIntersectable pattern aIntersectable =
             Nothing
 
 
-circleFromIntersectable : Pattern -> A Intersectable -> Maybe (A Circle)
+circleFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Circle)
 circleFromIntersectable pattern aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -445,7 +440,7 @@ circleFromIntersectable pattern aIntersectable =
             Nothing
 
 
-curveFromIntersectable : Pattern -> A Intersectable -> Maybe (A Curve)
+curveFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Curve)
 curveFromIntersectable pattern aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -467,7 +462,7 @@ curveFromIntersectable pattern aIntersectable =
 ---- INSERT
 
 
-insertPoint : String -> Point -> Pattern -> Result InsertHelp Pattern
+insertPoint : String -> Point -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertPoint name_ point ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -487,7 +482,7 @@ insertPoint name_ point ((Pattern data) as pattern) =
                 Ok newPattern
 
 
-insertAxis : String -> Axis -> Pattern -> Result InsertHelp Pattern
+insertAxis : String -> Axis -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertAxis name_ axis ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -507,7 +502,7 @@ insertAxis name_ axis ((Pattern data) as pattern) =
                 Ok newPattern
 
 
-insertCircle : String -> Circle -> Pattern -> Result InsertHelp Pattern
+insertCircle : String -> Circle -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertCircle name_ circle ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -527,7 +522,7 @@ insertCircle name_ circle ((Pattern data) as pattern) =
                 Ok newPattern
 
 
-insertCurve : String -> Curve -> Pattern -> Result InsertHelp Pattern
+insertCurve : String -> Curve -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertCurve name_ curve ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -547,7 +542,7 @@ insertCurve name_ curve ((Pattern data) as pattern) =
                 Ok newPattern
 
 
-insertDetail : String -> Detail -> Pattern -> Result InsertHelp Pattern
+insertDetail : String -> Detail -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertDetail name_ detail_ ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -567,12 +562,12 @@ insertDetail name_ detail_ ((Pattern data) as pattern) =
                 Ok newPattern
 
 
-insertTransformation : String -> Transformation -> Pattern -> Result InsertHelp Pattern
+insertTransformation : String -> Transformation -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertTransformation n transformation pattern =
     Err NotImplementedYet
 
 
-insertVariable : String -> String -> Pattern -> Result InsertHelp Pattern
+insertVariable : String -> String -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertVariable name_ expr ((Pattern data) as pattern) =
     if nameTaken name_ data then
         Err NameTaken
@@ -598,7 +593,7 @@ type InsertHelp
     | NotImplementedYet
 
 
-nameTaken : String -> PatternData -> Bool
+nameTaken : String -> PatternData coordinates -> Bool
 nameTaken name_ data =
     Dict.member name_ data.points
         || Dict.member name_ data.axes
@@ -613,7 +608,7 @@ nameTaken name_ data =
 ---- REPLACE
 
 
-replacePoint : A Point -> Point -> Pattern -> Result ReplaceHelp Pattern
+replacePoint : A Point -> Point -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replacePoint aPoint newPoint ((Pattern data) as pattern) =
     case aPoint of
         That name_ ->
@@ -649,7 +644,7 @@ replacePoint aPoint newPoint ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
-replaceAxis : A Axis -> Axis -> Pattern -> Result ReplaceHelp Pattern
+replaceAxis : A Axis -> Axis -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceAxis aAxis newAxis ((Pattern data) as pattern) =
     case aAxis of
         That name_ ->
@@ -685,7 +680,7 @@ replaceAxis aAxis newAxis ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
-replaceCircle : A Circle -> Circle -> Pattern -> Result ReplaceHelp Pattern
+replaceCircle : A Circle -> Circle -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceCircle aCircle newCircle ((Pattern data) as pattern) =
     case aCircle of
         That name_ ->
@@ -721,7 +716,7 @@ replaceCircle aCircle newCircle ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
-replaceCurve : A Curve -> Curve -> Pattern -> Result ReplaceHelp Pattern
+replaceCurve : A Curve -> Curve -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceCurve aCurve newCurve ((Pattern data) as pattern) =
     case aCurve of
         That name_ ->
@@ -757,7 +752,7 @@ replaceCurve aCurve newCurve ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
-replaceDetail : A Detail -> Detail -> Pattern -> Result ReplaceHelp Pattern
+replaceDetail : A Detail -> Detail -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceDetail aDetail newDetail ((Pattern data) as pattern) =
     case aDetail of
         That name_ ->
@@ -793,7 +788,7 @@ replaceDetail aDetail newDetail ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
-replaceVariable : String -> String -> Pattern -> Result ReplaceHelp Pattern
+replaceVariable : String -> String -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceVariable variable newValue ((Pattern data) as pattern) =
     let
         circularDependency =
@@ -834,7 +829,7 @@ type ReplaceHelp
 ---- REMOVE
 
 
-removePoint : A Point -> Pattern -> Pattern
+removePoint : A Point -> Pattern coordinates -> Pattern coordinates
 removePoint aPoint pattern =
     case aPoint of
         That name_ ->
@@ -853,7 +848,7 @@ removePoint aPoint pattern =
             pattern
 
 
-removeAxis : A Axis -> Pattern -> Pattern
+removeAxis : A Axis -> Pattern coordinates -> Pattern coordinates
 removeAxis aAxis pattern =
     case aAxis of
         That name_ ->
@@ -872,7 +867,7 @@ removeAxis aAxis pattern =
             pattern
 
 
-removeCircle : A Circle -> Pattern -> Pattern
+removeCircle : A Circle -> Pattern coordinates -> Pattern coordinates
 removeCircle aCircle pattern =
     case aCircle of
         That name_ ->
@@ -891,7 +886,7 @@ removeCircle aCircle pattern =
             pattern
 
 
-removeCurve : A Curve -> Pattern -> Pattern
+removeCurve : A Curve -> Pattern coordinates -> Pattern coordinates
 removeCurve aCurve pattern =
     case aCurve of
         That name_ ->
@@ -910,7 +905,7 @@ removeCurve aCurve pattern =
             pattern
 
 
-removeDetail : A Detail -> Pattern -> Pattern
+removeDetail : A Detail -> Pattern coordinates -> Pattern coordinates
 removeDetail aDetail pattern =
     case aDetail of
         That name_ ->
@@ -929,7 +924,7 @@ removeDetail aDetail pattern =
             pattern
 
 
-removeVariable : String -> Pattern -> Pattern
+removeVariable : String -> Pattern coordinates -> Pattern coordinates
 removeVariable variable pattern =
     let
         (Pattern data) =
@@ -943,7 +938,7 @@ removeVariable variable pattern =
             }
 
 
-removeObjects : Objects -> Pattern -> Pattern
+removeObjects : Objects -> Pattern coordinates -> Pattern coordinates
 removeObjects objects_ (Pattern data) =
     Pattern
         { data
@@ -960,7 +955,7 @@ removeObjects objects_ (Pattern data) =
         }
 
 
-regenerateCaches : Pattern -> Pattern
+regenerateCaches : Pattern coordinates -> Pattern coordinates
 regenerateCaches ((Pattern data) as pattern) =
     State.finalState
         (Pattern
@@ -994,32 +989,32 @@ regenerateCaches ((Pattern data) as pattern) =
 ---- QUERY
 
 
-points : Pattern -> List (A Point)
+points : Pattern coordinates -> List (A Point)
 points (Pattern data) =
     Dict.keys data.points
         |> List.map That
 
 
-axes : Pattern -> List (A Axis)
+axes : Pattern coordinates -> List (A Axis)
 axes (Pattern data) =
     Dict.keys data.axes
         |> List.map That
 
 
-circles : Pattern -> List (A Circle)
+circles : Pattern coordinates -> List (A Circle)
 circles (Pattern data) =
     Dict.keys data.circles
         |> List.map That
 
 
-curves : Pattern -> List (A Curve)
+curves : Pattern coordinates -> List (A Curve)
 curves (Pattern data) =
     Dict.keys data.curves
         |> List.map That
 
 
 curvesWith :
-    Pattern
+    Pattern coordinates
     ->
         { startPoint : Maybe (A Point)
         , endPoint : Maybe (A Point)
@@ -1029,24 +1024,24 @@ curvesWith (Pattern data) constraints =
     []
 
 
-details : Pattern -> List (A Detail)
+details : Pattern coordinates -> List (A Detail)
 details (Pattern data) =
     Dict.keys data.details
         |> List.map That
 
 
-transformations : Pattern -> List (A Transformation)
+transformations : Pattern coordinates -> List (A Transformation)
 transformations (Pattern data) =
     Dict.keys data.transformations
         |> List.map That
 
 
-variables : Pattern -> List String
+variables : Pattern coordinates -> List String
 variables (Pattern data) =
     Dict.keys data.variables
 
 
-objects : Pattern -> Objects
+objects : Pattern coordinates -> Objects
 objects pattern =
     { points = points pattern
     , axes = axes pattern
@@ -1061,7 +1056,7 @@ objects pattern =
 -- INFO
 
 
-pointInfo : A Point -> Pattern -> Maybe PointInfo
+pointInfo : A Point -> Pattern coordinates -> Maybe PointInfo
 pointInfo aPoint (Pattern data) =
     case aPoint of
         That name_ ->
@@ -1122,7 +1117,7 @@ type alias TransformedPointStuff =
     }
 
 
-axisInfo : A Axis -> Pattern -> Maybe AxisInfo
+axisInfo : A Axis -> Pattern coordinates -> Maybe AxisInfo
 axisInfo aAxis (Pattern data) =
     case aAxis of
         That name_ ->
@@ -1157,7 +1152,7 @@ type alias TransformedAxisStuff =
     }
 
 
-circleInfo : A Circle -> Pattern -> Maybe CircleInfo
+circleInfo : A Circle -> Pattern coordinates -> Maybe CircleInfo
 circleInfo aCircle (Pattern data) =
     case aCircle of
         That name_ ->
@@ -1193,7 +1188,7 @@ type alias TransformedCircleStuff =
     }
 
 
-curveInfo : A Curve -> Pattern -> Maybe CurveInfo
+curveInfo : A Curve -> Pattern coordinates -> Maybe CurveInfo
 curveInfo aCurve (Pattern data) =
     case aCurve of
         That name_ ->
@@ -1238,7 +1233,7 @@ type alias TransformedCurveStuff =
     }
 
 
-detailInfo : A Detail -> Pattern -> Maybe DetailInfo
+detailInfo : A Detail -> Pattern coordinates -> Maybe DetailInfo
 detailInfo aDetail (Pattern data) =
     case aDetail of
         That name_ ->
@@ -1345,7 +1340,7 @@ type alias LastReferencedCurveStuff =
     }
 
 
-transformationInfo : A Transformation -> Pattern -> Maybe TransformationInfo
+transformationInfo : A Transformation -> Pattern coordinates -> Maybe TransformationInfo
 transformationInfo aTransformation (Pattern data) =
     case aTransformation of
         That name_ ->
@@ -1380,7 +1375,7 @@ type alias RotateAroundStuff =
     }
 
 
-transformedObjects : A Transformation -> Pattern -> Maybe TransformedObjects
+transformedObjects : A Transformation -> Pattern coordinates -> Maybe TransformedObjects
 transformedObjects aTransformation pattern =
     Nothing
 
@@ -1393,7 +1388,7 @@ type alias TransformedObjects =
     }
 
 
-variableInfo : String -> Pattern -> Maybe String
+variableInfo : String -> Pattern coordinates -> Maybe String
 variableInfo variable (Pattern data) =
     Dict.get variable data.variables
 
@@ -1404,7 +1399,7 @@ type IntersectableInfo
     | CurveInfo CurveInfo
 
 
-intersectableInfo : A Intersectable -> Pattern -> Maybe IntersectableInfo
+intersectableInfo : A Intersectable -> Pattern coordinates -> Maybe IntersectableInfo
 intersectableInfo aIntersectable (Pattern data) =
     let
         or maybeB maybeA =
@@ -1465,7 +1460,7 @@ type Orientation
 ---- COMPUTE
 
 
-point2d : A Point -> State Pattern (Result ComputeHelp (Point2d Meters BottomLeft))
+point2d : A Point -> State (Pattern coordinates) (Result ComputeHelp (Point2d Meters coordinates))
 point2d aPoint =
     case aPoint of
         That name_ ->
@@ -1501,7 +1496,7 @@ point2d aPoint =
             computePoint2d point
 
 
-computePoint2d : Point -> State Pattern (Result ComputeHelp (Point2d Meters BottomLeft))
+computePoint2d : Point -> State (Pattern coordinates) (Result ComputeHelp (Point2d Meters coordinates))
 computePoint2d (Point info) =
     case info of
         Origin stuff ->
@@ -1615,7 +1610,7 @@ type Intersectable2d u c
     | Curve2d (Curve2d u c)
 
 
-intersectable2d : A Intersectable -> State Pattern (Result ComputeHelp (Intersectable2d Meters BottomLeft))
+intersectable2d : A Intersectable -> State (Pattern coordinates) (Result ComputeHelp (Intersectable2d Meters coordinates))
 intersectable2d aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -1706,7 +1701,7 @@ intersectable2d aIntersectable =
                 |> StateResult.map Curve2d
 
 
-axis2d : A Axis -> State Pattern (Result ComputeHelp (Axis2d Meters BottomLeft))
+axis2d : A Axis -> State (Pattern coordinates) (Result ComputeHelp (Axis2d Meters coordinates))
 axis2d aAxis =
     case aAxis of
         That name_ ->
@@ -1742,7 +1737,7 @@ axis2d aAxis =
             computeAxis2d axis
 
 
-computeAxis2d : Axis -> State Pattern (Result ComputeHelp (Axis2d Meters BottomLeft))
+computeAxis2d : Axis -> State (Pattern coordinates) (Result ComputeHelp (Axis2d Meters coordinates))
 computeAxis2d (Axis info) =
     case info of
         ThroughOnePoint stuff ->
@@ -1765,7 +1760,7 @@ computeAxis2d (Axis info) =
             StateResult.err NotComputableYet
 
 
-circle2d : A Circle -> State Pattern (Result ComputeHelp (Circle2d Meters BottomLeft))
+circle2d : A Circle -> State (Pattern coordinates) (Result ComputeHelp (Circle2d Meters coordinates))
 circle2d aCircle =
     case aCircle of
         That name_ ->
@@ -1801,7 +1796,7 @@ circle2d aCircle =
             computeCircle2d circle
 
 
-computeCircle2d : Circle -> State Pattern (Result ComputeHelp (Circle2d Meters BottomLeft))
+computeCircle2d : Circle -> State (Pattern coordinates) (Result ComputeHelp (Circle2d Meters coordinates))
 computeCircle2d (Circle info) =
     case info of
         WithRadius stuff ->
@@ -1829,61 +1824,7 @@ computeCircle2d (Circle info) =
             StateResult.err NotComputableYet
 
 
-type Curve2d u c
-    = LineSegment2d (LineSegment2d u c)
-    | QuadraticSpline2d (QuadraticSpline2d u c)
-    | CubicSpline2d (CubicSpline2d u c)
-
-
-startPoint : Curve2d Meters BottomLeft -> Point2d Meters BottomLeft
-startPoint curve =
-    case curve of
-        LineSegment2d lineSegment2d ->
-            LineSegment2d.startPoint lineSegment2d
-
-        QuadraticSpline2d quadraticSpline2d ->
-            QuadraticSpline2d.startPoint quadraticSpline2d
-
-        CubicSpline2d cubicSpline2d ->
-            CubicSpline2d.startPoint cubicSpline2d
-
-
-endPoint : Curve2d Meters BottomLeft -> Point2d Meters BottomLeft
-endPoint curve =
-    case curve of
-        LineSegment2d lineSegment2d ->
-            LineSegment2d.endPoint lineSegment2d
-
-        QuadraticSpline2d quadraticSpline2d ->
-            QuadraticSpline2d.endPoint quadraticSpline2d
-
-        CubicSpline2d cubicSpline2d ->
-            CubicSpline2d.endPoint cubicSpline2d
-
-
-reverseCurve : Curve2d Meters BottomLeft -> Curve2d Meters BottomLeft
-reverseCurve curve =
-    case curve of
-        LineSegment2d lineSegment2d ->
-            LineSegment2d (LineSegment2d.reverse lineSegment2d)
-
-        QuadraticSpline2d quadraticSpline2d ->
-            QuadraticSpline2d (QuadraticSpline2d.reverse quadraticSpline2d)
-
-        CubicSpline2d cubicSpline2d ->
-            CubicSpline2d (CubicSpline2d.reverse cubicSpline2d)
-
-
-reverseIf : Bool -> Curve2d Meters BottomLeft -> Curve2d Meters BottomLeft
-reverseIf bool curve =
-    if bool then
-        reverseCurve curve
-
-    else
-        curve
-
-
-curve2d : A Curve -> State Pattern (Result ComputeHelp (Curve2d Meters BottomLeft))
+curve2d : A Curve -> State (Pattern coordinates) (Result ComputeHelp (Curve2d Meters coordinates))
 curve2d aCurve =
     case aCurve of
         That name_ ->
@@ -1919,7 +1860,7 @@ curve2d aCurve =
             computeCurve2d curve
 
 
-computeCurve2d : Curve -> State Pattern (Result ComputeHelp (Curve2d Meters BottomLeft))
+computeCurve2d : Curve -> State (Pattern coordinates) (Result ComputeHelp (Curve2d Meters coordinates))
 computeCurve2d (Curve info) =
     case info of
         Straight stuff ->
@@ -1965,7 +1906,7 @@ computeCurve2d (Curve info) =
             StateResult.err NotComputableYet
 
 
-detail2d : A Detail -> State Pattern (Result ComputeHelp (Detail2d Meters BottomLeft))
+detail2d : A Detail -> State (Pattern coordinates) (Result ComputeHelp (Detail2d Meters coordinates))
 detail2d aDetail =
     case aDetail of
         That name_ ->
@@ -2001,7 +1942,7 @@ detail2d aDetail =
             computeDetail2d curve
 
 
-computeDetail2d : Detail -> State Pattern (Result ComputeHelp (Detail2d Meters BottomLeft))
+computeDetail2d : Detail -> State (Pattern coordinates) (Result ComputeHelp (Detail2d Meters coordinates))
 computeDetail2d (Detail info) =
     StateResult.ok Detail2d
         |> StateResult.with
@@ -2023,7 +1964,7 @@ computeDetail2d (Detail info) =
                                     { nextCurve = maybeNextCurve
                                     , previousCurve = maybeLastCurve
                                     }
-                                    (curve |> reverseIf stuff.reversed)
+                                    (curve |> Curve2d.reverseIf stuff.reversed)
                             of
                                 Nothing ->
                                     Err DisconnectedCurves
@@ -2039,7 +1980,7 @@ computeDetail2d (Detail info) =
                                     StateResult.map Just
                                         (curve2d nextStuff.curve
                                             |> StateResult.map
-                                                (reverseIf nextStuff.reversed)
+                                                (Curve2d.reverseIf nextStuff.reversed)
                                         )
 
                                 _ ->
@@ -2051,7 +1992,7 @@ computeDetail2d (Detail info) =
                                     StateResult.map Just
                                         (curve2d lastStuff.curve
                                             |> StateResult.map
-                                                (reverseIf lastStuff.reversed)
+                                                (Curve2d.reverseIf lastStuff.reversed)
                                         )
 
                                 _ ->
@@ -2074,17 +2015,17 @@ computeDetail2d (Detail info) =
                     let
                         toLastCurve controlPoint =
                             LastQuadraticSpline2d
-                                { controlPoint = controlPoint }
+                                { secondControlPoint = controlPoint }
                     in
                     StateResult.ok toLastCurve
                         |> StateResult.with (point2d stuff.controlPoint)
 
                 LastCubic stuff ->
                     let
-                        toLastCurve startControlPoint endControlPoint =
+                        toLastCurve secondControlPoint thirdControlPoint =
                             LastCubicSpline2d
-                                { startControlPoint = startControlPoint
-                                , endControlPoint = endControlPoint
+                                { secondControlPoint = secondControlPoint
+                                , thirdControlPoint = thirdControlPoint
                                 }
                     in
                     StateResult.ok toLastCurve
@@ -2097,16 +2038,16 @@ computeDetail2d (Detail info) =
                             Maybe.map2
                                 (\actualStartPoint actualEndPoint ->
                                     if
-                                        (actualStartPoint == startPoint curve)
-                                            && (actualEndPoint == endPoint curve)
+                                        (actualStartPoint == Curve2d.startPoint curve)
+                                            && (actualEndPoint == Curve2d.endPoint curve)
                                     then
                                         Ok (toLastCurve2d curve)
 
                                     else if
-                                        (actualStartPoint == endPoint curve)
-                                            && (actualEndPoint == startPoint curve)
+                                        (actualStartPoint == Curve2d.endPoint curve)
+                                            && (actualEndPoint == Curve2d.startPoint curve)
                                     then
-                                        Ok (toLastCurve2d (reverseCurve curve))
+                                        Ok (toLastCurve2d (Curve2d.reverse curve))
 
                                     else
                                         Err DisconnectedCurves
@@ -2115,13 +2056,13 @@ computeDetail2d (Detail info) =
                                     { nextCurve = maybeFirstCurve
                                     , previousCurve = maybePreviousCurve
                                     }
-                                    (reverseIf stuff.reversed curve)
+                                    (Curve2d.reverseIf stuff.reversed curve)
                                 )
                                 (endPointWith
                                     { nextCurve = maybeFirstCurve
                                     , previousCurve = maybePreviousCurve
                                     }
-                                    (reverseIf stuff.reversed curve)
+                                    (Curve2d.reverseIf stuff.reversed curve)
                                 )
                                 |> Maybe.withDefault (Err DisconnectedCurves)
 
@@ -2132,13 +2073,13 @@ computeDetail2d (Detail info) =
 
                                 QuadraticSpline2d quadraticSpline2d ->
                                     LastQuadraticSpline2d
-                                        { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
+                                        { secondControlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
                                         }
 
                                 CubicSpline2d cubicSpline2d ->
                                     LastCubicSpline2d
-                                        { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
-                                        , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
+                                        { secondControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                        , thirdControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
                                         }
                     in
                     StateResult.ok toLastCurve
@@ -2148,7 +2089,7 @@ computeDetail2d (Detail info) =
                                     StateResult.map Just
                                         (curve2d nextStuff.curve
                                             |> StateResult.map
-                                                (reverseIf nextStuff.reversed)
+                                                (Curve2d.reverseIf nextStuff.reversed)
                                         )
 
                                 _ ->
@@ -2161,7 +2102,7 @@ computeDetail2d (Detail info) =
                                     StateResult.map Just
                                         (curve2d firstStuff.curve
                                             |> StateResult.map
-                                                (reverseIf firstStuff.reversed)
+                                                (Curve2d.reverseIf firstStuff.reversed)
                                         )
 
                                 _ ->
@@ -2175,7 +2116,7 @@ secondCurve2d :
     FirstCurve
     -> List NextCurve
     -> LastCurve
-    -> State Pattern (Result ComputeHelp (NextCurve2d Meters BottomLeft))
+    -> State (Pattern coordinates) (Result ComputeHelp (NextCurve2d Meters coordinates))
 secondCurve2d firstCurve nextCurves lastCurve =
     case firstCurve of
         FirstStraight stuff ->
@@ -2191,8 +2132,8 @@ secondCurve2d firstCurve nextCurves lastCurve =
             let
                 toCurve controlPoint endPoint_ =
                     NextQuadraticSpline2d
-                        { controlPoint = controlPoint
-                        , endPoint = endPoint_
+                        { secondControlPoint = controlPoint
+                        , thirdControlPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2203,9 +2144,9 @@ secondCurve2d firstCurve nextCurves lastCurve =
             let
                 toCurve startControlPoint endControlPoint endPoint_ =
                     NextCubicSpline2d
-                        { startControlPoint = startControlPoint
-                        , endControlPoint = endControlPoint
-                        , endPoint = endPoint_
+                        { secondControlPoint = startControlPoint
+                        , thirdControlPoint = endControlPoint
+                        , fourthControlPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2219,16 +2160,16 @@ secondCurve2d firstCurve nextCurves lastCurve =
                     Maybe.map2
                         (\actualStartPoint actualEndPoint ->
                             if
-                                (actualStartPoint == startPoint curve)
-                                    && (actualEndPoint == endPoint curve)
+                                (actualStartPoint == Curve2d.startPoint curve)
+                                    && (actualEndPoint == Curve2d.endPoint curve)
                             then
                                 Ok (toFirstCurve2d curve)
 
                             else if
-                                (actualStartPoint == endPoint curve)
-                                    && (actualEndPoint == startPoint curve)
+                                (actualStartPoint == Curve2d.endPoint curve)
+                                    && (actualEndPoint == Curve2d.startPoint curve)
                             then
-                                Ok (toFirstCurve2d (reverseCurve curve))
+                                Ok (toFirstCurve2d (Curve2d.reverse curve))
 
                             else
                                 Err DisconnectedCurves
@@ -2255,28 +2196,28 @@ secondCurve2d firstCurve nextCurves lastCurve =
 
                         QuadraticSpline2d quadraticSpline2d ->
                             NextQuadraticSpline2d
-                                { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
-                                , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
+                                { secondControlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
+                                , thirdControlPoint = QuadraticSpline2d.endPoint quadraticSpline2d
                                 }
 
                         CubicSpline2d cubicSpline2d ->
                             NextCubicSpline2d
-                                { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
-                                , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
-                                , endPoint = CubicSpline2d.endPoint cubicSpline2d
+                                { secondControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                , thirdControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
+                                , fourthControlPoint = CubicSpline2d.endPoint cubicSpline2d
                                 }
             in
             StateResult.ok toFirstCurve
                 |> StateResult.with
                     (curve2d stuff.curve
-                        |> StateResult.map (reverseIf stuff.reversed)
+                        |> StateResult.map (Curve2d.reverseIf stuff.reversed)
                     )
                 |> StateResult.with
                     (case nextCurves of
                         (NextReferencedCurve nextStuff) :: _ ->
                             StateResult.map Just
                                 (curve2d nextStuff.curve
-                                    |> StateResult.map (reverseIf nextStuff.reversed)
+                                    |> StateResult.map (Curve2d.reverseIf nextStuff.reversed)
                                 )
 
                         _ ->
@@ -2287,7 +2228,7 @@ secondCurve2d firstCurve nextCurves lastCurve =
                         LastReferencedCurve lastStuff ->
                             StateResult.map Just
                                 (curve2d lastStuff.curve
-                                    |> StateResult.map (reverseIf lastStuff.reversed)
+                                    |> StateResult.map (Curve2d.reverseIf lastStuff.reversed)
                                 )
 
                         _ ->
@@ -2296,7 +2237,7 @@ secondCurve2d firstCurve nextCurves lastCurve =
                 |> StateResult.join
 
 
-nextCurve2d : NextCurve -> State Pattern (Result ComputeHelp (NextCurve2d Meters BottomLeft))
+nextCurve2d : NextCurve -> State (Pattern coordinates) (Result ComputeHelp (NextCurve2d Meters coordinates))
 nextCurve2d nextCurve =
     case nextCurve of
         NextStraight stuff ->
@@ -2312,8 +2253,8 @@ nextCurve2d nextCurve =
             let
                 toCurve controlPoint endPoint_ =
                     NextQuadraticSpline2d
-                        { controlPoint = controlPoint
-                        , endPoint = endPoint_
+                        { secondControlPoint = controlPoint
+                        , thirdControlPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2324,9 +2265,9 @@ nextCurve2d nextCurve =
             let
                 toCurve startControlPoint endControlPoint endPoint_ =
                     NextCubicSpline2d
-                        { startControlPoint = startControlPoint
-                        , endControlPoint = endControlPoint
-                        , endPoint = endPoint_
+                        { secondControlPoint = startControlPoint
+                        , thirdControlPoint = endControlPoint
+                        , fourthControlPoint = endPoint_
                         }
             in
             StateResult.ok toCurve
@@ -2347,131 +2288,131 @@ nextCurve2d nextCurve =
 
                         QuadraticSpline2d quadraticSpline2d ->
                             NextQuadraticSpline2d
-                                { controlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
-                                , endPoint = QuadraticSpline2d.endPoint quadraticSpline2d
+                                { secondControlPoint = QuadraticSpline2d.secondControlPoint quadraticSpline2d
+                                , thirdControlPoint = QuadraticSpline2d.thirdControlPoint quadraticSpline2d
                                 }
 
                         CubicSpline2d cubicSpline2d ->
                             NextCubicSpline2d
-                                { startControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
-                                , endControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
-                                , endPoint = CubicSpline2d.endPoint cubicSpline2d
+                                { secondControlPoint = CubicSpline2d.secondControlPoint cubicSpline2d
+                                , thirdControlPoint = CubicSpline2d.thirdControlPoint cubicSpline2d
+                                , fourthControlPoint = CubicSpline2d.fourthControlPoint cubicSpline2d
                                 }
             in
             StateResult.ok toNextCurve
                 |> StateResult.with
                     (curve2d stuff.curve
-                        |> StateResult.map (reverseIf stuff.reversed)
+                        |> StateResult.map (Curve2d.reverseIf stuff.reversed)
                     )
 
 
 startPointWith :
-    { nextCurve : Maybe (Curve2d Meters BottomLeft)
-    , previousCurve : Maybe (Curve2d Meters BottomLeft)
+    { nextCurve : Maybe (Curve2d Meters coordinates)
+    , previousCurve : Maybe (Curve2d Meters coordinates)
     }
-    -> Curve2d Meters BottomLeft
-    -> Maybe (Point2d Meters BottomLeft)
+    -> Curve2d Meters coordinates
+    -> Maybe (Point2d Meters coordinates)
 startPointWith constraints curve =
     let
         connectedTo curve_ point =
-            (startPoint curve_ == point)
-                || (endPoint curve_ == point)
+            (Curve2d.startPoint curve_ == point)
+                || (Curve2d.endPoint curve_ == point)
     in
     case ( constraints.nextCurve, constraints.previousCurve ) of
         ( Nothing, Nothing ) ->
-            Just (startPoint curve)
+            Just (Curve2d.startPoint curve)
 
         ( Just nextCurve, Nothing ) ->
-            if endPoint curve |> connectedTo nextCurve then
-                Just (startPoint curve)
+            if Curve2d.endPoint curve |> connectedTo nextCurve then
+                Just (Curve2d.startPoint curve)
 
-            else if startPoint curve |> connectedTo nextCurve then
-                Just (endPoint curve)
+            else if Curve2d.startPoint curve |> connectedTo nextCurve then
+                Just (Curve2d.endPoint curve)
 
             else
                 Nothing
 
         ( Nothing, Just previousCurve ) ->
-            if startPoint curve |> connectedTo previousCurve then
-                Just (startPoint curve)
+            if Curve2d.startPoint curve |> connectedTo previousCurve then
+                Just (Curve2d.startPoint curve)
 
-            else if endPoint curve |> connectedTo previousCurve then
-                Just (endPoint curve)
+            else if Curve2d.endPoint curve |> connectedTo previousCurve then
+                Just (Curve2d.endPoint curve)
 
             else
                 Nothing
 
         ( Just nextCurve, Just previousCurve ) ->
             if
-                (endPoint curve |> connectedTo nextCurve)
-                    && (startPoint curve |> connectedTo previousCurve)
+                (Curve2d.endPoint curve |> connectedTo nextCurve)
+                    && (Curve2d.startPoint curve |> connectedTo previousCurve)
             then
-                Just (startPoint curve)
+                Just (Curve2d.startPoint curve)
 
             else if
-                (endPoint curve |> connectedTo previousCurve)
-                    && (startPoint curve |> connectedTo nextCurve)
+                (Curve2d.endPoint curve |> connectedTo previousCurve)
+                    && (Curve2d.startPoint curve |> connectedTo nextCurve)
             then
-                Just (endPoint curve)
+                Just (Curve2d.endPoint curve)
 
             else
                 Nothing
 
 
 endPointWith :
-    { nextCurve : Maybe (Curve2d Meters BottomLeft)
-    , previousCurve : Maybe (Curve2d Meters BottomLeft)
+    { nextCurve : Maybe (Curve2d Meters coordinates)
+    , previousCurve : Maybe (Curve2d Meters coordinates)
     }
-    -> Curve2d Meters BottomLeft
-    -> Maybe (Point2d Meters BottomLeft)
+    -> Curve2d Meters coordinates
+    -> Maybe (Point2d Meters coordinates)
 endPointWith constraints curve =
     let
         connectedTo curve_ point =
-            (startPoint curve_ == point)
-                || (endPoint curve_ == point)
+            (Curve2d.startPoint curve_ == point)
+                || (Curve2d.endPoint curve_ == point)
     in
     case ( constraints.nextCurve, constraints.previousCurve ) of
         ( Nothing, Nothing ) ->
-            Just (endPoint curve)
+            Just (Curve2d.endPoint curve)
 
         ( Just nextCurve, Nothing ) ->
-            if endPoint curve |> connectedTo nextCurve then
-                Just (endPoint curve)
+            if Curve2d.endPoint curve |> connectedTo nextCurve then
+                Just (Curve2d.endPoint curve)
 
-            else if startPoint curve |> connectedTo nextCurve then
-                Just (startPoint curve)
+            else if Curve2d.startPoint curve |> connectedTo nextCurve then
+                Just (Curve2d.startPoint curve)
 
             else
                 Nothing
 
         ( Nothing, Just previousCurve ) ->
-            if startPoint curve |> connectedTo previousCurve then
-                Just (endPoint curve)
+            if Curve2d.startPoint curve |> connectedTo previousCurve then
+                Just (Curve2d.endPoint curve)
 
-            else if endPoint curve |> connectedTo previousCurve then
-                Just (startPoint curve)
+            else if Curve2d.endPoint curve |> connectedTo previousCurve then
+                Just (Curve2d.startPoint curve)
 
             else
                 Nothing
 
         ( Just nextCurve, Just previousCurve ) ->
             if
-                (endPoint curve |> connectedTo nextCurve)
-                    && (startPoint curve |> connectedTo previousCurve)
+                (Curve2d.endPoint curve |> connectedTo nextCurve)
+                    && (Curve2d.startPoint curve |> connectedTo previousCurve)
             then
-                Just (endPoint curve)
+                Just (Curve2d.endPoint curve)
 
             else if
-                (endPoint curve |> connectedTo previousCurve)
-                    && (startPoint curve |> connectedTo nextCurve)
+                (Curve2d.endPoint curve |> connectedTo previousCurve)
+                    && (Curve2d.startPoint curve |> connectedTo nextCurve)
             then
-                Just (startPoint curve)
+                Just (Curve2d.startPoint curve)
 
             else
                 Nothing
 
 
-float : String -> State Pattern (Result ComputeHelp Float)
+float : String -> State (Pattern coordinates) (Result ComputeHelp Float)
 float variable =
     let
         modifyWhenNeeded (Pattern data) =
@@ -2503,7 +2444,7 @@ float variable =
         |> State.andThen modifyWhenNeeded
 
 
-computeDirection : Direction -> State Pattern (Result ComputeHelp Angle)
+computeDirection : Direction -> State (Pattern coordinates) (Result ComputeHelp Angle)
 computeDirection direction =
     case direction of
         Leftward ->
@@ -2523,7 +2464,7 @@ computeDirection direction =
                 |> StateResult.map Angle.degrees
 
 
-computeOrientation : Orientation -> State Pattern (Result ComputeHelp (Direction2d c))
+computeOrientation : Orientation -> State (Pattern coordinates) (Result ComputeHelp (Direction2d c))
 computeOrientation orientation =
     case orientation of
         Horizontal ->
@@ -2537,7 +2478,7 @@ computeOrientation orientation =
                 |> StateResult.map Direction2d.degrees
 
 
-computeExpr : String -> State Pattern (Result ComputeHelp Float)
+computeExpr : String -> State (Pattern coordinates) (Result ComputeHelp Float)
 computeExpr rawExpr =
     case Expr.parse reservedWords rawExpr of
         Err syntaxHelp ->
@@ -2554,7 +2495,7 @@ reservedWords =
     ]
 
 
-evaluateExpr : Expr -> State Pattern (Result ComputeHelp Float)
+evaluateExpr : Expr -> State (Pattern coordinates) (Result ComputeHelp Float)
 evaluateExpr expr =
     case expr of
         Number num ->
@@ -2657,7 +2598,7 @@ evaluateExpr expr =
                 |> StateResult.with (evaluateExpr exprB)
 
 
-evaluateVariable : String -> State Pattern (Result ComputeHelp Float)
+evaluateVariable : String -> State (Pattern coordinates) (Result ComputeHelp Float)
 evaluateVariable variable =
     let
         modifyWhenNeeded (Pattern data) =
@@ -2697,7 +2638,7 @@ evaluateVariable variable =
         |> State.andThen modifyWhenNeeded
 
 
-evaluateBoolExpr : BoolExpr -> State Pattern (Result ComputeHelp Bool)
+evaluateBoolExpr : BoolExpr -> State (Pattern coordinates) (Result ComputeHelp Bool)
 evaluateBoolExpr boolExpr =
     case boolExpr of
         ExprTrue ->
@@ -2775,7 +2716,7 @@ noObjects =
     }
 
 
-objectsDependingOnPoint : Pattern -> A Point -> Objects
+objectsDependingOnPoint : Pattern coordinates -> A Point -> Objects
 objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
     case name aPoint of
         Nothing ->
@@ -2789,13 +2730,13 @@ objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
                 |> objectsFromCollection
 
 
-objectsNotDependingOnPoint : Pattern -> A Point -> Objects
+objectsNotDependingOnPoint : Pattern coordinates -> A Point -> Objects
 objectsNotDependingOnPoint pattern aPoint =
     objects pattern
         |> withoutObjects (objectsDependingOnPoint pattern aPoint)
 
 
-objectsDependingOnAxis : Pattern -> A Axis -> Objects
+objectsDependingOnAxis : Pattern coordinates -> A Axis -> Objects
 objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
     case name aAxis of
         Nothing ->
@@ -2809,13 +2750,13 @@ objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
                 |> objectsFromCollection
 
 
-objectsNotDependingOnAxis : Pattern -> A Axis -> Objects
+objectsNotDependingOnAxis : Pattern coordinates -> A Axis -> Objects
 objectsNotDependingOnAxis pattern aAxis =
     objects pattern
         |> withoutObjects (objectsDependingOnAxis pattern aAxis)
 
 
-objectsDependingOnCircle : Pattern -> A Circle -> Objects
+objectsDependingOnCircle : Pattern coordinates -> A Circle -> Objects
 objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
     case name aCircle of
         Nothing ->
@@ -2829,13 +2770,13 @@ objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
                 |> objectsFromCollection
 
 
-objectsNotDependingOnCircle : Pattern -> A Circle -> Objects
+objectsNotDependingOnCircle : Pattern coordinates -> A Circle -> Objects
 objectsNotDependingOnCircle pattern aCircle =
     objects pattern
         |> withoutObjects (objectsDependingOnCircle pattern aCircle)
 
 
-objectsDependingOnCurve : Pattern -> A Curve -> Objects
+objectsDependingOnCurve : Pattern coordinates -> A Curve -> Objects
 objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
     case name aCurve of
         Nothing ->
@@ -2849,13 +2790,13 @@ objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
                 |> objectsFromCollection
 
 
-objectsNotDependingOnCurve : Pattern -> A Curve -> Objects
+objectsNotDependingOnCurve : Pattern coordinates -> A Curve -> Objects
 objectsNotDependingOnCurve pattern aCurve =
     objects pattern
         |> withoutObjects (objectsDependingOnCurve pattern aCurve)
 
 
-objectsDependingOnDetail : Pattern -> A Detail -> Objects
+objectsDependingOnDetail : Pattern coordinates -> A Detail -> Objects
 objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
     case name aDetail of
         Nothing ->
@@ -2869,13 +2810,13 @@ objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
                 |> objectsFromCollection
 
 
-objectsNotDependingOnDetail : Pattern -> A Detail -> Objects
+objectsNotDependingOnDetail : Pattern coordinates -> A Detail -> Objects
 objectsNotDependingOnDetail pattern aDetail =
     objects pattern
         |> withoutObjects (objectsDependingOnDetail pattern aDetail)
 
 
-objectsDependingOnVariable : Pattern -> String -> Objects
+objectsDependingOnVariable : Pattern coordinates -> String -> Objects
 objectsDependingOnVariable ((Pattern data) as pattern) variable =
     pattern
         |> variables
@@ -2983,7 +2924,7 @@ noChains =
 
 
 collectObjectsDependingOnPoint :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> A Point
@@ -3031,7 +2972,7 @@ collectObjectsDependingOnPoint data pointName chains aPoint =
 
 
 collectObjectsDependingOnAxis :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> A Axis
@@ -3041,7 +2982,7 @@ collectObjectsDependingOnAxis data pointName chains aAxis =
 
 
 collectObjectsDependingOnCircle :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> A Circle
@@ -3051,7 +2992,7 @@ collectObjectsDependingOnCircle data pointName chains aCircle =
 
 
 collectObjectsDependingOnCurve :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> A Curve
@@ -3061,7 +3002,7 @@ collectObjectsDependingOnCurve data pointName chains aCurve =
 
 
 collectObjectsDependingOnDetail :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> A Detail
@@ -3071,7 +3012,7 @@ collectObjectsDependingOnDetail data pointName chains aDetail =
 
 
 collectObjectsDependingOnVariable :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> String
@@ -3081,7 +3022,7 @@ collectObjectsDependingOnVariable data pointName chains variable =
 
 
 collectObjectsDependingOnPointInfo :
-    PatternData
+    PatternData coordinates
     -> String
     -> Chains
     -> PointInfo
@@ -3116,7 +3057,7 @@ collectObjectsDependingOnPointInfo data pointName chains info =
             State.state ()
 
 
-collectObjectsDependingOnExpr : PatternData -> String -> Chains -> String -> State Collection ()
+collectObjectsDependingOnExpr : PatternData coordinates -> String -> Chains -> String -> State Collection ()
 collectObjectsDependingOnExpr data pointName chains expr =
     State.state ()
 
@@ -3138,7 +3079,7 @@ fromOnePoint :
     A Point
     -> Direction
     -> String
-    -> Pattern
+    -> Pattern coordinates
     -> Result FromOnePointHelp Point
 fromOnePoint aBasePoint direction distance pattern =
     Ok FromOnePointHelp
@@ -3161,7 +3102,7 @@ type alias FromOnePointHelp =
     }
 
 
-betweenRatio : A Point -> A Point -> String -> Pattern -> Result BetweenRatioHelp Point
+betweenRatio : A Point -> A Point -> String -> Pattern coordinates -> Result BetweenRatioHelp Point
 betweenRatio aBasePointA aBasePointB ratio pattern =
     Ok BetweenRatioHelp
         |> collectMaybe (checkExpr pattern ratio)
@@ -3188,7 +3129,7 @@ betweenLength :
     -> A Point
     -> String
     -> OneInTwo
-    -> Pattern
+    -> Pattern coordinates
     -> Result BetweenLengthHelp Point
 betweenLength aBasePointA aBasePointB distance from pattern =
     Ok BetweenLengthHelp
@@ -3216,7 +3157,7 @@ intersection :
     A Intersectable
     -> A Intersectable
     -> Int
-    -> Pattern
+    -> Pattern coordinates
     -> Result IntersectionHelp Point
 intersection aObjectA aObjectB which pattern =
     Ok IntersectionHelp
@@ -3233,7 +3174,7 @@ intersection aObjectA aObjectB which pattern =
             )
 
 
-checkWhichInBound : A Intersectable -> A Intersectable -> Pattern -> Int -> Bool
+checkWhichInBound : A Intersectable -> A Intersectable -> Pattern coordinates -> Int -> Bool
 checkWhichInBound aIntersectableA aIntersectableB pattern which =
     let
         maybeSize =
@@ -3249,7 +3190,7 @@ checkWhichInBound aIntersectableA aIntersectableB pattern which =
             0 >= which && which < size
 
 
-tagFromIntersectable : Pattern -> A Intersectable -> Maybe IntersectableTag
+tagFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe IntersectableTag
 tagFromIntersectable (Pattern data) aIntersectable =
     case aIntersectable of
         That name_ ->
@@ -3300,12 +3241,12 @@ type alias IntersectionHelp =
     }
 
 
-transformedPoint : A Point -> A Transformation -> Pattern -> Result () Point
+transformedPoint : A Point -> A Transformation -> Pattern coordinates -> Result () Point
 transformedPoint aPoint aTransformation pattern =
     Err ()
 
 
-throughOnePoint : A Point -> Orientation -> Pattern -> Result ThroughOnePointHelp Axis
+throughOnePoint : A Point -> Orientation -> Pattern coordinates -> Result ThroughOnePointHelp Axis
 throughOnePoint aPoint orientation pattern =
     Ok ThroughOnePointHelp
         |> collectMaybe (checkOrientation pattern orientation)
@@ -3324,7 +3265,7 @@ type alias ThroughOnePointHelp =
     }
 
 
-throughTwoPoints : A Point -> A Point -> Pattern -> Result ThroughTwoPointsHelp Axis
+throughTwoPoints : A Point -> A Point -> Pattern coordinates -> Result ThroughTwoPointsHelp Axis
 throughTwoPoints aPointA aPointB pattern =
     Ok ThroughTwoPointsHelp
         |> collectBool (checkObjectsCoincidence aPointA aPointB)
@@ -3343,12 +3284,12 @@ type alias ThroughTwoPointsHelp =
     }
 
 
-transformedAxis : A Axis -> A Transformation -> Pattern -> Result () Axis
+transformedAxis : A Axis -> A Transformation -> Pattern coordinates -> Result () Axis
 transformedAxis aAxis aTransformation pattern =
     Err ()
 
 
-withRadius : String -> A Point -> Pattern -> Result WithRadiusHelp Circle
+withRadius : String -> A Point -> Pattern coordinates -> Result WithRadiusHelp Circle
 withRadius radius aCenterPoint pattern =
     Ok WithRadiusHelp
         |> collectMaybe (checkExpr pattern radius)
@@ -3371,7 +3312,7 @@ throughThreePoints :
     A Point
     -> A Point
     -> A Point
-    -> Pattern
+    -> Pattern coordinates
     -> Result ThroughThreePointsHelp Circle
 throughThreePoints aPointA aPointB aPointC pattern =
     Ok ThroughThreePointsHelp
@@ -3396,12 +3337,12 @@ type alias ThroughThreePointsHelp =
     }
 
 
-transformedCircle : A Circle -> A Transformation -> Pattern -> Result () Circle
+transformedCircle : A Circle -> A Transformation -> Pattern coordinates -> Result () Circle
 transformedCircle aCircle aTransformation pattern =
     Err ()
 
 
-straight : A Point -> A Point -> Pattern -> Result StraightHelp Curve
+straight : A Point -> A Point -> Pattern coordinates -> Result StraightHelp Curve
 straight aStartPoint aEndPoint pattern =
     Ok StraightHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
@@ -3420,7 +3361,7 @@ type alias StraightHelp =
     }
 
 
-quadratic : A Point -> A Point -> A Point -> Pattern -> Result QuadraticHelp Curve
+quadratic : A Point -> A Point -> A Point -> Pattern coordinates -> Result QuadraticHelp Curve
 quadratic aStartPoint aControlPoint aEndPoint pattern =
     Ok QuadraticHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
@@ -3440,7 +3381,7 @@ type alias QuadraticHelp =
     }
 
 
-cubic : A Point -> A Point -> A Point -> A Point -> Pattern -> Result CubicHelp Curve
+cubic : A Point -> A Point -> A Point -> A Point -> Pattern coordinates -> Result CubicHelp Curve
 cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint pattern =
     Ok CubicHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
@@ -3461,12 +3402,12 @@ type alias CubicHelp =
     }
 
 
-transformedCurve : A Curve -> A Transformation -> Pattern -> Result () Curve
+transformedCurve : A Curve -> A Transformation -> Pattern coordinates -> Result () Curve
 transformedCurve aCurve aTransformation pattern =
     Err ()
 
 
-detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern -> Result DetailHelp Detail
+detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern coordinates -> Result DetailHelp Detail
 detail firstCurve nextCurves lastCurve pattern =
     Ok <|
         Detail
@@ -3534,7 +3475,7 @@ type ExprHelp
     | CannotComputeFunction String
 
 
-checkExpr : Pattern -> String -> Maybe ComputeHelp
+checkExpr : Pattern coordinates -> String -> Maybe ComputeHelp
 checkExpr pattern rawExpr =
     case State.finalValue pattern (computeExpr rawExpr) of
         Ok _ ->
@@ -3544,7 +3485,7 @@ checkExpr pattern rawExpr =
             Just computeHelp
 
 
-checkDirection : Pattern -> Direction -> Maybe ComputeHelp
+checkDirection : Pattern coordinates -> Direction -> Maybe ComputeHelp
 checkDirection pattern direction =
     case direction of
         Leftward ->
@@ -3563,7 +3504,7 @@ checkDirection pattern direction =
             checkExpr pattern rawExpr
 
 
-checkOrientation : Pattern -> Orientation -> Maybe ComputeHelp
+checkOrientation : Pattern coordinates -> Orientation -> Maybe ComputeHelp
 checkOrientation pattern orientation =
     case orientation of
         Horizontal ->
@@ -3590,7 +3531,7 @@ checkObjectsCoincidence aObjectA aObjectB =
 ---- ENCODE
 
 
-encode : Pattern -> Value
+encode : Pattern coordinates -> Value
 encode (Pattern data) =
     Encode.object
         [ ( "points", Encode.dict identity encodePoint data.points )
@@ -3966,7 +3907,7 @@ withType type_ fields =
 ---- DECODER
 
 
-decoder : Decoder Pattern
+decoder : Decoder (Pattern coordinates)
 decoder =
     Decode.succeed PatternData
         |> Decode.required "points" (Decode.dict pointDecoder)

@@ -51,10 +51,7 @@ type LastCurve2d u c
         }
 
 
-at :
-    Quantity Float (Rate units2 units1)
-    -> Detail2d units1 coordinates
-    -> Detail2d units2 coordinates
+at : Quantity Float (Rate units2 units1) -> Detail2d units1 coordinates -> Detail2d units2 coordinates
 at conversionFactor { firstPoint, nextCurves, lastCurve } =
     { firstPoint = Point2d.at conversionFactor firstPoint
     , nextCurves = List.map (nextCurveAt conversionFactor) nextCurves

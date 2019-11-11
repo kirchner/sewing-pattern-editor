@@ -7,6 +7,7 @@ import Browser.Events
 import Browser.Navigation exposing (Key)
 import Circle2d
 import CubicSpline2d
+import Curve2d exposing (Curve2d(..))
 import Detail2d exposing (LastCurve2d(..), NextCurve2d(..))
 import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
@@ -498,10 +499,10 @@ initObjects =
     , curves =
         toObjects
             [ ( "LineSegment"
-              , Ui.Pattern.LineSegment
-                    { lineSegment2d = LineSegment2d.from point2dD point2dE
-                    , info =
-                        Just <|
+              , { curve2d = LineSegment2d (LineSegment2d.from point2dD point2dE)
+                , info =
+                    Just <|
+                        Ui.Pattern.LineSegment
                             { startPoint =
                                 { point2d = point2dD
                                 , info = Nothing
@@ -511,17 +512,18 @@ initObjects =
                                 , info = Nothing
                                 }
                             }
-                    }
+                }
               )
             , ( "QuadraticSpline"
-              , Ui.Pattern.QuadraticSpline
-                    { quadraticSpline2d =
+              , { curve2d =
+                    QuadraticSpline2d <|
                         QuadraticSpline2d.fromControlPoints
                             point2dA
                             point2dQuadraticSplineHelp
                             point2dE
-                    , info =
-                        Just <|
+                , info =
+                    Just <|
+                        Ui.Pattern.QuadraticSpline
                             { firstControlPoint =
                                 { point2d = point2dA
                                 , info = Nothing
@@ -543,18 +545,19 @@ initObjects =
                                 , info = Nothing
                                 }
                             }
-                    }
+                }
               )
             , ( "CubicSpline"
-              , Ui.Pattern.CubicSpline
-                    { cubicSpline2d =
+              , { curve2d =
+                    CubicSpline2d <|
                         CubicSpline2d.fromControlPoints
                             point2dC
                             point2dCubicSplineHelp1
                             point2dCubicSplineHelp2
                             point2dE
-                    , info =
-                        Just <|
+                , info =
+                    Just <|
+                        Ui.Pattern.CubicSpline
                             { firstControlPoint = { point2d = point2dC, info = Nothing }
                             , secondControlPoint =
                                 { point2d = point2dCubicSplineHelp1
@@ -576,7 +579,7 @@ initObjects =
                                 }
                             , fourthControlPoint = { point2d = point2dE, info = Nothing }
                             }
-                    }
+                }
               )
             ]
     , details =
