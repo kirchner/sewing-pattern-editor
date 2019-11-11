@@ -28,6 +28,7 @@ import Axis2d exposing (Axis2d)
 import BoundingBox2d
 import Circle2d exposing (Circle2d)
 import CubicSpline2d exposing (CubicSpline2d)
+import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Direction2d
 import Element exposing (Color)
 import Geometry.Svg as Svg
@@ -47,6 +48,14 @@ import Vector2d
 import VirtualDom
 
 
+type alias Config msg =
+    { onHover : msg
+    , onLeave : msg
+    , onFocus : msg
+    , onBlur : msg
+    }
+
+
 type alias Resolution =
     Quantity Float (Rate Pixels Meters)
 
@@ -57,6 +66,10 @@ type alias Layers msg =
     , outline : Svg msg
     , events : Svg msg
     }
+
+
+
+---- POINT
 
 
 type alias Point coordinates =
@@ -87,6 +100,10 @@ type Intersectable coordinates
     | IntersectableCircle (Circle coordinates)
 
 
+
+---- AXIS
+
+
 type alias Axis coordinates =
     { axis2d : Axis2d Meters coordinates
     , info : Maybe (AxisInfo coordinates)
@@ -101,6 +118,10 @@ type AxisInfo coordinates
         { pointA : Point coordinates
         , pointB : Point coordinates
         }
+
+
+
+---- CIRCLE
 
 
 type alias Circle coordinates =
@@ -119,6 +140,10 @@ type CircleInfo coordinates
         , pointB : Point coordinates
         , pointC : Point coordinates
         }
+
+
+
+---- CURVE
 
 
 type Curve coordinates
@@ -166,20 +191,20 @@ type alias CubicSplineInfo coordinates =
     }
 
 
-type alias Detail coordinates =
-    { curves : List (Curve coordinates)
+type alias CurveInfo coordinates =
+    { curve : Curve coordinates
+    , label : String
     }
 
 
 
----- DRAW
+---- DETAIL
 
 
-type alias Config msg =
-    { onHover : msg
-    , onLeave : msg
-    , onFocus : msg
-    , onBlur : msg
+type alias Detail coordinates =
+    { detail2d : Detail2d Meters coordinates
+    , pointInfos : List (PointInfo coordinates)
+    , curveInfos : List (CurveInfo coordinates)
     }
 
 
@@ -1312,6 +1337,7 @@ cubicSplineEvents cfg cubicSpline2d =
 
 
 
+---- DETAIL
 ---- HELPER
 
 
