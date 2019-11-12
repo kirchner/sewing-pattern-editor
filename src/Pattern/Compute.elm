@@ -120,7 +120,32 @@ pointInfo info =
                 (point False stuff.basePointB)
 
         Pattern.Intersection stuff ->
-            ok Nothing
+            let
+                toPointInfo intersectableA intersectableB =
+                    Ui.Pattern.Intersection
+                        { intersectableA = intersectableA
+                        , intersectableB = intersectableB
+                        }
+            in
+            get
+                |> andThen
+                    (\pattern ->
+                        map2 (Maybe.map2 toPointInfo)
+                            (case Pattern.axisFromIntersectable pattern stuff.objectA of
+                                Nothing ->
+                                    ok Nothing
+
+                                Just aAxis ->
+                                    map (Just << Ui.Pattern.IntersectableAxis) (axis False aAxis)
+                            )
+                            (case Pattern.axisFromIntersectable pattern stuff.objectB of
+                                Nothing ->
+                                    ok Nothing
+
+                                Just aAxis ->
+                                    map (Just << Ui.Pattern.IntersectableAxis) (axis False aAxis)
+                            )
+                    )
 
         Pattern.TransformedPoint stuff ->
             ok Nothing
