@@ -36,7 +36,7 @@ import Browser.Navigation as Navigation
 import Circle2d
 import Color
 import Dialog
-import Draw.Pattern as Pattern exposing (HoveredObject)
+import Draw.Pattern as Pattern exposing (Object)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -55,14 +55,17 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Length
 import LineSegment2d
 import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Pattern exposing (A, Axis, Circle, Curve, Detail, InsertHelp(..), Pattern, Point)
+import Pixels
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Process
+import Quantity
 import State
 import Store exposing (Entry)
 import StoredPattern exposing (StoredPattern)
@@ -101,14 +104,19 @@ init slug =
     )
 
 
+type BottomLeft
+    = BottomLeft BottomLeft
+
+
 type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
     , maybeModal : Maybe ( Modal, Ui.Modal.State )
 
     -- PATTERN
-    , storedPattern : StoredPattern
-    , hoveredObject : Maybe HoveredObject
+    , storedPattern : StoredPattern BottomLeft
+    , focusedObject : Maybe Object
+    , hoveredObject : Maybe Object
 
     -- LEFT TOOLBAR
     , maybeDialog : Maybe Dialog
@@ -206,7 +214,7 @@ view model =
             }
 
 
-viewModal : Pattern -> ( Modal, Ui.Modal.State ) -> Element Msg
+viewModal : Pattern BottomLeft -> ( Modal, Ui.Modal.State ) -> Element Msg
 viewModal pattern ( modal, state ) =
     case modal of
         PointDeleteConfirm aPoint ->
@@ -374,7 +382,7 @@ viewDeleteModal state { name, kind, onDeletePress } =
         }
 
 
-viewEditor : StoredPattern -> LoadedData -> Element Msg
+viewEditor : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewEditor storedPattern model =
     let
         { pattern, name } =
@@ -446,7 +454,7 @@ viewEditor storedPattern model =
         ]
 
 
-viewLeftToolbar : Pattern -> Maybe Dialog -> Element Msg
+viewLeftToolbar : Pattern BottomLeft -> Maybe Dialog -> Element Msg
 viewLeftToolbar pattern maybeDialog =
     Element.column
         [ Element.width (Element.maximum 500 Element.fill)
@@ -482,7 +490,7 @@ viewLeftToolbar pattern maybeDialog =
 ---- WORKSPACE
 
 
-viewWorkspace : StoredPattern -> LoadedData -> Element Msg
+viewWorkspace : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewWorkspace storedPattern model =
     Element.el
         [ Element.width Element.fill
@@ -497,7 +505,7 @@ viewWorkspace storedPattern model =
         )
 
 
-viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern -> LoadedData -> Html Msg
+viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern BottomLeft -> LoadedData -> Html Msg
 viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
@@ -512,16 +520,20 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                 currentCenter =
                     case maybeDrag of
                         Nothing ->
-                            center
+                            Point2d.at resolution center
 
                         Just drag ->
-                            center
+                            Point2d.at resolution center
                                 |> Point2d.translateBy
-                                    (Vector2d.fromComponents
-                                        ( drag.start.x - drag.current.x
-                                        , drag.start.y - drag.current.y
-                                        )
+                                    (Vector2d.fromPixels
+                                        { x = drag.start.x - drag.current.x
+                                        , y = drag.start.y - drag.current.y
+                                        }
                                     )
+
+                resolution =
+                    Pixels.pixels (zoom * width / 336)
+                        |> Quantity.per (Length.millimeters 1)
             in
             Svg.svg
                 [ Svg.Attributes.viewBox <|
@@ -540,14 +552,16 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                             (Decode.field "screenY" Decode.float)
                 ]
                 [ Svg.translateBy (Vector2d.from currentCenter Point2d.origin) <|
-                    State.finalValue pattern
-                        (Pattern.draw
-                            { preview = False
-                            , zoom = zoom
-                            , objectHovered = ObjectHovered
-                            , hoveredObject = model.hoveredObject
-                            }
-                        )
+                    Pattern.draw
+                        { onHover = HoveredObject
+                        , onLeave = LeftObject
+                        , onFocus = FocusedObject
+                        , onBlur = BluredObject
+                        }
+                        pattern
+                        resolution
+                        model.focusedObject
+                        model.hoveredObject
                 ]
 
 
@@ -765,7 +779,7 @@ viewToolSelector =
 -- TABLES
 
 
-viewVariables : Pattern -> Bool -> Element Msg
+viewVariables : Pattern BottomLeft -> Bool -> Element Msg
 viewVariables pattern variablesVisible =
     Ui.Navigation.accordion
         { onPress = VariablesRulerPressed
@@ -825,7 +839,7 @@ viewVariables pattern variablesVisible =
         }
 
 
-viewPoints : Pattern -> Bool -> Element Msg
+viewPoints : Pattern BottomLeft -> Bool -> Element Msg
 viewPoints pattern pointsVisible =
     Ui.Navigation.accordion
         { onPress = PointsRulerPressed
@@ -847,7 +861,7 @@ viewPoints pattern pointsVisible =
                             Pattern.point2d
                                 >> State.finalValue pattern
                                 >> Result.toMaybe
-                                >> Maybe.map Point2d.xCoordinate
+                                >> Maybe.map (Point2d.xCoordinate >> Length.inMillimeters)
                         }
                     , Ui.Table.columnFloat
                         { label = "y"
@@ -855,7 +869,7 @@ viewPoints pattern pointsVisible =
                             Pattern.point2d
                                 >> State.finalValue pattern
                                 >> Result.toMaybe
-                                >> Maybe.map Point2d.yCoordinate
+                                >> Maybe.map (Point2d.yCoordinate >> Length.inMillimeters)
                         }
                     , Ui.Table.columnActions
                         { onEditPress = Just << PointEditPressed
@@ -866,7 +880,7 @@ viewPoints pattern pointsVisible =
         }
 
 
-viewAxes : Pattern -> Bool -> Element Msg
+viewAxes : Pattern BottomLeft -> Bool -> Element Msg
 viewAxes pattern axesVisible =
     Ui.Navigation.accordion
         { onPress = AxesRulerPressed
@@ -891,7 +905,7 @@ viewAxes pattern axesVisible =
         }
 
 
-viewCircles : Pattern -> Bool -> Element Msg
+viewCircles : Pattern BottomLeft -> Bool -> Element Msg
 viewCircles pattern circlesVisible =
     Ui.Navigation.accordion
         { onPress = CirclesRulerPressed
@@ -913,7 +927,11 @@ viewCircles pattern circlesVisible =
                             Pattern.circle2d
                                 >> State.finalValue pattern
                                 >> Result.toMaybe
-                                >> Maybe.map (Circle2d.centerPoint >> Point2d.xCoordinate)
+                                >> Maybe.map
+                                    (Circle2d.centerPoint
+                                        >> Point2d.xCoordinate
+                                        >> Length.inMillimeters
+                                    )
                         }
                     , Ui.Table.columnFloat
                         { label = "y"
@@ -921,7 +939,11 @@ viewCircles pattern circlesVisible =
                             Pattern.circle2d
                                 >> State.finalValue pattern
                                 >> Result.toMaybe
-                                >> Maybe.map (Circle2d.centerPoint >> Point2d.yCoordinate)
+                                >> Maybe.map
+                                    (Circle2d.centerPoint
+                                        >> Point2d.yCoordinate
+                                        >> Length.inMillimeters
+                                    )
                         }
                     , Ui.Table.columnFloat
                         { label = "r"
@@ -929,7 +951,7 @@ viewCircles pattern circlesVisible =
                             Pattern.circle2d
                                 >> State.finalValue pattern
                                 >> Result.toMaybe
-                                >> Maybe.map Circle2d.radius
+                                >> Maybe.map (Circle2d.radius >> Length.inMillimeters)
                         }
                     , Ui.Table.columnActions
                         { onEditPress = always Nothing
@@ -940,7 +962,7 @@ viewCircles pattern circlesVisible =
         }
 
 
-viewCurves : Pattern -> Bool -> Element Msg
+viewCurves : Pattern BottomLeft -> Bool -> Element Msg
 viewCurves pattern curvesVisible =
     Ui.Navigation.accordion
         { onPress = CurvesRulerPressed
@@ -965,7 +987,7 @@ viewCurves pattern curvesVisible =
         }
 
 
-viewDetails : Pattern -> Bool -> Element Msg
+viewDetails : Pattern BottomLeft -> Bool -> Element Msg
 viewDetails pattern curvesVisible =
     Ui.Navigation.accordion
         { onPress = DetailsRulerPressed
@@ -1001,7 +1023,7 @@ objectName =
 
 type Msg
     = NoOp
-    | PatternReceived (Result Http.Error StoredPattern)
+    | PatternReceived (Result Http.Error (StoredPattern BottomLeft))
     | PatternUpdateReceived (Result Http.Error ())
     | WindowResized
     | PatternContainerViewportRequested
@@ -1012,7 +1034,10 @@ type Msg
     | MouseMove Position
     | MouseUp Position
       -- PATTERN
-    | ObjectHovered (Maybe HoveredObject)
+    | HoveredObject Object
+    | LeftObject Object
+    | FocusedObject Object
+    | BluredObject Object
       -- LEFT TOOLBAR
     | CreatePointPressed
     | CreateAxisPressed
@@ -1084,6 +1109,7 @@ update key msg model =
 
                                 -- PATTERN
                                 , storedPattern = storedPattern
+                                , focusedObject = Nothing
                                 , hoveredObject = Nothing
 
                                 -- LEFT TOOLBAR
@@ -1226,30 +1252,42 @@ updateWithData key msg model =
                     )
 
         MouseUp position ->
-            let
-                newCenter =
-                    case model.maybeDrag of
-                        Nothing ->
-                            center
+            case model.patternContainerDimensions of
+                Nothing ->
+                    ( { model | maybeDrag = Nothing }
+                    , Cmd.none
+                    )
 
-                        Just drag ->
-                            center
-                                |> Point2d.translateBy
-                                    (Vector2d.fromComponents
-                                        ( drag.start.x - position.x
-                                        , drag.start.y - position.y
-                                        )
-                                    )
+                Just { width } ->
+                    let
+                        resolution =
+                            Pixels.pixels (zoom * width / 336)
+                                |> Quantity.per (Length.millimeters 1)
 
-                newStoredPattern =
-                    { storedPattern | center = newCenter }
-            in
-            ( { model
-                | maybeDrag = Nothing
-                , storedPattern = newStoredPattern
-              }
-            , Api.updatePattern PatternUpdateReceived newStoredPattern
-            )
+                        newCenter =
+                            case model.maybeDrag of
+                                Nothing ->
+                                    center
+
+                                Just drag ->
+                                    center
+                                        |> Point2d.translateBy
+                                            (Vector2d.at_ resolution <|
+                                                Vector2d.fromPixels
+                                                    { x = drag.start.x - drag.current.x
+                                                    , y = drag.start.y - drag.current.y
+                                                    }
+                                            )
+
+                        newStoredPattern =
+                            { storedPattern | center = newCenter }
+                    in
+                    ( { model
+                        | maybeDrag = Nothing
+                        , storedPattern = newStoredPattern
+                      }
+                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    )
 
         -- LEFT TOOLBAR
         CreatePointPressed ->
@@ -1342,8 +1380,23 @@ updateWithData key msg model =
                             )
 
         -- PATTERN
-        ObjectHovered newHoveredObject ->
-            ( { model | hoveredObject = newHoveredObject }
+        HoveredObject object ->
+            ( { model | hoveredObject = Just object }
+            , Cmd.none
+            )
+
+        LeftObject object ->
+            ( { model | hoveredObject = Nothing }
+            , Cmd.none
+            )
+
+        FocusedObject object ->
+            ( { model | focusedObject = Just object }
+            , Cmd.none
+            )
+
+        BluredObject object ->
+            ( { model | focusedObject = Nothing }
             , Cmd.none
             )
 

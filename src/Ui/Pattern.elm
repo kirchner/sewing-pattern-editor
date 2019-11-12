@@ -5,7 +5,7 @@ module Ui.Pattern exposing
     , Circle, CircleInfo(..)
     , Curve, CurveInfo(..)
     , Detail
-    , Config
+    , Config, Resolution
     , drawPoint, drawAxis, drawCircle, drawCurve, drawDetail
     )
 
@@ -18,7 +18,7 @@ module Ui.Pattern exposing
 @docs Curve, CurveInfo
 @docs Detail
 
-@docs Config
+@docs Config, Resolution
 @docs drawPoint, drawAxis, drawCircle, drawCurve, drawDetail
 
 -}

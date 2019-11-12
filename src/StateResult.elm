@@ -10,6 +10,7 @@ module StateResult exposing
     , map2
     , map3
     , map4
+    , map5
     , ok
     , traverse
     , with
@@ -151,6 +152,22 @@ map4 func a b c d =
         |> State.andMap b
         |> State.andMap c
         |> State.andMap d
+
+
+map5 :
+    (a -> b -> c -> d -> e -> f)
+    -> StateResult s err a
+    -> StateResult s err b
+    -> StateResult s err c
+    -> StateResult s err d
+    -> StateResult s err e
+    -> StateResult s err f
+map5 func a b c d e =
+    State.map (Result.map5 func) a
+        |> State.andMap b
+        |> State.andMap c
+        |> State.andMap d
+        |> State.andMap e
 
 
 with : StateResult s err a -> StateResult s err (a -> b) -> StateResult s err b

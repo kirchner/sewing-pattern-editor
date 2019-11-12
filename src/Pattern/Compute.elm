@@ -10,8 +10,8 @@ module Pattern.Compute exposing
 
 -}
 
-import Pattern exposing (A, ComputeHelp, Pattern)
-import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, map4, ok, traverse)
+import Pattern exposing (A, Axis, Circle, ComputeHelp, Curve, Detail, Pattern, Point)
+import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, map4, map5, ok, traverse)
 import Ui.Pattern
 
 
@@ -20,10 +20,11 @@ type alias Result coordinates a =
 
 
 type alias Objects coordinates =
-    { points : List (Ui.Pattern.Point coordinates)
-    , axes : List (Ui.Pattern.Axis coordinates)
-    , circles : List (Ui.Pattern.Circle coordinates)
-    , details : List (Ui.Pattern.Detail coordinates)
+    { points : List ( A Point, Ui.Pattern.Point coordinates )
+    , axes : List ( A Axis, Ui.Pattern.Axis coordinates )
+    , circles : List ( A Circle, Ui.Pattern.Circle coordinates )
+    , curves : List ( A Curve, Ui.Pattern.Curve coordinates )
+    , details : List ( A Detail, Ui.Pattern.Detail coordinates )
     }
 
 
@@ -31,11 +32,15 @@ compute : Result coordinates (Objects coordinates)
 compute =
     let
         computeHelp pattern =
-            map4 Objects
-                (traverse point (Pattern.points pattern))
-                (traverse axis (Pattern.axes pattern))
-                (traverse circle (Pattern.circles pattern))
-                (traverse detail (Pattern.details pattern))
+            map5 Objects
+                (traverse (pairWithA point) (Pattern.points pattern))
+                (traverse (pairWithA axis) (Pattern.axes pattern))
+                (traverse (pairWithA circle) (Pattern.circles pattern))
+                (traverse (pairWithA curve) (Pattern.curves pattern))
+                (traverse (pairWithA detail) (Pattern.details pattern))
+
+        pairWithA f aObject =
+            map (Tuple.pair aObject) (f True aObject)
     in
     get
         |> andThen computeHelp
@@ -45,9 +50,9 @@ compute =
 ---- POINT
 
 
-point : A Pattern.Point -> Result coordinates (Ui.Pattern.Point coordinates)
-point aPoint =
-    if Pattern.inlined aPoint then
+point : Bool -> A Pattern.Point -> Result coordinates (Ui.Pattern.Point coordinates)
+point topLevel aPoint =
+    if topLevel || Pattern.inlined aPoint then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
@@ -56,7 +61,7 @@ point aPoint =
                             (Pattern.point2d aPoint)
 
                     Just info ->
-                        map2 (Ui.Pattern.Point << Just)
+                        map2 Ui.Pattern.Point
                             (pointInfo info)
                             (Pattern.point2d aPoint)
         in
@@ -68,63 +73,66 @@ point aPoint =
             (Pattern.point2d aPoint)
 
 
-pointInfo : Pattern.PointInfo -> Result coordinates (Ui.Pattern.PointInfo coordinates)
+pointInfo : Pattern.PointInfo -> Result coordinates (Maybe (Ui.Pattern.PointInfo coordinates))
 pointInfo info =
     case info of
         Pattern.Origin stuff ->
-            ok Ui.Pattern.Origin
+            ok (Just Ui.Pattern.Origin)
 
         Pattern.FromOnePoint stuff ->
             let
                 toPointInfo basePoint =
-                    Ui.Pattern.FromOnePoint
-                        { basePoint = basePoint
-                        , label = stuff.distance
-                        }
+                    Just <|
+                        Ui.Pattern.FromOnePoint
+                            { basePoint = basePoint
+                            , label = stuff.distance
+                            }
             in
             map toPointInfo
-                (point stuff.basePoint)
+                (point False stuff.basePoint)
 
         Pattern.BetweenRatio stuff ->
             let
                 toPointInfo basePointA basePointB =
-                    Ui.Pattern.BetweenTwoPoints
-                        { basePointA = basePointA
-                        , basePointB = basePointB
-                        , label = stuff.ratio
-                        }
+                    Just <|
+                        Ui.Pattern.BetweenTwoPoints
+                            { basePointA = basePointA
+                            , basePointB = basePointB
+                            , label = stuff.ratio
+                            }
             in
             map2 toPointInfo
-                (point stuff.basePointA)
-                (point stuff.basePointB)
+                (point False stuff.basePointA)
+                (point False stuff.basePointB)
 
         Pattern.BetweenLength stuff ->
             let
                 toPointInfo basePointA basePointB =
-                    Ui.Pattern.BetweenTwoPoints
-                        { basePointA = basePointA
-                        , basePointB = basePointB
-                        , label = stuff.distance
-                        }
+                    Just <|
+                        Ui.Pattern.BetweenTwoPoints
+                            { basePointA = basePointA
+                            , basePointB = basePointB
+                            , label = stuff.distance
+                            }
             in
             map2 toPointInfo
-                (point stuff.basePointA)
-                (point stuff.basePointB)
+                (point False stuff.basePointA)
+                (point False stuff.basePointB)
 
         Pattern.Intersection stuff ->
-            Debug.todo "implement"
+            ok Nothing
 
         Pattern.TransformedPoint stuff ->
-            Debug.todo "implement"
+            ok Nothing
 
 
 
 ---- AXIS
 
 
-axis : A Pattern.Axis -> Result coordinates (Ui.Pattern.Axis coordinates)
-axis aAxis =
-    if Pattern.inlined aAxis then
+axis : Bool -> A Pattern.Axis -> Result coordinates (Ui.Pattern.Axis coordinates)
+axis topLevel aAxis =
+    if topLevel || Pattern.inlined aAxis then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
@@ -133,7 +141,7 @@ axis aAxis =
                             (Pattern.axis2d aAxis)
 
                     Just info ->
-                        map2 (Ui.Pattern.Axis << Just)
+                        map2 Ui.Pattern.Axis
                             (axisInfo info)
                             (Pattern.axis2d aAxis)
         in
@@ -145,41 +153,43 @@ axis aAxis =
             (Pattern.axis2d aAxis)
 
 
-axisInfo : Pattern.AxisInfo -> Result coordinates (Ui.Pattern.AxisInfo coordinates)
+axisInfo : Pattern.AxisInfo -> Result coordinates (Maybe (Ui.Pattern.AxisInfo coordinates))
 axisInfo info =
     case info of
         Pattern.ThroughOnePoint stuff ->
             let
                 toAxisInfo point_ =
-                    Ui.Pattern.ThroughOnePoint
-                        { point = point_ }
+                    Just <|
+                        Ui.Pattern.ThroughOnePoint
+                            { point = point_ }
             in
             map toAxisInfo
-                (point stuff.point)
+                (point False stuff.point)
 
         Pattern.ThroughTwoPoints stuff ->
             let
                 toAxisInfo pointA pointB =
-                    Ui.Pattern.ThroughTwoPoints
-                        { pointA = pointA
-                        , pointB = pointB
-                        }
+                    Just <|
+                        Ui.Pattern.ThroughTwoPoints
+                            { pointA = pointA
+                            , pointB = pointB
+                            }
             in
             map2 toAxisInfo
-                (point stuff.pointA)
-                (point stuff.pointB)
+                (point False stuff.pointA)
+                (point False stuff.pointB)
 
         Pattern.TransformedAxis stuff ->
-            Debug.todo "implement"
+            ok Nothing
 
 
 
 ---- CIRCLE
 
 
-circle : A Pattern.Circle -> Result coordinates (Ui.Pattern.Circle coordinates)
-circle aCircle =
-    if Pattern.inlined aCircle then
+circle : Bool -> A Pattern.Circle -> Result coordinates (Ui.Pattern.Circle coordinates)
+circle topLevel aCircle =
+    if topLevel || Pattern.inlined aCircle then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
@@ -188,7 +198,7 @@ circle aCircle =
                             (Pattern.circle2d aCircle)
 
                     Just info ->
-                        map2 (Ui.Pattern.Circle << Just)
+                        map2 Ui.Pattern.Circle
                             (circleInfo info)
                             (Pattern.circle2d aCircle)
         in
@@ -200,45 +210,47 @@ circle aCircle =
             (Pattern.circle2d aCircle)
 
 
-circleInfo : Pattern.CircleInfo -> Result coordinates (Ui.Pattern.CircleInfo coordinates)
+circleInfo : Pattern.CircleInfo -> Result coordinates (Maybe (Ui.Pattern.CircleInfo coordinates))
 circleInfo info =
     case info of
         Pattern.WithRadius stuff ->
             let
                 toCircle centerPoint =
-                    Ui.Pattern.WithRadius
-                        { centerPoint = centerPoint
-                        , label = stuff.radius
-                        }
+                    Just <|
+                        Ui.Pattern.WithRadius
+                            { centerPoint = centerPoint
+                            , label = stuff.radius
+                            }
             in
             map toCircle
-                (point stuff.centerPoint)
+                (point False stuff.centerPoint)
 
         Pattern.ThroughThreePoints stuff ->
             let
                 toCircle pointA pointB pointC =
-                    Ui.Pattern.ThroughThreePoints
-                        { pointA = pointA
-                        , pointB = pointB
-                        , pointC = pointC
-                        }
+                    Just <|
+                        Ui.Pattern.ThroughThreePoints
+                            { pointA = pointA
+                            , pointB = pointB
+                            , pointC = pointC
+                            }
             in
             map3 toCircle
-                (point stuff.pointA)
-                (point stuff.pointB)
-                (point stuff.pointC)
+                (point False stuff.pointA)
+                (point False stuff.pointB)
+                (point False stuff.pointC)
 
         Pattern.TransformedCircle stuff ->
-            Debug.todo "implement"
+            ok Nothing
 
 
 
 ---- CURVE
 
 
-curve : A Pattern.Curve -> Result coordinates (Ui.Pattern.Curve coordinates)
-curve aCurve =
-    if Pattern.inlined aCurve then
+curve : Bool -> A Pattern.Curve -> Result coordinates (Ui.Pattern.Curve coordinates)
+curve topLevel aCurve =
+    if topLevel || Pattern.inlined aCurve then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
@@ -247,7 +259,7 @@ curve aCurve =
                             (Pattern.curve2d aCurve)
 
                     Just info ->
-                        map2 (Ui.Pattern.Curve << Just)
+                        map2 Ui.Pattern.Curve
                             (curveInfo info)
                             (Pattern.curve2d aCurve)
         in
@@ -259,62 +271,65 @@ curve aCurve =
             (Pattern.curve2d aCurve)
 
 
-curveInfo : Pattern.CurveInfo -> Result coordinates (Ui.Pattern.CurveInfo coordinates)
+curveInfo : Pattern.CurveInfo -> Result coordinates (Maybe (Ui.Pattern.CurveInfo coordinates))
 curveInfo info =
     case info of
         Pattern.Straight stuff ->
             let
                 toCurveInfo startPoint endPoint =
-                    Ui.Pattern.LineSegment
-                        { startPoint = startPoint
-                        , endPoint = endPoint
-                        }
+                    Just <|
+                        Ui.Pattern.LineSegment
+                            { startPoint = startPoint
+                            , endPoint = endPoint
+                            }
             in
             map2 toCurveInfo
-                (point stuff.startPoint)
-                (point stuff.endPoint)
+                (point False stuff.startPoint)
+                (point False stuff.endPoint)
 
         Pattern.Quadratic stuff ->
             let
                 toCurveInfo firstControlPoint secondControlPoint thirdControlPoint =
-                    Ui.Pattern.QuadraticSpline
-                        { firstControlPoint = firstControlPoint
-                        , secondControlPoint = secondControlPoint
-                        , thirdControlPoint = thirdControlPoint
-                        }
+                    Just <|
+                        Ui.Pattern.QuadraticSpline
+                            { firstControlPoint = firstControlPoint
+                            , secondControlPoint = secondControlPoint
+                            , thirdControlPoint = thirdControlPoint
+                            }
             in
             map3 toCurveInfo
-                (point stuff.startPoint)
-                (point stuff.controlPoint)
-                (point stuff.endPoint)
+                (point False stuff.startPoint)
+                (point False stuff.controlPoint)
+                (point False stuff.endPoint)
 
         Pattern.Cubic stuff ->
             let
                 toCurveInfo firstControlPoint secondControlPoint thirdControlPoint fourthControlPoint =
-                    Ui.Pattern.CubicSpline
-                        { firstControlPoint = firstControlPoint
-                        , secondControlPoint = secondControlPoint
-                        , thirdControlPoint = thirdControlPoint
-                        , fourthControlPoint = fourthControlPoint
-                        }
+                    Just <|
+                        Ui.Pattern.CubicSpline
+                            { firstControlPoint = firstControlPoint
+                            , secondControlPoint = secondControlPoint
+                            , thirdControlPoint = thirdControlPoint
+                            , fourthControlPoint = fourthControlPoint
+                            }
             in
             map4 toCurveInfo
-                (point stuff.startPoint)
-                (point stuff.startControlPoint)
-                (point stuff.endControlPoint)
-                (point stuff.endPoint)
+                (point False stuff.startPoint)
+                (point False stuff.startControlPoint)
+                (point False stuff.endControlPoint)
+                (point False stuff.endPoint)
 
         Pattern.TransformedCurve stuff ->
-            Debug.todo "implement"
+            ok Nothing
 
 
 
 ---- DETAIL
 
 
-detail : A Pattern.Detail -> Result coordinates (Ui.Pattern.Detail coordinates)
-detail aDetail =
-    if Pattern.inlined aDetail then
+detail : Bool -> A Pattern.Detail -> Result coordinates (Ui.Pattern.Detail coordinates)
+detail topLevel aDetail =
+    if topLevel || Pattern.inlined aDetail then
         let
             computeInfo maybeInfo =
                 case maybeInfo of

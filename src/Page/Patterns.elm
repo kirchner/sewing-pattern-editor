@@ -47,6 +47,7 @@ import Html.Events
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Length
 import List.Extra as List
 import Pattern exposing (Pattern)
 import Point2d
@@ -72,7 +73,7 @@ import Vector2d
 
 type alias Model =
     { seed : Random.Seed
-    , storedPatterns : WebData (List StoredPattern)
+    , storedPatterns : WebData (List (StoredPattern BottomLeft))
     , dialog : Maybe ( Dialog, Ui.Modal.State )
     }
 
@@ -90,9 +91,13 @@ type alias ImportPatternsData =
     }
 
 
+type BottomLeft
+    = BottomLeft BottomLeft
+
+
 type alias Preview =
     { fileName : String
-    , content : Result String StoredPattern
+    , content : Result String (StoredPattern BottomLeft)
     }
 
 
@@ -112,7 +117,7 @@ init =
 type Msg
     = NoOp
     | SeedReceived Int (List Int)
-    | PatternsReceived (WebData (List StoredPattern))
+    | PatternsReceived (WebData (List (StoredPattern BottomLeft)))
     | PatternCreateResponse (Result Http.Error ())
     | PatternCardClicked String
     | PatternCardMenuClicked String
@@ -495,7 +500,7 @@ update key msg model =
             )
 
 
-getStoredPattern : Model -> String -> Maybe StoredPattern
+getStoredPattern : Model -> String -> Maybe (StoredPattern BottomLeft)
 getStoredPattern model slug =
     let
         withSlug pattern =
@@ -883,7 +888,7 @@ viewBody model =
         ]
 
 
-viewPatterns : List StoredPattern -> Element Msg
+viewPatterns : List (StoredPattern BottomLeft) -> Element Msg
 viewPatterns storedPatterns =
     let
         columnCount =
@@ -914,7 +919,7 @@ viewPatterns storedPatterns =
         )
 
 
-viewPattern : StoredPattern -> Element Msg
+viewPattern : StoredPattern BottomLeft -> Element Msg
 viewPattern ({ pattern } as storedPattern) =
     Element.column
         [ Border.width 1
@@ -993,7 +998,7 @@ viewPattern ({ pattern } as storedPattern) =
         ]
 
 
-viewPatternHelp : Pattern -> Element Msg
+viewPatternHelp : Pattern BottomLeft -> Element Msg
 viewPatternHelp pattern =
     let
         ( maxX, maxY ) =
@@ -1011,21 +1016,20 @@ viewPatternHelp pattern =
             BoundingBox2d.dimensions boundingBox
 
         boundingBox =
-            State.finalValue pattern
-                (State.traverse Pattern.point2d (Pattern.points pattern))
-                |> List.filterMap Result.toMaybe
-                |> BoundingBox2d.containingPoints
-                |> Maybe.withDefault
-                    (BoundingBox2d.fromExtrema
-                        { minX = 0
-                        , maxX = maxX
-                        , minY = 0
-                        , maxY = maxY
-                        }
-                    )
+            --State.finalValue pattern
+            --    (State.traverse Pattern.point2d (Pattern.points pattern))
+            --    |> List.filterMap Result.toMaybe
+            --    |> BoundingBox2d.containingPoints
+            --    |> Maybe.withDefault
+            BoundingBox2d.fromExtrema
+                { minX = Length.millimeters 0
+                , maxX = Length.millimeters maxX
+                , minY = Length.millimeters 0
+                , maxY = Length.millimeters maxY
+                }
 
         zoom =
-            0.9 * min maxX maxY / max width height
+            0.9 * min maxX maxY / max (Length.inMillimeters width) (Length.inMillimeters height)
     in
     Element.el
         [ Border.rounded 4
@@ -1039,19 +1043,19 @@ viewPatternHelp pattern =
                 , Html.Events.preventDefaultOn "dragstart" <|
                     Decode.succeed ( NoOp, True )
                 ]
-                [ Svg.translateBy
-                    (Vector2d.scaleBy zoom <|
-                        Vector2d.from (BoundingBox2d.centerPoint boundingBox)
-                            Point2d.origin
-                    )
-                    (State.finalValue pattern <|
-                        Pattern.draw
-                            { preview = True
-                            , zoom = zoom
-                            , objectHovered = always NoOp
-                            , hoveredObject = Nothing
-                            }
-                    )
+                [--Svg.translateBy
+                 --  (Vector2d.scaleBy zoom <|
+                 --      Vector2d.from (BoundingBox2d.centerPoint boundingBox)
+                 --          Point2d.origin
+                 --  )
+                 --  (State.finalValue pattern <|
+                 --      Pattern.draw
+                 --          { preview = True
+                 --          , zoom = zoom
+                 --          , objectHovered = always NoOp
+                 --          , hoveredObject = Nothing
+                 --          }
+                 --  )
                 ]
         )
 
