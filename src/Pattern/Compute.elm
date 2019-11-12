@@ -390,8 +390,134 @@ type alias DetailInfo coordinates =
 
 detailInfo : Pattern.DetailInfo -> Result coordinates (DetailInfo coordinates)
 detailInfo info =
-    -- TODO
-    ok
-        { points = []
-        , curves = []
-        }
+    let
+        toDetailInfo first nexts last =
+            List.foldl
+                (\next collected ->
+                    { points = next.points ++ collected.points
+                    , curves = next.curves ++ collected.curves
+                    }
+                )
+                first
+                (last :: nexts)
+    in
+    map3 toDetailInfo
+        (firstCurveInfo info.firstCurve)
+        (traverse nextCurveInfo info.nextCurves)
+        (lastCurveInfo info.lastCurve)
+
+
+firstCurveInfo : Pattern.FirstCurve -> Result coordinates (DetailInfo coordinates)
+firstCurveInfo firstCurve =
+    let
+        fromPoints points =
+            { points = points
+            , curves = []
+            }
+
+        fromCurve curve_ =
+            { points = []
+            , curves = [ curve_ ]
+            }
+    in
+    case firstCurve of
+        Pattern.FirstStraight stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.startPoint
+                    , point False stuff.endPoint
+                    ]
+
+        Pattern.FirstQuadratic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.startPoint
+                    , point False stuff.controlPoint
+                    , point False stuff.endPoint
+                    ]
+
+        Pattern.FirstCubic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.startPoint
+                    , point False stuff.startControlPoint
+                    , point False stuff.endControlPoint
+                    , point False stuff.endPoint
+                    ]
+
+        Pattern.FirstReferencedCurve stuff ->
+            map fromCurve
+                (curve False stuff.curve)
+
+
+nextCurveInfo : Pattern.NextCurve -> Result coordinates (DetailInfo coordinates)
+nextCurveInfo nextCurve =
+    let
+        fromPoints points =
+            { points = points
+            , curves = []
+            }
+
+        fromCurve curve_ =
+            { points = []
+            , curves = [ curve_ ]
+            }
+    in
+    case nextCurve of
+        Pattern.NextStraight stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.endPoint ]
+
+        Pattern.NextQuadratic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.controlPoint
+                    , point False stuff.endPoint
+                    ]
+
+        Pattern.NextCubic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.startControlPoint
+                    , point False stuff.endControlPoint
+                    , point False stuff.endPoint
+                    ]
+
+        Pattern.NextReferencedCurve stuff ->
+            map fromCurve
+                (curve False stuff.curve)
+
+
+lastCurveInfo : Pattern.LastCurve -> Result coordinates (DetailInfo coordinates)
+lastCurveInfo lastCurve =
+    let
+        fromPoints points =
+            { points = points
+            , curves = []
+            }
+
+        fromCurve curve_ =
+            { points = []
+            , curves = [ curve_ ]
+            }
+    in
+    case lastCurve of
+        Pattern.LastStraight ->
+            ok { points = [], curves = [] }
+
+        Pattern.LastQuadratic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.controlPoint ]
+
+        Pattern.LastCubic stuff ->
+            map fromPoints <|
+                traverse identity
+                    [ point False stuff.startControlPoint
+                    , point False stuff.endControlPoint
+                    ]
+
+        Pattern.LastReferencedCurve stuff ->
+            map fromCurve
+                (curve False stuff.curve)
