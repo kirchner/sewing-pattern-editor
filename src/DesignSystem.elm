@@ -33,6 +33,7 @@ import Task
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
+import Ui.Molecule.MenuBtn
 import Ui.Pattern exposing (Intersectable(..))
 import Ui.Space
 import Ui.Typography
@@ -75,7 +76,17 @@ type alias Model =
     , circles : List (Object (Ui.Pattern.Circle ()))
     , curves : List (Object (Ui.Pattern.Curve ()))
     , details : List (Object (Ui.Pattern.Detail ()))
+    , menuBtnPrimary : Ui.Molecule.MenuBtn.State
+    , menuBtnSecondary : Ui.Molecule.MenuBtn.State
     }
+
+
+type CreateAction
+    = CreatePoint
+    | CreateAxis
+    | CreateCircle
+    | CreateCurve
+    | CreateDetail
 
 
 type alias Object object =
@@ -159,6 +170,7 @@ type Route
     | Objects
       -- MOLECULES
     | JoinedFormElements
+    | Dropdowns
 
 
 routeToTitle : Route -> String
@@ -188,6 +200,9 @@ routeToTitle route =
         JoinedFormElements ->
             "Joined Form Elements"
 
+        Dropdowns ->
+            "Dropdowns"
+
 
 routeToUrl : Route -> String
 routeToUrl route =
@@ -216,6 +231,9 @@ routeToUrl route =
         JoinedFormElements ->
             "/joined-form-elements"
 
+        Dropdowns ->
+            "/dropdowns"
+
 
 routeFromUrl : Url -> Maybe Route
 routeFromUrl url =
@@ -234,6 +252,7 @@ urlParser =
         , Url.Parser.map Icons (Url.Parser.s "icons")
         , Url.Parser.map Objects (Url.Parser.s "objects")
         , Url.Parser.map JoinedFormElements (Url.Parser.s "joined-form-elements")
+        , Url.Parser.map Dropdowns (Url.Parser.s "dropdowns")
         ]
 
 
@@ -282,6 +301,8 @@ init { width, height } url key =
         , circles = objects.circles
         , curves = objects.curves
         , details = objects.details
+        , menuBtnPrimary = Ui.Molecule.MenuBtn.init
+        , menuBtnSecondary = Ui.Molecule.MenuBtn.init
         }
 
 
@@ -793,6 +814,7 @@ navigation deviceClass currentRoute =
             ]
         , group "molecules"
             [ link JoinedFormElements
+            , link Dropdowns
             ]
         ]
 
@@ -829,6 +851,9 @@ content model =
 
             JoinedFormElements ->
                 viewJoinedFormElements model
+
+            Dropdowns ->
+                viewDropdowns model
         ]
 
 
@@ -1569,6 +1594,69 @@ viewJoinedFormElements model =
 
 
 
+-- DROPDOWNS
+
+
+viewDropdowns : Model -> Element Msg
+viewDropdowns model =
+    Element.column
+        [ Element.spacing Ui.Space.level4
+        , Element.width Element.fill
+        ]
+        [ Ui.Typography.headingThree "Action Button + Dropdown"
+        , Element.wrappedRow
+            [ Element.spacing Ui.Space.level4
+            , Element.padding Ui.Space.level1
+            ]
+            [ Ui.Molecule.MenuBtn.viewPrimary
+                { id = "create-btn"
+                , onMsg = MenuBtnPrimaryMsg
+                , actions =
+                    [ { label = "Create a point"
+                      , action = CreatePoint
+                      }
+                    , { label = "Create an axis"
+                      , action = CreateAxis
+                      }
+                    , { label = "Create a circle"
+                      , action = CreateCircle
+                      }
+                    , { label = "Create a curve"
+                      , action = CreateCurve
+                      }
+                    , { label = "Create a detail"
+                      , action = CreateDetail
+                      }
+                    ]
+                }
+                model.menuBtnPrimary
+            , Ui.Molecule.MenuBtn.viewSecondary
+                { id = "create-btn"
+                , onMsg = MenuBtnSecondaryMsg
+                , actions =
+                    [ { label = "Create a point"
+                      , action = CreatePoint
+                      }
+                    , { label = "Create an axis"
+                      , action = CreateAxis
+                      }
+                    , { label = "Create a circle"
+                      , action = CreateCircle
+                      }
+                    , { label = "Create a curve"
+                      , action = CreateCurve
+                      }
+                    , { label = "Create a detail"
+                      , action = CreateDetail
+                      }
+                    ]
+                }
+                model.menuBtnSecondary
+            ]
+        ]
+
+
+
 ---- UPDATE
 
 
@@ -1614,6 +1702,9 @@ type Msg
     | LeftDetail Int
     | FocusedDetail Int
     | BluredDetail Int
+      -- MENU BUTTON
+    | MenuBtnPrimaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
+    | MenuBtnSecondaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1717,8 +1808,12 @@ update msg model =
 
         RenderedPage ->
             ( model
-            , Browser.Dom.getViewportOf "objects-container"
-                |> Task.attempt GotViewportOfObjectsContainer
+            , if model.route == Objects then
+                Browser.Dom.getViewportOf "objects-container"
+                    |> Task.attempt GotViewportOfObjectsContainer
+
+              else
+                Cmd.none
             )
 
         GotViewportOfObjectsContainer (Err error) ->
@@ -1874,6 +1969,25 @@ update msg model =
             , Cmd.none
             )
 
+        -- MENU BUTTON
+        MenuBtnPrimaryMsg menuBtnMsg ->
+            let
+                ( newMenuBtn, menuBtnCmd, maybeCreateAction ) =
+                    Ui.Molecule.MenuBtn.update menuBtnMsg model.menuBtnPrimary
+            in
+            ( { model | menuBtnPrimary = newMenuBtn }
+            , Cmd.map MenuBtnPrimaryMsg menuBtnCmd
+            )
+
+        MenuBtnSecondaryMsg menuBtnMsg ->
+            let
+                ( newMenuBtn, menuBtnCmd, maybeCreateAction ) =
+                    Ui.Molecule.MenuBtn.update menuBtnMsg model.menuBtnSecondary
+            in
+            ( { model | menuBtnSecondary = newMenuBtn }
+            , Cmd.map MenuBtnSecondaryMsg menuBtnCmd
+            )
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -1900,7 +2014,7 @@ subscriptions model =
         [ Browser.Events.onResize ResizedBrowser
         , Sub.map DropdownMsg (Ui.Atom.Dropdown.subscriptions model.dropdown)
         , Sub.map DropdownAppendedMsg (Ui.Atom.Dropdown.subscriptions model.dropdownAppended)
-        , if model.objectsContainerWidth == Nothing then
+        , if model.objectsContainerWidth == Nothing && model.route == Objects then
             Browser.Events.onAnimationFrame (\_ -> RenderedPage)
 
           else

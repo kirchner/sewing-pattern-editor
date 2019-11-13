@@ -8,7 +8,8 @@ module Ui.Atom exposing
     , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
     , TextConfig, inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge, faBrandLarge
-    , withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
+    , withFocusOutline
+    , withFocusOutlineTop, withFocusOutlineBottom, withFocusOutlineLeft, withFocusOutlineRight
     )
 
 {-|
@@ -38,7 +39,8 @@ module Ui.Atom exposing
 
 @docs fa, faBody, faLarge, faBrandLarge
 
-@docs withFocusOutline, withFocusOutlineTop, withFocusOutlineBottom
+@docs withFocusOutline
+@docs withFocusOutlineTop, withFocusOutlineBottom, withFocusOutlineLeft, withFocusOutlineRight
 
 -}
 
@@ -1282,6 +1284,62 @@ withFocusOutlineBottom element =
                 { top = 0
                 , bottom = 4
                 , left = 4
+                , right = 4
+                }
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+{-| -}
+withFocusOutlineLeft : Element msg -> Element msg
+withFocusOutlineLeft element =
+    Element.el
+        [ Element.width Element.fill
+        , Border.widthEach
+            { top = 3
+            , bottom = 3
+            , left = 3
+            , right = 0
+            }
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused [ Border.color Ui.Color.primary ]
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 4
+                , bottom = 4
+                , left = 4
+                , right = 0
+                }
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+{-| -}
+withFocusOutlineRight : Element msg -> Element msg
+withFocusOutlineRight element =
+    Element.el
+        [ Element.width Element.fill
+        , Border.widthEach
+            { top = 3
+            , bottom = 3
+            , left = 0
+            , right = 3
+            }
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused [ Border.color Ui.Color.primary ]
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 4
+                , bottom = 4
+                , left = 0
                 , right = 4
                 }
             , Element.width Element.fill
