@@ -30,7 +30,6 @@ import BoundingBox2d
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
-import Draw.Pattern as Pattern
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -50,6 +49,8 @@ import Json.Encode as Encode
 import Length
 import List.Extra as List
 import Pattern exposing (Pattern)
+import Pattern.Draw as Pattern
+import Pattern.Store exposing (StoredPattern)
 import Point2d
 import Ports
 import Random.Pcg.Extended as Random
@@ -57,7 +58,6 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import Sidebar
 import State
-import StoredPattern exposing (StoredPattern)
 import Svg
 import Svg.Attributes
 import Task
@@ -214,7 +214,7 @@ update key msg model =
                         , seed = newSeed
                       }
                     , Api.createPattern PatternCreateResponse <|
-                        StoredPattern.init (Uuid.toString uuid) name
+                        Pattern.Store.init (Uuid.toString uuid) name
                     )
 
                 _ ->
@@ -386,7 +386,7 @@ update key msg model =
                         newPreview =
                             { fileName = name
                             , content =
-                                case Decode.decodeString StoredPattern.decoder content of
+                                case Decode.decodeString Pattern.Store.decoder content of
                                     Ok storedPattern ->
                                         Ok storedPattern
 
@@ -982,7 +982,7 @@ viewPattern ({ pattern } as storedPattern) =
                 ]
                 { url =
                     "data:application/json;charset=utf-8,"
-                        ++ Encode.encode 0 (StoredPattern.encode storedPattern)
+                        ++ Encode.encode 0 (Pattern.Store.encode storedPattern)
                 , label = Ui.Typography.button "Download"
                 , filename = storedPattern.slug ++ ".json"
                 }

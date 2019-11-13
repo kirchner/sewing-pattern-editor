@@ -26,27 +26,27 @@ module Api exposing
 
 import Http
 import Json.Decode as Decode
-import StoredPattern
+import Pattern.Store
 
 
 getPatterns onReceived =
     Http.get
         { url = "/api/patterns"
-        , expect = Http.expectJson onReceived (Decode.list StoredPattern.decoder)
+        , expect = Http.expectJson onReceived (Decode.list Pattern.Store.decoder)
         }
 
 
 getPattern onReceived slug =
     Http.get
         { url = "/api/patterns/" ++ slug
-        , expect = Http.expectJson onReceived StoredPattern.decoder
+        , expect = Http.expectJson onReceived Pattern.Store.decoder
         }
 
 
 createPattern onCreateResponse storedPattern =
     Http.post
         { url = "/api/patterns"
-        , body = Http.jsonBody (StoredPattern.encode storedPattern)
+        , body = Http.jsonBody (Pattern.Store.encode storedPattern)
         , expect = Http.expectWhatever onCreateResponse
         }
 
@@ -56,7 +56,7 @@ updatePattern onUpdateResponse storedPattern =
         { method = "PUT"
         , headers = []
         , url = "/api/patterns"
-        , body = Http.jsonBody (StoredPattern.encode storedPattern)
+        , body = Http.jsonBody (Pattern.Store.encode storedPattern)
         , expect = Http.expectWhatever onUpdateResponse
         , timeout = Nothing
         , tracker = Nothing

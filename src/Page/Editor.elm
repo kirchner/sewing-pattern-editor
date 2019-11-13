@@ -41,7 +41,6 @@ import Browser.Navigation as Navigation
 import Circle2d
 import Color
 import Dialog
-import Draw.Pattern as Pattern exposing (Object)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -66,13 +65,14 @@ import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Pattern exposing (A, Axis, Circle, Curve, Detail, InsertHelp(..), Pattern, Point)
+import Pattern.Draw as Pattern exposing (Object)
+import Pattern.Store exposing (StoredPattern)
 import Pixels
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Process
 import Quantity
 import State
-import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events

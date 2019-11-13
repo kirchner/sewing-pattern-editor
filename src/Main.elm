@@ -37,7 +37,6 @@ import Page.Persons as Persons
 import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
-import StoredPattern exposing (StoredPattern)
 import Ui.Atom
 import Ui.Color
 import Ui.Modal

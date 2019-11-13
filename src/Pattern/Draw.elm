@@ -1,4 +1,4 @@
-module Draw.Pattern exposing
+module Pattern.Draw exposing
     ( Object(..)
     , Config, draw
     )

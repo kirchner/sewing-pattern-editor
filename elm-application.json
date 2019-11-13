@@ -28,10 +28,10 @@
         ],
         "Pattern": [
             "Expr",
-            "Draw.Pattern",
             "Pattern",
             "Pattern.Compute",
-            "StoredPattern"
+            "Pattern.Draw",
+            "Pattern.Store"
         ],
         "Geometry": [
             "Axis2d.Extra",

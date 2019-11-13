@@ -1,4 +1,4 @@
-module StoredPattern exposing
+module Pattern.Store exposing
     ( StoredPattern, Position, init
     , decoder, encode
     )
