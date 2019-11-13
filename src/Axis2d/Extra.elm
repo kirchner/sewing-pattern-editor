@@ -1,8 +1,16 @@
 module Axis2d.Extra exposing
-    ( intersectionWithAxis
+    ( throughTwoPoints
+    , intersectionWithAxis
     , scaleAbout
-    , throughTwoPoints
     )
+
+{-|
+
+@docs throughTwoPoints
+@docs intersectionWithAxis
+@docs scaleAbout
+
+-}
 
 {-
    Sewing pattern editor
@@ -30,12 +38,14 @@ import Point2d exposing (Point2d)
 import Vector2d
 
 
+{-| -}
 throughTwoPoints : Point2d Meters c -> Point2d Meters c -> Maybe (Axis2d Meters c)
 throughTwoPoints pointA pointB =
     Direction2d.from pointA pointB
         |> Maybe.map (Axis2d.through pointA)
 
 
+{-| -}
 intersectionWithAxis : Axis2d Meters c -> Axis2d Meters c -> Maybe (Point2d Meters c)
 intersectionWithAxis axis1 axis2 =
     let
@@ -82,6 +92,7 @@ intersectionWithAxis axis1 axis2 =
             )
 
 
+{-| -}
 scaleAbout : Point2d Meters c -> Float -> Axis2d Meters c -> Axis2d Meters c
 scaleAbout point factor axis =
     Axis2d.originPoint axis

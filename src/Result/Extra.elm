@@ -1,9 +1,17 @@
 module Result.Extra exposing
-    ( combine
-    , resolve
+    ( resolve
+    , combine
     )
 
+{-|
 
+@docs resolve
+@docs combine
+
+-}
+
+
+{-| -}
 resolve : Result a a -> a
 resolve result =
     case result of
@@ -14,6 +22,7 @@ resolve result =
             a
 
 
+{-| -}
 combine : List (Result err a) -> Result err (List a)
 combine =
     List.foldl

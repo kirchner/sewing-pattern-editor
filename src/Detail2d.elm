@@ -1,12 +1,12 @@
 module Detail2d exposing
-    ( Detail2d, LastCurve2d(..), NextCurve2d(..)
+    ( Detail2d, NextCurve2d(..), LastCurve2d(..)
     , at
     , boundingBox
     )
 
 {-|
 
-@docs Detail2d, LastCurve2d, NextCurve2d
+@docs Detail2d, NextCurve2d, LastCurve2d
 @docs at
 @docs boundingBox
 
@@ -18,6 +18,7 @@ import Point2d exposing (Point2d)
 import Quantity exposing (Quantity, Rate)
 
 
+{-| -}
 type alias Detail2d u c =
     { firstPoint : Point2d u c
     , nextCurves : List (NextCurve2d u c)
@@ -25,6 +26,7 @@ type alias Detail2d u c =
     }
 
 
+{-| -}
 type NextCurve2d u c
     = NextLineSegment2d
         { endPoint : Point2d u c
@@ -40,6 +42,7 @@ type NextCurve2d u c
         }
 
 
+{-| -}
 type LastCurve2d u c
     = LastLineSegment2d
     | LastQuadraticSpline2d
@@ -51,6 +54,7 @@ type LastCurve2d u c
         }
 
 
+{-| -}
 at : Quantity Float (Rate units2 units1) -> Detail2d units1 coordinates -> Detail2d units2 coordinates
 at conversionFactor { firstPoint, nextCurves, lastCurve } =
     { firstPoint = Point2d.at conversionFactor firstPoint
@@ -103,6 +107,7 @@ lastCurveAt conversionFactor lastCurve2d =
                 }
 
 
+{-| -}
 boundingBox : Detail2d units coordinates -> Maybe (BoundingBox2d units coordinates)
 boundingBox { firstPoint, nextCurves, lastCurve } =
     let

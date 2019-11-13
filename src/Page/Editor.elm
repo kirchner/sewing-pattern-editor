@@ -1,11 +1,16 @@
 module Page.Editor exposing
-    ( Model
-    , Msg
-    , init
-    , subscriptions
-    , update
+    ( Model, init
     , view
+    , Msg, update, subscriptions
     )
+
+{-|
+
+@docs Model, init
+@docs view
+@docs Msg, update, subscriptions
+
+-}
 
 {-
    Sewing pattern editor
@@ -67,17 +72,16 @@ import Polygon2d exposing (Polygon2d)
 import Process
 import Quantity
 import State
-import Store exposing (Entry)
 import StoredPattern exposing (StoredPattern)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events
 import Svg.Lazy
 import Task
-import Triple
 import Ui.Atom
 import Ui.Color
 import Ui.Modal
+import Ui.Molecule.MenuBtn
 import Ui.Navigation
 import Ui.Space
 import Ui.Table
@@ -91,12 +95,14 @@ import VoronoiDiagram2d
 ---- MODEL
 
 
+{-| -}
 type Model
     = Loading
     | Error
     | Loaded LoadedData
 
 
+{-| -}
 init : String -> ( Model, Cmd Msg )
 init slug =
     ( Loading
@@ -117,6 +123,9 @@ type alias LoadedData =
     , storedPattern : StoredPattern BottomLeft
     , focusedObject : Maybe Object
     , hoveredObject : Maybe Object
+
+    -- TOP TOOLBAR
+    , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
 
     -- LEFT TOOLBAR
     , maybeDialog : Maybe Dialog
@@ -182,6 +191,7 @@ type VariableDialog
 ---- VIEW
 
 
+{-| -}
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view model =
     case model of
@@ -382,6 +392,14 @@ viewDeleteModal state { name, kind, onDeletePress } =
         }
 
 
+type CreateAction
+    = CreatePoint
+    | CreateAxis
+    | CreateCircle
+    | CreateCurve
+    | CreateDetail
+
+
 viewEditor : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewEditor storedPattern model =
     let
@@ -394,19 +412,40 @@ viewEditor storedPattern model =
         ]
         [ Element.row
             [ Element.width Element.fill
-            , Element.padding Ui.Space.level2
-            , Element.spacing Ui.Space.level1
+            , Element.padding Ui.Space.level1
             , Background.color Ui.Color.secondary
             ]
-            [ Ui.Navigation.link
-                { url = "/patterns"
-                , label = "Patterns"
+            [ Ui.Molecule.MenuBtn.viewPrimary
+                { id = "create-object"
+                , onMsg = CreateObjectMenuBtnMsg
+                , actions =
+                    [ { label = "Create a point"
+                      , action = CreatePoint
+                      }
+                    , { label = "Create an axis"
+                      , action = CreateAxis
+                      }
+                    , { label = "Create a circle"
+                      , action = CreateCircle
+                      }
+                    , { label = "Create a curve"
+                      , action = CreateCurve
+                      }
+                    , { label = "Create a detail"
+                      , action = CreateDetail
+                      }
+                    ]
                 }
-            , Element.el [] (Ui.Atom.fa "angle-right")
-            , Element.el [] (Ui.Typography.body name)
+                model.createObjectMenuBtn
+            , Element.el
+                [ Element.centerX
+                , Font.bold
+                ]
+                (Ui.Typography.body name)
             , Element.newTabLink
                 [ Element.alignRight
-                , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+                , Element.mouseOver [ Font.color Ui.Color.primary ]
+                , Element.paddingXY Ui.Space.level1 0
                 ]
                 { url = "https://github.com/kirchner/sewing-pattern-editor"
                 , label = Ui.Atom.faBrandLarge "github"
@@ -465,7 +504,7 @@ viewLeftToolbar pattern maybeDialog =
         ]
         [ case maybeDialog of
             Nothing ->
-                viewToolSelector
+                Element.none
 
             Just (CreateObject dialog) ->
                 Element.map DialogCreateMsg <|
@@ -750,32 +789,6 @@ viewEditVariable name value =
 
 
 
--- TOOL SELECTOR
-
-
-viewToolSelector : Element Msg
-viewToolSelector =
-    let
-        button msg id label =
-            Ui.Atom.btnCallToAction
-                { id = id ++ "-button"
-                , onPress = Just msg
-                , label = label
-                }
-    in
-    Element.column
-        [ Element.padding Ui.Space.level1
-        , Element.width Element.fill
-        ]
-        [ button CreatePointPressed "create-point" "Create a point"
-        , button CreateAxisPressed "create-axis" "Create an axis"
-        , button CreateCirclePressed "create-circle" "Create a circle"
-        , button CreateCurvePressed "create-curve" "Create a curve"
-        , button CreateDetailPressed "create-detail" "Create a detail"
-        ]
-
-
-
 -- TABLES
 
 
@@ -1021,6 +1034,7 @@ objectName =
 ---- UPDATE
 
 
+{-| -}
 type Msg
     = NoOp
     | PatternReceived (Result Http.Error (StoredPattern BottomLeft))
@@ -1038,12 +1052,9 @@ type Msg
     | LeftObject Object
     | FocusedObject Object
     | BluredObject Object
+      -- TOP TOOLBAR
+    | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
       -- LEFT TOOLBAR
-    | CreatePointPressed
-    | CreateAxisPressed
-    | CreateCirclePressed
-    | CreateCurvePressed
-    | CreateDetailPressed
     | DialogCreateMsg Dialog.CreateMsg
     | DialogEditMsg Dialog.EditMsg
       -- RIGHT TOOLBAR
@@ -1085,6 +1096,7 @@ type Msg
     | ModalClosed
 
 
+{-| -}
 update :
     Navigation.Key
     -> Msg
@@ -1111,6 +1123,9 @@ update key msg model =
                                 , storedPattern = storedPattern
                                 , focusedObject = Nothing
                                 , hoveredObject = Nothing
+
+                                -- TOP TOOLBAR
+                                , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
 
                                 -- LEFT TOOLBAR
                                 , maybeDialog = Nothing
@@ -1289,32 +1304,38 @@ updateWithData key msg model =
                     , Api.updatePattern PatternUpdateReceived newStoredPattern
                     )
 
+        -- TOP TOOLBAR
+        CreateObjectMenuBtnMsg menuBtnMsg ->
+            let
+                ( newMenuBtn, menuBtnCmd, maybeAction ) =
+                    Ui.Molecule.MenuBtn.update menuBtnMsg model.createObjectMenuBtn
+            in
+            ( { model
+                | createObjectMenuBtn = newMenuBtn
+                , maybeDialog =
+                    case maybeAction of
+                        Nothing ->
+                            model.maybeDialog
+
+                        Just CreatePoint ->
+                            Just (CreateObject Dialog.createPoint)
+
+                        Just CreateAxis ->
+                            Just (CreateObject Dialog.createAxis)
+
+                        Just CreateCircle ->
+                            Just (CreateObject Dialog.createCircle)
+
+                        Just CreateCurve ->
+                            Just (CreateObject Dialog.createCurve)
+
+                        Just CreateDetail ->
+                            Just (CreateObject Dialog.createDetail)
+              }
+            , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
+            )
+
         -- LEFT TOOLBAR
-        CreatePointPressed ->
-            ( { model | maybeDialog = Just (CreateObject Dialog.createPoint) }
-            , Cmd.none
-            )
-
-        CreateAxisPressed ->
-            ( { model | maybeDialog = Just (CreateObject Dialog.createAxis) }
-            , Cmd.none
-            )
-
-        CreateCirclePressed ->
-            ( { model | maybeDialog = Just (CreateObject Dialog.createCircle) }
-            , Cmd.none
-            )
-
-        CreateCurvePressed ->
-            ( { model | maybeDialog = Just (CreateObject Dialog.createCurve) }
-            , Cmd.none
-            )
-
-        CreateDetailPressed ->
-            ( { model | maybeDialog = Just (CreateObject Dialog.createDetail) }
-            , Cmd.none
-            )
-
         DialogCreateMsg dialogMsg ->
             case model.maybeDialog of
                 Nothing ->
@@ -1868,6 +1889,7 @@ updateWithData key msg model =
 ---- SUBSCRIPTIONS
 
 
+{-| -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of

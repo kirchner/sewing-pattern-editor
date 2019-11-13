@@ -1,8 +1,12 @@
-module Draw.Pattern exposing (Object(..), draw)
+module Draw.Pattern exposing
+    ( Object(..)
+    , Config, draw
+    )
 
 {-|
 
-@docs Object, draw
+@docs Object
+@docs Config, draw
 
 -}
 
@@ -32,6 +36,7 @@ import Svg.Attributes
 import Ui.Pattern exposing (Resolution)
 
 
+{-| -}
 type Object
     = Point (A Point)
     | Axis (A Axis)
@@ -40,6 +45,7 @@ type Object
     | Detail (A Detail)
 
 
+{-| -}
 type alias Config msg =
     { onHover : Object -> msg
     , onLeave : Object -> msg
@@ -48,6 +54,7 @@ type alias Config msg =
     }
 
 
+{-| -}
 draw : Config msg -> Pattern coordinates -> Resolution -> Maybe Object -> Maybe Object -> Svg msg
 draw cfg pattern resolution focusedObject hoveredObject =
     case State.finalValue pattern Pattern.compute of

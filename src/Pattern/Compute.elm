@@ -1,11 +1,11 @@
 module Pattern.Compute exposing
-    ( Objects, compute
+    ( Objects, Result, compute
     , point, axis, circle, curve, detail
     )
 
 {-|
 
-@docs Objects, compute
+@docs Objects, Result, compute
 @docs point, axis, circle, curve, detail
 
 -}
@@ -15,10 +15,12 @@ import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, 
 import Ui.Pattern
 
 
+{-| -}
 type alias Result coordinates a =
     StateResult (Pattern coordinates) ComputeHelp a
 
 
+{-| -}
 type alias Objects coordinates =
     { points : List ( A Point, Ui.Pattern.Point coordinates )
     , axes : List ( A Axis, Ui.Pattern.Axis coordinates )
@@ -28,6 +30,7 @@ type alias Objects coordinates =
     }
 
 
+{-| -}
 compute : Result coordinates (Objects coordinates)
 compute =
     let
@@ -50,6 +53,7 @@ compute =
 ---- POINT
 
 
+{-| -}
 point : Bool -> A Pattern.Point -> Result coordinates (Ui.Pattern.Point coordinates)
 point topLevel aPoint =
     if topLevel || Pattern.inlined aPoint then
@@ -155,6 +159,7 @@ pointInfo info =
 ---- AXIS
 
 
+{-| -}
 axis : Bool -> A Pattern.Axis -> Result coordinates (Ui.Pattern.Axis coordinates)
 axis topLevel aAxis =
     if topLevel || Pattern.inlined aAxis then
@@ -212,6 +217,7 @@ axisInfo info =
 ---- CIRCLE
 
 
+{-| -}
 circle : Bool -> A Pattern.Circle -> Result coordinates (Ui.Pattern.Circle coordinates)
 circle topLevel aCircle =
     if topLevel || Pattern.inlined aCircle then
@@ -273,6 +279,7 @@ circleInfo info =
 ---- CURVE
 
 
+{-| -}
 curve : Bool -> A Pattern.Curve -> Result coordinates (Ui.Pattern.Curve coordinates)
 curve topLevel aCurve =
     if topLevel || Pattern.inlined aCurve then
@@ -352,6 +359,7 @@ curveInfo info =
 ---- DETAIL
 
 
+{-| -}
 detail : Bool -> A Pattern.Detail -> Result coordinates (Ui.Pattern.Detail coordinates)
 detail topLevel aDetail =
     if topLevel || Pattern.inlined aDetail then

@@ -1,9 +1,14 @@
 module Route exposing
-    ( Point(..)
-    , Route(..)
-    , fromUrl
-    , toString
+    ( Route(..), Point(..)
+    , fromUrl, toString
     )
+
+{-|
+
+@docs Route, Point
+@docs fromUrl, toString
+
+-}
 
 {-
    Sewing pattern editor
@@ -28,6 +33,7 @@ import Url.Builder as Builder
 import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string, top)
 
 
+{-| -}
 type Route
     = Patterns
     | Measurements
@@ -35,11 +41,13 @@ type Route
     | Editor String (Maybe Point)
 
 
+{-| -}
 type Point
     = NewLeftOf
     | NewRightOf
 
 
+{-| -}
 toString : Route -> String
 toString route =
     case route of
@@ -100,6 +108,7 @@ pointParser =
         ]
 
 
+{-| -}
 fromUrl : Url -> Maybe Route
 fromUrl =
     Parser.parse parser

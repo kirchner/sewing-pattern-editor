@@ -1,12 +1,16 @@
 module Point2d.Extra exposing
-    ( atAngle
-    , betweenLength
-    , betweenRatio
-    , firstCircleAxis
-    , firstCircleCircle
-    , secondCircleAxis
-    , secondCircleCircle
+    ( atAngle, betweenLength, betweenRatio
+    , firstCircleCircle, secondCircleCircle
+    , firstCircleAxis, secondCircleAxis
     )
+
+{-|
+
+@docs atAngle, betweenLength, betweenRatio
+@docs firstCircleCircle, secondCircleCircle
+@docs firstCircleAxis, secondCircleAxis
+
+-}
 
 {-
    Sewing pattern editor
@@ -36,11 +40,13 @@ import Point2d exposing (Point2d)
 import Vector2d
 
 
+{-| -}
 atAngle : Point2d Meters c -> Angle -> Length -> Point2d Meters c
 atAngle anchor angle distance =
     Point2d.translateBy (Vector2d.rTheta distance angle) anchor
 
 
+{-| -}
 betweenRatio : Point2d Meters c -> Point2d Meters c -> Float -> Point2d Meters c
 betweenRatio anchorA anchorB ratio =
     Point2d.translateBy
@@ -50,6 +56,7 @@ betweenRatio anchorA anchorB ratio =
         anchorA
 
 
+{-| -}
 betweenLength : Point2d Meters c -> Point2d Meters c -> Length -> Maybe (Point2d Meters c)
 betweenLength anchorA anchorB length =
     Direction2d.from anchorA anchorB
@@ -61,6 +68,7 @@ betweenLength anchorA anchorB length =
             )
 
 
+{-| -}
 firstCircleCircle : Circle2d Meters c -> Circle2d Meters c -> Maybe (Point2d Meters c)
 firstCircleCircle circle2dA circle2dB =
     case Circle2d.intersectionCircle circle2dA circle2dB of
@@ -74,6 +82,7 @@ firstCircleCircle circle2dA circle2dB =
             Just point
 
 
+{-| -}
 secondCircleCircle : Circle2d Meters c -> Circle2d Meters c -> Maybe (Point2d Meters c)
 secondCircleCircle circle2dA circle2dB =
     case Circle2d.intersectionCircle circle2dA circle2dB of
@@ -87,6 +96,7 @@ secondCircleCircle circle2dA circle2dB =
             Just point
 
 
+{-| -}
 firstCircleAxis : Circle2d Meters c -> Axis2d Meters c -> Maybe (Point2d Meters c)
 firstCircleAxis circle axis =
     case Circle2d.intersectionAxis circle axis of
@@ -100,6 +110,7 @@ firstCircleAxis circle axis =
             Just point
 
 
+{-| -}
 secondCircleAxis : Circle2d Meters c -> Axis2d Meters c -> Maybe (Point2d Meters c)
 secondCircleAxis circle axis =
     case Circle2d.intersectionAxis circle axis of

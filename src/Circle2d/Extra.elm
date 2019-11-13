@@ -1,8 +1,10 @@
-module Circle2d.Extra exposing
-    ( Intersection(..)
-    , intersectionAxis
-    , intersectionCircle
-    )
+module Circle2d.Extra exposing (Intersection(..), intersectionAxis, intersectionCircle)
+
+{-|
+
+@docs Intersection, intersectionAxis, intersectionCircle
+
+-}
 
 {-
    Sewing pattern editor
@@ -32,12 +34,14 @@ import Quantity
 import Vector2d
 
 
+{-| -}
 type Intersection u c
     = NoIntersection
     | OnePoint (Point2d u c)
     | TwoPoints (Point2d u c) (Point2d u c)
 
 
+{-| -}
 intersectionAxis : Circle2d Meters c -> Axis2d Meters c -> Intersection Meters c
 intersectionAxis circle axis =
     let
@@ -113,6 +117,7 @@ intersectionAxis circle axis =
         NoIntersection
 
 
+{-| -}
 intersectionCircle : Circle2d Meters c -> Circle2d Meters c -> Intersection Meters c
 intersectionCircle circle1 circle2 =
     let

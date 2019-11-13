@@ -2,18 +2,48 @@
     "name": "kirchner/sewing-pattern-editor",
     "summary": "Sewing pattern editor",
     "version": "1.0.0",
-    "exposed-modules": [
-        "Dialog",
-        "Dialog.Detail",
-        "Dialog.Intersectable",
-        "Dialog.OtherPoint",
-        "Ui.Atom",
-        "Ui.Color",
-        "Ui.Modal",
-        "Ui.Space",
-        "Ui.Table",
-        "Ui.Navigation",
-        "Ui.Typography",
-        "Ui.Atom.Dropdown"
-    ]
+    "exposed-modules": {
+        "Application": [
+            "Ports",
+            "Route"
+        ],
+        "Interface": [
+            "Page.Editor",
+            "Dialog",
+            "Dialog.Detail",
+            "Dialog.Intersectable",
+            "Dialog.OtherPoint"
+        ],
+        "Ui": [
+            "Ui.Atom",
+            "Ui.Atom.Dropdown",
+            "Ui.Color",
+            "Ui.Modal",
+            "Ui.Molecule.MenuBtn",
+            "Ui.Pattern",
+            "Ui.Navigation",
+            "Ui.Space",
+            "Ui.Table",
+            "Ui.Typography"
+        ],
+        "Pattern": [
+            "Expr",
+            "Draw.Pattern",
+            "Pattern",
+            "Pattern.Compute",
+            "StoredPattern"
+        ],
+        "Geometry": [
+            "Axis2d.Extra",
+            "Circle2d.Extra",
+            "Detail2d",
+            "Point2d.Extra",
+            "Geometry.Svg.Extra"
+        ],
+        "Helper": [
+            "StateResult",
+            "Maybe.Extra",
+            "Result.Extra"
+        ]
+    }
 }

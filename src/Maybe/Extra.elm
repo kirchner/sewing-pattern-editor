@@ -1,7 +1,10 @@
-module Maybe.Extra exposing
-    ( andThen2
-    , andThen3
-    )
+module Maybe.Extra exposing (andThen2, andThen3)
+
+{-|
+
+@docs andThen2, andThen3
+
+-}
 
 {-
    Sewing pattern editor
@@ -22,6 +25,7 @@ module Maybe.Extra exposing
 -}
 
 
+{-| -}
 andThen2 : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
 andThen2 func maybeA maybeB =
     Maybe.withDefault Nothing <|
@@ -30,6 +34,7 @@ andThen2 func maybeA maybeB =
             maybeB
 
 
+{-| -}
 andThen3 : (a -> b -> c -> Maybe d) -> Maybe a -> Maybe b -> Maybe c -> Maybe d
 andThen3 func maybeA maybeB maybeC =
     Maybe.withDefault Nothing <|

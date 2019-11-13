@@ -1,10 +1,14 @@
 module StoredPattern exposing
-    ( Position
-    , StoredPattern
-    , decoder
-    , encode
-    , init
+    ( StoredPattern, Position, init
+    , decoder, encode
     )
+
+{-|
+
+@docs StoredPattern, Position, init
+@docs decoder, encode
+
+-}
 
 {-
    Sewing pattern editor
@@ -32,6 +36,7 @@ import Pattern exposing (Pattern)
 import Point2d exposing (Point2d)
 
 
+{-| -}
 type alias StoredPattern coordinates =
     { slug : String
     , name : String
@@ -41,12 +46,14 @@ type alias StoredPattern coordinates =
     }
 
 
+{-| -}
 type alias Position =
     { x : Float
     , y : Float
     }
 
 
+{-| -}
 init : String -> String -> StoredPattern coordinates
 init slug name =
     { slug = slug
@@ -63,6 +70,7 @@ init slug name =
     }
 
 
+{-| -}
 decoder : Decoder (StoredPattern coordinates)
 decoder =
     Decode.succeed StoredPattern
@@ -80,6 +88,7 @@ point2dDecoder =
         |> Decode.required "y" Decode.float
 
 
+{-| -}
 encode : StoredPattern coordinates -> Value
 encode { slug, name, pattern, zoom, center } =
     Encode.object

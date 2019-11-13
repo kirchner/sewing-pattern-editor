@@ -1,21 +1,22 @@
 module StateResult exposing
-    ( StateResult
-    , andThen
-    , combine
-    , embed
-    , err
+    ( StateResult, ok, err
     , get
-    , join
-    , map
-    , map2
-    , map3
-    , map4
-    , map5
-    , ok
-    , traverse
-    , with
-    , withDefault
+    , with, withDefault, embed
+    , map, map2, map3, map4, map5
+    , andThen, join
+    , traverse, combine
     )
+
+{-|
+
+@docs StateResult, ok, err
+@docs get
+@docs with, withDefault, embed
+@docs map, map2, map3, map4, map5
+@docs andThen, join
+@docs traverse, combine
+
+-}
 
 {-
    Sewing pattern editor
@@ -39,37 +40,44 @@ import Result.Extra as Result
 import State exposing (State)
 
 
+{-| -}
 type alias StateResult s err a =
     State s (Result err a)
 
 
+{-| -}
 ok : a -> StateResult s err a
 ok a =
     State.state (Ok a)
 
 
+{-| -}
 err : err -> StateResult s err a
 err error =
     State.state (Err error)
 
 
+{-| -}
 get : StateResult s err s
 get =
     State.map Ok State.get
 
 
+{-| -}
 traverse : (a -> StateResult s err b) -> List a -> StateResult s err (List b)
 traverse func listA =
     State.traverse func listA
         |> State.map sort
 
 
+{-| -}
 combine : List (StateResult s err a) -> StateResult s err (List a)
 combine =
     State.combine
         >> State.map Result.combine
 
 
+{-| -}
 sort : List (Result err b) -> Result err (List b)
 sort results =
     let
@@ -89,6 +97,7 @@ sort results =
             Err error
 
 
+{-| -}
 withDefault : a -> StateResult s err a -> State s a
 withDefault a stateResultA =
     State.map
@@ -96,6 +105,7 @@ withDefault a stateResultA =
         stateResultA
 
 
+{-| -}
 andThen : (a -> StateResult s err b) -> StateResult s err a -> StateResult s err b
 andThen func =
     State.andThen <|
@@ -108,6 +118,7 @@ andThen func =
                     func a
 
 
+{-| -}
 join : StateResult s err (Result err a) -> StateResult s err a
 join =
     andThen <|
@@ -120,16 +131,19 @@ join =
                     ok circle2d_
 
 
+{-| -}
 map : (a -> b) -> StateResult s err a -> StateResult s err b
 map func =
     State.map (Result.map func)
 
 
+{-| -}
 map2 : (a -> b -> c) -> StateResult s err a -> StateResult s err b -> StateResult s err c
 map2 func =
     State.map2 (Result.map2 func)
 
 
+{-| -}
 map3 :
     (a -> b -> c -> d)
     -> StateResult s err a
@@ -140,6 +154,7 @@ map3 func =
     State.map3 (Result.map3 func)
 
 
+{-| -}
 map4 :
     (a -> b -> c -> d -> e)
     -> StateResult s err a
@@ -154,6 +169,7 @@ map4 func a b c d =
         |> State.andMap d
 
 
+{-| -}
 map5 :
     (a -> b -> c -> d -> e -> f)
     -> StateResult s err a
@@ -170,11 +186,13 @@ map5 func a b c d e =
         |> State.andMap e
 
 
+{-| -}
 with : StateResult s err a -> StateResult s err (a -> b) -> StateResult s err b
 with =
     \b a -> map2 (<|) a b
 
 
+{-| -}
 embed : (s -> a) -> StateResult s err a
 embed f =
     State.embed (Ok << f)

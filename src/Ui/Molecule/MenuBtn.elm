@@ -34,6 +34,7 @@ import Ui.Typography
 ---- STATE
 
 
+{-| -}
 type State
     = State
         { last : Int
@@ -43,6 +44,7 @@ type State
         }
 
 
+{-| -}
 init : State
 init =
     State
@@ -57,6 +59,7 @@ init =
 ---- VIEW
 
 
+{-| -}
 type alias Config action msg =
     { id : String
     , onMsg : Msg action -> msg
@@ -64,12 +67,14 @@ type alias Config action msg =
     }
 
 
+{-| -}
 type alias Action action =
     { label : String
     , action : action
     }
 
 
+{-| -}
 viewPrimary : Config action msg -> State -> Element msg
 viewPrimary =
     view
@@ -79,6 +84,7 @@ viewPrimary =
         }
 
 
+{-| -}
 viewSecondary : Config action msg -> State -> Element msg
 viewSecondary =
     view
@@ -95,6 +101,7 @@ type alias Colors =
     }
 
 
+{-| -}
 view : Colors -> Config action msg -> State -> Element msg
 view colors ({ id, onMsg, actions } as config) ((State { last, selected, open }) as state) =
     case List.getAt last actions of
@@ -277,6 +284,7 @@ backgroundColorEaseInOut =
 ---- UPDATE
 
 
+{-| -}
 type
     Msg action
     -- ACTION BUTTON
@@ -295,6 +303,7 @@ type
     | PressedMenuItem Int action
 
 
+{-| -}
 update : Msg action -> State -> ( State, Cmd (Msg action), Maybe action )
 update msg ((State stuff) as state) =
     case msg of

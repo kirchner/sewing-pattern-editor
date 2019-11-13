@@ -50,6 +50,7 @@ import Vector2d
 import VirtualDom
 
 
+{-| -}
 type alias Config msg =
     { onHover : msg
     , onLeave : msg
@@ -58,6 +59,7 @@ type alias Config msg =
     }
 
 
+{-| -}
 type alias Resolution =
     Quantity Float (Rate Pixels Meters)
 
@@ -74,12 +76,14 @@ type alias Layers msg =
 ---- POINT
 
 
+{-| -}
 type alias Point coordinates =
     { info : Maybe (PointInfo coordinates)
     , point2d : Point2d Meters coordinates
     }
 
 
+{-| -}
 type PointInfo coordinates
     = Origin
     | FromOnePoint
@@ -97,6 +101,7 @@ type PointInfo coordinates
         }
 
 
+{-| -}
 type Intersectable coordinates
     = IntersectableAxis (Axis coordinates)
     | IntersectableCircle (Circle coordinates)
@@ -106,12 +111,14 @@ type Intersectable coordinates
 ---- AXIS
 
 
+{-| -}
 type alias Axis coordinates =
     { info : Maybe (AxisInfo coordinates)
     , axis2d : Axis2d Meters coordinates
     }
 
 
+{-| -}
 type AxisInfo coordinates
     = ThroughOnePoint
         { point : Point coordinates
@@ -126,12 +133,14 @@ type AxisInfo coordinates
 ---- CIRCLE
 
 
+{-| -}
 type alias Circle coordinates =
     { info : Maybe (CircleInfo coordinates)
     , circle2d : Circle2d Meters coordinates
     }
 
 
+{-| -}
 type CircleInfo coordinates
     = WithRadius
         { centerPoint : Point coordinates
@@ -148,12 +157,14 @@ type CircleInfo coordinates
 ---- CURVE
 
 
+{-| -}
 type alias Curve coordinates =
     { info : Maybe (CurveInfo coordinates)
     , curve2d : Curve2d Meters coordinates
     }
 
 
+{-| -}
 type CurveInfo coordinates
     = LineSegment
         { startPoint : Point coordinates
@@ -176,6 +187,7 @@ type CurveInfo coordinates
 ---- DETAIL
 
 
+{-| -}
 type alias Detail coordinates =
     { points : List (Point coordinates)
     , curves : List (Curve coordinates)
@@ -187,6 +199,7 @@ type alias Detail coordinates =
 ---- POINT
 
 
+{-| -}
 drawPoint : Config msg -> String -> Point coordinates -> Resolution -> Bool -> Bool -> Layers msg
 drawPoint cfg name point resolution focused hovered =
     let
@@ -564,6 +577,7 @@ pointEvents cfg point2d =
 ---- AXIS
 
 
+{-| -}
 drawAxis : Config msg -> String -> Axis coordinates -> Resolution -> Bool -> Bool -> Layers msg
 drawAxis cfg name axis resolution focused hovered =
     let
@@ -728,6 +742,7 @@ axisEvents cfg axis2d =
 ---- CIRCLE
 
 
+{-| -}
 drawCircle : Config msg -> String -> Circle coordinates -> Resolution -> Bool -> Bool -> Layers msg
 drawCircle cfg name circle resolution focused hovered =
     let
@@ -892,6 +907,7 @@ circleEvents cfg circle2d =
 ---- CURVE
 
 
+{-| -}
 drawCurve : Config msg -> String -> Curve coordinates -> Resolution -> Bool -> Bool -> Layers msg
 drawCurve cfg name curve resolution focused hovered =
     let
@@ -1048,6 +1064,7 @@ curveEvents cfg curve2d =
 ---- DETAIL
 
 
+{-| -}
 drawDetail : Config msg -> String -> Detail coordinates -> Resolution -> Bool -> Bool -> Layers msg
 drawDetail cfg name detail resolution focused hovered =
     let

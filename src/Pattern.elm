@@ -63,7 +63,6 @@ module Pattern exposing
 
 @docs Point, Axis, Circle, Curve, Detail
 @docs Intersectable
-@docs coordinates
 
 
 # Nest and reference
@@ -123,8 +122,6 @@ module Pattern exposing
 
 @docs point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
 @docs float
-
-@docs Curve2d
 
 @docs Intersectable2d
 
@@ -236,6 +233,7 @@ import StateResult
 import Vector2d
 
 
+{-| -}
 type Pattern coordinates
     = Pattern (PatternData coordinates)
 
@@ -259,6 +257,7 @@ type alias PatternData coordinates =
     }
 
 
+{-| -}
 empty : Pattern coordinates
 empty =
     Pattern
@@ -284,36 +283,44 @@ empty =
 ---- OBJECTS
 
 
+{-| -}
 type Point
     = Point PointInfo
 
 
+{-| -}
 type Axis
     = Axis AxisInfo
 
 
+{-| -}
 type Circle
     = Circle CircleInfo
 
 
+{-| -}
 type Curve
     = Curve CurveInfo
 
 
+{-| -}
 type Detail
     = Detail DetailInfo
 
 
+{-| -}
 type Transformation
     = Transformation TransformationInfo
 
 
+{-| -}
 type Intersectable
     = IntersectableAxis Axis
     | IntersectableCircle Circle
     | IntersectableCurve Curve
 
 
+{-| -}
 type IntersectableTag
     = IntersectableAxisTag
     | IntersectableCircleTag
@@ -324,16 +331,19 @@ type IntersectableTag
 ---- NEST AND REFERENCE
 
 
+{-| -}
 type A object
     = That String
     | This object
 
 
+{-| -}
 this : object -> A object
 this object =
     This object
 
 
+{-| -}
 name : A object -> Maybe String
 name aObject =
     case aObject of
@@ -354,6 +364,7 @@ isThatWith name_ aObject =
             False
 
 
+{-| -}
 inlined : A object -> Bool
 inlined aObject =
     case aObject of
@@ -364,6 +375,7 @@ inlined aObject =
             True
 
 
+{-| -}
 hash : A object -> String
 hash aObject =
     case aObject of
@@ -374,6 +386,7 @@ hash aObject =
             "do-we-even-need-this"
 
 
+{-| -}
 intersectableAxis : A Axis -> A Intersectable
 intersectableAxis aAxis =
     case aAxis of
@@ -384,6 +397,7 @@ intersectableAxis aAxis =
             This (IntersectableAxis axis)
 
 
+{-| -}
 intersectableCircle : A Circle -> A Intersectable
 intersectableCircle aCircle =
     case aCircle of
@@ -394,6 +408,7 @@ intersectableCircle aCircle =
             This (IntersectableCircle circle)
 
 
+{-| -}
 intersectableCurve : A Curve -> A Intersectable
 intersectableCurve aCurve =
     case aCurve of
@@ -404,6 +419,7 @@ intersectableCurve aCurve =
             This (IntersectableCurve curve)
 
 
+{-| -}
 axisFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Axis)
 axisFromIntersectable pattern aIntersectable =
     case aIntersectable of
@@ -422,6 +438,7 @@ axisFromIntersectable pattern aIntersectable =
             Nothing
 
 
+{-| -}
 circleFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Circle)
 circleFromIntersectable pattern aIntersectable =
     case aIntersectable of
@@ -440,6 +457,7 @@ circleFromIntersectable pattern aIntersectable =
             Nothing
 
 
+{-| -}
 curveFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Curve)
 curveFromIntersectable pattern aIntersectable =
     case aIntersectable of
@@ -462,6 +480,7 @@ curveFromIntersectable pattern aIntersectable =
 ---- INSERT
 
 
+{-| -}
 insertPoint : String -> Point -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertPoint name_ point ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -482,6 +501,7 @@ insertPoint name_ point ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 insertAxis : String -> Axis -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertAxis name_ axis ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -502,6 +522,7 @@ insertAxis name_ axis ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 insertCircle : String -> Circle -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertCircle name_ circle ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -522,6 +543,7 @@ insertCircle name_ circle ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 insertCurve : String -> Curve -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertCurve name_ curve ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -542,6 +564,7 @@ insertCurve name_ curve ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 insertDetail : String -> Detail -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertDetail name_ detail_ ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -562,11 +585,13 @@ insertDetail name_ detail_ ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 insertTransformation : String -> Transformation -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertTransformation n transformation pattern =
     Err NotImplementedYet
 
 
+{-| -}
 insertVariable : String -> String -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
 insertVariable name_ expr ((Pattern data) as pattern) =
     if nameTaken name_ data then
@@ -587,6 +612,7 @@ insertVariable name_ expr ((Pattern data) as pattern) =
                 Ok newPattern
 
 
+{-| -}
 type InsertHelp
     = NameTaken
     | BadObject ComputeHelp
@@ -608,6 +634,7 @@ nameTaken name_ data =
 ---- REPLACE
 
 
+{-| -}
 replacePoint : A Point -> Point -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replacePoint aPoint newPoint ((Pattern data) as pattern) =
     case aPoint of
@@ -644,6 +671,7 @@ replacePoint aPoint newPoint ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+{-| -}
 replaceAxis : A Axis -> Axis -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceAxis aAxis newAxis ((Pattern data) as pattern) =
     case aAxis of
@@ -680,6 +708,7 @@ replaceAxis aAxis newAxis ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+{-| -}
 replaceCircle : A Circle -> Circle -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceCircle aCircle newCircle ((Pattern data) as pattern) =
     case aCircle of
@@ -716,6 +745,7 @@ replaceCircle aCircle newCircle ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+{-| -}
 replaceCurve : A Curve -> Curve -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceCurve aCurve newCurve ((Pattern data) as pattern) =
     case aCurve of
@@ -752,6 +782,7 @@ replaceCurve aCurve newCurve ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+{-| -}
 replaceDetail : A Detail -> Detail -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceDetail aDetail newDetail ((Pattern data) as pattern) =
     case aDetail of
@@ -788,6 +819,7 @@ replaceDetail aDetail newDetail ((Pattern data) as pattern) =
             Err ObjectDoesNotExist
 
 
+{-| -}
 replaceVariable : String -> String -> Pattern coordinates -> Result ReplaceHelp (Pattern coordinates)
 replaceVariable variable newValue ((Pattern data) as pattern) =
     let
@@ -819,6 +851,7 @@ replaceVariable variable newValue ((Pattern data) as pattern) =
                 Ok (regenerateCaches newPattern)
 
 
+{-| -}
 type ReplaceHelp
     = BadNewObject ComputeHelp
     | CircularDependency
@@ -829,6 +862,7 @@ type ReplaceHelp
 ---- REMOVE
 
 
+{-| -}
 removePoint : A Point -> Pattern coordinates -> Pattern coordinates
 removePoint aPoint pattern =
     case aPoint of
@@ -848,6 +882,7 @@ removePoint aPoint pattern =
             pattern
 
 
+{-| -}
 removeAxis : A Axis -> Pattern coordinates -> Pattern coordinates
 removeAxis aAxis pattern =
     case aAxis of
@@ -867,6 +902,7 @@ removeAxis aAxis pattern =
             pattern
 
 
+{-| -}
 removeCircle : A Circle -> Pattern coordinates -> Pattern coordinates
 removeCircle aCircle pattern =
     case aCircle of
@@ -886,6 +922,7 @@ removeCircle aCircle pattern =
             pattern
 
 
+{-| -}
 removeCurve : A Curve -> Pattern coordinates -> Pattern coordinates
 removeCurve aCurve pattern =
     case aCurve of
@@ -905,6 +942,7 @@ removeCurve aCurve pattern =
             pattern
 
 
+{-| -}
 removeDetail : A Detail -> Pattern coordinates -> Pattern coordinates
 removeDetail aDetail pattern =
     case aDetail of
@@ -924,6 +962,7 @@ removeDetail aDetail pattern =
             pattern
 
 
+{-| -}
 removeVariable : String -> Pattern coordinates -> Pattern coordinates
 removeVariable variable pattern =
     let
@@ -938,6 +977,7 @@ removeVariable variable pattern =
             }
 
 
+{-| -}
 removeObjects : Objects -> Pattern coordinates -> Pattern coordinates
 removeObjects objects_ (Pattern data) =
     Pattern
@@ -989,30 +1029,35 @@ regenerateCaches ((Pattern data) as pattern) =
 ---- QUERY
 
 
+{-| -}
 points : Pattern coordinates -> List (A Point)
 points (Pattern data) =
     Dict.keys data.points
         |> List.map That
 
 
+{-| -}
 axes : Pattern coordinates -> List (A Axis)
 axes (Pattern data) =
     Dict.keys data.axes
         |> List.map That
 
 
+{-| -}
 circles : Pattern coordinates -> List (A Circle)
 circles (Pattern data) =
     Dict.keys data.circles
         |> List.map That
 
 
+{-| -}
 curves : Pattern coordinates -> List (A Curve)
 curves (Pattern data) =
     Dict.keys data.curves
         |> List.map That
 
 
+{-| -}
 curvesWith :
     Pattern coordinates
     ->
@@ -1024,23 +1069,27 @@ curvesWith (Pattern data) constraints =
     []
 
 
+{-| -}
 details : Pattern coordinates -> List (A Detail)
 details (Pattern data) =
     Dict.keys data.details
         |> List.map That
 
 
+{-| -}
 transformations : Pattern coordinates -> List (A Transformation)
 transformations (Pattern data) =
     Dict.keys data.transformations
         |> List.map That
 
 
+{-| -}
 variables : Pattern coordinates -> List String
 variables (Pattern data) =
     Dict.keys data.variables
 
 
+{-| -}
 objects : Pattern coordinates -> Objects
 objects pattern =
     { points = points pattern
@@ -1056,6 +1105,7 @@ objects pattern =
 -- INFO
 
 
+{-| -}
 pointInfo : A Point -> Pattern coordinates -> Maybe PointInfo
 pointInfo aPoint (Pattern data) =
     case aPoint of
@@ -1067,6 +1117,7 @@ pointInfo aPoint (Pattern data) =
             Just info
 
 
+{-| -}
 type PointInfo
     = Origin OriginStuff
     | FromOnePoint FromOnePointStuff
@@ -1076,12 +1127,14 @@ type PointInfo
     | TransformedPoint TransformedPointStuff
 
 
+{-| -}
 type alias OriginStuff =
     { x : Float
     , y : Float
     }
 
 
+{-| -}
 type alias FromOnePointStuff =
     { basePoint : A Point
     , direction : Direction
@@ -1089,6 +1142,7 @@ type alias FromOnePointStuff =
     }
 
 
+{-| -}
 type alias BetweenRatioStuff =
     { basePointA : A Point
     , basePointB : A Point
@@ -1096,6 +1150,7 @@ type alias BetweenRatioStuff =
     }
 
 
+{-| -}
 type alias BetweenLengthStuff =
     { basePointA : A Point
     , basePointB : A Point
@@ -1104,6 +1159,7 @@ type alias BetweenLengthStuff =
     }
 
 
+{-| -}
 type alias IntersectionStuff =
     { objectA : A Intersectable
     , objectB : A Intersectable
@@ -1111,12 +1167,14 @@ type alias IntersectionStuff =
     }
 
 
+{-| -}
 type alias TransformedPointStuff =
     { point : A Point
     , transformation : A Transformation
     }
 
 
+{-| -}
 axisInfo : A Axis -> Pattern coordinates -> Maybe AxisInfo
 axisInfo aAxis (Pattern data) =
     case aAxis of
@@ -1128,30 +1186,35 @@ axisInfo aAxis (Pattern data) =
             Just info
 
 
+{-| -}
 type AxisInfo
     = ThroughOnePoint ThroughOnePointStuff
     | ThroughTwoPoints ThroughTwoPointsStuff
     | TransformedAxis TransformedAxisStuff
 
 
+{-| -}
 type alias ThroughOnePointStuff =
     { point : A Point
     , orientation : Orientation
     }
 
 
+{-| -}
 type alias ThroughTwoPointsStuff =
     { pointA : A Point
     , pointB : A Point
     }
 
 
+{-| -}
 type alias TransformedAxisStuff =
     { axis : A Axis
     , transformation : A Transformation
     }
 
 
+{-| -}
 circleInfo : A Circle -> Pattern coordinates -> Maybe CircleInfo
 circleInfo aCircle (Pattern data) =
     case aCircle of
@@ -1163,18 +1226,21 @@ circleInfo aCircle (Pattern data) =
             Just info
 
 
+{-| -}
 type CircleInfo
     = WithRadius WithRadiusStuff
     | ThroughThreePoints ThroughThreePointsStuff
     | TransformedCircle TransformedCircleStuff
 
 
+{-| -}
 type alias WithRadiusStuff =
     { centerPoint : A Point
     , radius : String
     }
 
 
+{-| -}
 type alias ThroughThreePointsStuff =
     { pointA : A Point
     , pointB : A Point
@@ -1182,12 +1248,14 @@ type alias ThroughThreePointsStuff =
     }
 
 
+{-| -}
 type alias TransformedCircleStuff =
     { circle : A Circle
     , transformation : A Transformation
     }
 
 
+{-| -}
 curveInfo : A Curve -> Pattern coordinates -> Maybe CurveInfo
 curveInfo aCurve (Pattern data) =
     case aCurve of
@@ -1199,6 +1267,7 @@ curveInfo aCurve (Pattern data) =
             Just info
 
 
+{-| -}
 type CurveInfo
     = Straight StraightStuff
     | Quadratic QuadraticStuff
@@ -1206,12 +1275,14 @@ type CurveInfo
     | TransformedCurve TransformedCurveStuff
 
 
+{-| -}
 type alias StraightStuff =
     { startPoint : A Point
     , endPoint : A Point
     }
 
 
+{-| -}
 type alias QuadraticStuff =
     { startPoint : A Point
     , controlPoint : A Point
@@ -1219,6 +1290,7 @@ type alias QuadraticStuff =
     }
 
 
+{-| -}
 type alias CubicStuff =
     { startPoint : A Point
     , startControlPoint : A Point
@@ -1227,12 +1299,14 @@ type alias CubicStuff =
     }
 
 
+{-| -}
 type alias TransformedCurveStuff =
     { curve : A Curve
     , transformation : A Transformation
     }
 
 
+{-| -}
 detailInfo : A Detail -> Pattern coordinates -> Maybe DetailInfo
 detailInfo aDetail (Pattern data) =
     case aDetail of
@@ -1244,6 +1318,7 @@ detailInfo aDetail (Pattern data) =
             Just info
 
 
+{-| -}
 type alias DetailInfo =
     { firstCurve : FirstCurve
     , nextCurves : List NextCurve
@@ -1251,6 +1326,7 @@ type alias DetailInfo =
     }
 
 
+{-| -}
 type FirstCurve
     = FirstStraight FirstStraightStuff
     | FirstQuadratic FirstQuadraticStuff
@@ -1258,12 +1334,14 @@ type FirstCurve
     | FirstReferencedCurve FirstReferencedCurveStuff
 
 
+{-| -}
 type alias FirstStraightStuff =
     { startPoint : A Point
     , endPoint : A Point
     }
 
 
+{-| -}
 type alias FirstQuadraticStuff =
     { startPoint : A Point
     , controlPoint : A Point
@@ -1271,6 +1349,7 @@ type alias FirstQuadraticStuff =
     }
 
 
+{-| -}
 type alias FirstCubicStuff =
     { startPoint : A Point
     , startControlPoint : A Point
@@ -1279,12 +1358,14 @@ type alias FirstCubicStuff =
     }
 
 
+{-| -}
 type alias FirstReferencedCurveStuff =
     { curve : A Curve
     , reversed : Bool
     }
 
 
+{-| -}
 type NextCurve
     = NextStraight NextStraightStuff
     | NextQuadratic NextQuadraticStuff
@@ -1292,17 +1373,20 @@ type NextCurve
     | NextReferencedCurve NextReferencedCurveStuff
 
 
+{-| -}
 type alias NextStraightStuff =
     { endPoint : A Point
     }
 
 
+{-| -}
 type alias NextQuadraticStuff =
     { controlPoint : A Point
     , endPoint : A Point
     }
 
 
+{-| -}
 type alias NextCubicStuff =
     { startControlPoint : A Point
     , endControlPoint : A Point
@@ -1310,12 +1394,14 @@ type alias NextCubicStuff =
     }
 
 
+{-| -}
 type alias NextReferencedCurveStuff =
     { curve : A Curve
     , reversed : Bool
     }
 
 
+{-| -}
 type LastCurve
     = LastStraight
     | LastQuadratic LastQuadraticStuff
@@ -1323,23 +1409,27 @@ type LastCurve
     | LastReferencedCurve LastReferencedCurveStuff
 
 
+{-| -}
 type alias LastQuadraticStuff =
     { controlPoint : A Point
     }
 
 
+{-| -}
 type alias LastCubicStuff =
     { startControlPoint : A Point
     , endControlPoint : A Point
     }
 
 
+{-| -}
 type alias LastReferencedCurveStuff =
     { curve : A Curve
     , reversed : Bool
     }
 
 
+{-| -}
 transformationInfo : A Transformation -> Pattern coordinates -> Maybe TransformationInfo
 transformationInfo aTransformation (Pattern data) =
     case aTransformation of
@@ -1351,35 +1441,41 @@ transformationInfo aTransformation (Pattern data) =
             Just info
 
 
+{-| -}
 type TransformationInfo
     = TranslateBy TranslateByStuff
     | TranslateFromTo TranslateFromToStuff
     | RotateAround RotateAroundStuff
 
 
+{-| -}
 type alias TranslateByStuff =
     { direction : Direction
     , distance : String
     }
 
 
+{-| -}
 type alias TranslateFromToStuff =
     { startPoint : A Point
     , endPoint : A Point
     }
 
 
+{-| -}
 type alias RotateAroundStuff =
     { centerPoint : A Point
     , angle : String
     }
 
 
+{-| -}
 transformedObjects : A Transformation -> Pattern coordinates -> Maybe TransformedObjects
 transformedObjects aTransformation pattern =
     Nothing
 
 
+{-| -}
 type alias TransformedObjects =
     { points : List (A Point)
     , axes : List (A Axis)
@@ -1388,17 +1484,20 @@ type alias TransformedObjects =
     }
 
 
+{-| -}
 variableInfo : String -> Pattern coordinates -> Maybe String
 variableInfo variable (Pattern data) =
     Dict.get variable data.variables
 
 
+{-| -}
 type IntersectableInfo
     = AxisInfo AxisInfo
     | CircleInfo CircleInfo
     | CurveInfo CurveInfo
 
 
+{-| -}
 intersectableInfo : A Intersectable -> Pattern coordinates -> Maybe IntersectableInfo
 intersectableInfo aIntersectable (Pattern data) =
     let
@@ -1437,6 +1536,7 @@ intersectableInfo aIntersectable (Pattern data) =
 -- SHARED TYPES
 
 
+{-| -}
 type Direction
     = Leftward
     | Rightward
@@ -1445,11 +1545,13 @@ type Direction
     | DirectionAngle String
 
 
+{-| -}
 type OneInTwo
     = FirstInTwo
     | SecondInTwo
 
 
+{-| -}
 type Orientation
     = Horizontal
     | Vertical
@@ -1460,6 +1562,7 @@ type Orientation
 ---- COMPUTE
 
 
+{-| -}
 point2d : A Point -> State (Pattern coordinates) (Result ComputeHelp (Point2d Meters coordinates))
 point2d aPoint =
     case aPoint of
@@ -1604,12 +1707,14 @@ computePoint2d (Point info) =
             StateResult.err NotComputableYet
 
 
+{-| -}
 type Intersectable2d u c
     = Axis2d (Axis2d u c)
     | Circle2d (Circle2d u c)
     | Curve2d (Curve2d u c)
 
 
+{-| -}
 intersectable2d : A Intersectable -> State (Pattern coordinates) (Result ComputeHelp (Intersectable2d Meters coordinates))
 intersectable2d aIntersectable =
     case aIntersectable of
@@ -1701,6 +1806,7 @@ intersectable2d aIntersectable =
                 |> StateResult.map Curve2d
 
 
+{-| -}
 axis2d : A Axis -> State (Pattern coordinates) (Result ComputeHelp (Axis2d Meters coordinates))
 axis2d aAxis =
     case aAxis of
@@ -1760,6 +1866,7 @@ computeAxis2d (Axis info) =
             StateResult.err NotComputableYet
 
 
+{-| -}
 circle2d : A Circle -> State (Pattern coordinates) (Result ComputeHelp (Circle2d Meters coordinates))
 circle2d aCircle =
     case aCircle of
@@ -1824,6 +1931,7 @@ computeCircle2d (Circle info) =
             StateResult.err NotComputableYet
 
 
+{-| -}
 curve2d : A Curve -> State (Pattern coordinates) (Result ComputeHelp (Curve2d Meters coordinates))
 curve2d aCurve =
     case aCurve of
@@ -1906,6 +2014,7 @@ computeCurve2d (Curve info) =
             StateResult.err NotComputableYet
 
 
+{-| -}
 detail2d : A Detail -> State (Pattern coordinates) (Result ComputeHelp (Detail2d Meters coordinates))
 detail2d aDetail =
     case aDetail of
@@ -2412,6 +2521,7 @@ endPointWith constraints curve =
                 Nothing
 
 
+{-| -}
 float : String -> State (Pattern coordinates) (Result ComputeHelp Float)
 float variable =
     let
@@ -2677,6 +2787,7 @@ evaluateBoolExpr boolExpr =
                 |> StateResult.with (evaluateExpr exprB)
 
 
+{-| -}
 type ComputeHelp
     = MissingObject String
     | MissingVariable String
@@ -2695,6 +2806,7 @@ type ComputeHelp
 ---- DEPENDENCIES
 
 
+{-| -}
 type alias Objects =
     { points : List (A Point)
     , axes : List (A Axis)
@@ -2716,6 +2828,7 @@ noObjects =
     }
 
 
+{-| -}
 objectsDependingOnPoint : Pattern coordinates -> A Point -> Objects
 objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
     case name aPoint of
@@ -2730,12 +2843,14 @@ objectsDependingOnPoint ((Pattern data) as pattern) aPoint =
                 |> objectsFromCollection
 
 
+{-| -}
 objectsNotDependingOnPoint : Pattern coordinates -> A Point -> Objects
 objectsNotDependingOnPoint pattern aPoint =
     objects pattern
         |> withoutObjects (objectsDependingOnPoint pattern aPoint)
 
 
+{-| -}
 objectsDependingOnAxis : Pattern coordinates -> A Axis -> Objects
 objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
     case name aAxis of
@@ -2750,12 +2865,14 @@ objectsDependingOnAxis ((Pattern data) as pattern) aAxis =
                 |> objectsFromCollection
 
 
+{-| -}
 objectsNotDependingOnAxis : Pattern coordinates -> A Axis -> Objects
 objectsNotDependingOnAxis pattern aAxis =
     objects pattern
         |> withoutObjects (objectsDependingOnAxis pattern aAxis)
 
 
+{-| -}
 objectsDependingOnCircle : Pattern coordinates -> A Circle -> Objects
 objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
     case name aCircle of
@@ -2770,12 +2887,14 @@ objectsDependingOnCircle ((Pattern data) as pattern) aCircle =
                 |> objectsFromCollection
 
 
+{-| -}
 objectsNotDependingOnCircle : Pattern coordinates -> A Circle -> Objects
 objectsNotDependingOnCircle pattern aCircle =
     objects pattern
         |> withoutObjects (objectsDependingOnCircle pattern aCircle)
 
 
+{-| -}
 objectsDependingOnCurve : Pattern coordinates -> A Curve -> Objects
 objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
     case name aCurve of
@@ -2790,12 +2909,14 @@ objectsDependingOnCurve ((Pattern data) as pattern) aCurve =
                 |> objectsFromCollection
 
 
+{-| -}
 objectsNotDependingOnCurve : Pattern coordinates -> A Curve -> Objects
 objectsNotDependingOnCurve pattern aCurve =
     objects pattern
         |> withoutObjects (objectsDependingOnCurve pattern aCurve)
 
 
+{-| -}
 objectsDependingOnDetail : Pattern coordinates -> A Detail -> Objects
 objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
     case name aDetail of
@@ -2810,12 +2931,14 @@ objectsDependingOnDetail ((Pattern data) as pattern) aDetail =
                 |> objectsFromCollection
 
 
+{-| -}
 objectsNotDependingOnDetail : Pattern coordinates -> A Detail -> Objects
 objectsNotDependingOnDetail pattern aDetail =
     objects pattern
         |> withoutObjects (objectsDependingOnDetail pattern aDetail)
 
 
+{-| -}
 objectsDependingOnVariable : Pattern coordinates -> String -> Objects
 objectsDependingOnVariable ((Pattern data) as pattern) variable =
     pattern
@@ -3066,6 +3189,7 @@ collectObjectsDependingOnExpr data pointName chains expr =
 ---- CONSTRUCT
 
 
+{-| -}
 origin : Float -> Float -> Point
 origin x y =
     Point <|
@@ -3075,6 +3199,7 @@ origin x y =
             }
 
 
+{-| -}
 fromOnePoint :
     A Point
     -> Direction
@@ -3096,12 +3221,14 @@ fromOnePoint aBasePoint direction distance pattern =
             )
 
 
+{-| -}
 type alias FromOnePointHelp =
     { computeDirection : Maybe ComputeHelp
     , computeDistance : Maybe ComputeHelp
     }
 
 
+{-| -}
 betweenRatio : A Point -> A Point -> String -> Pattern coordinates -> Result BetweenRatioHelp Point
 betweenRatio aBasePointA aBasePointB ratio pattern =
     Ok BetweenRatioHelp
@@ -3118,12 +3245,14 @@ betweenRatio aBasePointA aBasePointB ratio pattern =
             )
 
 
+{-| -}
 type alias BetweenRatioHelp =
     { computeRatio : Maybe ComputeHelp
     , basePointsCoincide : Bool
     }
 
 
+{-| -}
 betweenLength :
     A Point
     -> A Point
@@ -3147,12 +3276,14 @@ betweenLength aBasePointA aBasePointB distance from pattern =
             )
 
 
+{-| -}
 type alias BetweenLengthHelp =
     { computeDistance : Maybe ComputeHelp
     , basePointsCoincide : Bool
     }
 
 
+{-| -}
 intersection :
     A Intersectable
     -> A Intersectable
@@ -3190,6 +3321,7 @@ checkWhichInBound aIntersectableA aIntersectableB pattern which =
             0 >= which && which < size
 
 
+{-| -}
 tagFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe IntersectableTag
 tagFromIntersectable (Pattern data) aIntersectable =
     case aIntersectable of
@@ -3216,6 +3348,7 @@ tagFromIntersectable (Pattern data) aIntersectable =
             Just IntersectableCurveTag
 
 
+{-| -}
 whichSize : IntersectableTag -> IntersectableTag -> Int
 whichSize intersectableTagA intersectableTagB =
     case ( intersectableTagA, intersectableTagB ) of
@@ -3235,17 +3368,20 @@ whichSize intersectableTagA intersectableTagB =
             1
 
 
+{-| -}
 type alias IntersectionHelp =
     { objectsCoincide : Bool
     , whichOutOfBound : Bool
     }
 
 
+{-| -}
 transformedPoint : A Point -> A Transformation -> Pattern coordinates -> Result () Point
 transformedPoint aPoint aTransformation pattern =
     Err ()
 
 
+{-| -}
 throughOnePoint : A Point -> Orientation -> Pattern coordinates -> Result ThroughOnePointHelp Axis
 throughOnePoint aPoint orientation pattern =
     Ok ThroughOnePointHelp
@@ -3260,11 +3396,13 @@ throughOnePoint aPoint orientation pattern =
             )
 
 
+{-| -}
 type alias ThroughOnePointHelp =
     { computeAngle : Maybe ComputeHelp
     }
 
 
+{-| -}
 throughTwoPoints : A Point -> A Point -> Pattern coordinates -> Result ThroughTwoPointsHelp Axis
 throughTwoPoints aPointA aPointB pattern =
     Ok ThroughTwoPointsHelp
@@ -3279,16 +3417,19 @@ throughTwoPoints aPointA aPointB pattern =
             )
 
 
+{-| -}
 type alias ThroughTwoPointsHelp =
     { basePointsCoincide : Bool
     }
 
 
+{-| -}
 transformedAxis : A Axis -> A Transformation -> Pattern coordinates -> Result () Axis
 transformedAxis aAxis aTransformation pattern =
     Err ()
 
 
+{-| -}
 withRadius : String -> A Point -> Pattern coordinates -> Result WithRadiusHelp Circle
 withRadius radius aCenterPoint pattern =
     Ok WithRadiusHelp
@@ -3303,11 +3444,13 @@ withRadius radius aCenterPoint pattern =
             )
 
 
+{-| -}
 type alias WithRadiusHelp =
     { computeRadius : Maybe ComputeHelp
     }
 
 
+{-| -}
 throughThreePoints :
     A Point
     -> A Point
@@ -3332,16 +3475,19 @@ throughThreePoints aPointA aPointB aPointC pattern =
             )
 
 
+{-| -}
 type alias ThroughThreePointsHelp =
     { pointsCoincide : Bool
     }
 
 
+{-| -}
 transformedCircle : A Circle -> A Transformation -> Pattern coordinates -> Result () Circle
 transformedCircle aCircle aTransformation pattern =
     Err ()
 
 
+{-| -}
 straight : A Point -> A Point -> Pattern coordinates -> Result StraightHelp Curve
 straight aStartPoint aEndPoint pattern =
     Ok StraightHelp
@@ -3356,11 +3502,13 @@ straight aStartPoint aEndPoint pattern =
             )
 
 
+{-| -}
 type alias StraightHelp =
     { pointsCoincide : Bool
     }
 
 
+{-| -}
 quadratic : A Point -> A Point -> A Point -> Pattern coordinates -> Result QuadraticHelp Curve
 quadratic aStartPoint aControlPoint aEndPoint pattern =
     Ok QuadraticHelp
@@ -3376,11 +3524,13 @@ quadratic aStartPoint aControlPoint aEndPoint pattern =
             )
 
 
+{-| -}
 type alias QuadraticHelp =
     { pointsCoincide : Bool
     }
 
 
+{-| -}
 cubic : A Point -> A Point -> A Point -> A Point -> Pattern coordinates -> Result CubicHelp Curve
 cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint pattern =
     Ok CubicHelp
@@ -3397,16 +3547,19 @@ cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint pattern =
             )
 
 
+{-| -}
 type alias CubicHelp =
     { pointsCoincide : Bool
     }
 
 
+{-| -}
 transformedCurve : A Curve -> A Transformation -> Pattern coordinates -> Result () Curve
 transformedCurve aCurve aTransformation pattern =
     Err ()
 
 
+{-| -}
 detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern coordinates -> Result DetailHelp Detail
 detail firstCurve nextCurves lastCurve pattern =
     Ok <|
@@ -3417,6 +3570,7 @@ detail firstCurve nextCurves lastCurve pattern =
             }
 
 
+{-| -}
 type alias DetailHelp =
     {}
 
@@ -3465,6 +3619,7 @@ collectBool bool resultFunc =
 ---- CHECKS
 
 
+{-| -}
 type ExprHelp
     = SyntaxHelp (List DeadEnd)
     | UnknownFunction String
@@ -3475,6 +3630,7 @@ type ExprHelp
     | CannotComputeFunction String
 
 
+{-| -}
 checkExpr : Pattern coordinates -> String -> Maybe ComputeHelp
 checkExpr pattern rawExpr =
     case State.finalValue pattern (computeExpr rawExpr) of
@@ -3531,6 +3687,7 @@ checkObjectsCoincidence aObjectA aObjectB =
 ---- ENCODE
 
 
+{-| -}
 encode : Pattern coordinates -> Value
 encode (Pattern data) =
     Encode.object
@@ -3907,6 +4064,7 @@ withType type_ fields =
 ---- DECODER
 
 
+{-| -}
 decoder : Decoder (Pattern coordinates)
 decoder =
     Decode.succeed PatternData

@@ -1,8 +1,14 @@
 module Expr exposing
-    ( BoolExpr(..)
-    , Expr(..)
+    ( Expr(..), BoolExpr(..)
     , parse
     )
+
+{-|
+
+@docs Expr, BoolExpr
+@docs parse
+
+-}
 
 {-
    Sewing pattern editor
@@ -28,6 +34,7 @@ import Parser exposing (..)
 import Set
 
 
+{-| -}
 type Expr
     = Number Float
     | Variable String
@@ -40,6 +47,7 @@ type Expr
     | IfThenElse BoolExpr Expr Expr
 
 
+{-| -}
 type BoolExpr
     = ExprTrue
     | ExprFalse
@@ -51,6 +59,7 @@ type BoolExpr
     | StrictlyGreaterThan Expr Expr
 
 
+{-| -}
 parse : List String -> String -> Result (List DeadEnd) Expr
 parse reservedWords string =
     Parser.run (expr (keyWords ++ reservedWords)) string

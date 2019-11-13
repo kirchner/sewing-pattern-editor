@@ -15,6 +15,7 @@ import Svg exposing (Svg)
 import Svg.Attributes
 
 
+{-| -}
 curve2d : List (Svg.Attribute msg) -> Curve2d Pixels coordinates -> Svg msg
 curve2d attributes curve2d_ =
     case curve2d_ of
@@ -28,6 +29,7 @@ curve2d attributes curve2d_ =
             Svg.cubicSpline2d attributes cubicSpline2d
 
 
+{-| -}
 detail2d : List (Svg.Attribute msg) -> Detail2d Pixels coordinates -> Svg msg
 detail2d attributes { firstPoint, nextCurves, lastCurve } =
     let
