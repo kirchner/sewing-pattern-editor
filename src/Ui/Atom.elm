@@ -8,6 +8,7 @@ module Ui.Atom exposing
     , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
     , TextConfig, inputText, inputTextAppended, inputFormula, inputFormulaAppended
     , fa, faBody, faLarge, faBrandLarge
+    , iconPoint, iconAxis, iconCircle, iconCurve, iconDetail
     , withFocusOutline
     , withFocusOutlineTop, withFocusOutlineBottom, withFocusOutlineLeft, withFocusOutlineRight
     )
@@ -38,25 +39,35 @@ module Ui.Atom exposing
 # Icons
 
 @docs fa, faBody, faLarge, faBrandLarge
+@docs iconPoint, iconAxis, iconCircle, iconCurve, iconDetail
 
 @docs withFocusOutline
 @docs withFocusOutlineTop, withFocusOutlineBottom, withFocusOutlineLeft, withFocusOutlineRight
 
 -}
 
+import Circle2d
 import Element exposing (Attr, Attribute, Decoration, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input exposing (Label)
+import Geometry.Svg as Svg
 import Html
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
+import LineSegment2d
 import List.Extra as List
 import Listbox
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
+import Pixels exposing (pixels)
+import Point2d
+import Polygon2d
+import QuadraticSpline2d
+import Svg
+import Svg.Attributes
 import Ui.Color
 import Ui.Space
 import Ui.Typography
@@ -1212,6 +1223,121 @@ faHelp class size name =
                     ]
                     []
         )
+
+
+{-| -}
+iconPoint : Element msg
+iconPoint =
+    Element.el [] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-7 -7 14 14"
+                , Html.Attributes.style "width" "14px"
+                , Html.Attributes.style "height" "14px"
+                ]
+                [ Svg.circle2d
+                    [ Svg.Attributes.fill "black"
+                    ]
+                    (Circle2d.withRadius
+                        (pixels 2)
+                        Point2d.origin
+                    )
+                ]
+
+
+{-| -}
+iconAxis : Element msg
+iconAxis =
+    Element.el [] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-7 -7 14 14"
+                , Html.Attributes.style "width" "14px"
+                , Html.Attributes.style "height" "14px"
+                ]
+                [ Svg.lineSegment2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.strokeWidth "3"
+                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                    (LineSegment2d.from
+                        (Point2d.pixels -5 0)
+                        (Point2d.pixels 5 0)
+                    )
+                ]
+
+
+{-| -}
+iconCircle : Element msg
+iconCircle =
+    Element.el [] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-7 -7 14 14"
+                , Html.Attributes.style "width" "14px"
+                , Html.Attributes.style "height" "14px"
+                ]
+                [ Svg.circle2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.strokeWidth "2"
+                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                    (Circle2d.withRadius
+                        (pixels 5)
+                        Point2d.origin
+                    )
+                ]
+
+
+{-| -}
+iconCurve : Element msg
+iconCurve =
+    Element.el [] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-7 -7 14 14"
+                , Html.Attributes.style "width" "14px"
+                , Html.Attributes.style "height" "14px"
+                ]
+                [ Svg.quadraticSpline2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.strokeWidth "2"
+                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                    (QuadraticSpline2d.fromControlPoints
+                        (Point2d.pixels -5 5)
+                        (Point2d.pixels 5 5)
+                        (Point2d.pixels 5 -5)
+                    )
+                ]
+
+
+{-| -}
+iconDetail : Element msg
+iconDetail =
+    Element.el [] <|
+        Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox "-7 -7 14 14"
+                , Html.Attributes.style "width" "14px"
+                , Html.Attributes.style "height" "14px"
+                ]
+                [ Svg.polygon2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.strokeWidth "2"
+                    , Svg.Attributes.stroke "black"
+                    ]
+                    (Polygon2d.singleLoop
+                        [ Point2d.pixels -5 5
+                        , Point2d.pixels 5 5
+                        , Point2d.pixels 5 -5
+                        , Point2d.pixels -5 -3
+                        ]
+                    )
+                ]
 
 
 

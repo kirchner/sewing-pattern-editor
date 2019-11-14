@@ -16,6 +16,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy as Element
+import Geometry.Svg as Svg
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -23,7 +24,7 @@ import Json.Decode as Decode
 import Length
 import LineSegment2d
 import List.Extra as List
-import Pixels
+import Pixels exposing (pixels)
 import Point2d
 import QuadraticSpline2d
 import Quantity
@@ -1201,6 +1202,11 @@ viewIcons model =
             , Ui.Atom.fa "exclamation-circle"
             , Ui.Atom.fa "chevron-up"
             , Ui.Atom.fa "chevron-down"
+            , Ui.Atom.iconPoint
+            , Ui.Atom.iconAxis
+            , Ui.Atom.iconCircle
+            , Ui.Atom.iconCurve
+            , Ui.Atom.iconDetail
             ]
         , Ui.Typography.headingThree "Body"
         , Element.wrappedRow
