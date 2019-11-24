@@ -67,6 +67,7 @@ import Ui.Modal
 import Ui.Navigation
 import Ui.Space
 import Ui.Typography
+import Url
 import Uuid
 import Vector2d
 
@@ -982,7 +983,7 @@ viewPattern ({ pattern } as storedPattern) =
                 ]
                 { url =
                     "data:application/json;charset=utf-8,"
-                        ++ Encode.encode 0 (Pattern.Store.encode storedPattern)
+                        ++ Url.percentEncode (Encode.encode 0 (Pattern.Store.encode storedPattern))
                 , label = Ui.Typography.button "Download"
                 , filename = storedPattern.slug ++ ".json"
                 }

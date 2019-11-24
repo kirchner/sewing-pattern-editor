@@ -4,7 +4,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Random.Pcg.Extended as Random
-import StoredPattern
+import Pattern.Store
 import Url exposing (Protocol(..), Url)
 import Url.Parser exposing ((</>))
 import Uuid exposing (Uuid)
@@ -243,7 +243,7 @@ handle seed request =
                     )
 
                 ( "POST", Patterns ) ->
-                    case Decode.decodeString StoredPattern.decoder request.body of
+                    case Decode.decodeString Pattern.Store.decoder request.body of
                         Err error ->
                             ( Finished
                             , log (Decode.errorToString error)
@@ -254,12 +254,12 @@ handle seed request =
                             , Cmd.batch
                                 [ log (request.method ++ " " ++ request.url.path)
                                 , dbAdd dbActionInfo
-                                    (StoredPattern.encode storedPattern)
+                                    (Pattern.Store.encode storedPattern)
                                 ]
                             )
 
                 ( "PUT", Patterns ) ->
-                    case Decode.decodeString StoredPattern.decoder request.body of
+                    case Decode.decodeString Pattern.Store.decoder request.body of
                         Err error ->
                             ( Handling request.method route uuid
                             , log (Decode.errorToString error)
@@ -270,7 +270,7 @@ handle seed request =
                             , Cmd.batch
                                 [ log (request.method ++ " " ++ request.url.path)
                                 , dbPut dbActionInfo
-                                    (StoredPattern.encode storedPattern)
+                                    (Pattern.Store.encode storedPattern)
                                 ]
                             )
 
