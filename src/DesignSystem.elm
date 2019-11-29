@@ -24,6 +24,8 @@ import Json.Decode as Decode
 import Length
 import LineSegment2d
 import List.Extra as List
+import Pattern.Draw exposing (Object)
+import Pattern.Store exposing (StoredPattern)
 import Pixels exposing (pixels)
 import Point2d
 import QuadraticSpline2d
@@ -40,6 +42,7 @@ import Ui.Space
 import Ui.Typography
 import Url exposing (Url)
 import Url.Parser exposing (Parser)
+import Vector2d
 
 
 main : Program Flags Model Msg
@@ -72,11 +75,8 @@ type alias Model =
     , positionNested : Position
     , showFormula : Bool
     , objectsContainerWidth : Maybe Float
-    , points : List (Object (Ui.Pattern.Point ()))
-    , axes : List (Object (Ui.Pattern.Axis ()))
-    , circles : List (Object (Ui.Pattern.Circle ()))
-    , curves : List (Object (Ui.Pattern.Curve ()))
-    , details : List (Object (Ui.Pattern.Detail ()))
+    , focusedObject : Maybe Object
+    , hoveredObject : Maybe Object
     , menuBtnPrimary : Ui.Molecule.MenuBtn.State
     , menuBtnSecondary : Ui.Molecule.MenuBtn.State
     }
@@ -88,14 +88,6 @@ type CreateAction
     | CreateCircle
     | CreateCurve
     | CreateDetail
-
-
-type alias Object object =
-    { focused : Bool
-    , hovered : Bool
-    , name : String
-    , object : object
-    }
 
 
 type Fruit
@@ -275,9 +267,6 @@ init { width, height } url key =
                 { width = width
                 , height = height
                 }
-
-        objects =
-            initObjects
     in
     changeRouteTo (routeFromUrl url)
         { key = key
@@ -297,336 +286,11 @@ init { width, height } url key =
         , positionNested = Left
         , showFormula = True
         , objectsContainerWidth = Nothing
-        , points = objects.points
-        , axes = objects.axes
-        , circles = objects.circles
-        , curves = objects.curves
-        , details = objects.details
+        , focusedObject = Nothing
+        , hoveredObject = Nothing
         , menuBtnPrimary = Ui.Molecule.MenuBtn.init
         , menuBtnSecondary = Ui.Molecule.MenuBtn.init
         }
-
-
-initObjects :
-    { points : List (Object (Ui.Pattern.Point ()))
-    , axes : List (Object (Ui.Pattern.Axis ()))
-    , circles : List (Object (Ui.Pattern.Circle ()))
-    , curves : List (Object (Ui.Pattern.Curve ()))
-    , details : List (Object (Ui.Pattern.Detail ()))
-    }
-initObjects =
-    let
-        point2dA =
-            Point2d.millimeters -96 -64
-
-        point2dB =
-            Point2d.millimeters -96 64
-
-        point2dC =
-            Point2d.millimeters -96 32
-
-        point2dD =
-            Point2d.millimeters 0 32
-
-        point2dDHelp =
-            Point2d.millimeters 0 0
-
-        point2dE =
-            Point2d.millimeters 64 -32
-
-        point2dEHelp =
-            Point2d.millimeters 64 -64
-
-        point2dQuadraticSplineHelp =
-            Point2d.millimeters 64 -80
-
-        point2dCubicSplineHelp1 =
-            Point2d.millimeters -32 80
-
-        point2dCubicSplineHelp2 =
-            Point2d.millimeters 32 80
-
-        toObjects =
-            List.map toObject
-
-        toObject ( name, object ) =
-            { focused = False
-            , hovered = False
-            , name = name
-            , object = object
-            }
-    in
-    { points =
-        toObjects
-            [ ( "A"
-              , { point2d = point2dA
-                , info = Just Ui.Pattern.Origin
-                }
-              )
-            , ( "B"
-              , { point2d = point2dB
-                , info =
-                    Just <|
-                        Ui.Pattern.FromOnePoint
-                            { basePoint =
-                                { point2d = point2dA
-                                , info = Nothing
-                                }
-                            , label = "height"
-                            }
-                }
-              )
-            , ( "C"
-              , { point2d = point2dC
-                , info =
-                    Just <|
-                        Ui.Pattern.BetweenTwoPoints
-                            { basePointA =
-                                { point2d = point2dA
-                                , info = Nothing
-                                }
-                            , basePointB =
-                                { point2d = point2dB
-                                , info = Nothing
-                                }
-                            , label = "height"
-                            }
-                }
-              )
-            , ( "D"
-              , { point2d = point2dD
-                , info =
-                    Just <|
-                        Ui.Pattern.Intersection
-                            { intersectableA =
-                                IntersectableAxis
-                                    { axis2d = Axis2d.through point2dC Direction2d.positiveX
-                                    , info =
-                                        Just <|
-                                            Ui.Pattern.ThroughOnePoint
-                                                { point =
-                                                    { point2d = point2dC
-                                                    , info = Nothing
-                                                    }
-                                                }
-                                    }
-                            , intersectableB =
-                                IntersectableAxis
-                                    { axis2d = Axis2d.through point2dDHelp Direction2d.positiveY
-                                    , info =
-                                        Just <|
-                                            Ui.Pattern.ThroughOnePoint
-                                                { point =
-                                                    { point2d = point2dDHelp
-                                                    , info =
-                                                        Just <|
-                                                            Ui.Pattern.FromOnePoint
-                                                                { basePoint =
-                                                                    { point2d = point2dA
-                                                                    , info = Nothing
-                                                                    }
-                                                                , label = "distance"
-                                                                }
-                                                    }
-                                                }
-                                    }
-                            }
-                }
-              )
-            , ( "E"
-              , { point2d = point2dE
-                , info =
-                    Just <|
-                        Ui.Pattern.FromOnePoint
-                            { basePoint =
-                                { point2d = point2dEHelp
-                                , info =
-                                    Just <|
-                                        Ui.Pattern.FromOnePoint
-                                            { basePoint =
-                                                { point2d = point2dA
-                                                , info = Nothing
-                                                }
-                                            , label = "b"
-                                            }
-                                }
-                            , label = "a"
-                            }
-                }
-              )
-            ]
-    , axes =
-        toObjects
-            [ ( "Axis1"
-              , { axis2d = Axis2d.through point2dE Direction2d.positiveX
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughOnePoint
-                            { point =
-                                { point2d = point2dE
-                                , info = Nothing
-                                }
-                            }
-                }
-              )
-            , ( "Axis2"
-              , { axis2d =
-                    Direction2d.from point2dB point2dD
-                        |> Maybe.map (Axis2d.through point2dB)
-                        |> Maybe.withDefault Axis2d.x
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughTwoPoints
-                            { pointA =
-                                { point2d = point2dB
-                                , info = Nothing
-                                }
-                            , pointB =
-                                { point2d = point2dD
-                                , info = Nothing
-                                }
-                            }
-                }
-              )
-            ]
-    , circles =
-        toObjects
-            [ ( "Circle1"
-              , { circle2d = Circle2d.withRadius (Length.millimeters 32) point2dE
-                , info =
-                    Just <|
-                        Ui.Pattern.WithRadius
-                            { centerPoint =
-                                { point2d = point2dE
-                                , info = Nothing
-                                }
-                            , label = "r"
-                            }
-                }
-              )
-            , ( "Circle2"
-              , { circle2d =
-                    Circle2d.throughPoints point2dB point2dC point2dD
-                        |> Maybe.withDefault (Circle2d.withRadius (Length.meters 0) Point2d.origin)
-                , info =
-                    Just <|
-                        Ui.Pattern.ThroughThreePoints
-                            { pointA = { point2d = point2dB, info = Nothing }
-                            , pointB = { point2d = point2dC, info = Nothing }
-                            , pointC = { point2d = point2dD, info = Nothing }
-                            }
-                }
-              )
-            ]
-    , curves =
-        toObjects
-            [ ( "LineSegment"
-              , { curve2d = LineSegment2d (LineSegment2d.from point2dD point2dE)
-                , info =
-                    Just <|
-                        Ui.Pattern.LineSegment
-                            { startPoint =
-                                { point2d = point2dD
-                                , info = Nothing
-                                }
-                            , endPoint =
-                                { point2d = point2dE
-                                , info = Nothing
-                                }
-                            }
-                }
-              )
-            , ( "QuadraticSpline"
-              , { curve2d =
-                    QuadraticSpline2d <|
-                        QuadraticSpline2d.fromControlPoints
-                            point2dA
-                            point2dQuadraticSplineHelp
-                            point2dE
-                , info =
-                    Just <|
-                        Ui.Pattern.QuadraticSpline
-                            { firstControlPoint =
-                                { point2d = point2dA
-                                , info = Nothing
-                                }
-                            , secondControlPoint =
-                                { point2d = point2dQuadraticSplineHelp
-                                , info =
-                                    Just <|
-                                        Ui.Pattern.FromOnePoint
-                                            { basePoint =
-                                                { point2d = point2dE
-                                                , info = Nothing
-                                                }
-                                            , label = "length"
-                                            }
-                                }
-                            , thirdControlPoint =
-                                { point2d = point2dE
-                                , info = Nothing
-                                }
-                            }
-                }
-              )
-            , ( "CubicSpline"
-              , { curve2d =
-                    CubicSpline2d <|
-                        CubicSpline2d.fromControlPoints
-                            point2dC
-                            point2dCubicSplineHelp1
-                            point2dCubicSplineHelp2
-                            point2dE
-                , info =
-                    Just <|
-                        Ui.Pattern.CubicSpline
-                            { firstControlPoint = { point2d = point2dC, info = Nothing }
-                            , secondControlPoint =
-                                { point2d = point2dCubicSplineHelp1
-                                , info =
-                                    Just <|
-                                        Ui.Pattern.FromOnePoint
-                                            { basePoint = { point2d = point2dC, info = Nothing }
-                                            , label = "a"
-                                            }
-                                }
-                            , thirdControlPoint =
-                                { point2d = point2dCubicSplineHelp2
-                                , info =
-                                    Just <|
-                                        Ui.Pattern.FromOnePoint
-                                            { basePoint = { point2d = point2dE, info = Nothing }
-                                            , label = "b"
-                                            }
-                                }
-                            , fourthControlPoint = { point2d = point2dE, info = Nothing }
-                            }
-                }
-              )
-            ]
-    , details =
-        toObjects
-            [ ( "Detail1"
-              , { detail2d =
-                    { firstPoint = point2dA
-                    , nextCurves =
-                        [ NextLineSegment2d { endPoint = point2dC }
-                        , NextLineSegment2d { endPoint = point2dD }
-                        ]
-                    , lastCurve = LastLineSegment2d
-                    }
-                , points =
-                    [ { point2d = point2dA
-                      , info = Nothing
-                      }
-                    , { point2d = point2dC, info = Nothing }
-                    , { point2d = point2dD, info = Nothing }
-                    ]
-                , curves = []
-                }
-              )
-            ]
-    }
 
 
 
@@ -1241,139 +905,25 @@ viewIcons model =
 
 viewObjects : Model -> Element Msg
 viewObjects model =
-    let
-        resolution =
-            Pixels.pixels (Maybe.withDefault 336 model.objectsContainerWidth / 336)
-                |> Quantity.per (Length.millimeters 1)
-
-        objectLayers drawObject on objects =
-            List.foldl
-                (\{ focused, hovered, name, object } ( index, layers ) ->
-                    let
-                        { inactive, active, outline, events } =
-                            drawObject
-                                { onHover = on.hovered index
-                                , onLeave = on.left index
-                                , onFocus = on.focused index
-                                , onBlur = on.blured index
-                                }
-                                name
-                                object
-                                resolution
-                                focused
-                                hovered
-                    in
-                    ( index + 1
-                    , { inactiveList = inactive :: layers.inactiveList
-                      , activeList = active :: layers.activeList
-                      , outlineList = outline :: layers.outlineList
-                      , eventsList = events :: layers.eventsList
-                      }
-                    )
-                )
-                ( 0
-                , { inactiveList = []
-                  , activeList = []
-                  , outlineList = []
-                  , eventsList = []
-                  }
-                )
-                objects
-                |> Tuple.second
-
-        pointLayers =
-            objectLayers Ui.Pattern.drawPoint
-                { hovered = HoveredPoint
-                , left = LeftPoint
-                , focused = FocusedPoint
-                , blured = BluredPoint
-                }
-                model.points
-
-        axisLayers =
-            objectLayers Ui.Pattern.drawAxis
-                { hovered = HoveredAxis
-                , left = LeftAxis
-                , focused = FocusedAxis
-                , blured = BluredAxis
-                }
-                model.axes
-
-        circleLayers =
-            objectLayers Ui.Pattern.drawCircle
-                { hovered = HoveredCircle
-                , left = LeftCircle
-                , focused = FocusedCircle
-                , blured = BluredCircle
-                }
-                model.circles
-
-        curveLayers =
-            objectLayers Ui.Pattern.drawCurve
-                { hovered = HoveredCurve
-                , left = LeftCurve
-                , focused = FocusedCurve
-                , blured = BluredCurve
-                }
-                model.curves
-
-        detailLayers =
-            objectLayers Ui.Pattern.drawDetail
-                { hovered = HoveredDetail
-                , left = LeftDetail
-                , focused = FocusedDetail
-                , blured = BluredDetail
-                }
-                model.details
-    in
     Element.column
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
         , Element.htmlAttribute (Html.Attributes.id "objects-container")
         ]
-        [ viewObject model.objectsContainerWidth <|
-            List.concat
-                [ -- INACTIVE
-                  detailLayers.inactiveList
-                , circleLayers.inactiveList
-                , axisLayers.inactiveList
-                , curveLayers.inactiveList
-                , pointLayers.inactiveList
-
-                -- ACTIVE
-                , detailLayers.activeList
-                , circleLayers.activeList
-                , axisLayers.activeList
-                , curveLayers.activeList
-                , pointLayers.activeList
-
-                -- OUTLINE
-                , detailLayers.outlineList
-                , circleLayers.outlineList
-                , axisLayers.outlineList
-                , curveLayers.outlineList
-                , pointLayers.outlineList
-
-                -- EVENTS
-                , List.reverse detailLayers.eventsList
-                , List.reverse circleLayers.eventsList
-                , List.reverse axisLayers.eventsList
-                , List.reverse curveLayers.eventsList
-                , List.reverse pointLayers.eventsList
-                ]
-        ]
+        [ viewObject model.objectsContainerWidth model.focusedObject model.hoveredObject ]
 
 
-viewObject : Maybe Float -> List (Svg Msg) -> Element Msg
-viewObject maybeWidth svgElements =
+viewObject : Maybe Float -> Maybe Object -> Maybe Object -> Element Msg
+viewObject maybeWidth focusedObject hoveredObject =
     case maybeWidth of
         Nothing ->
             Element.none
 
         Just width ->
             let
-                height =
-                    2 * width / 3
+                resolution =
+                    Pixels.pixels (width / 5000)
+                        |> Quantity.per (Length.millimeters 1)
             in
             Element.el
                 [ Border.width 1
@@ -1385,15 +935,339 @@ viewObject maybeWidth svgElements =
                         [ Svg.Attributes.viewBox <|
                             String.join " "
                                 [ String.fromFloat (width / -2)
-                                , String.fromFloat (height / -2)
+                                , String.fromFloat (width / -2)
                                 , String.fromFloat width
-                                , String.fromFloat height
+                                , String.fromFloat width
                                 ]
                         , Html.Attributes.style "user-select" "none"
                         , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
                         ]
-                        svgElements
+                        [ Svg.translateBy (Vector2d.pixels 0 -100) <|
+                            Pattern.Draw.draw
+                                { onHover = HoveredObject
+                                , onLeave = LeftObject
+                                , onFocus = FocusedObject
+                                , onBlur = BluredObject
+                                }
+                                storedPattern.pattern
+                                resolution
+                                focusedObject
+                                hoveredObject
+                        ]
                 )
+
+
+storedPattern : StoredPattern coordinates
+storedPattern =
+    Decode.decodeString Pattern.Store.decoder storedPatternRaw
+        |> Result.withDefault (Pattern.Store.init "" "")
+
+
+storedPatternRaw : String
+storedPatternRaw =
+    """
+{
+  "slug": "2ccc6480-1ae1-4001-904e-5c908cc14280",
+  "name": "Demo",
+  "pattern": {
+    "points": {
+      "A": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "direction": {
+          "type": "rightward"
+        },
+        "distance": "1"
+      },
+      "B": {
+        "type": "betweenRatio",
+        "basePointA": {
+          "type": "that",
+          "name": "A"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "ratio": "0.2"
+      },
+      "C": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "B"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "2"
+      },
+      "D": {
+        "type": "intersection",
+        "objectA": {
+          "type": "this",
+          "intersectable": {
+            "type": "intersectableAxis",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "Origin"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "objectB": {
+          "type": "this",
+          "intersectable": {
+            "type": "intersectableAxis",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "C"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "E": {
+        "type": "intersection",
+        "objectA": {
+          "type": "this",
+          "intersectable": {
+            "type": "intersectableCircle",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A"
+              },
+              "radius": "1.4"
+            }
+          }
+        },
+        "objectB": {
+          "type": "this",
+          "intersectable": {
+            "type": "intersectableCircle",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "D"
+              },
+              "radius": "1.7"
+            }
+          }
+        },
+        "which": 1
+      },
+      "Origin": {
+        "type": "origin",
+        "x": 0,
+        "y": 0
+      }
+    },
+    "axes": {
+      "Axis": {
+        "type": "throughOnePoint",
+        "point": {
+          "type": "that",
+          "name": "C"
+        },
+        "orientation": {
+          "type": "orientationAngle",
+          "angle": "30"
+        }
+      },
+      "Axis2": {
+        "type": "throughTwoPoints",
+        "pointA": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "pointB": {
+          "type": "that",
+          "name": "E"
+        }
+      }
+    },
+    "circles": {
+      "Circle1": {
+        "type": "throughThreePoints",
+        "pointA": {
+          "type": "that",
+          "name": "E"
+        },
+        "pointB": {
+          "type": "that",
+          "name": "C"
+        },
+        "pointC": {
+          "type": "that",
+          "name": "D"
+        }
+      },
+      "Circle2": {
+        "type": "withRadius",
+        "centerPoint": {
+          "type": "that",
+          "name": "B"
+        },
+        "radius": "1"
+      }
+    },
+    "curves": {
+      "Curve1": {
+        "type": "straight",
+        "startPoint": {
+          "type": "that",
+          "name": "B"
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "E"
+        }
+      },
+      "Curve2": {
+        "type": "quadratic",
+        "startPoint": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "controlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "Origin"
+            },
+            "direction": {
+              "type": "rightward"
+            },
+            "distance": "0.7"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "C"
+        }
+      },
+      "Curve3": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "Origin"
+            },
+            "direction": {
+              "type": "leftward"
+            },
+            "distance": "1"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "D"
+            },
+            "direction": {
+              "type": "directionAngle",
+              "angle": "270"
+            },
+            "distance": "1"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "D"
+        }
+      }
+    },
+    "details": {
+      "Detail1": {
+        "firstCurve": {
+          "type": "firstReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "Curve3"
+          },
+          "reversed": false
+        },
+        "nextCurves": [
+          {
+            "type": "nextReferencedCurve",
+            "curve": {
+              "type": "that",
+              "name": "Curve2"
+            },
+            "reversed": false
+          }
+        ],
+        "lastCurve": {
+          "type": "lastCubic",
+          "startControlPoint": {
+            "type": "this",
+            "point": {
+              "type": "fromOnePoint",
+              "basePoint": {
+                "type": "that",
+                "name": "C"
+              },
+              "direction": {
+                "type": "down"
+              },
+              "distance": "1"
+            }
+          },
+          "endControlPoint": {
+            "type": "this",
+            "point": {
+              "type": "fromOnePoint",
+              "basePoint": {
+                "type": "that",
+                "name": "D"
+              },
+              "direction": {
+                "type": "down"
+              },
+              "distance": "1"
+            }
+          }
+        }
+      }
+    },
+    "transformations": {},
+    "variables": {}
+  },
+  "zoom": 0.05209868481924359,
+  "center": {
+    "x": 1.0842357342697637,
+    "y": 0.8810865034476534
+  }
+}"""
 
 
 
@@ -1683,31 +1557,11 @@ type Msg
     | ClickedShowFormula
     | RenderedPage
     | GotViewportOfObjectsContainer (Result Browser.Dom.Error Browser.Dom.Viewport)
-      -- POINTS
-    | HoveredPoint Int
-    | LeftPoint Int
-    | FocusedPoint Int
-    | BluredPoint Int
-      -- AXES
-    | HoveredAxis Int
-    | LeftAxis Int
-    | FocusedAxis Int
-    | BluredAxis Int
-      -- CIRCLES
-    | HoveredCircle Int
-    | LeftCircle Int
-    | FocusedCircle Int
-    | BluredCircle Int
-      -- CURVES
-    | HoveredCurve Int
-    | LeftCurve Int
-    | FocusedCurve Int
-    | BluredCurve Int
-      -- DETAILS
-    | HoveredDetail Int
-    | LeftDetail Int
-    | FocusedDetail Int
-    | BluredDetail Int
+      -- OBJECTS
+    | HoveredObject Object
+    | LeftObject Object
+    | FocusedObject Object
+    | BluredObject Object
       -- MENU BUTTON
     | MenuBtnPrimaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | MenuBtnSecondaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1830,148 +1684,24 @@ update msg model =
             , Cmd.none
             )
 
-        -- POINTS
-        HoveredPoint index ->
-            ( { model
-                | points = List.updateAt index (\stuff -> { stuff | hovered = True }) model.points
-              }
+        -- OBJECTS
+        HoveredObject object ->
+            ( { model | hoveredObject = Just object }
             , Cmd.none
             )
 
-        LeftPoint index ->
-            ( { model
-                | points = List.updateAt index (\stuff -> { stuff | hovered = False }) model.points
-              }
+        LeftObject _ ->
+            ( { model | hoveredObject = Nothing }
             , Cmd.none
             )
 
-        FocusedPoint index ->
-            ( { model
-                | points = List.updateAt index (\stuff -> { stuff | focused = True }) model.points
-              }
+        FocusedObject object ->
+            ( { model | focusedObject = Just object }
             , Cmd.none
             )
 
-        BluredPoint index ->
-            ( { model
-                | points = List.updateAt index (\stuff -> { stuff | focused = False }) model.points
-              }
-            , Cmd.none
-            )
-
-        -- AXES
-        HoveredAxis index ->
-            ( { model
-                | axes = List.updateAt index (\stuff -> { stuff | hovered = True }) model.axes
-              }
-            , Cmd.none
-            )
-
-        LeftAxis index ->
-            ( { model
-                | axes = List.updateAt index (\stuff -> { stuff | hovered = False }) model.axes
-              }
-            , Cmd.none
-            )
-
-        FocusedAxis index ->
-            ( { model
-                | axes = List.updateAt index (\stuff -> { stuff | focused = True }) model.axes
-              }
-            , Cmd.none
-            )
-
-        BluredAxis index ->
-            ( { model
-                | axes = List.updateAt index (\stuff -> { stuff | focused = False }) model.axes
-              }
-            , Cmd.none
-            )
-
-        -- CIRCLES
-        HoveredCircle index ->
-            ( { model
-                | circles = List.updateAt index (\stuff -> { stuff | hovered = True }) model.circles
-              }
-            , Cmd.none
-            )
-
-        LeftCircle index ->
-            ( { model
-                | circles = List.updateAt index (\stuff -> { stuff | hovered = False }) model.circles
-              }
-            , Cmd.none
-            )
-
-        FocusedCircle index ->
-            ( { model
-                | circles = List.updateAt index (\stuff -> { stuff | focused = True }) model.circles
-              }
-            , Cmd.none
-            )
-
-        BluredCircle index ->
-            ( { model
-                | circles = List.updateAt index (\stuff -> { stuff | focused = False }) model.circles
-              }
-            , Cmd.none
-            )
-
-        -- CURVES
-        HoveredCurve index ->
-            ( { model
-                | curves = List.updateAt index (\stuff -> { stuff | hovered = True }) model.curves
-              }
-            , Cmd.none
-            )
-
-        LeftCurve index ->
-            ( { model
-                | curves = List.updateAt index (\stuff -> { stuff | hovered = False }) model.curves
-              }
-            , Cmd.none
-            )
-
-        FocusedCurve index ->
-            ( { model
-                | curves = List.updateAt index (\stuff -> { stuff | focused = True }) model.curves
-              }
-            , Cmd.none
-            )
-
-        BluredCurve index ->
-            ( { model
-                | curves = List.updateAt index (\stuff -> { stuff | focused = False }) model.curves
-              }
-            , Cmd.none
-            )
-
-        -- DETAILS
-        HoveredDetail index ->
-            ( { model
-                | details = List.updateAt index (\stuff -> { stuff | hovered = True }) model.details
-              }
-            , Cmd.none
-            )
-
-        LeftDetail index ->
-            ( { model
-                | details = List.updateAt index (\stuff -> { stuff | hovered = False }) model.details
-              }
-            , Cmd.none
-            )
-
-        FocusedDetail index ->
-            ( { model
-                | details = List.updateAt index (\stuff -> { stuff | focused = True }) model.details
-              }
-            , Cmd.none
-            )
-
-        BluredDetail index ->
-            ( { model
-                | details = List.updateAt index (\stuff -> { stuff | focused = False }) model.details
-              }
+        BluredObject _ ->
+            ( { model | focusedObject = Nothing }
             , Cmd.none
             )
 
