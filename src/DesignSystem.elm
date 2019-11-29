@@ -37,6 +37,7 @@ import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Color
 import Ui.Molecule.MenuBtn
+import Ui.Molecule.ObjectList
 import Ui.Pattern exposing (Intersectable(..))
 import Ui.Space
 import Ui.Typography
@@ -164,6 +165,7 @@ type Route
       -- MOLECULES
     | JoinedFormElements
     | Dropdowns
+    | ObjectList
 
 
 routeToTitle : Route -> String
@@ -196,6 +198,9 @@ routeToTitle route =
         Dropdowns ->
             "Dropdowns"
 
+        ObjectList ->
+            "Object List"
+
 
 routeToUrl : Route -> String
 routeToUrl route =
@@ -227,6 +232,9 @@ routeToUrl route =
         Dropdowns ->
             "/dropdowns"
 
+        ObjectList ->
+            "/object-list"
+
 
 routeFromUrl : Url -> Maybe Route
 routeFromUrl url =
@@ -246,6 +254,7 @@ urlParser =
         , Url.Parser.map Objects (Url.Parser.s "objects")
         , Url.Parser.map JoinedFormElements (Url.Parser.s "joined-form-elements")
         , Url.Parser.map Dropdowns (Url.Parser.s "dropdowns")
+        , Url.Parser.map ObjectList (Url.Parser.s "object-list")
         ]
 
 
@@ -480,6 +489,7 @@ navigation deviceClass currentRoute =
         , group "molecules"
             [ link JoinedFormElements
             , link Dropdowns
+            , link ObjectList
             ]
         ]
 
@@ -519,6 +529,9 @@ content model =
 
             Dropdowns ->
                 viewDropdowns model
+
+            ObjectList ->
+                viewObjectList model
         ]
 
 
@@ -1533,6 +1546,31 @@ viewDropdowns model =
                 }
                 model.menuBtnSecondary
             ]
+        ]
+
+
+
+---- OBJECT LIST
+
+
+viewObjectList : Model -> Element Msg
+viewObjectList model =
+    Element.column
+        [ Element.spacing Ui.Space.level4
+        , Element.width Element.fill
+        ]
+        [ Ui.Molecule.ObjectList.view
+            { onHover = HoveredObject
+            , onLeave = LeftObject
+            , onFocus = FocusedObject
+            , onBlur = BluredObject
+            , hidePressed = \_ -> NoOp
+            , editPressed = \_ -> NoOp
+            , removePressed = \_ -> NoOp
+            }
+            storedPattern.pattern
+            model.focusedObject
+            model.hoveredObject
         ]
 
 

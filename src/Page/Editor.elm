@@ -65,7 +65,7 @@ import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import Pattern exposing (A, Axis, Circle, Curve, Detail, InsertHelp(..), Pattern, Point)
-import Pattern.Draw as Pattern exposing (Object)
+import Pattern.Draw as Pattern exposing (Object(..))
 import Pattern.Store exposing (StoredPattern)
 import Pixels
 import Point2d exposing (Point2d)
@@ -82,6 +82,7 @@ import Ui.Atom
 import Ui.Color
 import Ui.Modal
 import Ui.Molecule.MenuBtn
+import Ui.Molecule.ObjectList
 import Ui.Navigation
 import Ui.Space
 import Ui.Table
@@ -673,11 +674,18 @@ viewRightToolbar pattern model =
                 (case model.maybeVariableDialog of
                     Nothing ->
                         [ Element.lazy2 viewVariables pattern model.variablesVisible
-                        , Element.lazy2 viewPoints pattern model.pointsVisible
-                        , Element.lazy2 viewAxes pattern model.axesVisible
-                        , Element.lazy2 viewCurves pattern model.curvesVisible
-                        , Element.lazy2 viewCircles pattern model.circlesVisible
-                        , Element.lazy2 viewDetails pattern model.detailsVisible
+                        , Ui.Molecule.ObjectList.view
+                            { onHover = HoveredObject
+                            , onLeave = LeftObject
+                            , onFocus = FocusedObject
+                            , onBlur = BluredObject
+                            , hidePressed = PressedHideObject
+                            , editPressed = PressedEditObject
+                            , removePressed = PressedRemoveObject
+                            }
+                            pattern
+                            model.focusedObject
+                            model.hoveredObject
                         ]
 
                     Just (VariableDialogCreate stuff) ->
@@ -852,179 +860,6 @@ viewVariables pattern variablesVisible =
         }
 
 
-viewPoints : Pattern BottomLeft -> Bool -> Element Msg
-viewPoints pattern pointsVisible =
-    Ui.Navigation.accordion
-        { onPress = PointsRulerPressed
-        , label = "Points"
-        , open = pointsVisible
-        , content =
-            Ui.Table.table
-                { data = List.sortBy objectName (Pattern.points pattern)
-                , columns =
-                    [ Ui.Table.column
-                        { label = "Name"
-                        , recordToString =
-                            Pattern.name
-                                >> Maybe.withDefault "<no name>"
-                        }
-                    , Ui.Table.columnFloat
-                        { label = "x"
-                        , recordToFloat =
-                            Pattern.point2d
-                                >> State.finalValue pattern
-                                >> Result.toMaybe
-                                >> Maybe.map (Point2d.xCoordinate >> Length.inMillimeters)
-                        }
-                    , Ui.Table.columnFloat
-                        { label = "y"
-                        , recordToFloat =
-                            Pattern.point2d
-                                >> State.finalValue pattern
-                                >> Result.toMaybe
-                                >> Maybe.map (Point2d.yCoordinate >> Length.inMillimeters)
-                        }
-                    , Ui.Table.columnActions
-                        { onEditPress = Just << PointEditPressed
-                        , onRemovePress = Just << PointDeletePressed
-                        }
-                    ]
-                }
-        }
-
-
-viewAxes : Pattern BottomLeft -> Bool -> Element Msg
-viewAxes pattern axesVisible =
-    Ui.Navigation.accordion
-        { onPress = AxesRulerPressed
-        , label = "Axes"
-        , open = axesVisible
-        , content =
-            Ui.Table.table
-                { data = List.sortBy objectName (Pattern.axes pattern)
-                , columns =
-                    [ Ui.Table.column
-                        { label = "Name"
-                        , recordToString =
-                            Pattern.name
-                                >> Maybe.withDefault "<no name>"
-                        }
-                    , Ui.Table.columnActions
-                        { onEditPress = Just << AxisEditPressed
-                        , onRemovePress = Just << AxisDeletePressed
-                        }
-                    ]
-                }
-        }
-
-
-viewCircles : Pattern BottomLeft -> Bool -> Element Msg
-viewCircles pattern circlesVisible =
-    Ui.Navigation.accordion
-        { onPress = CirclesRulerPressed
-        , label = "Circles"
-        , open = circlesVisible
-        , content =
-            Ui.Table.table
-                { data = List.sortBy objectName (Pattern.circles pattern)
-                , columns =
-                    [ Ui.Table.column
-                        { label = "Name"
-                        , recordToString =
-                            Pattern.name
-                                >> Maybe.withDefault "<no name>"
-                        }
-                    , Ui.Table.columnFloat
-                        { label = "x"
-                        , recordToFloat =
-                            Pattern.circle2d
-                                >> State.finalValue pattern
-                                >> Result.toMaybe
-                                >> Maybe.map
-                                    (Circle2d.centerPoint
-                                        >> Point2d.xCoordinate
-                                        >> Length.inMillimeters
-                                    )
-                        }
-                    , Ui.Table.columnFloat
-                        { label = "y"
-                        , recordToFloat =
-                            Pattern.circle2d
-                                >> State.finalValue pattern
-                                >> Result.toMaybe
-                                >> Maybe.map
-                                    (Circle2d.centerPoint
-                                        >> Point2d.yCoordinate
-                                        >> Length.inMillimeters
-                                    )
-                        }
-                    , Ui.Table.columnFloat
-                        { label = "r"
-                        , recordToFloat =
-                            Pattern.circle2d
-                                >> State.finalValue pattern
-                                >> Result.toMaybe
-                                >> Maybe.map (Circle2d.radius >> Length.inMillimeters)
-                        }
-                    , Ui.Table.columnActions
-                        { onEditPress = always Nothing
-                        , onRemovePress = always Nothing
-                        }
-                    ]
-                }
-        }
-
-
-viewCurves : Pattern BottomLeft -> Bool -> Element Msg
-viewCurves pattern curvesVisible =
-    Ui.Navigation.accordion
-        { onPress = CurvesRulerPressed
-        , label = "Curves"
-        , open = curvesVisible
-        , content =
-            Ui.Table.table
-                { data = List.sortBy objectName (Pattern.curves pattern)
-                , columns =
-                    [ Ui.Table.column
-                        { label = "Name"
-                        , recordToString =
-                            Pattern.name
-                                >> Maybe.withDefault "<no name>"
-                        }
-                    , Ui.Table.columnActions
-                        { onEditPress = Just << CurveEditPressed
-                        , onRemovePress = Just << CurveDeletePressed
-                        }
-                    ]
-                }
-        }
-
-
-viewDetails : Pattern BottomLeft -> Bool -> Element Msg
-viewDetails pattern curvesVisible =
-    Ui.Navigation.accordion
-        { onPress = DetailsRulerPressed
-        , label = "Details"
-        , open = curvesVisible
-        , content =
-            Ui.Table.table
-                { data = List.sortBy objectName (Pattern.details pattern)
-                , columns =
-                    [ Ui.Table.column
-                        { label = "Name"
-                        , recordToString =
-                            Pattern.name
-                                >> Maybe.withDefault "<no name>"
-                        }
-                    , Ui.Table.columnActions
-                        { onEditPress = Just << DetailEditPressed
-                        , onRemovePress = Just << DetailDeletePressed
-                        }
-                    ]
-                }
-        }
-
-
 objectName : A object -> String
 objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
@@ -1063,21 +898,9 @@ type Msg
     | VariableCreatePressed
     | VariableEditPressed String
     | VariableRemovePressed String
-    | PointsRulerPressed
-    | PointEditPressed (A Point)
-    | PointDeletePressed (A Point)
-    | AxesRulerPressed
-    | AxisEditPressed (A Axis)
-    | AxisDeletePressed (A Axis)
-    | CirclesRulerPressed
-    | CircleEditPressed (A Circle)
-    | CircleDeletePressed (A Circle)
-    | CurvesRulerPressed
-    | CurveEditPressed (A Curve)
-    | CurveDeletePressed (A Curve)
-    | DetailsRulerPressed
-    | DetailEditPressed (A Detail)
-    | DetailDeletePressed (A Detail)
+    | PressedHideObject Object
+    | PressedEditObject Object
+    | PressedRemoveObject Object
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
@@ -1580,134 +1403,60 @@ updateWithData key msg model =
             )
 
         -- POINTS
-        PointsRulerPressed ->
-            ( { model | pointsVisible = not model.pointsVisible }
-            , Cmd.none
-            )
+        PressedHideObject object ->
+            ( model, Cmd.none )
 
-        PointEditPressed aPoint ->
+        PressedEditObject object ->
             ( { model
                 | maybeDialog =
-                    Maybe.map2 EditObject
-                        (Pattern.name aPoint)
-                        (Dialog.editPoint pattern aPoint)
+                    case object of
+                        Point aPoint ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aPoint)
+                                (Dialog.editPoint pattern aPoint)
+
+                        Axis aAxis ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aAxis)
+                                (Dialog.editAxis pattern aAxis)
+
+                        Circle aCircle ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aCircle)
+                                (Dialog.editCircle pattern aCircle)
+
+                        Curve aCurve ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aCurve)
+                                (Dialog.editCurve pattern aCurve)
+
+                        Detail aDetail ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aDetail)
+                                (Dialog.editDetail pattern aDetail)
               }
             , Cmd.none
             )
 
-        PointDeletePressed aPoint ->
+        PressedRemoveObject object ->
             ( { model
                 | maybeModal =
                     Just
-                        ( PointDeleteConfirm aPoint
-                        , Ui.Modal.Opening
-                        )
-              }
-            , Cmd.none
-            )
+                        ( case object of
+                            Point aPoint ->
+                                PointDeleteConfirm aPoint
 
-        -- AXES
-        AxesRulerPressed ->
-            ( { model | axesVisible = not model.axesVisible }
-            , Cmd.none
-            )
+                            Axis aAxis ->
+                                AxisDeleteConfirm aAxis
 
-        AxisEditPressed aAxis ->
-            ( { model
-                | maybeDialog =
-                    Maybe.map2 EditObject
-                        (Pattern.name aAxis)
-                        (Dialog.editAxis pattern aAxis)
-              }
-            , Cmd.none
-            )
+                            Circle aCircle ->
+                                CircleDeleteConfirm aCircle
 
-        AxisDeletePressed aAxis ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( AxisDeleteConfirm aAxis
-                        , Ui.Modal.Opening
-                        )
-              }
-            , Cmd.none
-            )
+                            Curve aCurve ->
+                                CurveDeleteConfirm aCurve
 
-        -- CIRCLES
-        CirclesRulerPressed ->
-            ( { model | circlesVisible = not model.circlesVisible }
-            , Cmd.none
-            )
-
-        CircleEditPressed aCircle ->
-            ( { model
-                | maybeDialog =
-                    Maybe.map2 EditObject
-                        (Pattern.name aCircle)
-                        (Dialog.editCircle pattern aCircle)
-              }
-            , Cmd.none
-            )
-
-        CircleDeletePressed aCircle ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( CircleDeleteConfirm aCircle
-                        , Ui.Modal.Opening
-                        )
-              }
-            , Cmd.none
-            )
-
-        -- CURVES
-        CurvesRulerPressed ->
-            ( { model | curvesVisible = not model.curvesVisible }
-            , Cmd.none
-            )
-
-        CurveEditPressed aCurve ->
-            ( { model
-                | maybeDialog =
-                    Maybe.map2 EditObject
-                        (Pattern.name aCurve)
-                        (Dialog.editCurve pattern aCurve)
-              }
-            , Cmd.none
-            )
-
-        CurveDeletePressed aCurve ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( CurveDeleteConfirm aCurve
-                        , Ui.Modal.Opening
-                        )
-              }
-            , Cmd.none
-            )
-
-        -- DETAILS
-        DetailsRulerPressed ->
-            ( { model | detailsVisible = not model.detailsVisible }
-            , Cmd.none
-            )
-
-        DetailEditPressed aDetail ->
-            ( { model
-                | maybeDialog =
-                    Maybe.map2 EditObject
-                        (Pattern.name aDetail)
-                        (Dialog.editDetail pattern aDetail)
-              }
-            , Cmd.none
-            )
-
-        DetailDeletePressed aDetail ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( DetailDeleteConfirm aDetail
+                            Detail aDetail ->
+                                DetailDeleteConfirm aDetail
                         , Ui.Modal.Opening
                         )
               }
