@@ -70,7 +70,12 @@ name cfg focusedVariable hoveredVariable =
     , view =
         \variable ->
             Element.el
-                [ Element.padding Ui.Space.level1
+                [ Element.paddingEach
+                    { top = Ui.Space.level1
+                    , bottom = Ui.Space.level1
+                    , left = Ui.Space.level3
+                    , right = Ui.Space.level1
+                    }
                 , Events.onMouseEnter (cfg.onHover variable)
                 , Events.onMouseLeave (cfg.onLeave variable)
                 , Events.onClick (cfg.onFocus variable)
