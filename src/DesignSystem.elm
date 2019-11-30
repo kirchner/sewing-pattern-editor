@@ -35,6 +35,7 @@ import Svg.Attributes
 import Task
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Tabs
 import Ui.Color
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
@@ -67,6 +68,7 @@ type alias Model =
     , checked : Bool
     , fruit : Maybe Fruit
     , dropdown : Dropdown
+    , selectedTab : Tab
     , selection : Maybe Fruit
     , position : Position
     , formula : String
@@ -152,6 +154,12 @@ positions =
     ]
 
 
+type Tab
+    = ObjectsTab
+    | VariablesTab
+    | GroupsTab
+
+
 type Route
     = -- FOUNDATIONS
       Typography
@@ -162,6 +170,7 @@ type Route
     | FormElements
     | Icons
     | Objects
+    | Tabs
       -- MOLECULES
     | JoinedFormElements
     | Dropdowns
@@ -191,6 +200,9 @@ routeToTitle route =
 
         Objects ->
             "Objects"
+
+        Tabs ->
+            "Tabs"
 
         JoinedFormElements ->
             "Joined Form Elements"
@@ -226,6 +238,9 @@ routeToUrl route =
         Objects ->
             "/objects"
 
+        Tabs ->
+            "/tabs"
+
         JoinedFormElements ->
             "/joined-form-elements"
 
@@ -252,6 +267,7 @@ urlParser =
         , Url.Parser.map FormElements (Url.Parser.s "form-elements")
         , Url.Parser.map Icons (Url.Parser.s "icons")
         , Url.Parser.map Objects (Url.Parser.s "objects")
+        , Url.Parser.map Tabs (Url.Parser.s "tabs")
         , Url.Parser.map JoinedFormElements (Url.Parser.s "joined-form-elements")
         , Url.Parser.map Dropdowns (Url.Parser.s "dropdowns")
         , Url.Parser.map ObjectList (Url.Parser.s "object-list")
@@ -287,6 +303,7 @@ init { width, height } url key =
         , fruit = Nothing
         , dropdown = Ui.Atom.Dropdown.init
         , selection = Nothing
+        , selectedTab = ObjectsTab
         , position = Left
         , formula = "distance(\n  A12,\n  B4\n)"
         , dropdownAppended = Ui.Atom.Dropdown.init
@@ -485,6 +502,7 @@ navigation deviceClass currentRoute =
             , link FormElements
             , link Icons
             , link Objects
+            , link Tabs
             ]
         , group "molecules"
             [ link JoinedFormElements
@@ -523,6 +541,9 @@ content model =
 
             Objects ->
                 viewObjects model
+
+            Tabs ->
+                viewTabs model
 
             JoinedFormElements ->
                 viewJoinedFormElements model
@@ -1284,6 +1305,63 @@ storedPatternRaw =
 
 
 
+-- TABS
+
+
+viewTabs : Model -> Element Msg
+viewTabs model =
+    Element.column
+        [ Element.spacing Ui.Space.level4
+        , Element.width Element.fill
+        , Element.htmlAttribute (Html.Attributes.id "tabs-container")
+        ]
+        [ Ui.Atom.Tabs.view
+            { label = "Data"
+            , tabs =
+                [ { tag = ObjectsTab
+                  , id = "objects"
+                  , label = "Objects"
+                  }
+                , { tag = VariablesTab
+                  , id = "variables"
+                  , label = "Variables"
+                  }
+                , { tag = GroupsTab
+                  , id = "groups"
+                  , label = "Groups"
+                  }
+                ]
+            , selected = model.selectedTab
+            , content =
+                \tab ->
+                    Element.el
+                        [ Element.height (Element.px 120)
+                        , Element.width Element.fill
+                        , Border.width Ui.Space.level1
+                        , Border.color Ui.Color.secondary
+                        ]
+                        (Element.el
+                            [ Element.centerX
+                            , Element.centerY
+                            ]
+                            (Ui.Typography.body <|
+                                case tab of
+                                    ObjectsTab ->
+                                        "Objects"
+
+                                    VariablesTab ->
+                                        "Variables"
+
+                                    GroupsTab ->
+                                        "Groups"
+                            )
+                        )
+            , onSelect = SelectedTab
+            }
+        ]
+
+
+
 -- JOINED FORM ELEMENTS
 
 
@@ -1588,6 +1666,7 @@ type Msg
     | FruitChanged Fruit
     | DropdownMsg (Ui.Atom.Dropdown.Msg Fruit)
     | DropdownAppendedMsg (Ui.Atom.Dropdown.Msg Fruit)
+    | SelectedTab Tab
     | ChangedPosition Position
     | ChangedPositionAppended Position
     | ChangedPositionNested Position
@@ -1687,6 +1766,11 @@ update msg model =
                 , selectionAppended = newSelection
               }
             , Cmd.map DropdownAppendedMsg dropdownCmd
+            )
+
+        SelectedTab tab ->
+            ( { model | selectedTab = tab }
+            , Cmd.none
             )
 
         ChangedPosition position ->
