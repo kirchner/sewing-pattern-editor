@@ -414,7 +414,7 @@ viewEditor storedPattern model =
         ]
         [ Element.row
             [ Element.width Element.fill
-            , Element.padding Ui.Space.level1
+            , Element.padding (Ui.Space.level1 // 2)
             , Background.color Ui.Color.secondary
             ]
             [ Ui.Molecule.MenuBtn.viewPrimary

@@ -108,12 +108,7 @@ icon cfg focusedObject hoveredObject =
     , view =
         \object ->
             Element.el
-                [ Element.paddingEach
-                    { top = Ui.Space.level1
-                    , bottom = Ui.Space.level1
-                    , left = Ui.Space.level3
-                    , right = Ui.Space.level1
-                    }
+                [ Element.padding Ui.Space.level1
                 , Element.height Element.fill
                 , Element.centerY
                 , Events.onMouseEnter (cfg.onHover object)
