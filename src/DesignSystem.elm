@@ -1636,6 +1636,7 @@ viewObjectList model =
     Element.column
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
+        , Element.height Element.fill
         ]
         [ Ui.Molecule.ObjectList.view
             { onHover = HoveredObject

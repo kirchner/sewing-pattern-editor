@@ -1350,9 +1350,9 @@ withFocusOutline element =
     Element.el
         [ Element.width Element.fill
         , Border.width 3
-        , Border.dotted
+        , Border.rounded 3
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.padding 4
@@ -1373,9 +1373,14 @@ withFocusOutlineTop element =
             , left = 3
             , right = 3
             }
-        , Border.dotted
+        , Border.roundEach
+            { topLeft = 3
+            , topRight = 3
+            , bottomLeft = 0
+            , bottomRight = 0
+            }
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -1401,9 +1406,14 @@ withFocusOutlineBottom element =
             , left = 3
             , right = 3
             }
-        , Border.dotted
+        , Border.roundEach
+            { topLeft = 0
+            , topRight = 0
+            , bottomLeft = 3
+            , bottomRight = 3
+            }
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -1429,9 +1439,14 @@ withFocusOutlineLeft element =
             , left = 3
             , right = 0
             }
-        , Border.dotted
+        , Border.roundEach
+            { topLeft = 3
+            , topRight = 0
+            , bottomLeft = 3
+            , bottomRight = 0
+            }
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -1457,9 +1472,14 @@ withFocusOutlineRight element =
             , left = 0
             , right = 3
             }
-        , Border.dotted
+        , Border.roundEach
+            { topLeft = 0
+            , topRight = 3
+            , bottomLeft = 0
+            , bottomRight = 3
+            }
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach

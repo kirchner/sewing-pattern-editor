@@ -603,9 +603,9 @@ viewLeftToolbar pattern model =
             { top = 0
             , bottom = 0
             , left = 0
-            , right = 2
+            , right = 1
             }
-        , Border.color Ui.Color.primary
+        , Border.color Ui.Color.secondaryDark
         ]
         (Ui.Atom.Tabs.view
             { label = "Data"
@@ -654,10 +654,10 @@ viewRightToolbar pattern model =
         , Border.widthEach
             { top = 0
             , bottom = 0
-            , left = 2
+            , left = 1
             , right = 0
             }
-        , Border.color Ui.Color.primary
+        , Border.color Ui.Color.secondaryDark
         ]
         (case model.maybeDialog of
             Nothing ->

@@ -70,34 +70,33 @@ view cfg pattern focusedObject hoveredObject =
     in
     Element.el
         [ Element.width Element.fill
+        , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
-        , Border.width 3
-        , Border.dotted
+        , Border.widthEach
+            { top = 1
+            , bottom = 3
+            , left = 1
+            , right = 1
+            }
+        , Border.rounded 3
         , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
-            [ Element.padding 4
-            , Element.width Element.fill
-            , Element.clip
-            , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            , Element.scrollbarY
             ]
-            (Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.scrollbarY
-                ]
-                (Element.table
-                    [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]
-                    { data = objects
-                    , columns =
-                        [ icon cfg focusedObject hoveredObject
-                        , name cfg focusedObject hoveredObject
-                        , actions cfg focusedObject hoveredObject
-                        ]
-                    }
-                )
+            (Element.table
+                [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]
+                { data = objects
+                , columns =
+                    [ icon cfg focusedObject hoveredObject
+                    , name cfg focusedObject hoveredObject
+                    , actions cfg focusedObject hoveredObject
+                    ]
+                }
             )
         )
 

@@ -41,43 +41,63 @@ view : Config tag msg -> Element msg
 view { label, tabs, selected, content, onSelect } =
     let
         viewTab tab =
-            Input.button
-                ([ Element.paddingXY 0 Ui.Space.level1
-                 , Font.color <|
-                    if tab.tag == selected then
-                        Ui.Color.primary
-
-                    else
-                        Ui.Color.grayDark
-                 , Element.mouseOver
-                    [ Font.color Ui.Color.black ]
-                 , Border.widthEach
+            Element.el
+                [ Border.widthEach
                     { top = 0
                     , bottom = 2
                     , left = 0
                     , right = 0
                     }
-                 , Border.color <|
+                , Border.color <|
                     if tab.tag == selected then
                         Ui.Color.primary
 
                     else
                         Ui.Color.transparent
-                 , attributeId (tab.id ++ "--tab")
-                 , attribute "role" "tab"
-                 , attribute "aria-controls" (tab.id ++ "--tabpanel")
-                 , attribute "aria-selected" <|
-                    if tab.tag == selected then
-                        "true"
+                ]
+                (Element.el
+                    [ Border.widthEach
+                        { top = 3
+                        , bottom = 0
+                        , left = 1
+                        , right = 1
+                        }
+                    , Border.roundEach
+                        { topLeft = 3
+                        , topRight = 3
+                        , bottomLeft = 0
+                        , bottomRight = 0
+                        }
+                    , Border.color Ui.Color.transparent
+                    , Element.focused [ Border.color Ui.Color.complementary ]
+                    ]
+                    (Input.button
+                        ([ Element.padding Ui.Space.level1
+                         , Font.color <|
+                            if tab.tag == selected then
+                                Ui.Color.primary
 
-                    else
-                        "false"
-                 ]
-                    |> addTabindex tab.tag
+                            else
+                                Ui.Color.grayDark
+                         , Element.mouseOver
+                            [ Font.color Ui.Color.black ]
+                         , attributeId (tab.id ++ "--tab")
+                         , attribute "role" "tab"
+                         , attribute "aria-controls" (tab.id ++ "--tabpanel")
+                         , attribute "aria-selected" <|
+                            if tab.tag == selected then
+                                "true"
+
+                            else
+                                "false"
+                         ]
+                            |> addTabindex tab.tag
+                        )
+                        { onPress = Just (onSelect tab.tag)
+                        , label = Ui.Typography.bodyBold tab.label
+                        }
+                    )
                 )
-                { onPress = Just (onSelect tab.tag)
-                , label = Ui.Typography.bodyBold tab.label
-                }
 
         addTabindex tag attrs =
             if tag == selected then
@@ -96,23 +116,23 @@ view { label, tabs, selected, content, onSelect } =
         , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+        , Element.spacing Ui.Space.level1
         ]
-        [ Ui.Atom.withFocusOutline <|
-            Element.row
-                [ Element.width Element.fill
-                , Element.spacing Ui.Space.level3
-                , Border.widthEach
-                    { top = 0
-                    , bottom = 1
-                    , left = 0
-                    , right = 0
-                    }
-                , Border.color Ui.Color.secondaryDark
-                , attribute "role" "tablist"
-                , attribute "aria-label" label
-                , onKeyDown onSelect (List.map .tag tabs) selected
-                ]
-                (List.map viewTab tabs)
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.spacing Ui.Space.level2
+            , Border.widthEach
+                { top = 0
+                , bottom = 1
+                , left = 0
+                , right = 0
+                }
+            , Border.color Ui.Color.secondaryDark
+            , attribute "role" "tablist"
+            , attribute "aria-label" label
+            , onKeyDown onSelect (List.map .tag tabs) selected
+            ]
+            (List.map viewTab tabs)
         , Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
