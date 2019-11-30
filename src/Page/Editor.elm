@@ -837,7 +837,7 @@ type Msg
     | BluredVariable String
       -- RIGHT TOOLBAR
     | ToolbarTogglePressed
-    | SelectedTab Tab
+    | SelectedTab Tab String
     | VariableCreatePressed
     | VariableEditPressed String
     | VariableRemovePressed String
@@ -1206,8 +1206,10 @@ updateWithData key msg model =
                 |> Task.attempt PatternContainerViewportReceived
             )
 
-        SelectedTab tab ->
-            ( { model | selectedTab = tab }, Cmd.none )
+        SelectedTab tab id ->
+            ( { model | selectedTab = tab }
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
+            )
 
         VariableCreatePressed ->
             ( { model

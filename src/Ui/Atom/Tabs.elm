@@ -26,7 +26,7 @@ type alias Config tag msg =
     , tabs : List (Tab tag)
     , selected : tag
     , content : tag -> Element msg
-    , onSelect : tag -> msg
+    , onSelect : tag -> String -> msg
     }
 
 
@@ -93,7 +93,7 @@ view { label, tabs, selected, content, onSelect } =
                          ]
                             |> addTabindex tab.tag
                         )
-                        { onPress = Just (onSelect tab.tag)
+                        { onPress = Just (onSelect tab.tag (tab.id ++ "--tab"))
                         , label = Ui.Typography.bodyBold tab.label
                         }
                     )
@@ -130,7 +130,7 @@ view { label, tabs, selected, content, onSelect } =
             , Border.color Ui.Color.secondaryDark
             , attribute "role" "tablist"
             , attribute "aria-label" label
-            , onKeyDown onSelect (List.map .tag tabs) selected
+            , onKeyDown onSelect tabs selected
             ]
             (List.map viewTab tabs)
         , Element.el
@@ -146,63 +146,65 @@ view { label, tabs, selected, content, onSelect } =
         ]
 
 
-onKeyDown : (tab -> msg) -> List tab -> tab -> Element.Attribute msg
-onKeyDown toMsg tabs selectedTab =
+onKeyDown : (tag -> String -> msg) -> List (Tab tag) -> tag -> Element.Attribute msg
+onKeyDown toMsg tabs selected =
     let
-        ( prevTab, nextTab ) =
-            case List.splitWhen (\thisTab -> thisTab == selectedTab) tabs of
+        neighbors =
+            case List.splitWhen (\thisTab -> thisTab.tag == selected) tabs of
                 Nothing ->
-                    unchanged
+                    Nothing
 
                 Just ( start, end ) ->
                     case ( List.last start, end ) of
                         ( Nothing, _ :: next :: _ ) ->
                             case List.last tabs of
                                 Nothing ->
-                                    unchanged
+                                    Nothing
 
                                 Just last ->
-                                    ( last, next )
+                                    Just ( last, next )
 
                         ( Just prev, _ :: next :: _ ) ->
-                            ( prev, next )
+                            Just ( prev, next )
 
                         ( Just prev, _ :: [] ) ->
                             case List.head tabs of
                                 Nothing ->
-                                    unchanged
+                                    Nothing
 
                                 Just first ->
-                                    ( prev, first )
+                                    Just ( prev, first )
 
                         _ ->
-                            unchanged
-
-        unchanged =
-            ( selectedTab, selectedTab )
+                            Nothing
     in
-    Element.htmlAttribute <|
-        Html.Events.on "keydown"
-            (Decode.field "key" Decode.string
-                |> Decode.andThen
-                    (\key ->
-                        case key of
-                            "ArrowLeft" ->
-                                Decode.succeed (toMsg prevTab)
+    case neighbors of
+        Nothing ->
+            Element.htmlAttribute (Html.Events.on "keydown" (Decode.fail "not handling keys here"))
 
-                            "ArrowUp" ->
-                                Decode.succeed (toMsg prevTab)
+        Just ( prevTab, nextTab ) ->
+            Element.htmlAttribute <|
+                Html.Events.on "keydown"
+                    (Decode.field "key" Decode.string
+                        |> Decode.andThen
+                            (\key ->
+                                case key of
+                                    "ArrowLeft" ->
+                                        Decode.succeed (toMsg prevTab.tag (prevTab.id ++ "--tab"))
 
-                            "ArrowRight" ->
-                                Decode.succeed (toMsg nextTab)
+                                    "ArrowUp" ->
+                                        Decode.succeed (toMsg prevTab.tag (prevTab.id ++ "--tab"))
 
-                            "ArrowDown" ->
-                                Decode.succeed (toMsg nextTab)
+                                    "ArrowRight" ->
+                                        Decode.succeed (toMsg nextTab.tag (nextTab.id ++ "--tab"))
 
-                            _ ->
-                                Decode.fail "not handling that key here"
+                                    "ArrowDown" ->
+                                        Decode.succeed (toMsg nextTab.tag (nextTab.id ++ "--tab"))
+
+                                    _ ->
+                                        Decode.fail "not handling that key here"
+                            )
                     )
-            )
 
 
 

@@ -1667,7 +1667,7 @@ type Msg
     | FruitChanged Fruit
     | DropdownMsg (Ui.Atom.Dropdown.Msg Fruit)
     | DropdownAppendedMsg (Ui.Atom.Dropdown.Msg Fruit)
-    | SelectedTab Tab
+    | SelectedTab Tab String
     | ChangedPosition Position
     | ChangedPositionAppended Position
     | ChangedPositionNested Position
@@ -1769,9 +1769,9 @@ update msg model =
             , Cmd.map DropdownAppendedMsg dropdownCmd
             )
 
-        SelectedTab tab ->
+        SelectedTab tab id ->
             ( { model | selectedTab = tab }
-            , Cmd.none
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
             )
 
         ChangedPosition position ->
