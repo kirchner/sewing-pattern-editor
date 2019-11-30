@@ -79,6 +79,7 @@ import Svg.Events
 import Svg.Lazy
 import Task
 import Ui.Atom
+import Ui.Atom.Tabs
 import Ui.Color
 import Ui.Modal
 import Ui.Molecule.MenuBtn
@@ -134,14 +135,14 @@ type alias LoadedData =
 
     -- RIGHT TOOLBAR
     , rightToolbarVisible : Bool
-    , variablesVisible : Bool
+    , selectedTab : Tab
     , maybeVariableDialog : Maybe VariableDialog
-    , pointsVisible : Bool
-    , axesVisible : Bool
-    , curvesVisible : Bool
-    , circlesVisible : Bool
-    , detailsVisible : Bool
     }
+
+
+type Tab
+    = ObjectsTab
+    | VariablesTab
 
 
 type alias Dimensions =
@@ -461,17 +462,12 @@ viewEditor storedPattern model =
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
-
-            -- FIXME this seems to be a bug, c.f.
-            -- https://github.com/mdgriffith/elm-ui/issues/12
             , Element.clip
-            , Element.htmlAttribute <|
-                Html.Attributes.style "flex-shrink" "1"
+            , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
             ]
-            [ Element.lazy2 viewLeftToolbar pattern model.maybeDialog
+            [ viewLeftToolbar pattern model
             , Element.el
-                [ Element.htmlAttribute <|
-                    Html.Attributes.id "pattern-container"
+                [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
                 , Element.width Element.fill
                 , Element.height Element.fill
                 , Element.inFront <|
@@ -491,38 +487,6 @@ viewEditor storedPattern model =
             , Background.color Ui.Color.primary
             ]
             Element.none
-        ]
-
-
-viewLeftToolbar : Pattern BottomLeft -> Maybe Dialog -> Element Msg
-viewLeftToolbar pattern maybeDialog =
-    Element.column
-        [ Element.width (Element.maximum 500 Element.fill)
-        , Element.height Element.fill
-        , Element.padding Ui.Space.level1
-        , Element.scrollbarY
-        , Background.color Ui.Color.white
-        ]
-        [ case maybeDialog of
-            Nothing ->
-                Element.none
-
-            Just (CreateObject dialog) ->
-                Element.map DialogCreateMsg <|
-                    Dialog.createView
-                        { pattern = pattern
-                        , hoveredInCanvas = Nothing
-                        }
-                        dialog
-
-            Just (EditObject name dialog) ->
-                Element.map DialogEditMsg <|
-                    Dialog.editView
-                        { pattern = pattern
-                        , name = name
-                        , hoveredInCanvas = Nothing
-                        }
-                        dialog
         ]
 
 
@@ -627,77 +591,103 @@ viewZoom model =
         ]
 
 
-viewRightToolbar pattern model =
-    Element.row
-        [ Element.height Element.fill
-        , Background.color Ui.Color.white
-        ]
-        [ Input.button
-            [ Element.height Element.fill
-            , Element.padding 5
-            , Font.color Ui.Color.black
-            , Element.mouseOver
-                [ Font.color Ui.Color.primaryDark
-                , Border.color Ui.Color.primaryDark
-                , Background.color Ui.Color.secondary
-                ]
-            ]
-            { onPress = Just ToolbarTogglePressed
-            , label =
-                Element.column
-                    [ Element.height Element.fill
-                    , Element.width Element.fill
-                    , Element.spacing Ui.Space.level1
-                    ]
-                    (List.repeat 3
-                        (Element.el
-                            [ Element.centerY
-                            , Element.centerX
-                            ]
-                            (if model.rightToolbarVisible then
-                                Ui.Atom.fa "chevron-right"
-
-                             else
-                                Ui.Atom.fa "chevron-left"
-                            )
-                        )
-                    )
+viewLeftToolbar pattern model =
+    Element.el
+        [ Element.width (Element.px 400)
+        , Element.height Element.fill
+        , Element.clip
+        , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+        , Element.padding Ui.Space.level1
+        , Element.spacing Ui.Space.level1
+        , Border.widthEach
+            { top = 0
+            , bottom = 0
+            , left = 0
+            , right = 2
             }
-        , if model.rightToolbarVisible then
-            Element.column
-                [ Element.width (Element.px 400)
-                , Element.height Element.fill
-                , Element.padding Ui.Space.level1
-                , Element.spacing Ui.Space.level1
-                , Element.scrollbarY
+        , Border.color Ui.Color.primary
+        ]
+        (Ui.Atom.Tabs.view
+            { label = "Data"
+            , tabs =
+                [ { tag = ObjectsTab
+                  , id = "objects"
+                  , label = "Objects"
+                  }
+                , { tag = VariablesTab
+                  , id = "variables"
+                  , label = "Variables"
+                  }
                 ]
-                (case model.maybeVariableDialog of
+            , selected = model.selectedTab
+            , onSelect = SelectedTab
+            , content =
+                \tag ->
+                    case tag of
+                        ObjectsTab ->
+                            Ui.Molecule.ObjectList.view
+                                { onHover = HoveredObject
+                                , onLeave = LeftObject
+                                , onFocus = FocusedObject
+                                , onBlur = BluredObject
+                                , hidePressed = PressedHideObject
+                                , editPressed = PressedEditObject
+                                , removePressed = PressedRemoveObject
+                                }
+                                pattern
+                                model.focusedObject
+                                model.hoveredObject
+
+                        VariablesTab ->
+                            Element.lazy viewVariables pattern
+            }
+        )
+
+
+viewRightToolbar pattern model =
+    Element.el
+        [ Element.width (Element.maximum 500 Element.fill)
+        , Element.height Element.fill
+        , Element.padding Ui.Space.level1
+        , Element.scrollbarY
+        , Background.color Ui.Color.white
+        , Border.widthEach
+            { top = 0
+            , bottom = 0
+            , left = 2
+            , right = 0
+            }
+        , Border.color Ui.Color.primary
+        ]
+        (case model.maybeDialog of
+            Nothing ->
+                case model.maybeVariableDialog of
                     Nothing ->
-                        [ Element.lazy2 viewVariables pattern model.variablesVisible
-                        , Ui.Molecule.ObjectList.view
-                            { onHover = HoveredObject
-                            , onLeave = LeftObject
-                            , onFocus = FocusedObject
-                            , onBlur = BluredObject
-                            , hidePressed = PressedHideObject
-                            , editPressed = PressedEditObject
-                            , removePressed = PressedRemoveObject
-                            }
-                            pattern
-                            model.focusedObject
-                            model.hoveredObject
-                        ]
+                        Element.none
 
                     Just (VariableDialogCreate stuff) ->
-                        [ viewVariable stuff.name stuff.value ]
+                        viewVariable stuff.name stuff.value
 
                     Just (VariableDialogEdit stuff) ->
-                        [ viewEditVariable stuff.name stuff.value ]
-                )
+                        viewEditVariable stuff.name stuff.value
 
-          else
-            Element.none
-        ]
+            Just (CreateObject dialog) ->
+                Element.map DialogCreateMsg <|
+                    Dialog.createView
+                        { pattern = pattern
+                        , hoveredInCanvas = Nothing
+                        }
+                        dialog
+
+            Just (EditObject name dialog) ->
+                Element.map DialogEditMsg <|
+                    Dialog.editView
+                        { pattern = pattern
+                        , name = name
+                        , hoveredInCanvas = Nothing
+                        }
+                        dialog
+        )
 
 
 
@@ -800,64 +790,59 @@ viewEditVariable name value =
 -- TABLES
 
 
-viewVariables : Pattern BottomLeft -> Bool -> Element Msg
-viewVariables pattern variablesVisible =
-    Ui.Navigation.accordion
-        { onPress = VariablesRulerPressed
-        , label = "Variables"
-        , open = variablesVisible
-        , content =
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing Ui.Space.level1
-                ]
-                [ Element.table
-                    [ Element.spacing Ui.Space.level1 ]
-                    { data =
-                        List.sortBy .name
-                            (Pattern.variables pattern
-                                |> List.filterMap
-                                    (\variable ->
-                                        case
-                                            ( Pattern.variableInfo variable pattern
-                                            , State.finalValue pattern <|
-                                                Pattern.float variable
-                                            )
-                                        of
-                                            ( Just rawExpr, Ok value ) ->
-                                                Just
-                                                    { name = variable
-                                                    , rawExpr = rawExpr
-                                                    , value = value
-                                                    }
-
-                                            _ ->
-                                                Nothing
+viewVariables : Pattern BottomLeft -> Element Msg
+viewVariables pattern =
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.spacing Ui.Space.level1
+        ]
+        [ Element.table
+            [ Element.spacing Ui.Space.level1 ]
+            { data =
+                List.sortBy .name
+                    (Pattern.variables pattern
+                        |> List.filterMap
+                            (\variable ->
+                                case
+                                    ( Pattern.variableInfo variable pattern
+                                    , State.finalValue pattern <|
+                                        Pattern.float variable
                                     )
+                                of
+                                    ( Just rawExpr, Ok value ) ->
+                                        Just
+                                            { name = variable
+                                            , rawExpr = rawExpr
+                                            , value = value
+                                            }
+
+                                    _ ->
+                                        Nothing
                             )
-                    , columns =
-                        [ Ui.Table.column
-                            { label = "Name"
-                            , recordToString = .name
-                            }
-                        , Ui.Table.columnFloat
-                            { label = "Value"
-                            , recordToFloat = Just << .value
-                            }
-                        , Ui.Table.columnActions
-                            { onEditPress = Just << VariableEditPressed << .name
-                            , onRemovePress = Just << VariableRemovePressed << .name
-                            }
-                        ]
+                    )
+            , columns =
+                [ Ui.Table.column
+                    { label = "Name"
+                    , recordToString = .name
                     }
-                , Element.el [ Element.alignRight ] <|
-                    Ui.Atom.btnSecondary
-                        { id = "create-variable--button"
-                        , onPress = Just VariableCreatePressed
-                        , label = "Create variable"
-                        }
+                , Ui.Table.columnFloat
+                    { label = "Value"
+                    , recordToFloat = Just << .value
+                    }
+                , Ui.Table.columnActions
+                    { onEditPress = Just << VariableEditPressed << .name
+                    , onRemovePress = Just << VariableRemovePressed << .name
+                    }
                 ]
-        }
+            }
+        , Element.el [ Element.alignRight ] <|
+            Ui.Atom.btnSecondary
+                { id = "create-variable--button"
+                , onPress = Just VariableCreatePressed
+                , label = "Create variable"
+                }
+        ]
 
 
 objectName : A object -> String
@@ -894,7 +879,7 @@ type Msg
     | DialogEditMsg Dialog.EditMsg
       -- RIGHT TOOLBAR
     | ToolbarTogglePressed
-    | VariablesRulerPressed
+    | SelectedTab Tab
     | VariableCreatePressed
     | VariableEditPressed String
     | VariableRemovePressed String
@@ -956,13 +941,8 @@ update key msg model =
 
                                 -- RIGHT TOOLBAR
                                 , rightToolbarVisible = False
-                                , variablesVisible = True
+                                , selectedTab = ObjectsTab
                                 , maybeVariableDialog = Nothing
-                                , pointsVisible = False
-                                , axesVisible = False
-                                , curvesVisible = False
-                                , circlesVisible = False
-                                , detailsVisible = False
                                 }
                             , Cmd.none
                             )
@@ -1254,10 +1234,8 @@ updateWithData key msg model =
                 |> Task.attempt PatternContainerViewportReceived
             )
 
-        VariablesRulerPressed ->
-            ( { model | variablesVisible = not model.variablesVisible }
-            , Cmd.none
-            )
+        SelectedTab tab ->
+            ( { model | selectedTab = tab }, Cmd.none )
 
         VariableCreatePressed ->
             ( { model

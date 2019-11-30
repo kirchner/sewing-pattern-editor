@@ -92,7 +92,11 @@ view { label, tabs, selected, content, onSelect } =
                 |> Maybe.withDefault ""
     in
     Element.column
-        [ Element.width Element.fill ]
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.clip
+        , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+        ]
         [ Ui.Atom.withFocusOutline <|
             Element.row
                 [ Element.width Element.fill
@@ -109,16 +113,16 @@ view { label, tabs, selected, content, onSelect } =
                 , onKeyDown onSelect (List.map .tag tabs) selected
                 ]
                 (List.map viewTab tabs)
-        , Ui.Atom.withFocusOutline <|
-            Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , attribute "role" "tabpanel"
-                , attributeId (selectedId ++ "--tabpanel")
-                , attribute "aria-labelledby" (selectedId ++ "--tab")
-                , tabindex 0
-                ]
-                (content selected)
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            , Element.clip
+            , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+            , attribute "role" "tabpanel"
+            , attributeId (selectedId ++ "--tabpanel")
+            , attribute "aria-labelledby" (selectedId ++ "--tab")
+            ]
+            (content selected)
         ]
 
 

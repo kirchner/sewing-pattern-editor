@@ -64,17 +64,42 @@ view cfg pattern focusedObject hoveredObject =
                     , List.map Curve (Pattern.curves pattern)
                     , List.map Detail (Pattern.details pattern)
                     ]
+
+        field i =
+            Element.text ("field " ++ String.fromInt i)
     in
-    Ui.Atom.withFocusOutline <|
-        Element.table
-            [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]
-            { data = objects
-            , columns =
-                [ icon cfg focusedObject hoveredObject
-                , name cfg focusedObject hoveredObject
-                , actions cfg focusedObject hoveredObject
+    Element.el
+        [ Element.width Element.fill
+        , Element.clip
+        , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+        , Border.width 3
+        , Border.dotted
+        , Border.color Ui.Color.transparent
+        , Element.focused [ Border.color Ui.Color.primary ]
+        ]
+        (Element.el
+            [ Element.padding 4
+            , Element.width Element.fill
+            , Element.clip
+            , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+            ]
+            (Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.scrollbarY
                 ]
-            }
+                (Element.table
+                    [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]
+                    { data = objects
+                    , columns =
+                        [ icon cfg focusedObject hoveredObject
+                        , name cfg focusedObject hoveredObject
+                        , actions cfg focusedObject hoveredObject
+                        ]
+                    }
+                )
+            )
+        )
 
 
 icon cfg focusedObject hoveredObject =
