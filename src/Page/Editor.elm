@@ -84,6 +84,7 @@ import Ui.Color
 import Ui.Modal
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
+import Ui.Molecule.VariableList
 import Ui.Navigation
 import Ui.Space
 import Ui.Table
@@ -132,6 +133,8 @@ type alias LoadedData =
     -- LEFT TOOLBAR
     , maybeDialog : Maybe Dialog
     , preventActionMenuClose : Bool
+    , focusedVariable : Maybe String
+    , hoveredVariable : Maybe String
 
     -- RIGHT TOOLBAR
     , rightToolbarVisible : Bool
@@ -639,7 +642,17 @@ viewLeftToolbar pattern model =
                                 model.hoveredObject
 
                         VariablesTab ->
-                            Element.lazy viewVariables pattern
+                            Ui.Molecule.VariableList.view
+                                { onHover = HoveredVariable
+                                , onLeave = LeftVariable
+                                , onFocus = FocusedVariable
+                                , onBlur = BluredVariable
+                                , editPressed = VariableEditPressed
+                                , removePressed = VariableRemovePressed
+                                }
+                                pattern
+                                model.focusedVariable
+                                model.hoveredVariable
             }
         )
 
@@ -786,65 +799,6 @@ viewEditVariable name value =
         ]
 
 
-
--- TABLES
-
-
-viewVariables : Pattern BottomLeft -> Element Msg
-viewVariables pattern =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.spacing Ui.Space.level1
-        ]
-        [ Element.table
-            [ Element.spacing Ui.Space.level1 ]
-            { data =
-                List.sortBy .name
-                    (Pattern.variables pattern
-                        |> List.filterMap
-                            (\variable ->
-                                case
-                                    ( Pattern.variableInfo variable pattern
-                                    , State.finalValue pattern <|
-                                        Pattern.float variable
-                                    )
-                                of
-                                    ( Just rawExpr, Ok value ) ->
-                                        Just
-                                            { name = variable
-                                            , rawExpr = rawExpr
-                                            , value = value
-                                            }
-
-                                    _ ->
-                                        Nothing
-                            )
-                    )
-            , columns =
-                [ Ui.Table.column
-                    { label = "Name"
-                    , recordToString = .name
-                    }
-                , Ui.Table.columnFloat
-                    { label = "Value"
-                    , recordToFloat = Just << .value
-                    }
-                , Ui.Table.columnActions
-                    { onEditPress = Just << VariableEditPressed << .name
-                    , onRemovePress = Just << VariableRemovePressed << .name
-                    }
-                ]
-            }
-        , Element.el [ Element.alignRight ] <|
-            Ui.Atom.btnSecondary
-                { id = "create-variable--button"
-                , onPress = Just VariableCreatePressed
-                , label = "Create variable"
-                }
-        ]
-
-
 objectName : A object -> String
 objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
@@ -877,6 +831,10 @@ type Msg
       -- LEFT TOOLBAR
     | DialogCreateMsg Dialog.CreateMsg
     | DialogEditMsg Dialog.EditMsg
+    | HoveredVariable String
+    | LeftVariable String
+    | FocusedVariable String
+    | BluredVariable String
       -- RIGHT TOOLBAR
     | ToolbarTogglePressed
     | SelectedTab Tab
@@ -938,6 +896,8 @@ update key msg model =
                                 -- LEFT TOOLBAR
                                 , maybeDialog = Nothing
                                 , preventActionMenuClose = False
+                                , focusedVariable = Nothing
+                                , hoveredVariable = Nothing
 
                                 -- RIGHT TOOLBAR
                                 , rightToolbarVisible = False
@@ -1202,6 +1162,18 @@ updateWithData key msg model =
                             ( { model | maybeDialog = Nothing }
                             , Cmd.none
                             )
+
+        HoveredVariable variable ->
+            ( { model | hoveredVariable = Just variable }, Cmd.none )
+
+        LeftVariable _ ->
+            ( { model | hoveredVariable = Nothing }, Cmd.none )
+
+        FocusedVariable variable ->
+            ( { model | focusedVariable = Just variable }, Cmd.none )
+
+        BluredVariable _ ->
+            ( { model | focusedVariable = Nothing }, Cmd.none )
 
         -- PATTERN
         HoveredObject object ->
