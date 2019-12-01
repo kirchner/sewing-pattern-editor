@@ -36,6 +36,13 @@ import Svg.Attributes
 import Ui.Pattern exposing (Resolution)
 
 
+type alias State =
+    { hoveredObject : Maybe Object
+    , focusedObject : Maybe Object
+    , selectedObject : Maybe Object
+    }
+
+
 {-| -}
 type Object
     = Point (A Point)
@@ -49,21 +56,20 @@ type Object
 type alias Config msg =
     { onHover : Object -> msg
     , onLeave : Object -> msg
-    , onFocus : Object -> msg
-    , onBlur : Object -> msg
+    , onSelect : Object -> msg
     }
 
 
 {-| -}
-draw : Config msg -> Pattern coordinates -> Resolution -> Maybe Object -> Maybe Object -> Svg msg
-draw cfg pattern resolution focusedObject hoveredObject =
+draw : Config msg -> Pattern coordinates -> Resolution -> State -> Svg msg
+draw cfg pattern resolution { hoveredObject, focusedObject, selectedObject } =
     case State.finalValue pattern Pattern.compute of
         Err _ ->
             Svg.text ""
 
         Ok objects ->
             let
-                objectLayers drawObject toObject objectFocused objectHovered =
+                objectLayers drawObject toObject objectFocused objectHovered objectSelected =
                     List.foldl
                         (\( aObject, object ) layers ->
                             let
@@ -71,14 +77,14 @@ draw cfg pattern resolution focusedObject hoveredObject =
                                     drawObject
                                         { onHover = cfg.onHover (toObject aObject)
                                         , onLeave = cfg.onLeave (toObject aObject)
-                                        , onFocus = cfg.onFocus (toObject aObject)
-                                        , onBlur = cfg.onBlur (toObject aObject)
+                                        , onSelect = cfg.onSelect (toObject aObject)
                                         }
                                         (Maybe.withDefault "<no-name>" (Pattern.name aObject))
                                         object
                                         resolution
                                         (objectFocused aObject)
                                         (objectHovered aObject)
+                                        (objectSelected aObject)
                             in
                             { inactiveList = inactive :: layers.inactiveList
                             , activeList = active :: layers.activeList
@@ -108,8 +114,16 @@ draw cfg pattern resolution focusedObject hoveredObject =
                         _ ->
                             False
 
+                pointSelected aPoint =
+                    case selectedObject of
+                        Just (Point otherAPoint) ->
+                            otherAPoint == aPoint
+
+                        _ ->
+                            False
+
                 pointLayers =
-                    objectLayers Ui.Pattern.drawPoint Point pointFocused pointHovered objects.points
+                    objectLayers Ui.Pattern.drawPoint Point pointFocused pointHovered pointSelected objects.points
 
                 axisFocused aAxis =
                     case focusedObject of
@@ -127,8 +141,16 @@ draw cfg pattern resolution focusedObject hoveredObject =
                         _ ->
                             False
 
+                axisSelected aAxis =
+                    case selectedObject of
+                        Just (Axis otherAAxis) ->
+                            otherAAxis == aAxis
+
+                        _ ->
+                            False
+
                 axisLayers =
-                    objectLayers Ui.Pattern.drawAxis Axis axisFocused axisHovered objects.axes
+                    objectLayers Ui.Pattern.drawAxis Axis axisFocused axisHovered axisSelected objects.axes
 
                 circleFocused aCircle =
                     case focusedObject of
@@ -146,8 +168,16 @@ draw cfg pattern resolution focusedObject hoveredObject =
                         _ ->
                             False
 
+                circleSelected aCircle =
+                    case selectedObject of
+                        Just (Circle otherACircle) ->
+                            otherACircle == aCircle
+
+                        _ ->
+                            False
+
                 circleLayers =
-                    objectLayers Ui.Pattern.drawCircle Circle circleFocused circleHovered objects.circles
+                    objectLayers Ui.Pattern.drawCircle Circle circleFocused circleHovered circleSelected objects.circles
 
                 curveFocused aCurve =
                     case focusedObject of
@@ -165,8 +195,16 @@ draw cfg pattern resolution focusedObject hoveredObject =
                         _ ->
                             False
 
+                curveSelected aCurve =
+                    case selectedObject of
+                        Just (Curve otherACurve) ->
+                            otherACurve == aCurve
+
+                        _ ->
+                            False
+
                 curveLayers =
-                    objectLayers Ui.Pattern.drawCurve Curve curveFocused curveHovered objects.curves
+                    objectLayers Ui.Pattern.drawCurve Curve curveFocused curveHovered curveSelected objects.curves
 
                 detailFocused aDetail =
                     case focusedObject of
@@ -184,8 +222,16 @@ draw cfg pattern resolution focusedObject hoveredObject =
                         _ ->
                             False
 
+                detailSelected aDetail =
+                    case selectedObject of
+                        Just (Detail otherADetail) ->
+                            otherADetail == aDetail
+
+                        _ ->
+                            False
+
                 detailLayers =
-                    objectLayers Ui.Pattern.drawDetail Detail detailFocused detailHovered objects.details
+                    objectLayers Ui.Pattern.drawDetail Detail detailFocused detailHovered detailSelected objects.details
             in
             Svg.g [] <|
                 List.concat

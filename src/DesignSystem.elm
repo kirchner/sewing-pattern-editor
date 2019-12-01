@@ -21,7 +21,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
-import Length
+import Length exposing (Meters, millimeters)
 import LineSegment2d
 import List.Extra as List
 import Pattern.Draw exposing (Object)
@@ -29,7 +29,7 @@ import Pattern.Store exposing (StoredPattern)
 import Pixels exposing (pixels)
 import Point2d
 import QuadraticSpline2d
-import Quantity
+import Quantity exposing (per)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Task
@@ -39,6 +39,7 @@ import Ui.Atom.Tabs
 import Ui.Color
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
+import Ui.Molecule.Pattern
 import Ui.Pattern exposing (Intersectable(..))
 import Ui.Space
 import Ui.Typography
@@ -78,8 +79,7 @@ type alias Model =
     , positionNested : Position
     , showFormula : Bool
     , objectsContainerWidth : Maybe Float
-    , focusedObject : Maybe Object
-    , hoveredObject : Maybe Object
+    , patternState : Ui.Molecule.Pattern.State
     , menuBtnPrimary : Ui.Molecule.MenuBtn.State
     , menuBtnSecondary : Ui.Molecule.MenuBtn.State
     }
@@ -312,8 +312,7 @@ init { width, height } url key =
         , positionNested = Left
         , showFormula = True
         , objectsContainerWidth = Nothing
-        , focusedObject = Nothing
-        , hoveredObject = Nothing
+        , patternState = Ui.Molecule.Pattern.init
         , menuBtnPrimary = Ui.Molecule.MenuBtn.init
         , menuBtnSecondary = Ui.Molecule.MenuBtn.init
         }
@@ -939,56 +938,32 @@ viewIcons model =
 
 viewObjects : Model -> Element Msg
 viewObjects model =
-    Element.column
+    Element.el
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
         , Element.htmlAttribute (Html.Attributes.id "objects-container")
         ]
-        [ viewObject model.objectsContainerWidth model.focusedObject model.hoveredObject ]
+        (case model.objectsContainerWidth of
+            Nothing ->
+                Element.none
 
-
-viewObject : Maybe Float -> Maybe Object -> Maybe Object -> Element Msg
-viewObject maybeWidth focusedObject hoveredObject =
-    case maybeWidth of
-        Nothing ->
-            Element.none
-
-        Just width ->
-            let
-                resolution =
-                    Pixels.pixels (width / 5000)
-                        |> Quantity.per (Length.millimeters 1)
-            in
-            Element.el
-                [ Border.width 1
-                , Border.color Ui.Color.grayDark
-                , Element.width Element.fill
-                ]
-                (Element.html <|
-                    Svg.svg
-                        [ Svg.Attributes.viewBox <|
-                            String.join " "
-                                [ String.fromFloat (width / -2)
-                                , String.fromFloat (width / -2)
-                                , String.fromFloat width
-                                , String.fromFloat width
-                                ]
-                        , Html.Attributes.style "user-select" "none"
-                        , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-                        ]
-                        [ Svg.translateBy (Vector2d.pixels 0 -100) <|
-                            Pattern.Draw.draw
-                                { onHover = HoveredObject
-                                , onLeave = LeftObject
-                                , onFocus = FocusedObject
-                                , onBlur = BluredObject
-                                }
-                                storedPattern.pattern
-                                resolution
-                                focusedObject
-                                hoveredObject
-                        ]
-                )
+            Just width ->
+                let
+                    resolution =
+                        pixels (1 / 12 * width / 336)
+                            |> per (millimeters 1)
+                in
+                Element.map PatternMsg <|
+                    Ui.Molecule.Pattern.view
+                        { id = "objects" }
+                        { width = width
+                        , height = width
+                        , resolution = resolution
+                        , center = Point2d.millimeters 0 800
+                        }
+                        storedPattern.pattern
+                        model.patternState
+        )
 
 
 storedPattern : StoredPattern coordinates
@@ -1639,17 +1614,13 @@ viewObjectList model =
         , Element.height Element.fill
         ]
         [ Ui.Molecule.ObjectList.view
-            { onHover = HoveredObject
-            , onLeave = LeftObject
-            , onFocus = FocusedObject
-            , onBlur = BluredObject
+            { toMsg = ObjectListMsg
             , hidePressed = \_ -> NoOp
             , editPressed = \_ -> NoOp
             , removePressed = \_ -> NoOp
             }
             storedPattern.pattern
-            model.focusedObject
-            model.hoveredObject
+            model.patternState
         ]
 
 
@@ -1676,10 +1647,8 @@ type Msg
     | RenderedPage
     | GotViewportOfObjectsContainer (Result Browser.Dom.Error Browser.Dom.Viewport)
       -- OBJECTS
-    | HoveredObject Object
-    | LeftObject Object
-    | FocusedObject Object
-    | BluredObject Object
+    | ObjectListMsg Ui.Molecule.ObjectList.Msg
+    | PatternMsg Ui.Molecule.Pattern.Msg
       -- MENU BUTTON
     | MenuBtnPrimaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | MenuBtnSecondaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1808,23 +1777,23 @@ update msg model =
             )
 
         -- OBJECTS
-        HoveredObject object ->
-            ( { model | hoveredObject = Just object }
+        ObjectListMsg objectListMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.ObjectList.update objectListMsg
+                        storedPattern.pattern
+                        model.patternState
+              }
             , Cmd.none
             )
 
-        LeftObject _ ->
-            ( { model | hoveredObject = Nothing }
-            , Cmd.none
-            )
-
-        FocusedObject object ->
-            ( { model | focusedObject = Just object }
-            , Cmd.none
-            )
-
-        BluredObject _ ->
-            ( { model | focusedObject = Nothing }
+        PatternMsg patternMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.Pattern.update patternMsg
+                        storedPattern.pattern
+                        model.patternState
+              }
             , Cmd.none
             )
 

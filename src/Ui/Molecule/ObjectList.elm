@@ -1,8 +1,14 @@
-module Ui.Molecule.ObjectList exposing (view)
+module Ui.Molecule.ObjectList exposing
+    ( State, init
+    , view
+    , Msg, update
+    )
 
 {-|
 
+@docs State, init
 @docs view
+@docs Msg, update
 
 -}
 
@@ -13,6 +19,8 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
 import Pattern exposing (Pattern)
 import Pattern.Draw exposing (Object(..))
 import Ui.Atom
@@ -21,39 +29,39 @@ import Ui.Space
 import Ui.Typography
 
 
+
+---- MODEL
+
+
+type alias State =
+    { hoveredObject : Maybe Object
+    , focusedObject : Maybe Object
+    , selectedObject : Maybe Object
+    }
+
+
+init : State
+init =
+    { hoveredObject = Nothing
+    , focusedObject = Nothing
+    , selectedObject = Nothing
+    }
+
+
+
+---- VIEW
+
+
 type alias Config msg =
-    { onHover : Object -> msg
-    , onLeave : Object -> msg
-    , onFocus : Object -> msg
-    , onBlur : Object -> msg
+    { toMsg : Msg -> msg
     , hidePressed : Object -> msg
     , editPressed : Object -> msg
     , removePressed : Object -> msg
     }
 
 
-objectName : Object -> String
-objectName object =
-    Maybe.withDefault "" <|
-        case object of
-            Point aPoint ->
-                Pattern.name aPoint
-
-            Axis aAxis ->
-                Pattern.name aAxis
-
-            Circle aCircle ->
-                Pattern.name aCircle
-
-            Curve aCurve ->
-                Pattern.name aCurve
-
-            Detail aDetail ->
-                Pattern.name aDetail
-
-
-view : Config msg -> Pattern coordinates -> Maybe Object -> Maybe Object -> Element msg
-view cfg pattern focusedObject hoveredObject =
+view : Config msg -> Pattern coordinates -> State -> Element msg
+view cfg pattern state =
     let
         objects =
             List.sortBy objectName <|
@@ -75,33 +83,53 @@ view cfg pattern focusedObject hoveredObject =
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
         , Border.widthEach
             { top = 1
-            , bottom = 3
+            , bottom = 4
             , left = 1
             , right = 1
             }
-        , Border.rounded 3
-        , Border.color Ui.Color.transparent
+        , Border.color Ui.Color.secondaryDark
         , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
             , Element.scrollbarY
+            , Element.paddingXY 0 Ui.Space.level1
             ]
             (Element.table
-                [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]
+                [ Element.htmlAttribute (Html.Attributes.tabindex 0)
+                , Element.htmlAttribute <|
+                    Html.Events.preventDefaultOn "keydown"
+                        (Decode.field "code" Decode.string
+                            |> Decode.andThen
+                                (\code ->
+                                    case code of
+                                        "ArrowUp" ->
+                                            Decode.succeed ( cfg.toMsg PressedArrowUp, True )
+
+                                        "ArrowDown" ->
+                                            Decode.succeed ( cfg.toMsg PressedArrowDown, True )
+
+                                        "Space" ->
+                                            Decode.succeed ( cfg.toMsg PressedSpace, True )
+
+                                        _ ->
+                                            Decode.fail "not handling that key here"
+                                )
+                        )
+                ]
                 { data = objects
                 , columns =
-                    [ icon cfg focusedObject hoveredObject
-                    , name cfg focusedObject hoveredObject
-                    , actions cfg focusedObject hoveredObject
+                    [ icon cfg state
+                    , name cfg state
+                    , actions cfg state
                     ]
                 }
             )
         )
 
 
-icon cfg focusedObject hoveredObject =
+icon cfg state =
     { header = Element.none
     , width = Element.shrink
     , view =
@@ -115,11 +143,18 @@ icon cfg focusedObject hoveredObject =
                     }
                 , Element.height Element.fill
                 , Element.centerY
-                , Events.onMouseEnter (cfg.onHover object)
-                , Events.onMouseLeave (cfg.onLeave object)
-                , Events.onClick (cfg.onFocus object)
-                , backgroundColor focusedObject hoveredObject object
-                , fontColor focusedObject hoveredObject object
+                , Events.onMouseEnter (cfg.toMsg (HoveredObject object))
+                , Events.onMouseLeave (cfg.toMsg (LeftObject object))
+                , Events.onClick (cfg.toMsg (ClickedObject object))
+                , Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 1
+                    , right = 0
+                    }
+                , borderColor state object
+                , backgroundColor state object
+                , fontColor state object
                 ]
                 (case object of
                     Point _ ->
@@ -140,24 +175,31 @@ icon cfg focusedObject hoveredObject =
     }
 
 
-name cfg focusedObject hoveredObject =
+name cfg state =
     { header = Element.none
     , width = Element.fill
     , view =
         \object ->
             Element.el
                 [ Element.padding Ui.Space.level1
-                , Events.onMouseEnter (cfg.onHover object)
-                , Events.onMouseLeave (cfg.onLeave object)
-                , Events.onClick (cfg.onFocus object)
-                , backgroundColor focusedObject hoveredObject object
-                , fontColor focusedObject hoveredObject object
+                , Events.onMouseEnter (cfg.toMsg (HoveredObject object))
+                , Events.onMouseLeave (cfg.toMsg (LeftObject object))
+                , Events.onClick (cfg.toMsg (ClickedObject object))
+                , Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 0
+                    , right = 0
+                    }
+                , borderColor state object
+                , backgroundColor state object
+                , fontColor state object
                 ]
                 (Ui.Typography.body (objectName object))
     }
 
 
-actions cfg focusedObject hoveredObject =
+actions cfg state =
     { header = Element.none
     , width = Element.shrink
     , view =
@@ -187,13 +229,20 @@ actions cfg focusedObject hoveredObject =
                 , Element.spacing Ui.Space.level2
                 , Element.height Element.fill
                 , Element.centerY
-                , Events.onMouseEnter (cfg.onHover object)
-                , Events.onMouseLeave (cfg.onLeave object)
-                , Events.onClick (cfg.onFocus object)
-                , backgroundColor focusedObject hoveredObject object
-                , fontColor focusedObject hoveredObject object
+                , Events.onMouseEnter (cfg.toMsg (HoveredObject object))
+                , Events.onMouseLeave (cfg.toMsg (LeftObject object))
+                , Events.onClick (cfg.toMsg (ClickedObject object))
+                , Border.widthEach
+                    { top = 1
+                    , bottom = 1
+                    , left = 0
+                    , right = 1
+                    }
+                , borderColor state object
+                , backgroundColor state object
+                , fontColor state object
                 ]
-                (if focusedObject == Just object || hoveredObject == Just object then
+                (if state.focusedObject == Just object || state.hoveredObject == Just object then
                     [ action "hide-btn" "eye" (cfg.hidePressed object)
                     , action "edit-btn" "edit" (cfg.editPressed object)
                     , action "remove-btn" "trash" (cfg.removePressed object)
@@ -205,22 +254,161 @@ actions cfg focusedObject hoveredObject =
     }
 
 
-backgroundColor focusedObject hoveredObject object =
-    Background.color <|
-        if focusedObject == Just object then
+borderColor state object =
+    Border.color <|
+        if state.focusedObject == Just object then
+            Ui.Color.black
+
+        else if state.selectedObject == Just object then
             Ui.Color.primary
 
-        else if hoveredObject == Just object then
+        else if state.hoveredObject == Just object then
             Ui.Color.secondary
 
         else
             Ui.Color.white
 
 
-fontColor focusedObject hoveredObject object =
+backgroundColor state object =
+    Background.color <|
+        if state.selectedObject == Just object then
+            Ui.Color.primary
+
+        else if state.hoveredObject == Just object then
+            Ui.Color.secondary
+
+        else
+            Ui.Color.white
+
+
+fontColor state object =
     Font.color <|
-        if focusedObject == Just object then
+        if state.selectedObject == Just object then
             Ui.Color.white
 
         else
             Ui.Color.black
+
+
+
+---- UPDATE
+
+
+type Msg
+    = -- OBJECTS
+      HoveredObject Object
+    | LeftObject Object
+    | FocusedObject Object
+    | ClickedObject Object
+      -- KEYBOARD
+    | PressedArrowDown
+    | PressedArrowUp
+    | PressedSpace
+
+
+update : Msg -> Pattern coordinates -> State -> State
+update msg pattern state =
+    case msg of
+        -- OBJECTS
+        HoveredObject object ->
+            { state | hoveredObject = Just object }
+
+        LeftObject _ ->
+            { state | hoveredObject = Nothing }
+
+        FocusedObject object ->
+            { state | focusedObject = Just object }
+
+        ClickedObject object ->
+            { state
+                | focusedObject = Just object
+                , selectedObject = Just object
+            }
+
+        -- KEYBOARD
+        PressedArrowDown ->
+            let
+                objects =
+                    List.sortBy objectName <|
+                        List.concat
+                            [ List.map Point (Pattern.points pattern)
+                            , List.map Axis (Pattern.axes pattern)
+                            , List.map Circle (Pattern.circles pattern)
+                            , List.map Curve (Pattern.curves pattern)
+                            , List.map Detail (Pattern.details pattern)
+                            ]
+            in
+            { state
+                | focusedObject =
+                    state.focusedObject
+                        |> Maybe.map (nextAfter objects)
+            }
+
+        PressedArrowUp ->
+            let
+                objects =
+                    List.sortBy objectName <|
+                        List.concat
+                            [ List.map Point (Pattern.points pattern)
+                            , List.map Axis (Pattern.axes pattern)
+                            , List.map Circle (Pattern.circles pattern)
+                            , List.map Curve (Pattern.curves pattern)
+                            , List.map Detail (Pattern.details pattern)
+                            ]
+            in
+            { state
+                | focusedObject =
+                    state.focusedObject
+                        |> Maybe.map (nextAfter (List.reverse objects))
+            }
+
+        PressedSpace ->
+            { state | selectedObject = state.focusedObject }
+
+
+nextAfter : List a -> a -> a
+nextAfter listA a =
+    case listA of
+        [] ->
+            a
+
+        first :: rest ->
+            if first == a then
+                Maybe.withDefault first (List.head rest)
+
+            else
+                nextAfterHelp a first rest
+
+
+nextAfterHelp : a -> a -> List a -> a
+nextAfterHelp a first listA =
+    case listA of
+        [] ->
+            first
+
+        next :: rest ->
+            if next == a then
+                Maybe.withDefault first (List.head rest)
+
+            else
+                nextAfterHelp a first rest
+
+
+objectName : Object -> String
+objectName object =
+    Maybe.withDefault "" <|
+        case object of
+            Point aPoint ->
+                Pattern.name aPoint
+
+            Axis aAxis ->
+                Pattern.name aAxis
+
+            Circle aCircle ->
+                Pattern.name aCircle
+
+            Curve aCurve ->
+                Pattern.name aCurve
+
+            Detail aDetail ->
+                Pattern.name aDetail

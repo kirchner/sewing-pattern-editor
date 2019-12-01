@@ -116,18 +116,15 @@ view { label, tabs, selected, content, onSelect } =
         , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
-        , Element.spacing Ui.Space.level1
         ]
         [ Element.row
-            [ Element.width Element.fill
-            , Element.spacing Ui.Space.level2
-            , Border.widthEach
-                { top = 0
-                , bottom = 1
-                , left = 0
-                , right = 0
+            [ Element.paddingEach
+                { top = Ui.Space.level1
+                , bottom = 0
+                , left = Ui.Space.level2
+                , right = Ui.Space.level2
                 }
-            , Border.color Ui.Color.secondaryDark
+            , Element.spacing Ui.Space.level2
             , attribute "role" "tablist"
             , attribute "aria-label" label
             , onKeyDown onSelect tabs selected

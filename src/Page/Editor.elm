@@ -84,6 +84,7 @@ import Ui.Color
 import Ui.Modal
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
+import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Navigation
 import Ui.Space
@@ -124,8 +125,7 @@ type alias LoadedData =
 
     -- PATTERN
     , storedPattern : StoredPattern BottomLeft
-    , focusedObject : Maybe Object
-    , hoveredObject : Maybe Object
+    , patternState : Ui.Molecule.Pattern.State
 
     -- TOP TOOLBAR
     , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
@@ -470,8 +470,7 @@ viewEditor storedPattern model =
             ]
             [ viewLeftToolbar pattern model
             , Element.el
-                [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
-                , Element.width Element.fill
+                [ Element.width Element.fill
                 , Element.height Element.fill
                 , Element.inFront <|
                     Element.el
@@ -480,8 +479,23 @@ viewEditor storedPattern model =
                         ]
                         (viewZoom model)
                 , Background.color (Element.rgb 255 255 255)
+                , Border.widthEach
+                    { top = 1
+                    , bottom = 4
+                    , left = 1
+                    , right = 1
+                    }
+                , Border.color Ui.Color.secondaryDark
+                , Element.focused
+                    [ Border.color Ui.Color.complementary ]
                 ]
-                (viewWorkspace storedPattern model)
+                (Element.el
+                    [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
+                    , Element.width Element.fill
+                    , Element.height Element.fill
+                    ]
+                    (viewWorkspace storedPattern model)
+                )
             , viewRightToolbar pattern model
             ]
         , Element.el
@@ -499,20 +513,14 @@ viewEditor storedPattern model =
 
 viewWorkspace : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewWorkspace storedPattern model =
-    Element.el
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        ]
-        (Element.html <|
-            viewPattern
-                model.patternContainerDimensions
-                model.maybeDrag
-                storedPattern
-                model
-        )
+    viewPattern
+        model.patternContainerDimensions
+        model.maybeDrag
+        storedPattern
+        model
 
 
-viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern BottomLeft -> LoadedData -> Html Msg
+viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewPattern maybeDimensions maybeDrag storedPattern model =
     let
         { pattern, center, zoom } =
@@ -520,56 +528,52 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
     in
     case maybeDimensions of
         Nothing ->
-            Html.text ""
+            Element.none
 
         Just { width, height } ->
             let
-                currentCenter =
-                    case maybeDrag of
-                        Nothing ->
-                            Point2d.at resolution center
-
-                        Just drag ->
-                            Point2d.at resolution center
-                                |> Point2d.translateBy
-                                    (Vector2d.fromPixels
-                                        { x = drag.start.x - drag.current.x
-                                        , y = drag.start.y - drag.current.y
-                                        }
-                                    )
-
                 resolution =
                     Pixels.pixels (zoom * width / 336)
                         |> Quantity.per (Length.millimeters 1)
+
+                currentCenter =
+                    case maybeDrag of
+                        Nothing ->
+                            center
+
+                        Just drag ->
+                            center
+                                |> Point2d.translateBy
+                                    (Vector2d.at_ resolution <|
+                                        Vector2d.fromPixels
+                                            { x = drag.start.x - drag.current.x
+                                            , y = drag.start.y - drag.current.y
+                                            }
+                                    )
             in
-            Svg.svg
-                [ Svg.Attributes.viewBox <|
-                    String.join " "
-                        [ String.fromFloat (width / -2)
-                        , String.fromFloat (height / -2)
-                        , String.fromFloat width
-                        , String.fromFloat height
-                        ]
-                , Html.Attributes.style "user-select" "none"
-                , Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-                , Html.Events.on "mousedown" <|
-                    Decode.map MouseDown <|
-                        Decode.map2 Position
-                            (Decode.field "screenX" Decode.float)
-                            (Decode.field "screenY" Decode.float)
+            Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.htmlAttribute <|
+                    Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                , Element.htmlAttribute <|
+                    Html.Events.on "mousedown" <|
+                        Decode.map MouseDown <|
+                            Decode.map2 Position
+                                (Decode.field "screenX" Decode.float)
+                                (Decode.field "screenY" Decode.float)
                 ]
-                [ Svg.translateBy (Vector2d.from currentCenter Point2d.origin) <|
-                    Pattern.draw
-                        { onHover = HoveredObject
-                        , onLeave = LeftObject
-                        , onFocus = FocusedObject
-                        , onBlur = BluredObject
+                (Element.map PatternMsg <|
+                    Ui.Molecule.Pattern.view
+                        { id = "pattern" }
+                        { width = width
+                        , height = height
+                        , resolution = resolution
+                        , center = currentCenter
                         }
                         pattern
-                        resolution
-                        model.focusedObject
-                        model.hoveredObject
-                ]
+                        model.patternState
+                )
 
 
 
@@ -600,15 +604,7 @@ viewLeftToolbar pattern model =
         , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
-        , Element.padding Ui.Space.level1
         , Element.spacing Ui.Space.level1
-        , Border.widthEach
-            { top = 0
-            , bottom = 0
-            , left = 0
-            , right = 1
-            }
-        , Border.color Ui.Color.secondaryDark
         ]
         (Ui.Atom.Tabs.view
             { label = "Data"
@@ -629,17 +625,13 @@ viewLeftToolbar pattern model =
                     case tag of
                         ObjectsTab ->
                             Ui.Molecule.ObjectList.view
-                                { onHover = HoveredObject
-                                , onLeave = LeftObject
-                                , onFocus = FocusedObject
-                                , onBlur = BluredObject
+                                { toMsg = ObjectListMsg
                                 , hidePressed = PressedHideObject
                                 , editPressed = PressedEditObject
                                 , removePressed = PressedRemoveObject
                                 }
                                 pattern
-                                model.focusedObject
-                                model.hoveredObject
+                                model.patternState
 
                         VariablesTab ->
                             Ui.Molecule.VariableList.view
@@ -661,14 +653,13 @@ viewRightToolbar pattern model =
     Element.el
         [ Element.width (Element.maximum 500 Element.fill)
         , Element.height Element.fill
-        , Element.padding Ui.Space.level1
         , Element.scrollbarY
         , Background.color Ui.Color.white
         , Border.widthEach
-            { top = 0
-            , bottom = 0
+            { top = 1
+            , bottom = 4
             , left = 1
-            , right = 0
+            , right = 1
             }
         , Border.color Ui.Color.secondaryDark
         ]
@@ -813,6 +804,20 @@ type Msg
     = NoOp
     | PatternReceived (Result Http.Error (StoredPattern BottomLeft))
     | PatternUpdateReceived (Result Http.Error ())
+      -- TOP TOOLBAR
+    | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
+      -- LEFT TOOLBAR
+    | SelectedTab Tab String
+    | ObjectListMsg Ui.Molecule.ObjectList.Msg
+    | PressedHideObject Object
+    | PressedEditObject Object
+    | PressedRemoveObject Object
+      -- PATTERN
+    | PatternMsg Ui.Molecule.Pattern.Msg
+    | HoveredObject Object
+    | LeftObject Object
+    | FocusedObject Object
+    | BluredObject Object
     | WindowResized
     | PatternContainerViewportRequested
     | PatternContainerViewportReceived (Result Browser.Dom.Error Browser.Dom.Viewport)
@@ -821,29 +826,17 @@ type Msg
     | MouseDown Position
     | MouseMove Position
     | MouseUp Position
-      -- PATTERN
-    | HoveredObject Object
-    | LeftObject Object
-    | FocusedObject Object
-    | BluredObject Object
-      -- TOP TOOLBAR
-    | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
-      -- LEFT TOOLBAR
+      -- RIGHT TOOLBAR
     | DialogCreateMsg Dialog.CreateMsg
     | DialogEditMsg Dialog.EditMsg
     | HoveredVariable String
     | LeftVariable String
     | FocusedVariable String
     | BluredVariable String
-      -- RIGHT TOOLBAR
-    | ToolbarTogglePressed
-    | SelectedTab Tab String
+      -- VARIABLES
     | VariableCreatePressed
     | VariableEditPressed String
     | VariableRemovePressed String
-    | PressedHideObject Object
-    | PressedEditObject Object
-    | PressedRemoveObject Object
       -- VARIABLE DIALOG
     | VariableNameChanged String
     | VariableValueChanged String
@@ -887,8 +880,7 @@ update key msg model =
 
                                 -- PATTERN
                                 , storedPattern = storedPattern
-                                , focusedObject = Nothing
-                                , hoveredObject = Nothing
+                                , patternState = Ui.Molecule.Pattern.init
 
                                 -- TOP TOOLBAR
                                 , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
@@ -1176,36 +1168,53 @@ updateWithData key msg model =
             ( { model | focusedVariable = Nothing }, Cmd.none )
 
         -- PATTERN
+        PatternMsg patternMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.Pattern.update patternMsg
+                        model.storedPattern.pattern
+                        model.patternState
+              }
+            , Cmd.none
+            )
+
         HoveredObject object ->
-            ( { model | hoveredObject = Just object }
+            let
+                { patternState } =
+                    model
+            in
+            ( { model | patternState = { patternState | hoveredObject = Just object } }
             , Cmd.none
             )
 
         LeftObject object ->
-            ( { model | hoveredObject = Nothing }
+            let
+                { patternState } =
+                    model
+            in
+            ( { model | patternState = { patternState | hoveredObject = Nothing } }
             , Cmd.none
             )
 
         FocusedObject object ->
-            ( { model | focusedObject = Just object }
+            let
+                { patternState } =
+                    model
+            in
+            ( { model | patternState = { patternState | focusedObject = Just object } }
             , Cmd.none
             )
 
         BluredObject object ->
-            ( { model | focusedObject = Nothing }
+            let
+                { patternState } =
+                    model
+            in
+            ( { model | patternState = { patternState | focusedObject = Nothing } }
             , Cmd.none
             )
 
         -- RIGHT TOOLBAR
-        ToolbarTogglePressed ->
-            ( { model
-                | rightToolbarVisible = not model.rightToolbarVisible
-                , patternContainerDimensions = Nothing
-              }
-            , Browser.Dom.getViewportOf "pattern-container"
-                |> Task.attempt PatternContainerViewportReceived
-            )
-
         SelectedTab tab id ->
             ( { model | selectedTab = tab }
             , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
@@ -1354,7 +1363,17 @@ updateWithData key msg model =
             , Cmd.none
             )
 
-        -- POINTS
+        -- OBJECTS
+        ObjectListMsg objectListMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.ObjectList.update objectListMsg
+                        model.storedPattern.pattern
+                        model.patternState
+              }
+            , Cmd.none
+            )
+
         PressedHideObject object ->
             ( model, Cmd.none )
 

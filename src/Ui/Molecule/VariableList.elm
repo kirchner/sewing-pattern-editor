@@ -43,14 +43,14 @@ view cfg pattern focusedVariable hoveredVariable =
             , left = 1
             , right = 1
             }
-        , Border.rounded 3
-        , Border.color Ui.Color.transparent
+        , Border.color Ui.Color.secondaryDark
         , Element.focused [ Border.color Ui.Color.complementary ]
         ]
         (Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
             , Element.scrollbarY
+            , Element.paddingXY 0 Ui.Space.level1
             ]
             (Element.table
                 [ Element.htmlAttribute (Html.Attributes.tabindex 0) ]

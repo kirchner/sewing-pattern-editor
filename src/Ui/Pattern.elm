@@ -54,8 +54,7 @@ import VirtualDom
 type alias Config msg =
     { onHover : msg
     , onLeave : msg
-    , onFocus : msg
-    , onBlur : msg
+    , onSelect : msg
     }
 
 
@@ -200,8 +199,8 @@ type alias Detail coordinates =
 
 
 {-| -}
-drawPoint : Config msg -> String -> Point coordinates -> Resolution -> Bool -> Bool -> Layers msg
-drawPoint cfg name point resolution focused hovered =
+drawPoint : Config msg -> String -> Point coordinates -> Resolution -> Bool -> Bool -> Bool -> Layers msg
+drawPoint cfg name point resolution focused hovered selected =
     let
         point2d =
             Point2d.at resolution point.point2d
@@ -213,46 +212,35 @@ drawPoint cfg name point resolution focused hovered =
             else
                 5
     in
-    case ( focused, hovered ) of
-        ( False, False ) ->
-            { inactive = pointInactive point2d
-            , active = Svg.text ""
-            , outline = Svg.text ""
-            , events = pointEvents cfg point2d
-            }
+    { inactive =
+        if not selected && not hovered then
+            pointInactive point2d
 
-        ( True, False ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ pointLabel name point2d
-                    , pointFocused point2d
-                    ]
-            , outline = Svg.text ""
-            , events = pointEvents cfg point2d
-            }
+        else
+            Svg.text ""
+    , active =
+        if selected then
+            Svg.g []
+                [ pointLabel name point2d
+                , pointSelected point2d
+                ]
 
-        ( False, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ pointLabel name point2d
-                    , pointHovered point2d
-                    ]
-            , outline = Svg.text ""
-            , events = pointEvents cfg point2d
-            }
+        else if hovered then
+            Svg.g []
+                [ pointLabel name point2d
+                , pointHovered point2d
+                ]
 
-        ( True, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ pointLabel name point2d
-                    , pointFocused point2d
-                    ]
-            , outline = Svg.text ""
-            , events = pointEvents cfg point2d
-            }
+        else
+            Svg.text ""
+    , outline =
+        if focused then
+            pointOutline point2d
+
+        else
+            Svg.text ""
+    , events = pointEvents cfg point2d
+    }
 
 
 pointLabel : String -> Point2d Pixels coordinates -> Svg msg
@@ -511,36 +499,31 @@ pointOutline : Point2d Pixels coordinates -> Svg msg
 pointOutline point2d =
     Svg.circle2d
         [ Svg.Attributes.fill "none"
-        , Svg.Attributes.stroke (toColor Ui.Color.primary)
-        , Svg.Attributes.strokeWidth "2"
-        , Svg.Attributes.strokeDasharray "4 7"
-        , Svg.Attributes.strokeLinecap "round"
+        , Svg.Attributes.stroke (toColor Ui.Color.black)
+        , Svg.Attributes.strokeWidth "1"
         ]
-        (Circle2d.withRadius (pixels 9) point2d)
+        (Circle2d.withRadius (pixels 8) point2d)
 
 
 pointHovered : Point2d Pixels coordinates -> Svg msg
 pointHovered point2d =
     Svg.g []
         [ Svg.circle2d
-            [ Svg.Attributes.fill (toColor Ui.Color.secondary)
-            , Svg.Attributes.stroke (toColor Ui.Color.black)
-            , Svg.Attributes.strokeWidth "1"
-            ]
-            (Circle2d.withRadius (pixels 7) point2d)
+            [ Svg.Attributes.fill (toColor Ui.Color.secondary) ]
+            (Circle2d.withRadius (pixels 9) point2d)
         , Svg.circle2d
             [ Svg.Attributes.fill (toColor Ui.Color.black) ]
             (Circle2d.withRadius (pixels 3) point2d)
         ]
 
 
-pointFocused : Point2d Pixels coordinates -> Svg msg
-pointFocused point2d =
+pointSelected : Point2d Pixels coordinates -> Svg msg
+pointSelected point2d =
     Svg.g []
         [ Svg.circle2d
             [ Svg.Attributes.fill (toColor Ui.Color.primary)
             ]
-            (Circle2d.withRadius (pixels 8) point2d)
+            (Circle2d.withRadius (pixels 9) point2d)
         , Svg.circle2d
             [ Svg.Attributes.fill (toColor Ui.Color.white) ]
             (Circle2d.withRadius (pixels 3) point2d)
@@ -575,11 +558,9 @@ pointEvents cfg point2d =
         [ Svg.Attributes.stroke "transparent"
         , Svg.Attributes.fill "transparent"
         , Svg.Attributes.style "outline: none;"
-        , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
-        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        , Svg.Events.onClick cfg.onSelect
         ]
         (Circle2d.withRadius (pixels 8) point2d)
 
@@ -589,8 +570,8 @@ pointEvents cfg point2d =
 
 
 {-| -}
-drawAxis : Config msg -> String -> Axis coordinates -> Resolution -> Bool -> Bool -> Layers msg
-drawAxis cfg name axis resolution focused hovered =
+drawAxis : Config msg -> String -> Axis coordinates -> Resolution -> Bool -> Bool -> Bool -> Layers msg
+drawAxis cfg name axis resolution focused hovered selected =
     let
         axis2d =
             Axis2d.at resolution axis.axis2d
@@ -737,11 +718,9 @@ axisEvents cfg axis2d =
         , Svg.Attributes.strokeWidth "8"
         , Svg.Attributes.fill "transparent"
         , Svg.Attributes.style "outline: none;"
-        , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
-        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        , Svg.Events.onClick cfg.onSelect
         ]
         (LineSegment2d.along axis2d
             (pixels -1000)
@@ -754,8 +733,8 @@ axisEvents cfg axis2d =
 
 
 {-| -}
-drawCircle : Config msg -> String -> Circle coordinates -> Resolution -> Bool -> Bool -> Layers msg
-drawCircle cfg name circle resolution focused hovered =
+drawCircle : Config msg -> String -> Circle coordinates -> Resolution -> Bool -> Bool -> Bool -> Layers msg
+drawCircle cfg name circle resolution focused hovered selected =
     let
         circle2d =
             Circle2d.at resolution circle.circle2d
@@ -905,11 +884,9 @@ circleEvents cfg circle2d =
         , Svg.Attributes.strokeWidth "8"
         , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
-        , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
-        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        , Svg.Events.onClick cfg.onSelect
         ]
         circle2d
 
@@ -919,8 +896,8 @@ circleEvents cfg circle2d =
 
 
 {-| -}
-drawCurve : Config msg -> String -> Curve coordinates -> Resolution -> Bool -> Bool -> Layers msg
-drawCurve cfg name curve resolution focused hovered =
+drawCurve : Config msg -> String -> Curve coordinates -> Resolution -> Bool -> Bool -> Bool -> Layers msg
+drawCurve cfg name curve resolution focused hovered selected =
     let
         curve2d =
             Curve2d.at resolution curve.curve2d
@@ -1113,11 +1090,9 @@ curveEvents cfg curve2d =
         , Svg.Attributes.strokeWidth "8"
         , Svg.Attributes.fill "none"
         , Svg.Attributes.style "outline: none;"
-        , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
-        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        , Svg.Events.onClick cfg.onSelect
         ]
         curve2d
 
@@ -1127,8 +1102,8 @@ curveEvents cfg curve2d =
 
 
 {-| -}
-drawDetail : Config msg -> String -> Detail coordinates -> Resolution -> Bool -> Bool -> Layers msg
-drawDetail cfg name detail resolution focused hovered =
+drawDetail : Config msg -> String -> Detail coordinates -> Resolution -> Bool -> Bool -> Bool -> Layers msg
+drawDetail cfg name detail resolution focused hovered selected =
     let
         detail2d =
             Detail2d.at resolution detail.detail2d
@@ -1321,11 +1296,9 @@ detailEvents cfg detail2d =
         , Svg.Attributes.strokeWidth "8"
         , Svg.Attributes.fill "transparent"
         , Svg.Attributes.style "outline: none;"
-        , VirtualDom.attribute "tabindex" "0"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.on "focus" (Decode.succeed cfg.onFocus)
-        , Svg.Events.on "blur" (Decode.succeed cfg.onBlur)
+        , Svg.Events.onClick cfg.onSelect
         ]
         detail2d
 
