@@ -106,18 +106,6 @@ type Model
     | Loaded LoadedData
 
 
-{-| -}
-init : String -> ( Model, Cmd Msg )
-init slug =
-    ( Loading
-    , Api.getPattern PatternReceived slug
-    )
-
-
-type BottomLeft
-    = BottomLeft BottomLeft
-
-
 type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
@@ -131,26 +119,13 @@ type alias LoadedData =
     , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
 
     -- LEFT TOOLBAR
-    , maybeDialog : Maybe Dialog
-    , preventActionMenuClose : Bool
+    , selectedTab : Tab
     , focusedVariable : Maybe String
     , hoveredVariable : Maybe String
 
     -- RIGHT TOOLBAR
-    , rightToolbarVisible : Bool
-    , selectedTab : Tab
-    , maybeVariableDialog : Maybe VariableDialog
-    }
-
-
-type Tab
-    = ObjectsTab
-    | VariablesTab
-
-
-type alias Dimensions =
-    { width : Float
-    , height : Float
+    , maybeDialog : Maybe Dialog
+    , preventActionMenuClose : Bool
     }
 
 
@@ -166,9 +141,10 @@ type alias Position =
     }
 
 
-type Dialog
-    = CreateObject Dialog.Create
-    | EditObject String Dialog.Edit
+type alias Dimensions =
+    { width : Float
+    , height : Float
+    }
 
 
 type Modal
@@ -180,16 +156,62 @@ type Modal
     | VariableDeleteConfirm String
 
 
-type VariableDialog
-    = VariableDialogCreate
+type BottomLeft
+    = BottomLeft BottomLeft
+
+
+type Tab
+    = ObjectsTab
+    | VariablesTab
+
+
+type Dialog
+    = CreateObject Dialog.Create
+    | EditObject String Dialog.Edit
+    | CreateVariable
         { name : String
         , nameHelp : Maybe String
         , value : String
         }
-    | VariableDialogEdit
+    | EditVariable
         { name : String
         , value : String
         }
+
+
+{-| -}
+init : String -> ( Model, Cmd Msg )
+init slug =
+    ( Loading
+    , Api.getPattern ReceivedPattern slug
+    )
+
+
+initLoaded : StoredPattern BottomLeft -> ( Model, Cmd Msg )
+initLoaded storedPattern =
+    ( Loaded
+        { maybeDrag = Nothing
+        , patternContainerDimensions = Nothing
+        , maybeModal = Nothing
+
+        -- PATTERN
+        , storedPattern = storedPattern
+        , patternState = Ui.Molecule.Pattern.init
+
+        -- TOP TOOLBAR
+        , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
+
+        -- LEFT TOOLBAR
+        , selectedTab = ObjectsTab
+        , focusedVariable = Nothing
+        , hoveredVariable = Nothing
+
+        -- RIGHT TOOLBAR
+        , maybeDialog = Nothing
+        , preventActionMenuClose = False
+        }
+    , Cmd.none
+    )
 
 
 
@@ -227,6 +249,10 @@ view model =
             , body = viewEditor data.storedPattern data
             , dialog = Maybe.map (viewModal data.storedPattern.pattern) data.maybeModal
             }
+
+
+
+---- MODAL
 
 
 viewModal : Pattern BottomLeft -> ( Modal, Ui.Modal.State ) -> Element Msg
@@ -279,8 +305,8 @@ viewModal pattern ( modal, state ) =
                     ]
             in
             Ui.Modal.small state
-                { onCancelPress = ModalCancelPressed
-                , onClosed = ModalClosed
+                { onCancelPress = UserPressedModalCancel
+                , onClosed = UserClosedModal
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
                 , content =
                     Element.column
@@ -312,13 +338,13 @@ viewModal pattern ( modal, state ) =
                 , actions =
                     [ Ui.Atom.btnDanger
                         { id = "point-delete-modal__delete-btn"
-                        , onPress = Just PointDeleteModalDeletePressed
+                        , onPress = Just UserPressedPointDeleteModalDelete
                         , label = "Delete point"
                         }
                     , Element.el [ Element.alignRight ] <|
                         Ui.Atom.btnCancel
                             { id = "point-delete-modal__cancel-btn"
-                            , onPress = Just ModalCancelPressed
+                            , onPress = Just UserPressedModalCancel
                             , label = "Cancel"
                             }
                     ]
@@ -328,50 +354,43 @@ viewModal pattern ( modal, state ) =
             viewDeleteModal state
                 { name = objectName aAxis
                 , kind = "axis"
-                , onDeletePress = AxisDeleteModalDeletePressed
+                , onDeletePress = UserPressedAxisDeleteModalDelete
                 }
 
         CircleDeleteConfirm aCircle ->
             viewDeleteModal state
                 { name = objectName aCircle
                 , kind = "circle"
-                , onDeletePress = CircleDeleteModalDeletePressed
+                , onDeletePress = UserPressedCircleDeleteModalDelete
                 }
 
         CurveDeleteConfirm aCurve ->
             viewDeleteModal state
                 { name = objectName aCurve
                 , kind = "curve"
-                , onDeletePress = CurveDeleteModalDeletePressed
+                , onDeletePress = UserPressedCurveDeleteModalDelete
                 }
 
         DetailDeleteConfirm aDetail ->
             viewDeleteModal state
                 { name = objectName aDetail
                 , kind = "detail"
-                , onDeletePress = DetailDeleteModalDeletePressed
+                , onDeletePress = UserPressedDetailDeleteModalDelete
                 }
 
         VariableDeleteConfirm variable ->
             viewDeleteModal state
                 { name = variable
                 , kind = "variable"
-                , onDeletePress = VariableDeleteModalDeletePressed
+                , onDeletePress = UserPressedVariableDeleteModalDelete
                 }
 
 
-viewDeleteModal :
-    Ui.Modal.State
-    ->
-        { name : String
-        , kind : String
-        , onDeletePress : Msg
-        }
-    -> Element Msg
+viewDeleteModal : Ui.Modal.State -> { name : String, kind : String, onDeletePress : Msg } -> Element Msg
 viewDeleteModal state { name, kind, onDeletePress } =
     Ui.Modal.small state
-        { onCancelPress = ModalCancelPressed
-        , onClosed = ModalClosed
+        { onCancelPress = UserPressedModalCancel
+        , onClosed = UserClosedModal
         , title = "Delete «" ++ name ++ "»?"
         , content =
             Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
@@ -390,120 +409,95 @@ viewDeleteModal state { name, kind, onDeletePress } =
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "delete-modal__cancel-btn"
-                    , onPress = Just ModalCancelPressed
+                    , onPress = Just UserPressedModalCancel
                     , label = "Cancel"
                     }
             ]
         }
 
 
-type CreateAction
-    = CreatePoint
-    | CreateAxis
-    | CreateCircle
-    | CreateCurve
-    | CreateDetail
+
+---- EDITOR
 
 
 viewEditor : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewEditor storedPattern model =
-    let
-        { pattern, name } =
-            storedPattern
-    in
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.padding (Ui.Space.level1 // 2)
-            , Background.color Ui.Color.secondary
-            ]
-            [ Ui.Molecule.MenuBtn.viewPrimary
-                { id = "create-object"
-                , onMsg = CreateObjectMenuBtnMsg
-                , actions =
-                    [ { label = "Create a point"
-                      , action = CreatePoint
-                      }
-                    , { label = "Create an axis"
-                      , action = CreateAxis
-                      }
-                    , { label = "Create a circle"
-                      , action = CreateCircle
-                      }
-                    , { label = "Create a curve"
-                      , action = CreateCurve
-                      }
-                    , { label = "Create a detail"
-                      , action = CreateDetail
-                      }
-                    ]
-                }
-                model.createObjectMenuBtn
-            , Element.el
-                [ Element.centerX
-                , Font.bold
-                ]
-                (Ui.Typography.body name)
-            , Element.newTabLink
-                [ Element.alignRight
-                , Element.mouseOver [ Font.color Ui.Color.primary ]
-                , Element.paddingXY Ui.Space.level1 0
-                ]
-                { url = "https://github.com/kirchner/sewing-pattern-editor"
-                , label = Ui.Atom.faBrandLarge "github"
-                }
-            ]
-        , Element.el
-            [ Element.width Element.fill
-            , Element.height (Element.px 2)
-            , Background.color Ui.Color.primary
-            ]
-            Element.none
+        [ viewTopToolbar model storedPattern.name
+        , horizontalRule
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
             , Element.clip
             , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
             ]
-            [ viewLeftToolbar pattern model
-            , Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.inFront <|
-                    Element.el
-                        [ Element.alignRight
-                        , Element.alignBottom
-                        ]
-                        (viewZoom model)
-                , Background.color (Element.rgb 255 255 255)
-                , Border.widthEach
-                    { top = 1
-                    , bottom = 4
-                    , left = 1
-                    , right = 1
-                    }
-                , Border.color Ui.Color.secondaryDark
-                , Element.focused
-                    [ Border.color Ui.Color.complementary ]
+            [ viewLeftToolbar storedPattern.pattern model
+            , viewWorkspace storedPattern model
+            , viewRightToolbar storedPattern.pattern model
+            ]
+        , horizontalRule
+        ]
+
+
+horizontalRule : Element msg
+horizontalRule =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height (Element.px 2)
+        , Background.color Ui.Color.primary
+        ]
+        Element.none
+
+
+
+---- TOP TOOLBAR
+
+
+viewTopToolbar : LoadedData -> String -> Element Msg
+viewTopToolbar model name =
+    Element.row
+        [ Element.width Element.fill
+        , Element.padding (Ui.Space.level1 // 2)
+        , Background.color Ui.Color.secondary
+        ]
+        [ Ui.Molecule.MenuBtn.viewPrimary
+            { id = "create-object"
+            , onMsg = CreateObjectMenuBtnMsg
+            , actions =
+                [ { label = "Create a point"
+                  , action = CreatePoint
+                  }
+                , { label = "Create an axis"
+                  , action = CreateAxis
+                  }
+                , { label = "Create a circle"
+                  , action = CreateCircle
+                  }
+                , { label = "Create a curve"
+                  , action = CreateCurve
+                  }
+                , { label = "Create a detail"
+                  , action = CreateDetail
+                  }
                 ]
-                (Element.el
-                    [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
-                    , Element.width Element.fill
-                    , Element.height Element.fill
-                    ]
-                    (viewWorkspace storedPattern model)
-                )
-            , viewRightToolbar pattern model
-            ]
+            }
+            model.createObjectMenuBtn
         , Element.el
-            [ Element.width Element.fill
-            , Element.height (Element.px 2)
-            , Background.color Ui.Color.primary
+            [ Element.centerX
+            , Font.bold
             ]
-            Element.none
+            (Ui.Typography.body name)
+        , Element.newTabLink
+            [ Element.alignRight
+            , Element.mouseOver [ Font.color Ui.Color.primary ]
+            , Element.paddingXY Ui.Space.level1 0
+            ]
+            { url = "https://github.com/kirchner/sewing-pattern-editor"
+            , label = Ui.Atom.faBrandLarge "github"
+            }
         ]
 
 
@@ -513,11 +507,33 @@ viewEditor storedPattern model =
 
 viewWorkspace : StoredPattern BottomLeft -> LoadedData -> Element Msg
 viewWorkspace storedPattern model =
-    viewPattern
-        model.patternContainerDimensions
-        model.maybeDrag
-        storedPattern
-        model
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.inFront <|
+            Element.el
+                [ Element.alignRight
+                , Element.alignBottom
+                ]
+                (viewZoom model)
+        , Background.color (Element.rgb 255 255 255)
+        , Border.widthEach
+            { top = 1
+            , bottom = 4
+            , left = 1
+            , right = 1
+            }
+        , Border.color Ui.Color.secondaryDark
+        , Element.focused
+            [ Border.color Ui.Color.complementary ]
+        ]
+        (Element.el
+            [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
+            , Element.width Element.fill
+            , Element.height Element.fill
+            ]
+            (viewPattern model.patternContainerDimensions model.maybeDrag storedPattern model)
+        )
 
 
 viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern BottomLeft -> LoadedData -> Element Msg
@@ -576,10 +592,7 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                 )
 
 
-
----- ZOOM
-
-
+viewZoom : LoadedData -> Element Msg
 viewZoom model =
     Element.row
         [ Element.padding 20
@@ -587,17 +600,22 @@ viewZoom model =
         ]
         [ Ui.Atom.btnIconLarge
             { id = "zoom-plus-btn"
-            , onPress = Just ZoomPlusPressed
+            , onPress = Just UserPressedZoomPlus
             , icon = "search-plus"
             }
         , Ui.Atom.btnIconLarge
             { id = "zoom-minus-btn"
-            , onPress = Just ZoomMinusPressed
+            , onPress = Just UserPressedZoomMinus
             , icon = "search-minus"
             }
         ]
 
 
+
+---- LEFT TOOLBAR
+
+
+viewLeftToolbar : Pattern BottomLeft -> LoadedData -> Element Msg
 viewLeftToolbar pattern model =
     Element.el
         [ Element.width (Element.px 400)
@@ -619,28 +637,28 @@ viewLeftToolbar pattern model =
                   }
                 ]
             , selected = model.selectedTab
-            , onSelect = SelectedTab
+            , onSelect = UserSelectedTab
             , content =
                 \tag ->
                     case tag of
                         ObjectsTab ->
                             Ui.Molecule.ObjectList.view
                                 { toMsg = ObjectListMsg
-                                , hidePressed = PressedHideObject
-                                , editPressed = PressedEditObject
-                                , removePressed = PressedRemoveObject
+                                , hidePressed = UserPressedHideObject
+                                , editPressed = UserPressedEditObject
+                                , removePressed = UserPressedRemoveObject
                                 }
                                 pattern
                                 model.patternState
 
                         VariablesTab ->
                             Ui.Molecule.VariableList.view
-                                { onHover = HoveredVariable
-                                , onLeave = LeftVariable
-                                , onFocus = FocusedVariable
-                                , onBlur = BluredVariable
-                                , editPressed = VariableEditPressed
-                                , removePressed = VariableRemovePressed
+                                { onHover = UserHoveredVariable
+                                , onLeave = UserLeftVariable
+                                , onFocus = UserFocusedVariable
+                                , onBlur = UserBluredVariable
+                                , editPressed = UserPressedEditVariable
+                                , removePressed = UserPressedRemoveVariable
                                 }
                                 pattern
                                 model.focusedVariable
@@ -649,6 +667,11 @@ viewLeftToolbar pattern model =
         )
 
 
+
+---- RIGHT TOOLBAR
+
+
+viewRightToolbar : Pattern BottomLeft -> LoadedData -> Element Msg
 viewRightToolbar pattern model =
     Element.el
         [ Element.width (Element.maximum 500 Element.fill)
@@ -665,15 +688,13 @@ viewRightToolbar pattern model =
         ]
         (case model.maybeDialog of
             Nothing ->
-                case model.maybeVariableDialog of
-                    Nothing ->
-                        Element.none
+                Element.none
 
-                    Just (VariableDialogCreate stuff) ->
-                        viewVariable stuff.name stuff.value
+            Just (CreateVariable stuff) ->
+                viewVariable stuff.name stuff.value
 
-                    Just (VariableDialogEdit stuff) ->
-                        viewEditVariable stuff.name stuff.value
+            Just (EditVariable stuff) ->
+                viewEditVariable stuff.name stuff.value
 
             Just (CreateObject dialog) ->
                 Element.map DialogCreateMsg <|
@@ -695,7 +716,7 @@ viewRightToolbar pattern model =
 
 
 
--- VARIABLE
+---- VARIABLE
 
 
 viewVariable : String -> String -> Element Msg
@@ -717,14 +738,14 @@ viewVariable name value =
             ]
             [ Ui.Atom.inputText
                 { id = "name-input"
-                , onChange = VariableNameChanged
+                , onChange = UserChangedVariableName
                 , text = name
                 , label = "Pick a name"
                 , help = Nothing
                 }
             , Ui.Atom.inputFormula
                 { id = "variable-value--input"
-                , onChange = VariableValueChanged
+                , onChange = UserChangedVariableValue
                 , text = value
                 , label = "Value"
                 , help = Nothing
@@ -737,13 +758,13 @@ viewVariable name value =
             [ Element.el [ Element.alignLeft ] <|
                 Ui.Atom.btnPrimary
                     { id = "variable-create-submit-btn"
-                    , onPress = Just VariableCreateSubmitPressed
+                    , onPress = Just UserPressedVariableCreateSubmit
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "variable-create-cancel-btn"
-                    , onPress = Just VariableDialogCancelPressed
+                    , onPress = Just UserPressedVariableDialogCancel
                     , label = "Cancel"
                     }
             ]
@@ -765,7 +786,7 @@ viewEditVariable name value =
             ]
         , Ui.Atom.inputFormula
             { id = "variable-value--input"
-            , onChange = VariableValueChanged
+            , onChange = UserChangedVariableValue
             , text = value
             , label = "Value"
             , help = Nothing
@@ -777,22 +798,17 @@ viewEditVariable name value =
             [ Element.el [ Element.alignLeft ] <|
                 Ui.Atom.btnPrimary
                     { id = "variable-edit-update-btn"
-                    , onPress = Just VariableEditUpdatePressed
+                    , onPress = Just UserPressedVariableEditUpdate
                     , label = "Update"
                     }
             , Element.el [ Element.alignRight ] <|
                 Ui.Atom.btnCancel
                     { id = "variable-edit-cancel-btn"
-                    , onPress = Just VariableDialogCancelPressed
+                    , onPress = Just UserPressedVariableDialogCancel
                     , label = "Cancel"
                     }
             ]
         ]
-
-
-objectName : A object -> String
-objectName =
-    Pattern.name >> Maybe.withDefault "<no name>"
 
 
 
@@ -802,102 +818,77 @@ objectName =
 {-| -}
 type Msg
     = NoOp
-    | PatternReceived (Result Http.Error (StoredPattern BottomLeft))
-    | PatternUpdateReceived (Result Http.Error ())
+    | ReceivedPattern (Result Http.Error (StoredPattern BottomLeft))
+    | ReceivedPatternUpdate (Result Http.Error ())
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
       -- LEFT TOOLBAR
-    | SelectedTab Tab String
+    | UserSelectedTab Tab String
+      -- LEFT TOOLBAR OBJECTS
     | ObjectListMsg Ui.Molecule.ObjectList.Msg
-    | PressedHideObject Object
-    | PressedEditObject Object
-    | PressedRemoveObject Object
+    | UserPressedHideObject Object
+    | UserPressedEditObject Object
+    | UserPressedRemoveObject Object
+      -- LEFT TOOLBAR VARIABLES
+    | UserHoveredVariable String
+    | UserLeftVariable String
+    | UserFocusedVariable String
+    | UserBluredVariable String
+    | UserPressedEditVariable String
+    | UserPressedRemoveVariable String
+    | UserPressedCreateVariable
       -- PATTERN
     | PatternMsg Ui.Molecule.Pattern.Msg
-    | HoveredObject Object
-    | LeftObject Object
-    | FocusedObject Object
-    | BluredObject Object
-    | WindowResized
-    | PatternContainerViewportRequested
-    | PatternContainerViewportReceived (Result Browser.Dom.Error Browser.Dom.Viewport)
-    | ZoomPlusPressed
-    | ZoomMinusPressed
+    | UserResizedWindow
+    | AnimationFrameRequestedPatternContainerViewport
+    | UpdateRequestedPatternContainerViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
+    | UserPressedZoomPlus
+    | UserPressedZoomMinus
     | MouseDown Position
     | MouseMove Position
     | MouseUp Position
       -- RIGHT TOOLBAR
     | DialogCreateMsg Dialog.CreateMsg
     | DialogEditMsg Dialog.EditMsg
-    | HoveredVariable String
-    | LeftVariable String
-    | FocusedVariable String
-    | BluredVariable String
-      -- VARIABLES
-    | VariableCreatePressed
-    | VariableEditPressed String
-    | VariableRemovePressed String
       -- VARIABLE DIALOG
-    | VariableNameChanged String
-    | VariableValueChanged String
-    | VariableCreateSubmitPressed
-    | VariableEditUpdatePressed
-    | VariableDialogCancelPressed
+    | UserChangedVariableName String
+    | UserChangedVariableValue String
+    | UserPressedVariableCreateSubmit
+    | UserPressedVariableEditUpdate
+    | UserPressedVariableDialogCancel
       -- MODALS
-    | PointDeleteModalDeletePressed
-    | AxisDeleteModalDeletePressed
-    | CircleDeleteModalDeletePressed
-    | CurveDeleteModalDeletePressed
-    | DetailDeleteModalDeletePressed
-    | VariableDeleteModalDeletePressed
-    | ModalStateChanged Ui.Modal.State
-    | ModalCancelPressed
-    | ModalClosed
+    | UserPressedPointDeleteModalDelete
+    | UserPressedAxisDeleteModalDelete
+    | UserPressedCircleDeleteModalDelete
+    | UserPressedCurveDeleteModalDelete
+    | UserPressedDetailDeleteModalDelete
+    | UserPressedVariableDeleteModalDelete
+    | ChangedModalState Ui.Modal.State
+    | UserPressedModalCancel
+    | UserClosedModal
+
+
+type CreateAction
+    = CreatePoint
+    | CreateAxis
+    | CreateCircle
+    | CreateCurve
+    | CreateDetail
 
 
 {-| -}
-update :
-    Navigation.Key
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg )
+update : Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
 update key msg model =
     case model of
         Loading ->
             case msg of
-                PatternReceived result ->
+                ReceivedPattern result ->
                     case result of
                         Err error ->
-                            ( Error
-                            , Cmd.none
-                            )
+                            ( Error, Cmd.none )
 
                         Ok storedPattern ->
-                            ( Loaded
-                                { maybeDrag = Nothing
-                                , patternContainerDimensions = Nothing
-                                , maybeModal = Nothing
-
-                                -- PATTERN
-                                , storedPattern = storedPattern
-                                , patternState = Ui.Molecule.Pattern.init
-
-                                -- TOP TOOLBAR
-                                , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
-
-                                -- LEFT TOOLBAR
-                                , maybeDialog = Nothing
-                                , preventActionMenuClose = False
-                                , focusedVariable = Nothing
-                                , hoveredVariable = Nothing
-
-                                -- RIGHT TOOLBAR
-                                , rightToolbarVisible = False
-                                , selectedTab = ObjectsTab
-                                , maybeVariableDialog = Nothing
-                                }
-                            , Cmd.none
-                            )
+                            initLoaded storedPattern
 
                 _ ->
                     ( model, Cmd.none )
@@ -923,7 +914,7 @@ updateWithData key msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        PatternReceived result ->
+        ReceivedPattern result ->
             case result of
                 Err error ->
                     ( model
@@ -935,7 +926,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        PatternUpdateReceived result ->
+        ReceivedPatternUpdate result ->
             case result of
                 Err error ->
                     ( model
@@ -947,20 +938,195 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        WindowResized ->
-            ( model
-            , Browser.Dom.getViewportOf "pattern-container"
-                |> Task.attempt PatternContainerViewportReceived
+        -- TOP TOOLBAR
+        CreateObjectMenuBtnMsg menuBtnMsg ->
+            let
+                ( newMenuBtn, menuBtnCmd, maybeAction ) =
+                    Ui.Molecule.MenuBtn.update menuBtnMsg model.createObjectMenuBtn
+            in
+            ( { model
+                | createObjectMenuBtn = newMenuBtn
+                , maybeDialog =
+                    case maybeAction of
+                        Nothing ->
+                            model.maybeDialog
+
+                        Just CreatePoint ->
+                            Just (CreateObject Dialog.createPoint)
+
+                        Just CreateAxis ->
+                            Just (CreateObject Dialog.createAxis)
+
+                        Just CreateCircle ->
+                            Just (CreateObject Dialog.createCircle)
+
+                        Just CreateCurve ->
+                            Just (CreateObject Dialog.createCurve)
+
+                        Just CreateDetail ->
+                            Just (CreateObject Dialog.createDetail)
+              }
+            , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
             )
 
-        PatternContainerViewportRequested ->
+        -- LEFT TOOLBAR
+        UserSelectedTab tab id ->
+            ( { model | selectedTab = tab }
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
+            )
+
+        -- LEFT TOOLBAR OBJECTS
+        ObjectListMsg objectListMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.ObjectList.update objectListMsg
+                        model.storedPattern.pattern
+                        model.patternState
+              }
+            , Cmd.none
+            )
+
+        UserPressedHideObject object ->
+            ( model, Cmd.none )
+
+        UserPressedEditObject object ->
+            ( { model
+                | maybeDialog =
+                    case object of
+                        Point aPoint ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aPoint)
+                                (Dialog.editPoint pattern aPoint)
+
+                        Axis aAxis ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aAxis)
+                                (Dialog.editAxis pattern aAxis)
+
+                        Circle aCircle ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aCircle)
+                                (Dialog.editCircle pattern aCircle)
+
+                        Curve aCurve ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aCurve)
+                                (Dialog.editCurve pattern aCurve)
+
+                        Detail aDetail ->
+                            Maybe.map2 EditObject
+                                (Pattern.name aDetail)
+                                (Dialog.editDetail pattern aDetail)
+              }
+            , Cmd.none
+            )
+
+        UserPressedRemoveObject object ->
+            ( { model
+                | maybeModal =
+                    Just
+                        ( case object of
+                            Point aPoint ->
+                                PointDeleteConfirm aPoint
+
+                            Axis aAxis ->
+                                AxisDeleteConfirm aAxis
+
+                            Circle aCircle ->
+                                CircleDeleteConfirm aCircle
+
+                            Curve aCurve ->
+                                CurveDeleteConfirm aCurve
+
+                            Detail aDetail ->
+                                DetailDeleteConfirm aDetail
+                        , Ui.Modal.Opening
+                        )
+              }
+            , Cmd.none
+            )
+
+        -- LEFT TOOLBAR VARIABLES
+        UserHoveredVariable variable ->
+            ( { model | hoveredVariable = Just variable }, Cmd.none )
+
+        UserLeftVariable _ ->
+            ( { model | hoveredVariable = Nothing }, Cmd.none )
+
+        UserFocusedVariable variable ->
+            ( { model | focusedVariable = Just variable }, Cmd.none )
+
+        UserBluredVariable _ ->
+            ( { model | focusedVariable = Nothing }, Cmd.none )
+
+        UserPressedEditVariable variable ->
+            ( { model
+                | maybeDialog =
+                    case Pattern.variableInfo variable pattern of
+                        Nothing ->
+                            Nothing
+
+                        Just value ->
+                            Just <|
+                                EditVariable
+                                    { name = variable
+                                    , value = value
+                                    }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        UserPressedRemoveVariable variable ->
+            ( { model
+                | maybeModal =
+                    Just
+                        ( VariableDeleteConfirm variable
+                        , Ui.Modal.Opening
+                        )
+              }
+            , Cmd.none
+            )
+
+        UserPressedCreateVariable ->
+            ( { model
+                | maybeDialog =
+                    Just <|
+                        CreateVariable
+                            { name = ""
+                            , nameHelp = Nothing
+                            , value = ""
+                            }
+              }
+            , Browser.Dom.focus "name-input"
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        -- PATTERN
+        PatternMsg patternMsg ->
+            ( { model
+                | patternState =
+                    Ui.Molecule.Pattern.update patternMsg
+                        model.storedPattern.pattern
+                        model.patternState
+              }
+            , Cmd.none
+            )
+
+        UserResizedWindow ->
+            ( model
+            , Browser.Dom.getViewportOf "pattern-container"
+                |> Task.attempt UpdateRequestedPatternContainerViewport
+            )
+
+        AnimationFrameRequestedPatternContainerViewport ->
             ( model
             , Process.sleep 500
                 |> Task.andThen (\_ -> Browser.Dom.getViewportOf "pattern-container")
-                |> Task.attempt PatternContainerViewportReceived
+                |> Task.attempt UpdateRequestedPatternContainerViewport
             )
 
-        PatternContainerViewportReceived result ->
+        UpdateRequestedPatternContainerViewport result ->
             case result of
                 Err _ ->
                     ( model, Cmd.none )
@@ -976,7 +1142,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        ZoomPlusPressed ->
+        UserPressedZoomPlus ->
             let
                 newStoredPattern =
                     { storedPattern
@@ -985,10 +1151,10 @@ updateWithData key msg model =
                     }
             in
             ( { model | storedPattern = newStoredPattern }
-            , Api.updatePattern PatternUpdateReceived newStoredPattern
+            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
             )
 
-        ZoomMinusPressed ->
+        UserPressedZoomMinus ->
             let
                 newStoredPattern =
                     { storedPattern
@@ -997,7 +1163,7 @@ updateWithData key msg model =
                     }
             in
             ( { model | storedPattern = newStoredPattern }
-            , Api.updatePattern PatternUpdateReceived newStoredPattern
+            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
             )
 
         MouseDown position ->
@@ -1056,41 +1222,10 @@ updateWithData key msg model =
                         | maybeDrag = Nothing
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
-        -- TOP TOOLBAR
-        CreateObjectMenuBtnMsg menuBtnMsg ->
-            let
-                ( newMenuBtn, menuBtnCmd, maybeAction ) =
-                    Ui.Molecule.MenuBtn.update menuBtnMsg model.createObjectMenuBtn
-            in
-            ( { model
-                | createObjectMenuBtn = newMenuBtn
-                , maybeDialog =
-                    case maybeAction of
-                        Nothing ->
-                            model.maybeDialog
-
-                        Just CreatePoint ->
-                            Just (CreateObject Dialog.createPoint)
-
-                        Just CreateAxis ->
-                            Just (CreateObject Dialog.createAxis)
-
-                        Just CreateCircle ->
-                            Just (CreateObject Dialog.createCircle)
-
-                        Just CreateCurve ->
-                            Just (CreateObject Dialog.createCurve)
-
-                        Just CreateDetail ->
-                            Just (CreateObject Dialog.createDetail)
-              }
-            , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
-            )
-
-        -- LEFT TOOLBAR
+        -- RIGHT TOOLBAR
         DialogCreateMsg dialogMsg ->
             case model.maybeDialog of
                 Nothing ->
@@ -1112,7 +1247,7 @@ updateWithData key msg model =
                                 | maybeDialog = Nothing
                                 , storedPattern = newStoredPattern
                               }
-                            , Api.updatePattern PatternUpdateReceived newStoredPattern
+                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
                         Dialog.CreateCanceled ->
@@ -1121,6 +1256,12 @@ updateWithData key msg model =
                             )
 
                 Just (EditObject _ _) ->
+                    ( model, Cmd.none )
+
+                Just (CreateVariable _) ->
+                    ( model, Cmd.none )
+
+                Just (EditVariable _) ->
                     ( model, Cmd.none )
 
         DialogEditMsg dialogMsg ->
@@ -1147,7 +1288,7 @@ updateWithData key msg model =
                                 | maybeDialog = Nothing
                                 , storedPattern = newStoredPattern
                               }
-                            , Api.updatePattern PatternUpdateReceived newStoredPattern
+                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
                         Dialog.EditCanceled ->
@@ -1155,121 +1296,20 @@ updateWithData key msg model =
                             , Cmd.none
                             )
 
-        HoveredVariable variable ->
-            ( { model | hoveredVariable = Just variable }, Cmd.none )
+                Just (CreateVariable _) ->
+                    ( model, Cmd.none )
 
-        LeftVariable _ ->
-            ( { model | hoveredVariable = Nothing }, Cmd.none )
+                Just (EditVariable _) ->
+                    ( model, Cmd.none )
 
-        FocusedVariable variable ->
-            ( { model | focusedVariable = Just variable }, Cmd.none )
-
-        BluredVariable _ ->
-            ( { model | focusedVariable = Nothing }, Cmd.none )
-
-        -- PATTERN
-        PatternMsg patternMsg ->
-            ( { model
-                | patternState =
-                    Ui.Molecule.Pattern.update patternMsg
-                        model.storedPattern.pattern
-                        model.patternState
-              }
-            , Cmd.none
-            )
-
-        HoveredObject object ->
-            let
-                { patternState } =
-                    model
-            in
-            ( { model | patternState = { patternState | hoveredObject = Just object } }
-            , Cmd.none
-            )
-
-        LeftObject object ->
-            let
-                { patternState } =
-                    model
-            in
-            ( { model | patternState = { patternState | hoveredObject = Nothing } }
-            , Cmd.none
-            )
-
-        FocusedObject object ->
-            let
-                { patternState } =
-                    model
-            in
-            ( { model | patternState = { patternState | focusedObject = Just object } }
-            , Cmd.none
-            )
-
-        BluredObject object ->
-            let
-                { patternState } =
-                    model
-            in
-            ( { model | patternState = { patternState | focusedObject = Nothing } }
-            , Cmd.none
-            )
-
-        -- RIGHT TOOLBAR
-        SelectedTab tab id ->
-            ( { model | selectedTab = tab }
-            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
-            )
-
-        VariableCreatePressed ->
-            ( { model
-                | maybeVariableDialog =
-                    Just <|
-                        VariableDialogCreate
-                            { name = ""
-                            , nameHelp = Nothing
-                            , value = ""
-                            }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        VariableEditPressed variable ->
-            ( { model
-                | maybeVariableDialog =
-                    case Pattern.variableInfo variable pattern of
-                        Nothing ->
-                            Nothing
-
-                        Just value ->
-                            Just <|
-                                VariableDialogEdit
-                                    { name = variable
-                                    , value = value
-                                    }
-              }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        VariableRemovePressed variable ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( VariableDeleteConfirm variable
-                        , Ui.Modal.Opening
-                        )
-              }
-            , Cmd.none
-            )
-
-        VariableNameChanged newName ->
-            case model.maybeVariableDialog of
-                Just (VariableDialogCreate data) ->
+        -- VARIABLE DIALOG
+        UserChangedVariableName newName ->
+            case model.maybeDialog of
+                Just (CreateVariable data) ->
                     ( { model
-                        | maybeVariableDialog =
+                        | maybeDialog =
                             Just <|
-                                VariableDialogCreate { data | name = newName }
+                                CreateVariable { data | name = newName }
                       }
                     , Cmd.none
                     )
@@ -1277,32 +1317,38 @@ updateWithData key msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        VariableValueChanged newValue ->
-            case model.maybeVariableDialog of
+        UserChangedVariableValue newValue ->
+            case model.maybeDialog of
                 Nothing ->
                     ( model, Cmd.none )
 
-                Just (VariableDialogCreate data) ->
+                Just (CreateObject _) ->
+                    ( model, Cmd.none )
+
+                Just (EditObject _ _) ->
+                    ( model, Cmd.none )
+
+                Just (CreateVariable data) ->
                     ( { model
-                        | maybeVariableDialog =
+                        | maybeDialog =
                             Just <|
-                                VariableDialogCreate { data | value = newValue }
+                                CreateVariable { data | value = newValue }
                       }
                     , Cmd.none
                     )
 
-                Just (VariableDialogEdit data) ->
+                Just (EditVariable data) ->
                     ( { model
-                        | maybeVariableDialog =
+                        | maybeDialog =
                             Just <|
-                                VariableDialogEdit { data | value = newValue }
+                                EditVariable { data | value = newValue }
                       }
                     , Cmd.none
                     )
 
-        VariableCreateSubmitPressed ->
-            case model.maybeVariableDialog of
-                Just (VariableDialogCreate data) ->
+        UserPressedVariableCreateSubmit ->
+            case model.maybeDialog of
+                Just (CreateVariable data) ->
                     case
                         Pattern.insertVariable data.name
                             data.value
@@ -1310,9 +1356,9 @@ updateWithData key msg model =
                     of
                         Err NameTaken ->
                             ( { model
-                                | maybeVariableDialog =
+                                | maybeDialog =
                                     Just <|
-                                        VariableDialogCreate
+                                        CreateVariable
                                             { data | nameHelp = Just "Name already taken" }
                               }
                             , Cmd.none
@@ -1327,18 +1373,18 @@ updateWithData key msg model =
                                     { storedPattern | pattern = newPattern }
                             in
                             ( { model
-                                | maybeVariableDialog = Nothing
+                                | maybeDialog = Nothing
                                 , storedPattern = newStoredPattern
                               }
-                            , Api.updatePattern PatternUpdateReceived newStoredPattern
+                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
                 _ ->
                     ( model, Cmd.none )
 
-        VariableEditUpdatePressed ->
-            case model.maybeVariableDialog of
-                Just (VariableDialogEdit data) ->
+        UserPressedVariableEditUpdate ->
+            case model.maybeDialog of
+                Just (EditVariable data) ->
                     case Pattern.replaceVariable data.name data.value pattern of
                         Err _ ->
                             ( model, Cmd.none )
@@ -1349,93 +1395,22 @@ updateWithData key msg model =
                                     { storedPattern | pattern = newPattern }
                             in
                             ( { model
-                                | maybeVariableDialog = Nothing
+                                | maybeDialog = Nothing
                                 , storedPattern = newStoredPattern
                               }
-                            , Api.updatePattern PatternUpdateReceived newStoredPattern
+                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
                 _ ->
                     ( model, Cmd.none )
 
-        VariableDialogCancelPressed ->
-            ( { model | maybeVariableDialog = Nothing }
-            , Cmd.none
-            )
-
-        -- OBJECTS
-        ObjectListMsg objectListMsg ->
-            ( { model
-                | patternState =
-                    Ui.Molecule.ObjectList.update objectListMsg
-                        model.storedPattern.pattern
-                        model.patternState
-              }
-            , Cmd.none
-            )
-
-        PressedHideObject object ->
-            ( model, Cmd.none )
-
-        PressedEditObject object ->
-            ( { model
-                | maybeDialog =
-                    case object of
-                        Point aPoint ->
-                            Maybe.map2 EditObject
-                                (Pattern.name aPoint)
-                                (Dialog.editPoint pattern aPoint)
-
-                        Axis aAxis ->
-                            Maybe.map2 EditObject
-                                (Pattern.name aAxis)
-                                (Dialog.editAxis pattern aAxis)
-
-                        Circle aCircle ->
-                            Maybe.map2 EditObject
-                                (Pattern.name aCircle)
-                                (Dialog.editCircle pattern aCircle)
-
-                        Curve aCurve ->
-                            Maybe.map2 EditObject
-                                (Pattern.name aCurve)
-                                (Dialog.editCurve pattern aCurve)
-
-                        Detail aDetail ->
-                            Maybe.map2 EditObject
-                                (Pattern.name aDetail)
-                                (Dialog.editDetail pattern aDetail)
-              }
-            , Cmd.none
-            )
-
-        PressedRemoveObject object ->
-            ( { model
-                | maybeModal =
-                    Just
-                        ( case object of
-                            Point aPoint ->
-                                PointDeleteConfirm aPoint
-
-                            Axis aAxis ->
-                                AxisDeleteConfirm aAxis
-
-                            Circle aCircle ->
-                                CircleDeleteConfirm aCircle
-
-                            Curve aCurve ->
-                                CurveDeleteConfirm aCurve
-
-                            Detail aDetail ->
-                                DetailDeleteConfirm aDetail
-                        , Ui.Modal.Opening
-                        )
-              }
+        UserPressedVariableDialogCancel ->
+            ( { model | maybeDialog = Nothing }
             , Cmd.none
             )
 
         -- MODALS
-        PointDeleteModalDeletePressed ->
+        UserPressedPointDeleteModalDelete ->
             case model.maybeModal of
                 Just ( PointDeleteConfirm aPoint, state ) ->
                     let
@@ -1453,13 +1428,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        AxisDeleteModalDeletePressed ->
+        UserPressedAxisDeleteModalDelete ->
             case model.maybeModal of
                 Just ( AxisDeleteConfirm aAxis, state ) ->
                     let
@@ -1477,13 +1452,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        CircleDeleteModalDeletePressed ->
+        UserPressedCircleDeleteModalDelete ->
             case model.maybeModal of
                 Just ( CircleDeleteConfirm aCircle, state ) ->
                     let
@@ -1501,13 +1476,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        CurveDeleteModalDeletePressed ->
+        UserPressedCurveDeleteModalDelete ->
             case model.maybeModal of
                 Just ( CurveDeleteConfirm aCurve, state ) ->
                     let
@@ -1525,13 +1500,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        DetailDeleteModalDeletePressed ->
+        UserPressedDetailDeleteModalDelete ->
             case model.maybeModal of
                 Just ( DetailDeleteConfirm aDetail, state ) ->
                     let
@@ -1549,13 +1524,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        VariableDeleteModalDeletePressed ->
+        UserPressedVariableDeleteModalDelete ->
             case model.maybeModal of
                 Just ( VariableDeleteConfirm variable, state ) ->
                     let
@@ -1573,13 +1548,13 @@ updateWithData key msg model =
                                 )
                         , storedPattern = newStoredPattern
                       }
-                    , Api.updatePattern PatternUpdateReceived newStoredPattern
+                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        ModalStateChanged newState ->
+        ChangedModalState newState ->
             case model.maybeModal of
                 Nothing ->
                     ( model, Cmd.none )
@@ -1589,7 +1564,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        ModalCancelPressed ->
+        UserPressedModalCancel ->
             case model.maybeModal of
                 Nothing ->
                     ( model, Cmd.none )
@@ -1599,7 +1574,7 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-        ModalClosed ->
+        UserClosedModal ->
             ( { model | maybeModal = Nothing }
             , Cmd.none
             )
@@ -1626,16 +1601,16 @@ subscriptions model =
                         Sub.none
 
                     Just ( _, state ) ->
-                        Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
+                        Sub.map ChangedModalState (Ui.Modal.subscriptions state)
                 , case data.patternContainerDimensions of
                     Just _ ->
                         Sub.none
 
                     Nothing ->
                         Browser.Events.onAnimationFrame
-                            (\_ -> PatternContainerViewportRequested)
+                            (\_ -> AnimationFrameRequestedPatternContainerViewport)
                 , Browser.Events.onResize
-                    (\_ _ -> WindowResized)
+                    (\_ _ -> UserResizedWindow)
                 , case data.maybeDrag of
                     Nothing ->
                         Sub.none
@@ -1654,3 +1629,12 @@ subscriptions model =
                                         (Decode.field "screenY" Decode.float)
                             ]
                 ]
+
+
+
+---- HELPER
+
+
+objectName : A object -> String
+objectName =
+    Pattern.name >> Maybe.withDefault "<no name>"
