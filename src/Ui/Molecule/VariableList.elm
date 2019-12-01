@@ -39,7 +39,7 @@ view cfg pattern focusedVariable hoveredVariable =
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
         , Border.widthEach
             { top = 1
-            , bottom = 3
+            , bottom = 4
             , left = 1
             , right = 1
             }
