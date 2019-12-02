@@ -1,5 +1,5 @@
 module Dialog.Intersectable exposing
-    ( Form, intersectableTagFromForm
+    ( Form, whichSize
     , initReferenced, initWith
     , new, clear
     , Msg, update
@@ -8,7 +8,7 @@ module Dialog.Intersectable exposing
 
 {-|
 
-@docs Form, intersectableTagFromForm
+@docs Form, whichSize
 @docs initReferenced, initWith
 @docs new, clear
 @docs Msg, update
@@ -23,7 +23,7 @@ import Pattern
         , Axis
         , Circle
         , Curve
-        , Intersectable
+        , Intersectable(..)
         , IntersectableTag(..)
         , Objects
         , Pattern
@@ -36,7 +36,7 @@ import Ui.Atom.Dropdown exposing (Dropdown)
 type Form axisForm circleForm curveForm
     = Referenced
         { dropdown : Dropdown
-        , maybeAIntersectable : Maybe (A Intersectable)
+        , maybeIntersectable : Maybe Intersectable
         , help : Maybe String
         }
     | InlinedAxis
@@ -51,6 +51,26 @@ type Form axisForm circleForm curveForm
         { expanded : Bool
         , curve : curveForm
         }
+
+
+whichSize : Form axisForm circleForm curveForm -> Form axisForm circleForm curveForm -> Maybe Int
+whichSize formA formB =
+    let
+        tag form =
+            case form of
+                Referenced { maybeIntersectable } ->
+                    Maybe.map Pattern.intersectableTag maybeIntersectable
+
+                InlinedAxis _ ->
+                    Just IntersectableAxisTag
+
+                InlinedCircle _ ->
+                    Just IntersectableCircleTag
+
+                InlinedCurve _ ->
+                    Just IntersectableCurveTag
+    in
+    Maybe.map2 Pattern.whichSize (tag formA) (tag formB)
 
 
 type Tag
@@ -70,29 +90,11 @@ tags =
 
 
 {-| -}
-intersectableTagFromForm : Pattern coordinates -> Form axisForm circleForm curveForm -> Maybe IntersectableTag
-intersectableTagFromForm pattern form =
-    case form of
-        Referenced { maybeAIntersectable } ->
-            Maybe.andThen (Pattern.tagFromIntersectable pattern)
-                maybeAIntersectable
-
-        InlinedAxis _ ->
-            Just IntersectableAxisTag
-
-        InlinedCircle _ ->
-            Just IntersectableCircleTag
-
-        InlinedCurve _ ->
-            Just IntersectableCurveTag
-
-
-{-| -}
 initReferenced : Form axisForm circleForm curveForm
 initReferenced =
     Referenced
         { dropdown = Ui.Atom.Dropdown.init
-        , maybeAIntersectable = Nothing
+        , maybeIntersectable = Nothing
         , help = Nothing
         }
 
@@ -132,12 +134,12 @@ type alias InitConfig coordinates axisForm circleForm curveForm =
 initWith :
     InitConfig coordinates axisForm circleForm curveForm
     -> Pattern coordinates
-    -> A Intersectable
+    -> Intersectable
     -> Maybe (Form axisForm circleForm curveForm)
-initWith initIntersectable pattern aIntersectable =
-    if Pattern.inlined aIntersectable then
-        case Pattern.tagFromIntersectable pattern aIntersectable of
-            Just IntersectableAxisTag ->
+initWith initIntersectable pattern intersectable =
+    if Pattern.inlinedIntersectable intersectable then
+        case intersectable of
+            IntersectableAxis aAxis ->
                 let
                     toForm axis =
                         InlinedAxis
@@ -145,11 +147,11 @@ initWith initIntersectable pattern aIntersectable =
                             , axis = axis
                             }
                 in
-                Pattern.axisFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initIntersectable.axis pattern)
+                aAxis
+                    |> initIntersectable.axis pattern
                     |> Maybe.map toForm
 
-            Just IntersectableCircleTag ->
+            IntersectableCircle aCircle ->
                 let
                     toForm circle =
                         InlinedCircle
@@ -157,11 +159,11 @@ initWith initIntersectable pattern aIntersectable =
                             , circle = circle
                             }
                 in
-                Pattern.circleFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initIntersectable.circle pattern)
+                aCircle
+                    |> initIntersectable.circle pattern
                     |> Maybe.map toForm
 
-            Just IntersectableCurveTag ->
+            IntersectableCurve aCurve ->
                 let
                     toForm curve =
                         InlinedCurve
@@ -169,18 +171,15 @@ initWith initIntersectable pattern aIntersectable =
                             , curve = curve
                             }
                 in
-                Pattern.curveFromIntersectable pattern aIntersectable
-                    |> Maybe.andThen (initIntersectable.curve pattern)
+                aCurve
+                    |> initIntersectable.curve pattern
                     |> Maybe.map toForm
-
-            Nothing ->
-                Nothing
 
     else
         Just <|
             Referenced
                 { dropdown = Ui.Atom.Dropdown.init
-                , maybeAIntersectable = Just aIntersectable
+                , maybeIntersectable = Just intersectable
                 , help = Nothing
                 }
 
@@ -213,11 +212,11 @@ new :
     NewConfig coordinates axisForm circleForm curveForm
     -> Form axisForm circleForm curveForm
     -> Pattern coordinates
-    -> Result (Form axisForm circleForm curveForm) (A Intersectable)
+    -> Result (Form axisForm circleForm curveForm) Intersectable
 new newIntersectable form pattern =
     case form of
         Referenced stuff ->
-            case stuff.maybeAIntersectable of
+            case stuff.maybeIntersectable of
                 Nothing ->
                     Err <|
                         Referenced
@@ -232,7 +231,7 @@ new newIntersectable form pattern =
                     (\axisFormWithHelp ->
                         InlinedAxis { stuff | axis = axisFormWithHelp }
                     )
-                |> Result.map (Pattern.this >> Pattern.intersectableAxis)
+                |> Result.map (Pattern.this >> IntersectableAxis)
 
         InlinedCircle stuff ->
             newIntersectable.circle stuff.circle pattern
@@ -240,7 +239,7 @@ new newIntersectable form pattern =
                     (\circleFormWithHelp ->
                         InlinedCircle { stuff | circle = circleFormWithHelp }
                     )
-                |> Result.map (Pattern.this >> Pattern.intersectableCircle)
+                |> Result.map (Pattern.this >> IntersectableCircle)
 
         InlinedCurve stuff ->
             newIntersectable.curve stuff.curve pattern
@@ -248,7 +247,7 @@ new newIntersectable form pattern =
                     (\curveFormWithHelp ->
                         InlinedCurve { stuff | curve = curveFormWithHelp }
                     )
-                |> Result.map (Pattern.this >> Pattern.intersectableCurve)
+                |> Result.map (Pattern.this >> IntersectableCurve)
 
 
 type alias ClearConfig axisForm circleForm curveForm =
@@ -317,24 +316,24 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
         , selected = selectedTag
         , child =
             case otherIntersectable of
-                Referenced { dropdown, maybeAIntersectable, help } ->
+                Referenced { dropdown, maybeIntersectable, help } ->
                     Just <|
                         Ui.Atom.Dropdown.viewAppended
-                            { entryToString = objectName
-                            , entryToHash = Pattern.hash
+                            { entryToString = intersectableName
+                            , entryToHash = Pattern.hashIntersectable
                             }
                             { id = id ++ "__other-intersectable-object"
                             , lift = ReferencedIntersectableDropdownMsg
                             , label = label
                             }
                             (List.concat
-                                [ List.map Pattern.intersectableAxis objects.axes
-                                , List.map Pattern.intersectableCircle objects.circles
-                                , List.map Pattern.intersectableCurve objects.curves
+                                [ List.map IntersectableAxis objects.axes
+                                , List.map IntersectableCircle objects.circles
+                                , List.map IntersectableCurve objects.curves
                                 ]
                             )
                             dropdown
-                            maybeAIntersectable
+                            maybeIntersectable
 
                 InlinedAxis { axis } ->
                     Just <|
@@ -390,7 +389,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
 {-| -}
 type Msg axisMsg circleMsg curveMsg
     = OtherIntersectableTypeChanged Tag
-    | ReferencedIntersectableDropdownMsg (Ui.Atom.Dropdown.Msg (A Intersectable))
+    | ReferencedIntersectableDropdownMsg (Ui.Atom.Dropdown.Msg Intersectable)
     | InlinedAxisMsg axisMsg
     | InlinedCircleMsg circleMsg
     | InlinedCurveMsg curveMsg
@@ -439,23 +438,23 @@ update config pattern objects msg form =
 
         ( ReferencedIntersectableDropdownMsg dropdownMsg, Referenced stuff ) ->
             let
-                ( newDropdown, dropdownCmd, newMaybeAIntersectable ) =
+                ( newDropdown, dropdownCmd, newMaybeIntersectable ) =
                     Ui.Atom.Dropdown.update
-                        { entryToHash = Pattern.hash }
+                        { entryToHash = Pattern.hashIntersectable }
                         (List.concat
-                            [ List.map Pattern.intersectableAxis objects.axes
-                            , List.map Pattern.intersectableCircle objects.circles
-                            , List.map Pattern.intersectableCurve objects.curves
+                            [ List.map IntersectableAxis objects.axes
+                            , List.map IntersectableCircle objects.circles
+                            , List.map IntersectableCurve objects.curves
                             ]
                         )
                         dropdownMsg
                         stuff.dropdown
-                        stuff.maybeAIntersectable
+                        stuff.maybeIntersectable
             in
             ( Referenced
                 { stuff
                     | dropdown = newDropdown
-                    , maybeAIntersectable = newMaybeAIntersectable
+                    , maybeIntersectable = newMaybeIntersectable
                 }
             , Cmd.map ReferencedIntersectableDropdownMsg dropdownCmd
             )
@@ -527,6 +526,15 @@ tagFromOtherIntersectableForm form =
             InlinedCurveTag
 
 
-objectName : A object -> String
-objectName =
-    Pattern.name >> Maybe.withDefault "<unnamed>"
+intersectableName : Intersectable -> String
+intersectableName intersectable =
+    Maybe.withDefault "<unnamed>" <|
+        case intersectable of
+            IntersectableAxis aAxis ->
+                Pattern.name aAxis
+
+            IntersectableCircle aCircle ->
+                Pattern.name aCircle
+
+            IntersectableCurve aCurve ->
+                Pattern.name aCurve

@@ -250,8 +250,8 @@ type PointForm
         , twoPointsPosition : TwoPointsPosition
         }
     | IntersectionForm
-        { objectA : Intersectable.Form AxisForm CircleForm CurveForm
-        , objectB : Intersectable.Form AxisForm CircleForm CurveForm
+        { intersectableA : Intersectable.Form AxisForm CircleForm CurveForm
+        , intersectableB : Intersectable.Form AxisForm CircleForm CurveForm
         , objectsHelp : Maybe String
         , which : Int
         , whichHelp : Maybe String
@@ -466,18 +466,18 @@ initPointFormWith pattern aPoint =
 
                 Intersection stuff ->
                     let
-                        toForm objectA objectB =
+                        toForm intersectableA intersectableB =
                             IntersectionForm
-                                { objectA = objectA
-                                , objectB = objectB
+                                { intersectableA = intersectableA
+                                , intersectableB = intersectableB
                                 , objectsHelp = Nothing
                                 , which = stuff.which
                                 , whichHelp = Nothing
                                 }
                     in
                     Maybe.map2 toForm
-                        (Intersectable.initWith initIntersectable pattern stuff.objectA)
-                        (Intersectable.initWith initIntersectable pattern stuff.objectB)
+                        (Intersectable.initWith initIntersectable pattern stuff.intersectableA)
+                        (Intersectable.initWith initIntersectable pattern stuff.intersectableB)
 
                 TransformedPoint stuff ->
                     Nothing
@@ -719,8 +719,8 @@ initFromTwoPointsForm =
 initIntersectionForm : PointForm
 initIntersectionForm =
     IntersectionForm
-        { objectA = Intersectable.initReferenced
-        , objectB = Intersectable.initReferenced
+        { intersectableA = Intersectable.initReferenced
+        , intersectableB = Intersectable.initReferenced
         , objectsHelp = Nothing
         , which = 1
         , whichHelp = Nothing
@@ -1000,24 +1000,22 @@ viewPointFormHelp pattern objects { point, id } =
                     IntersectionForm stuff ->
                         let
                             whichSize =
-                                Maybe.withDefault 1 <|
-                                    Maybe.map2 Pattern.whichSize
-                                        (Intersectable.intersectableTagFromForm pattern stuff.objectA)
-                                        (Intersectable.intersectableTagFromForm pattern stuff.objectB)
+                                Intersectable.whichSize stuff.intersectableA stuff.intersectableB
+                                    |> Maybe.withDefault 1
                         in
-                        [ Element.map Intersection_ObjectAMsg <|
+                        [ Element.map Intersection_IntersectableAMsg <|
                             Intersectable.view viewIntersectable
                                 pattern
                                 objects
-                                { otherIntersectable = stuff.objectA
+                                { otherIntersectable = stuff.intersectableA
                                 , id = "__intersection--object-a"
                                 , label = "1st object"
                                 }
-                        , Element.map Intersection_ObjectBMsg <|
+                        , Element.map Intersection_IntersectableBMsg <|
                             Intersectable.view viewIntersectable
                                 pattern
                                 objects
-                                { otherIntersectable = stuff.objectB
+                                { otherIntersectable = stuff.intersectableB
                                 , id = "__intersection--object-b"
                                 , label = "2nd object"
                                 }
@@ -1657,8 +1655,8 @@ type PointMsg
     | FromTwoPoints_BasePointBMsg (OtherPoint.Msg PointMsg)
     | FromTwoPoints_TwoPointsPositionMsg TwoPointsPositionMsg
       -- INTERSECTION
-    | Intersection_ObjectAMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
-    | Intersection_ObjectBMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
+    | Intersection_IntersectableAMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
+    | Intersection_IntersectableBMsg (Intersectable.Msg AxisMsg CircleMsg CurveMsg)
     | Intersection_WhichChanged Int
 
 
@@ -2117,30 +2115,30 @@ updatePointForm pattern objects pointMsg form =
                             ( form, Cmd.none )
 
         -- INTERSECTION
-        ( Intersection_ObjectAMsg subMsg, IntersectionForm stuff ) ->
+        ( Intersection_IntersectableAMsg subMsg, IntersectionForm stuff ) ->
             let
-                ( newObjectA, subCmd ) =
+                ( newIntersectableA, subCmd ) =
                     Intersectable.update intersectableUpdateConfig
                         pattern
                         objects
                         subMsg
-                        stuff.objectA
+                        stuff.intersectableA
             in
-            ( IntersectionForm { stuff | objectA = newObjectA }
-            , Cmd.map Intersection_ObjectAMsg subCmd
+            ( IntersectionForm { stuff | intersectableA = newIntersectableA }
+            , Cmd.map Intersection_IntersectableAMsg subCmd
             )
 
-        ( Intersection_ObjectBMsg subMsg, IntersectionForm stuff ) ->
+        ( Intersection_IntersectableBMsg subMsg, IntersectionForm stuff ) ->
             let
-                ( newObjectB, subCmd ) =
+                ( newIntersectableB, subCmd ) =
                     Intersectable.update intersectableUpdateConfig
                         pattern
                         objects
                         subMsg
-                        stuff.objectB
+                        stuff.intersectableB
             in
-            ( IntersectionForm { stuff | objectB = newObjectB }
-            , Cmd.map Intersection_ObjectBMsg subCmd
+            ( IntersectionForm { stuff | intersectableB = newIntersectableB }
+            , Cmd.map Intersection_IntersectableBMsg subCmd
             )
 
         ( Intersection_WhichChanged newWhich, IntersectionForm stuff ) ->
@@ -2561,24 +2559,24 @@ newPointFrom form pattern =
 
         IntersectionForm stuff ->
             let
-                getObjectA =
-                    Intersectable.new newIntersectable stuff.objectA pattern
+                getIntersectableA =
+                    Intersectable.new newIntersectable stuff.intersectableA pattern
                         |> Result.mapError
-                            (\objectAWithHelp ->
+                            (\intersectableAWithHelp ->
                                 { stuff
-                                    | objectA = objectAWithHelp
-                                    , objectB =
-                                        checkOtherIntersectableObject pattern
-                                            stuff.objectB
+                                    | intersectableA = intersectableAWithHelp
+                                    , intersectableB =
+                                        checkOtherIntersectable pattern
+                                            stuff.intersectableB
                                 }
                             )
-                        |> Result.andThen getObjectB
+                        |> Result.andThen getIntersectableB
 
-                getObjectB aIntersectableA =
-                    Intersectable.new newIntersectable stuff.objectB pattern
+                getIntersectableB aIntersectableA =
+                    Intersectable.new newIntersectable stuff.intersectableB pattern
                         |> Result.mapError
-                            (\objectBWithHelp ->
-                                { stuff | objectB = objectBWithHelp }
+                            (\intersectableBWithHelp ->
+                                { stuff | intersectableB = intersectableBWithHelp }
                             )
                         |> Result.andThen (createNewPoint aIntersectableA)
 
@@ -2600,7 +2598,7 @@ newPointFrom form pattern =
                                 }
                             )
             in
-            getObjectA
+            getIntersectableA
                 |> Result.mapError IntersectionForm
 
 
@@ -2912,11 +2910,11 @@ checkOtherPoint pattern otherPoint =
             otherPoint
 
 
-checkOtherIntersectableObject :
+checkOtherIntersectable :
     Pattern coordinates
     -> Intersectable.Form AxisForm CircleForm CurveForm
     -> Intersectable.Form AxisForm CircleForm CurveForm
-checkOtherIntersectableObject pattern otherIntersectable =
+checkOtherIntersectable pattern otherIntersectable =
     case Intersectable.new newIntersectable otherIntersectable pattern of
         Err otherIntersectableWithHelp ->
             otherIntersectableWithHelp
@@ -3164,8 +3162,8 @@ clearPointForm form =
         IntersectionForm stuff ->
             IntersectionForm
                 { stuff
-                    | objectA = Intersectable.clear clearIntersectable stuff.objectA
-                    , objectB = Intersectable.clear clearIntersectable stuff.objectB
+                    | intersectableA = Intersectable.clear clearIntersectable stuff.intersectableA
+                    , intersectableB = Intersectable.clear clearIntersectable stuff.intersectableB
                     , objectsHelp = Nothing
                     , whichHelp = Nothing
                 }

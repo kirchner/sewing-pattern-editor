@@ -1,11 +1,9 @@
 module Pattern exposing
     ( Pattern, empty
     , Point, Axis, Circle, Curve, Detail
-    , Intersectable
+    , Intersectable(..), IntersectableTag(..), intersectableTag
     , A, this, name, inlined, hash
-    , intersectableAxis, intersectableCircle, intersectableCurve
-    , axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
-    , whichSize, IntersectableTag(..), tagFromIntersectable
+    , whichSize
     , insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
     , insertTransformation
     , insertVariable
@@ -24,7 +22,6 @@ module Pattern exposing
     , detailInfo, DetailInfo, FirstCurve(..), NextCurve(..), LastCurve(..)
     , transformationInfo, TransformationInfo(..)
     , variableInfo
-    , intersectableInfo, IntersectableInfo(..)
     , Direction(..), Orientation(..), OneInTwo(..)
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
@@ -55,6 +52,7 @@ module Pattern exposing
     , detail, DetailHelp
     , checkExpr, ExprHelp(..)
     , encode, decoder
+    , hashIntersectable, inlinedIntersectable
     )
 
 {-|
@@ -62,15 +60,13 @@ module Pattern exposing
 @docs Pattern, empty
 
 @docs Point, Axis, Circle, Curve, Detail
-@docs Intersectable
+@docs Intersectable, IntersectableTag, intersectableTag
 
 
 # Nest and reference
 
 @docs A, this, name, inlined, hash
-@docs intersectableAxis, intersectableCircle, intersectableCurve
-@docs axisFromIntersectable, circleFromIntersectable, curveFromIntersectable
-@docs whichSize, IntersectableTag, tagFromIntersectable
+@docs whichSize
 
 
 # Insert
@@ -110,7 +106,6 @@ module Pattern exposing
 @docs detailInfo, DetailInfo, FirstCurve, NextCurve, LastCurve
 @docs transformationInfo, TransformationInfo
 @docs variableInfo
-@docs intersectableInfo, IntersectableInfo
 
 
 ## Shared types
@@ -313,20 +308,6 @@ type Transformation
     = Transformation TransformationInfo
 
 
-{-| -}
-type Intersectable
-    = IntersectableAxis Axis
-    | IntersectableCircle Circle
-    | IntersectableCurve Curve
-
-
-{-| -}
-type IntersectableTag
-    = IntersectableAxisTag
-    | IntersectableCircleTag
-    | IntersectableCurveTag
-
-
 
 ---- NEST AND REFERENCE
 
@@ -376,6 +357,20 @@ inlined aObject =
 
 
 {-| -}
+inlinedIntersectable : Intersectable -> Bool
+inlinedIntersectable intersectable =
+    case intersectable of
+        IntersectableAxis aAxis ->
+            inlined aAxis
+
+        IntersectableCircle aCircle ->
+            inlined aCircle
+
+        IntersectableCurve aCurve ->
+            inlined aCurve
+
+
+{-| -}
 hash : A object -> String
 hash aObject =
     case aObject of
@@ -386,94 +381,44 @@ hash aObject =
             "do-we-even-need-this"
 
 
-{-| -}
-intersectableAxis : A Axis -> A Intersectable
-intersectableAxis aAxis =
-    case aAxis of
-        That name_ ->
-            That name_
+hashIntersectable : Intersectable -> String
+hashIntersectable intersectable =
+    case intersectable of
+        IntersectableAxis aAxis ->
+            hash aAxis
 
-        This axis ->
-            This (IntersectableAxis axis)
+        IntersectableCircle aCircle ->
+            hash aCircle
 
-
-{-| -}
-intersectableCircle : A Circle -> A Intersectable
-intersectableCircle aCircle =
-    case aCircle of
-        That name_ ->
-            That name_
-
-        This circle ->
-            This (IntersectableCircle circle)
+        IntersectableCurve aCurve ->
+            hash aCurve
 
 
 {-| -}
-intersectableCurve : A Curve -> A Intersectable
-intersectableCurve aCurve =
-    case aCurve of
-        That name_ ->
-            That name_
-
-        This curve ->
-            This (IntersectableCurve curve)
+type Intersectable
+    = IntersectableAxis (A Axis)
+    | IntersectableCircle (A Circle)
+    | IntersectableCurve (A Curve)
 
 
 {-| -}
-axisFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Axis)
-axisFromIntersectable pattern aIntersectable =
-    case aIntersectable of
-        That name_ ->
-            case tagFromIntersectable pattern aIntersectable of
-                Just IntersectableAxisTag ->
-                    Just (That name_)
-
-                _ ->
-                    Nothing
-
-        This (IntersectableAxis axis) ->
-            Just (This axis)
-
-        This _ ->
-            Nothing
+type IntersectableTag
+    = IntersectableAxisTag
+    | IntersectableCircleTag
+    | IntersectableCurveTag
 
 
-{-| -}
-circleFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Circle)
-circleFromIntersectable pattern aIntersectable =
-    case aIntersectable of
-        That name_ ->
-            case tagFromIntersectable pattern aIntersectable of
-                Just IntersectableCircleTag ->
-                    Just (That name_)
+intersectableTag : Intersectable -> IntersectableTag
+intersectableTag intersectable =
+    case intersectable of
+        IntersectableAxis _ ->
+            IntersectableAxisTag
 
-                _ ->
-                    Nothing
+        IntersectableCircle _ ->
+            IntersectableCircleTag
 
-        This (IntersectableCircle circle) ->
-            Just (This circle)
-
-        This _ ->
-            Nothing
-
-
-{-| -}
-curveFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe (A Curve)
-curveFromIntersectable pattern aIntersectable =
-    case aIntersectable of
-        That name_ ->
-            case tagFromIntersectable pattern aIntersectable of
-                Just IntersectableCurveTag ->
-                    Just (That name_)
-
-                _ ->
-                    Nothing
-
-        This (IntersectableCurve curve) ->
-            Just (This curve)
-
-        This _ ->
-            Nothing
+        IntersectableCurve _ ->
+            IntersectableCurveTag
 
 
 
@@ -1161,8 +1106,8 @@ type alias BetweenLengthStuff =
 
 {-| -}
 type alias IntersectionStuff =
-    { objectA : A Intersectable
-    , objectB : A Intersectable
+    { intersectableA : Intersectable
+    , intersectableB : Intersectable
     , which : Int
     }
 
@@ -1490,48 +1435,6 @@ variableInfo variable (Pattern data) =
     Dict.get variable data.variables
 
 
-{-| -}
-type IntersectableInfo
-    = AxisInfo AxisInfo
-    | CircleInfo CircleInfo
-    | CurveInfo CurveInfo
-
-
-{-| -}
-intersectableInfo : A Intersectable -> Pattern coordinates -> Maybe IntersectableInfo
-intersectableInfo aIntersectable (Pattern data) =
-    let
-        or maybeB maybeA =
-            case maybeA of
-                Nothing ->
-                    maybeB
-
-                Just _ ->
-                    maybeA
-    in
-    case aIntersectable of
-        That name_ ->
-            Dict.get name_ data.axes
-                |> Maybe.map (\(Axis info) -> AxisInfo info)
-                |> or
-                    (Dict.get name_ data.circles
-                        |> Maybe.map (\(Circle info) -> CircleInfo info)
-                    )
-                |> or
-                    (Dict.get name_ data.curves
-                        |> Maybe.map (\(Curve info) -> CurveInfo info)
-                    )
-
-        This (IntersectableAxis (Axis info)) ->
-            Just (AxisInfo info)
-
-        This (IntersectableCircle (Circle info)) ->
-            Just (CircleInfo info)
-
-        This (IntersectableCurve (Curve info)) ->
-            Just (CurveInfo info)
-
-
 
 -- SHARED TYPES
 
@@ -1638,8 +1541,8 @@ computePoint2d (Point info) =
 
         Intersection stuff ->
             let
-                toPoint2d intersectableA intersectableB =
-                    case ( intersectableA, intersectableB ) of
+                toPoint2d intersectable2dA intersectable2dB =
+                    case ( intersectable2dA, intersectable2dB ) of
                         ( Axis2d axisA, Axis2d axisB ) ->
                             Axis2d.intersectionWithAxis axisA axisB
                                 |> Result.fromMaybe AxesAreParallel
@@ -1699,8 +1602,8 @@ computePoint2d (Point info) =
                             Err NotComputableYet
             in
             StateResult.ok toPoint2d
-                |> StateResult.with (intersectable2d stuff.objectA)
-                |> StateResult.with (intersectable2d stuff.objectB)
+                |> StateResult.with (intersectable2d stuff.intersectableA)
+                |> StateResult.with (intersectable2d stuff.intersectableB)
                 |> StateResult.join
 
         TransformedPoint stuff ->
@@ -1715,95 +1618,17 @@ type Intersectable2d u c
 
 
 {-| -}
-intersectable2d : A Intersectable -> State (Pattern coordinates) (Result ComputeHelp (Intersectable2d Meters coordinates))
-intersectable2d aIntersectable =
-    case aIntersectable of
-        That name_ ->
-            let
-                modifyWhenNeeded (Pattern data) =
-                    case
-                        ( Dict.get name_ data.axes
-                        , Dict.get name_ data.circles
-                        , Dict.get name_ data.curves
-                        )
-                    of
-                        ( Just axis, Nothing, Nothing ) ->
-                            StateResult.map Axis2d <|
-                                case Dict.get name_ data.axis2ds of
-                                    Nothing ->
-                                        computeAxis2d axis
-                                            |> State.andThen addToAxisCache
+intersectable2d : Intersectable -> State (Pattern coordinates) (Result ComputeHelp (Intersectable2d Meters coordinates))
+intersectable2d intersectable =
+    case intersectable of
+        IntersectableAxis aAxis ->
+            StateResult.map Axis2d (axis2d aAxis)
 
-                                    Just result ->
-                                        State.state result
+        IntersectableCircle aCircle ->
+            StateResult.map Circle2d (circle2d aCircle)
 
-                        ( Nothing, Just circle, Nothing ) ->
-                            StateResult.map Circle2d <|
-                                case Dict.get name_ data.circle2ds of
-                                    Nothing ->
-                                        computeCircle2d circle
-                                            |> State.andThen addToCircleCache
-
-                                    Just result ->
-                                        State.state result
-
-                        ( Nothing, Nothing, Just curve ) ->
-                            StateResult.map Curve2d <|
-                                case Dict.get name_ data.curve2ds of
-                                    Nothing ->
-                                        computeCurve2d curve
-                                            |> State.andThen addToCurveCache
-
-                                    Just result ->
-                                        State.state result
-
-                        _ ->
-                            State.state (Err (MissingObject name_))
-
-                addToAxisCache result =
-                    State.modify
-                        (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | axis2ds = Dict.insert name_ result data.axis2ds
-                                }
-                        )
-                        |> State.map (\_ -> result)
-
-                addToCircleCache result =
-                    State.modify
-                        (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | circle2ds = Dict.insert name_ result data.circle2ds
-                                }
-                        )
-                        |> State.map (\_ -> result)
-
-                addToCurveCache result =
-                    State.modify
-                        (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | curve2ds = Dict.insert name_ result data.curve2ds
-                                }
-                        )
-                        |> State.map (\_ -> result)
-            in
-            State.get
-                |> State.andThen modifyWhenNeeded
-
-        This (IntersectableAxis axis) ->
-            computeAxis2d axis
-                |> StateResult.map Axis2d
-
-        This (IntersectableCircle circle) ->
-            computeCircle2d circle
-                |> StateResult.map Circle2d
-
-        This (IntersectableCurve curve) ->
-            computeCurve2d curve
-                |> StateResult.map Curve2d
+        IntersectableCurve aCurve ->
+            StateResult.map Curve2d (curve2d aCurve)
 
 
 {-| -}
@@ -3285,67 +3110,29 @@ type alias BetweenLengthHelp =
 
 {-| -}
 intersection :
-    A Intersectable
-    -> A Intersectable
+    Intersectable
+    -> Intersectable
     -> Int
     -> Pattern coordinates
     -> Result IntersectionHelp Point
-intersection aObjectA aObjectB which pattern =
+intersection intersectableA intersectableB which pattern =
     Ok IntersectionHelp
-        |> collectBool (checkObjectsCoincidence aObjectA aObjectB)
-        |> collectBool (checkWhichInBound aObjectA aObjectB pattern which)
+        |> collectBool (checkIntersectablesCoincidence intersectableA intersectableB)
+        |> collectBool (checkWhichInBound intersectableA intersectableB pattern which)
         |> Result.map
             (always <|
                 Point <|
                     Intersection
-                        { objectA = aObjectA
-                        , objectB = aObjectB
+                        { intersectableA = intersectableA
+                        , intersectableB = intersectableB
                         , which = which
                         }
             )
 
 
-checkWhichInBound : A Intersectable -> A Intersectable -> Pattern coordinates -> Int -> Bool
-checkWhichInBound aIntersectableA aIntersectableB pattern which =
-    let
-        maybeSize =
-            Maybe.map2 whichSize
-                (tagFromIntersectable pattern aIntersectableA)
-                (tagFromIntersectable pattern aIntersectableB)
-    in
-    case maybeSize of
-        Nothing ->
-            False
-
-        Just size ->
-            0 >= which && which < size
-
-
-{-| -}
-tagFromIntersectable : Pattern coordinates -> A Intersectable -> Maybe IntersectableTag
-tagFromIntersectable (Pattern data) aIntersectable =
-    case aIntersectable of
-        That name_ ->
-            if Dict.member name_ data.axes then
-                Just IntersectableAxisTag
-
-            else if Dict.member name_ data.circles then
-                Just IntersectableCircleTag
-
-            else if Dict.member name_ data.curves then
-                Just IntersectableCurveTag
-
-            else
-                Nothing
-
-        This (IntersectableAxis _) ->
-            Just IntersectableAxisTag
-
-        This (IntersectableCircle _) ->
-            Just IntersectableCircleTag
-
-        This (IntersectableCurve _) ->
-            Just IntersectableCurveTag
+checkWhichInBound : Intersectable -> Intersectable -> Pattern coordinates -> Int -> Bool
+checkWhichInBound intersectableA intersectableB pattern which =
+    0 >= which && which < whichSize (intersectableTag intersectableA) (intersectableTag intersectableB)
 
 
 {-| -}
@@ -3683,6 +3470,22 @@ checkObjectsCoincidence aObjectA aObjectB =
             False
 
 
+checkIntersectablesCoincidence : Intersectable -> Intersectable -> Bool
+checkIntersectablesCoincidence interectableA interectableB =
+    case ( interectableA, interectableB ) of
+        ( IntersectableAxis aAxisA, IntersectableAxis aAxisB ) ->
+            checkObjectsCoincidence aAxisA aAxisB
+
+        ( IntersectableCircle aCircleA, IntersectableCircle aCircleB ) ->
+            checkObjectsCoincidence aCircleA aCircleB
+
+        ( IntersectableCurve aCurveA, IntersectableCurve aCurveB ) ->
+            checkObjectsCoincidence aCurveA aCurveB
+
+        _ ->
+            False
+
+
 
 ---- ENCODE
 
@@ -3736,8 +3539,8 @@ encodePoint (Point info) =
 
         Intersection stuff ->
             withType "intersection"
-                [ ( "objectA", encodeAIntersectable stuff.objectA )
-                , ( "objectB", encodeAIntersectable stuff.objectB )
+                [ ( "intersectableA", encodeIntersectable stuff.intersectableA )
+                , ( "intersectableB", encodeIntersectable stuff.intersectableB )
                 , ( "which", Encode.int stuff.which )
                 ]
 
@@ -3939,17 +3742,17 @@ encodeTransformation (Transformation info) =
 encodeIntersectable : Intersectable -> Value
 encodeIntersectable intersectable =
     case intersectable of
-        IntersectableAxis axis ->
+        IntersectableAxis aAxis ->
             withType "intersectableAxis"
-                [ ( "axis", encodeAxis axis ) ]
+                [ ( "axis", encodeAAxis aAxis ) ]
 
-        IntersectableCircle circle ->
+        IntersectableCircle aCircle ->
             withType "intersectableCircle"
-                [ ( "circle", encodeCircle circle ) ]
+                [ ( "circle", encodeACircle aCircle ) ]
 
-        IntersectableCurve curve ->
+        IntersectableCurve aCurve ->
             withType "intersectableCurve"
-                [ ( "curve", encodeCurve curve ) ]
+                [ ( "curve", encodeACurve aCurve ) ]
 
 
 
@@ -3984,11 +3787,6 @@ encodeADetail =
 encodeATransformation : A Transformation -> Value
 encodeATransformation =
     encodeAObject "transformation" encodeTransformation
-
-
-encodeAIntersectable : A Intersectable -> Value
-encodeAIntersectable =
-    encodeAObject "intersectable" encodeIntersectable
 
 
 encodeAObject : String -> (object -> Value) -> A object -> Value
@@ -4112,8 +3910,8 @@ pointDecoder =
             |> Decode.map BetweenLength
             |> ensureType "betweenLength"
         , Decode.succeed IntersectionStuff
-            |> Decode.required "objectA" aIntersectableDecoder
-            |> Decode.required "objectB" aIntersectableDecoder
+            |> Decode.required "intersectableA" intersectableDecoder
+            |> Decode.required "intersectableB" intersectableDecoder
             |> Decode.required "which" Decode.int
             |> Decode.map Intersection
             |> ensureType "intersection"
@@ -4305,13 +4103,13 @@ intersectableDecoder : Decoder Intersectable
 intersectableDecoder =
     Decode.oneOf
         [ Decode.succeed IntersectableAxis
-            |> Decode.required "axis" axisDecoder
+            |> Decode.required "axis" aAxisDecoder
             |> ensureType "intersectableAxis"
         , Decode.succeed IntersectableCircle
-            |> Decode.required "circle" circleDecoder
+            |> Decode.required "circle" aCircleDecoder
             |> ensureType "intersectableCircle"
         , Decode.succeed IntersectableCurve
-            |> Decode.required "curve" curveDecoder
+            |> Decode.required "curve" aCurveDecoder
             |> ensureType "intersectableCurve"
         ]
 
@@ -4388,11 +4186,6 @@ aDetailDecoder =
 aTransformationDecoder : Decoder (A Transformation)
 aTransformationDecoder =
     aObjectDecoder "transformation" (Decode.lazy (\_ -> transformationDecoder))
-
-
-aIntersectableDecoder : Decoder (A Intersectable)
-aIntersectableDecoder =
-    aObjectDecoder "intersectable" (Decode.lazy (\_ -> intersectableDecoder))
 
 
 aObjectDecoder : String -> Decoder object -> Decoder (A object)

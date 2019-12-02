@@ -10,7 +10,7 @@ module Pattern.Compute exposing
 
 -}
 
-import Pattern exposing (A, Axis, Circle, ComputeHelp, Curve, Detail, Pattern, Point)
+import Pattern exposing (A, Axis, Circle, ComputeHelp, Curve, Detail, Intersectable(..), Pattern, Point)
 import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, map4, map5, ok, traverse)
 import Ui.Pattern
 
@@ -126,29 +126,23 @@ pointInfo info =
         Pattern.Intersection stuff ->
             let
                 toPointInfo intersectableA intersectableB =
-                    Ui.Pattern.Intersection
-                        { intersectableA = intersectableA
-                        , intersectableB = intersectableB
-                        }
+                    Just <|
+                        Ui.Pattern.Intersection
+                            { intersectableA = intersectableA
+                            , intersectableB = intersectableB
+                            }
             in
             get
                 |> andThen
                     (\pattern ->
-                        map2 (Maybe.map2 toPointInfo)
-                            (case Pattern.axisFromIntersectable pattern stuff.objectA of
-                                Nothing ->
-                                    ok Nothing
+                        case ( stuff.intersectableA, stuff.intersectableB ) of
+                            ( IntersectableAxis aAxisA, IntersectableAxis aAxisB ) ->
+                                map2 toPointInfo
+                                    (map Ui.Pattern.IntersectableAxis (axis False aAxisA))
+                                    (map Ui.Pattern.IntersectableAxis (axis False aAxisB))
 
-                                Just aAxis ->
-                                    map (Just << Ui.Pattern.IntersectableAxis) (axis False aAxis)
-                            )
-                            (case Pattern.axisFromIntersectable pattern stuff.objectB of
-                                Nothing ->
-                                    ok Nothing
-
-                                Just aAxis ->
-                                    map (Just << Ui.Pattern.IntersectableAxis) (axis False aAxis)
-                            )
+                            _ ->
+                                ok Nothing
                     )
 
         Pattern.TransformedPoint stuff ->
