@@ -20,17 +20,16 @@
             "Ui.Color",
             "Ui.Modal",
             "Ui.Molecule.MenuBtn",
+            "Ui.Molecule.Pattern",
             "Ui.Pattern",
             "Ui.Navigation",
             "Ui.Space",
-            "Ui.Table",
             "Ui.Typography"
         ],
         "Pattern": [
             "Expr",
             "Pattern",
             "Pattern.Compute",
-            "Pattern.Draw",
             "Pattern.Store"
         ],
         "Geometry": [

@@ -87,7 +87,6 @@ import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Navigation
 import Ui.Space
-import Ui.Table
 import Ui.Typography
 import Url exposing (Url)
 import Vector2d

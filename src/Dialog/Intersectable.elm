@@ -53,6 +53,7 @@ type Form axisForm circleForm curveForm
         }
 
 
+{-| -}
 whichSize : Form axisForm circleForm curveForm -> Form axisForm circleForm curveForm -> Maybe Int
 whichSize formA formB =
     let

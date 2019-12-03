@@ -381,6 +381,7 @@ hash aObject =
             "do-we-even-need-this"
 
 
+{-| -}
 hashIntersectable : Intersectable -> String
 hashIntersectable intersectable =
     case intersectable of
@@ -417,6 +418,7 @@ type IntersectableTag
     | IntersectableCurveTag
 
 
+{-| -}
 intersectableTag : Intersectable -> IntersectableTag
 intersectableTag intersectable =
     case intersectable of

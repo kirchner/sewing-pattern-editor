@@ -38,6 +38,7 @@ import Vector2d
 ---- MODEL
 
 
+{-| -}
 type alias State =
     { hoveredObject : Maybe Object
     , focusedObject : Maybe Object
@@ -45,6 +46,7 @@ type alias State =
     }
 
 
+{-| -}
 init : State
 init =
     { hoveredObject = Nothing
@@ -57,11 +59,13 @@ init =
 ---- VIEW
 
 
+{-| -}
 type alias Config =
     { id : String
     }
 
 
+{-| -}
 type alias Viewport coordinates =
     { width : Float
     , height : Float
@@ -70,6 +74,7 @@ type alias Viewport coordinates =
     }
 
 
+{-| -}
 view : Config -> Viewport coordinates -> Pattern coordinates -> State -> Element Msg
 view cfg viewport pattern state =
     Element.el
@@ -328,6 +333,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
 ----UPDATE
 
 
+{-| -}
 type Msg
     = NoOp
     | FocusedPattern
@@ -350,6 +356,7 @@ type alias Position =
     }
 
 
+{-| -}
 update : Msg -> Pattern coordinates -> State -> State
 update msg pattern state =
     case msg of
