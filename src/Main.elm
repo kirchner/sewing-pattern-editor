@@ -38,6 +38,7 @@ import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
 import Ui.Atom
+import Ui.Atom.Input
 import Ui.Color
 import Ui.Molecule.Modal
 import Ui.Space
@@ -214,13 +215,13 @@ viewNewWorkerDialog state =
                     ]
                 )
         , actions =
-            [ Ui.Atom.btnPrimary
+            [ Ui.Atom.Input.btnPrimary
                 { id = "new-worker-modal__reload-btn"
                 , onPress = Just NewWorkerDialogReloadPressed
                 , label = "Reload"
                 }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "new-worker-modal__cancel-btn"
                     , onPress = Just NewWorkerDialogCancelPressed
                     , label = "Cancel"

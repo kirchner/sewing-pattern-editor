@@ -17,6 +17,7 @@
         "Ui": [
             "Ui.Atom",
             "Ui.Atom.Dropdown",
+            "Ui.Atom.Input",
             "Ui.Color",
             "Ui.Molecule.MenuBtn",
             "Ui.Molecule.Modal",

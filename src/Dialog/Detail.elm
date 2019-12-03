@@ -40,6 +40,7 @@ import Pattern
         )
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Input
 import Ui.Color
 import Ui.Space
 
@@ -1223,7 +1224,7 @@ view viewPointHelp pattern objects { detail, id } =
 
         nested =
             Just
-                << Ui.Atom.nested
+                << Ui.Atom.Input.nested
                 << Element.column [ Element.width Element.fill, Element.spacing Ui.Space.level1 ]
     in
     Element.column
@@ -1231,7 +1232,7 @@ view viewPointHelp pattern objects { detail, id } =
         , Element.spacing Ui.Space.level1
         ]
         (List.concat
-            [ [ Ui.Atom.segmentControl
+            [ [ Ui.Atom.Input.segmentControl
                     { id = id ++ "__first-curve-label"
                     , label = Just "1st curve"
                     , help = Nothing
@@ -1254,7 +1255,7 @@ view viewPointHelp pattern objects { detail, id } =
                     }
               , case Tuple.first detail.firstCurve of
                     FReferenced { reversed } ->
-                        Ui.Atom.checkbox
+                        Ui.Atom.Input.checkbox
                             { id = id ++ "__reverse-checkbox"
                             , onChange = FirstCurveReverseChanged
                             , checked = reversed
@@ -1265,12 +1266,12 @@ view viewPointHelp pattern objects { detail, id } =
                         Element.none
               ]
             , List.indexedMap (viewNextCurve viewPointHelp pattern objects id) detail.nextCurves
-            , [ Ui.Atom.btnSecondary
+            , [ Ui.Atom.Input.btnSecondary
                     { id = id ++ "__add-curve-button"
                     , onPress = Just AddCurvePressed
                     , label = "Add Curve"
                     }
-              , Ui.Atom.segmentControl
+              , Ui.Atom.Input.segmentControl
                     { id = id ++ "__last-curve-label"
                     , label = Just "Closing curve"
                     , help = Nothing
@@ -1293,7 +1294,7 @@ view viewPointHelp pattern objects { detail, id } =
                     }
               , case Tuple.first detail.lastCurve of
                     LReferenced { reversed } ->
-                        Ui.Atom.checkbox
+                        Ui.Atom.Input.checkbox
                             { id = id ++ "__reverse-checkbox"
                             , onChange = LastCurveReverseChanged
                             , checked = reversed
@@ -1383,14 +1384,14 @@ viewNextCurve viewPointHelp pattern objects id index ( form, actionMenu ) =
 
         nested =
             Just
-                << Ui.Atom.nested
+                << Ui.Atom.Input.nested
                 << Element.column [ Element.width Element.fill, Element.spacing Ui.Space.level1 ]
     in
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Space.level1
         ]
-        [ Ui.Atom.segmentControl
+        [ Ui.Atom.Input.segmentControl
             { id = actualId
             , label = Just (ordinalFromInt (index + 2) ++ " Curve")
             , help = Nothing
@@ -1413,7 +1414,7 @@ viewNextCurve viewPointHelp pattern objects id index ( form, actionMenu ) =
             }
         , case form of
             NReferenced { reversed } ->
-                Ui.Atom.checkbox
+                Ui.Atom.Input.checkbox
                     { id = id ++ "__reverse-checkbox"
                     , onChange = NextCurveReverseChanged index
                     , checked = reversed

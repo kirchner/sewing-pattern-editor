@@ -34,6 +34,7 @@ import Svg.Attributes
 import Task
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Input
 import Ui.Atom.Tabs
 import Ui.Color
 import Ui.Molecule.MenuBtn
@@ -708,22 +709,22 @@ viewButtons model =
             [ Element.spacing Ui.Space.level4
             , Element.padding Ui.Space.level1
             ]
-            [ Ui.Atom.btnPrimary
+            [ Ui.Atom.Input.btnPrimary
                 { id = "primary-btn"
                 , onPress = Nothing
                 , label = "Primary"
                 }
-            , Ui.Atom.btnSecondary
+            , Ui.Atom.Input.btnSecondary
                 { id = "secondary-btn"
                 , onPress = Nothing
                 , label = "Secondary"
                 }
-            , Ui.Atom.btnDanger
+            , Ui.Atom.Input.btnDanger
                 { id = "danger-btn"
                 , onPress = Nothing
                 , label = "Danger"
                 }
-            , Ui.Atom.btnCancel
+            , Ui.Atom.Input.btnCancel
                 { id = "cancel-btn"
                 , onPress = Nothing
                 , label = "Cancel"
@@ -734,7 +735,7 @@ viewButtons model =
             [ Element.spacing Ui.Space.level4
             , Element.padding Ui.Space.level1
             ]
-            [ Ui.Atom.btnCallToAction
+            [ Ui.Atom.Input.btnCallToAction
                 { id = "call-to-action-button"
                 , onPress = Nothing
                 , label = "Call to Action"
@@ -745,17 +746,17 @@ viewButtons model =
             [ Element.spacing Ui.Space.level4
             , Element.padding Ui.Space.level1
             ]
-            [ Ui.Atom.btnIcon
+            [ Ui.Atom.Input.btnIcon
                 { id = "icon-btn"
                 , onPress = Nothing
                 , icon = "thumbs-up"
                 }
-            , Ui.Atom.btnIconDanger
+            , Ui.Atom.Input.btnIconDanger
                 { id = "icon-danger-btn"
                 , onPress = Nothing
                 , icon = "thumbs-down"
                 }
-            , Ui.Atom.btnIconLarge
+            , Ui.Atom.Input.btnIconLarge
                 { id = "icon-large-btn"
                 , onPress = Nothing
                 , icon = "thumbs-up"
@@ -779,7 +780,7 @@ viewFormElements model =
             [ Element.padding Ui.Space.level1
             , Element.width Element.fill
             ]
-            (Ui.Atom.checkbox
+            (Ui.Atom.Input.checkbox
                 { id = "checkbox"
                 , onChange = CheckedCheckbox
                 , checked = model.checked
@@ -791,17 +792,17 @@ viewFormElements model =
             [ Element.padding Ui.Space.level1
             , Element.width Element.fill
             ]
-            (Ui.Atom.radioColumn
+            (Ui.Atom.Input.radioColumn
                 { id = "radio-column"
                 , onChange = FruitChanged
                 , options =
-                    [ Ui.Atom.option Apple "Apple"
-                    , Ui.Atom.option Banana "Banana"
-                    , Ui.Atom.option Cherry "Cherry"
-                    , Ui.Atom.option Durian "Durian"
-                    , Ui.Atom.option Elderberries "Elderberries"
-                    , Ui.Atom.option Figs "Figs"
-                    , Ui.Atom.option Grapefruit "Grapefruit"
+                    [ Ui.Atom.Input.option Apple "Apple"
+                    , Ui.Atom.Input.option Banana "Banana"
+                    , Ui.Atom.Input.option Cherry "Cherry"
+                    , Ui.Atom.Input.option Durian "Durian"
+                    , Ui.Atom.Input.option Elderberries "Elderberries"
+                    , Ui.Atom.Input.option Figs "Figs"
+                    , Ui.Atom.Input.option Grapefruit "Grapefruit"
                     ]
                 , selected = model.fruit
                 , label = "Select a fruit"
@@ -829,7 +830,7 @@ viewFormElements model =
             [ Element.padding Ui.Space.level1
             , Element.width Element.fill
             ]
-            (Ui.Atom.segmentControl
+            (Ui.Atom.Input.segmentControl
                 { id = "position-segment-control"
                 , label = Just "Position"
                 , help = Nothing
@@ -845,28 +846,28 @@ viewFormElements model =
             , Element.spacing Ui.Space.level4
             , Element.width Element.fill
             ]
-            [ Ui.Atom.inputText
+            [ Ui.Atom.Input.text
                 { id = "input-text"
                 , onChange = \_ -> NoOp
                 , text = ""
                 , label = "Text"
                 , help = Nothing
                 }
-            , Ui.Atom.inputText
+            , Ui.Atom.Input.text
                 { id = "input-text"
                 , onChange = \_ -> NoOp
                 , text = ""
                 , label = "Text"
                 , help = Just "Help message"
                 }
-            , Ui.Atom.inputFormula
+            , Ui.Atom.Input.formula
                 { id = "input-formula"
                 , onChange = ChangedFormula
                 , text = model.formula
                 , label = "Formula"
                 , help = Nothing
                 }
-            , Ui.Atom.inputFormula
+            , Ui.Atom.Input.formula
                 { id = "input-formula"
                 , onChange = ChangedFormula
                 , text = model.formula
@@ -1351,7 +1352,7 @@ viewJoinedFormElements model =
             , Element.spacing Ui.Space.level4
             , Element.width Element.fill
             ]
-            [ Ui.Atom.segmentControl
+            [ Ui.Atom.Input.segmentControl
                 { id = "position-segment-control"
                 , label = Just "Position"
                 , help = Nothing
@@ -1372,7 +1373,7 @@ viewJoinedFormElements model =
                             model.dropdownAppended
                             model.selectionAppended
                 }
-            , Ui.Atom.segmentControl
+            , Ui.Atom.Input.segmentControl
                 { id = "position-segment-control"
                 , label = Just "Position"
                 , help = Just "Help message"
@@ -1400,7 +1401,7 @@ viewJoinedFormElements model =
             , Element.spacing Ui.Space.level4
             , Element.width Element.fill
             ]
-            [ Ui.Atom.segmentControl
+            [ Ui.Atom.Input.segmentControl
                 { id = "position-text-segment-control"
                 , label = Just "Position"
                 , help = Nothing
@@ -1409,13 +1410,13 @@ viewJoinedFormElements model =
                 , selected = model.positionAppended
                 , child =
                     Just <|
-                        Ui.Atom.inputTextAppended "text-appended"
+                        Ui.Atom.Input.textAppended "text-appended"
                             { onChange = \_ -> NoOp
                             , text = ""
                             , label = "Text"
                             }
                 }
-            , Ui.Atom.segmentControl
+            , Ui.Atom.Input.segmentControl
                 { id = "position-formula-segment-control"
                 , label = Just "Position"
                 , help = Nothing
@@ -1424,13 +1425,13 @@ viewJoinedFormElements model =
                 , selected = model.positionAppended
                 , child =
                     Just <|
-                        Ui.Atom.inputFormulaAppended "formula-appended"
+                        Ui.Atom.Input.formulaAppended "formula-appended"
                             { onChange = ChangedFormula
                             , text = model.formula
                             , label = "Formula"
                             }
                 }
-            , Ui.Atom.segmentControl
+            , Ui.Atom.Input.segmentControl
                 { id = "position-formula-segment-control"
                 , label = Just "Position"
                 , help = Just "Help message"
@@ -1439,7 +1440,7 @@ viewJoinedFormElements model =
                 , selected = model.positionAppended
                 , child =
                     Just <|
-                        Ui.Atom.inputFormulaAppended "formula-appended"
+                        Ui.Atom.Input.formulaAppended "formula-appended"
                             { onChange = ChangedFormula
                             , text = model.formula
                             , label = "Formula"
@@ -1452,7 +1453,7 @@ viewJoinedFormElements model =
             , Element.spacing Ui.Space.level4
             , Element.width Element.fill
             ]
-            [ Ui.Atom.segmentControl
+            [ Ui.Atom.Input.segmentControl
                 { id = "position-nested-formula-segment-control"
                 , label = Just "Position"
                 , help = Nothing
@@ -1463,7 +1464,7 @@ viewJoinedFormElements model =
                     case model.positionNested of
                         Left ->
                             Just <|
-                                Ui.Atom.inputFormulaAppended "formula-appended"
+                                Ui.Atom.Input.formulaAppended "formula-appended"
                                     { onChange = ChangedFormula
                                     , text = model.formula
                                     , label = "Formula"
@@ -1471,7 +1472,7 @@ viewJoinedFormElements model =
 
                         Center ->
                             Just <|
-                                Ui.Atom.nestedHideable
+                                Ui.Atom.Input.nestedHideable
                                     { show = model.showFormula
                                     , onPress = ClickedShowFormula
                                     , shown =
@@ -1479,7 +1480,7 @@ viewJoinedFormElements model =
                                             [ Element.spacing Ui.Space.level4
                                             , Element.width Element.fill
                                             ]
-                                            [ Ui.Atom.inputFormula
+                                            [ Ui.Atom.Input.formula
                                                 { id = "input-formula"
                                                 , onChange = ChangedFormula
                                                 , text = model.formula
@@ -1493,7 +1494,7 @@ viewJoinedFormElements model =
                         Right ->
                             Nothing
                 }
-            , Ui.Atom.segmentControl
+            , Ui.Atom.Input.segmentControl
                 { id = "position-nested-formula-segment-control"
                 , label = Just "Position"
                 , help = Just "Help message"
@@ -1504,7 +1505,7 @@ viewJoinedFormElements model =
                     case model.positionNested of
                         Left ->
                             Just <|
-                                Ui.Atom.inputFormulaAppended "formula-appended"
+                                Ui.Atom.Input.formulaAppended "formula-appended"
                                     { onChange = ChangedFormula
                                     , text = model.formula
                                     , label = "Formula"
@@ -1512,7 +1513,7 @@ viewJoinedFormElements model =
 
                         Center ->
                             Just <|
-                                Ui.Atom.nestedHideable
+                                Ui.Atom.Input.nestedHideable
                                     { show = model.showFormula
                                     , onPress = ClickedShowFormula
                                     , shown =
@@ -1520,7 +1521,7 @@ viewJoinedFormElements model =
                                             [ Element.spacing Ui.Space.level4
                                             , Element.width Element.fill
                                             ]
-                                            [ Ui.Atom.inputFormula
+                                            [ Ui.Atom.Input.formula
                                                 { id = "input-formula"
                                                 , onChange = ChangedFormula
                                                 , text = model.formula

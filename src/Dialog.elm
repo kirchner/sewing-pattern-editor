@@ -78,6 +78,7 @@ import Pattern
 import Result.Extra as Result
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Input
 import Ui.Color
 import Ui.Space
 import Ui.Typography
@@ -843,7 +844,7 @@ viewActions name nameHelp =
         [ Element.width Element.fill
         , Element.spacing Ui.Space.level1
         ]
-        [ Ui.Atom.inputText
+        [ Ui.Atom.Input.text
             { id = "name-input"
             , onChange = NameChanged
             , text = name
@@ -855,19 +856,19 @@ viewActions name nameHelp =
             , Element.spacing Ui.Space.level1
             ]
             [ Element.el [ Element.alignLeft ] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "create-btn"
                     , onPress = Just CreatePressed
                     , label = "Create"
                     }
             , Element.el [ Element.alignLeft ] <|
-                Ui.Atom.btnSecondary
+                Ui.Atom.Input.btnSecondary
                     { id = "preview-btn"
                     , onPress = Just CreatePreviewPressed
                     , label = "Preview"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "cancel-btn"
                     , onPress = Just CreateCancelPressed
                     , label = "Cancel"
@@ -930,7 +931,7 @@ viewPointForm pattern objects name nameHelp form =
 
 viewPointFormHelp : Pattern coordinates -> Pattern.Objects -> { point : PointForm, id : String } -> Element PointMsg
 viewPointFormHelp pattern objects { point, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Nothing
         , help =
@@ -964,7 +965,7 @@ viewPointFormHelp pattern objects { point, id } =
                                 , id = id ++ "__from-one-point--direction"
                                 , help = stuff.directionHelp
                                 }
-                        , Ui.Atom.inputFormula
+                        , Ui.Atom.Input.formula
                             { id = "distance"
                             , onChange = FromOnePoint_DistanceChanged
                             , text = stuff.distance
@@ -1020,7 +1021,7 @@ viewPointFormHelp pattern objects { point, id } =
                                 , label = "2nd object"
                                 }
                         , if whichSize > 1 then
-                            Ui.Atom.segmentControl
+                            Ui.Atom.Input.segmentControl
                                 { id = id ++ "__which"
                                 , label = Just "Which intersection?"
                                 , help = Nothing
@@ -1077,7 +1078,7 @@ viewAxisForm pattern objects name nameHelp form =
 
 viewAxisFormHelp : Pattern coordinates -> Pattern.Objects -> { axis : AxisForm, id : String } -> Element AxisMsg
 viewAxisFormHelp pattern objects { axis, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Nothing
         , help = Nothing
@@ -1157,7 +1158,7 @@ viewCircleFormHelp :
     -> { circle : CircleForm, id : String }
     -> Element CircleMsg
 viewCircleFormHelp pattern objects { circle, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Nothing
         , help = Nothing
@@ -1176,7 +1177,7 @@ viewCircleFormHelp pattern objects { circle, id } =
                                 , id = id ++ "__with-radius--center-point"
                                 , label = "Center point"
                                 }
-                        , Ui.Atom.inputFormula
+                        , Ui.Atom.Input.formula
                             { id = "radius"
                             , onChange = WithRadius_RadiusChanged
                             , text = stuff.radius
@@ -1243,7 +1244,7 @@ viewCurveForm pattern objects name nameHelp form =
 
 viewCurveFormHelp : Pattern coordinates -> Pattern.Objects -> { curve : CurveForm, id : String } -> Element CurveMsg
 viewCurveFormHelp pattern objects { curve, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Nothing
         , help = Nothing
@@ -1380,19 +1381,19 @@ editView { pattern, name } edit =
                 , Element.spacing Ui.Space.level1
                 ]
                 [ Element.el [ Element.alignLeft ] <|
-                    Ui.Atom.btnPrimary
+                    Ui.Atom.Input.btnPrimary
                         { id = "update-btn"
                         , onPress = Just UpdatePressed
                         , label = "Update"
                         }
                 , Element.el [ Element.alignLeft ] <|
-                    Ui.Atom.btnSecondary
+                    Ui.Atom.Input.btnSecondary
                         { id = "preview-btn"
                         , onPress = Just EditPreviewPressed
                         , label = "Preview"
                         }
                 , Element.el [ Element.alignRight ] <|
-                    Ui.Atom.btnCancel
+                    Ui.Atom.Input.btnCancel
                         { id = "cancel-btn"
                         , onPress = Just EditCancelPressed
                         , label = "Cancel"
@@ -1499,7 +1500,7 @@ viewDirection :
     }
     -> Element DirectionMsg
 viewDirection { direction, id, help } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id ++ "__direction"
         , label = Just "Direction"
         , help = help
@@ -1510,7 +1511,7 @@ viewDirection { direction, id, help } =
             case direction of
                 DirectionAngle custom ->
                     Just <|
-                        Ui.Atom.inputFormulaAppended
+                        Ui.Atom.Input.formulaAppended
                             (id ++ "__direction--angle")
                             { onChange = CustomChanged
                             , text = custom
@@ -1528,7 +1529,7 @@ viewOrientation :
     }
     -> Element OrientationMsg
 viewOrientation { orientation, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id ++ "__orientation"
         , label = Just "Orientation"
         , help = Nothing
@@ -1539,7 +1540,7 @@ viewOrientation { orientation, id } =
             case orientation of
                 OrientationAngle custom ->
                     Just <|
-                        Ui.Atom.inputFormulaAppended
+                        Ui.Atom.Input.formulaAppended
                             (id ++ "__orientation--angle")
                             { onChange = CustomOrientationChanged
                             , text = custom
@@ -1557,7 +1558,7 @@ viewTwoPointsPosition :
     }
     -> Element TwoPointsPositionMsg
 viewTwoPointsPosition { twoPointsPosition, id } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id ++ "__two-points-position"
         , label = Just "Position"
         , help =
@@ -1577,7 +1578,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
             Just <|
                 case twoPointsPosition of
                     TwoPointsPositionRatio { ratio } ->
-                        Ui.Atom.inputFormulaAppended
+                        Ui.Atom.Input.formulaAppended
                             (id ++ "__two-point-distance-ratio-input")
                             { onChange = TwoPointsPosition_RatioChanged
                             , text = ratio
@@ -1585,7 +1586,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
                             }
 
                     TwoPointsPositionFromA { distance } ->
-                        Ui.Atom.inputFormulaAppended
+                        Ui.Atom.Input.formulaAppended
                             (id ++ "__two-point-distance-distance-from-a-input")
                             { onChange = TwoPointsPosition_FromAChanged
                             , text = distance
@@ -1593,7 +1594,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
                             }
 
                     TwoPointsPositionFromB { distance } ->
-                        Ui.Atom.inputFormulaAppended
+                        Ui.Atom.Input.formulaAppended
                             (id ++ "__two-point-distance-distance-from-a-input")
                             { onChange = TwoPointsPosition_FromBChanged
                             , text = distance
@@ -1604,7 +1605,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
 
 nested =
     Just
-        << Ui.Atom.nested
+        << Ui.Atom.Input.nested
         << Element.column
             [ Element.width Element.fill
             , Element.spacing Ui.Space.level1

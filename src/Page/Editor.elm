@@ -78,6 +78,7 @@ import Svg.Events
 import Svg.Lazy
 import Task
 import Ui.Atom
+import Ui.Atom.Input
 import Ui.Atom.Tabs
 import Ui.Color
 import Ui.Molecule.MenuBtn
@@ -334,13 +335,13 @@ viewModal pattern ( modal, state ) =
                                )
                         )
                 , actions =
-                    [ Ui.Atom.btnDanger
+                    [ Ui.Atom.Input.btnDanger
                         { id = "point-delete-modal__delete-btn"
                         , onPress = Just UserPressedPointDeleteModalDelete
                         , label = "Delete point"
                         }
                     , Element.el [ Element.alignRight ] <|
-                        Ui.Atom.btnCancel
+                        Ui.Atom.Input.btnCancel
                             { id = "point-delete-modal__cancel-btn"
                             , onPress = Just UserPressedModalCancel
                             , label = "Cancel"
@@ -399,13 +400,13 @@ viewDeleteModal state { name, kind, onDeletePress } =
                     , Element.text "?"
                     ]
         , actions =
-            [ Ui.Atom.btnDanger
+            [ Ui.Atom.Input.btnDanger
                 { id = "delete-modal__delete-btn"
                 , onPress = Just onDeletePress
                 , label = "Delete " ++ kind
                 }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "delete-modal__cancel-btn"
                     , onPress = Just UserPressedModalCancel
                     , label = "Cancel"
@@ -596,12 +597,12 @@ viewZoom model =
         [ Element.padding 20
         , Element.spacing 10
         ]
-        [ Ui.Atom.btnIconLarge
+        [ Ui.Atom.Input.btnIconLarge
             { id = "zoom-plus-btn"
             , onPress = Just UserPressedZoomPlus
             , icon = "search-plus"
             }
-        , Ui.Atom.btnIconLarge
+        , Ui.Atom.Input.btnIconLarge
             { id = "zoom-minus-btn"
             , onPress = Just UserPressedZoomMinus
             , icon = "search-minus"
@@ -734,14 +735,14 @@ viewVariable name value =
             [ Element.width Element.fill
             , Element.spacing 10
             ]
-            [ Ui.Atom.inputText
+            [ Ui.Atom.Input.text
                 { id = "name-input"
                 , onChange = UserChangedVariableName
                 , text = name
                 , label = "Pick a name"
                 , help = Nothing
                 }
-            , Ui.Atom.inputFormula
+            , Ui.Atom.Input.formula
                 { id = "variable-value--input"
                 , onChange = UserChangedVariableValue
                 , text = value
@@ -754,13 +755,13 @@ viewVariable name value =
             , Element.spacing 5
             ]
             [ Element.el [ Element.alignLeft ] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "variable-create-submit-btn"
                     , onPress = Just UserPressedVariableCreateSubmit
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "variable-create-cancel-btn"
                     , onPress = Just UserPressedVariableDialogCancel
                     , label = "Cancel"
@@ -782,7 +783,7 @@ viewEditVariable name value =
                 [ Font.bold ]
                 (Element.text name)
             ]
-        , Ui.Atom.inputFormula
+        , Ui.Atom.Input.formula
             { id = "variable-value--input"
             , onChange = UserChangedVariableValue
             , text = value
@@ -794,13 +795,13 @@ viewEditVariable name value =
             , Element.spacing 5
             ]
             [ Element.el [ Element.alignLeft ] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "variable-edit-update-btn"
                     , onPress = Just UserPressedVariableEditUpdate
                     , label = "Update"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "variable-edit-cancel-btn"
                     , onPress = Just UserPressedVariableDialogCancel
                     , label = "Cancel"

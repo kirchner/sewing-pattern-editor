@@ -61,6 +61,7 @@ import Svg
 import Svg.Attributes
 import Task
 import Ui.Atom
+import Ui.Atom.Input
 import Ui.Color
 import Ui.Molecule.Modal
 import Ui.Navigation
@@ -597,7 +598,7 @@ viewCreatePatternDialog state name =
                 ]
                 [ Ui.Typography.paragraphBody
                     [ Element.text "Create a new pattern" ]
-                , Ui.Atom.inputText
+                , Ui.Atom.Input.text
                     { id = "name-input"
                     , onChange = NewPatternNameChanged
                     , text = name
@@ -607,13 +608,13 @@ viewCreatePatternDialog state name =
                 ]
         , actions =
             [ Element.el [] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "new-pattern-create-btn"
                     , onPress = Just NewPatternCreateClicked
                     , label = "Create"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "modal-cancel-btn"
                     , onPress = Just ModalCancelClicked
                     , label = "Cancel"
@@ -639,7 +640,7 @@ viewRenamePatternDialog state slug name oldName =
                         , Element.el [ Font.bold ] (Element.text ("«" ++ oldName ++ "»"))
                         , Element.text " to?"
                         ]
-                , Ui.Atom.inputText
+                , Ui.Atom.Input.text
                     { id = "name-input"
                     , onChange = RenamePatternNameChanged
                     , text = name
@@ -649,13 +650,13 @@ viewRenamePatternDialog state slug name oldName =
                 ]
         , actions =
             [ Element.el [] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "rename-pattern-rename-btn"
                     , onPress = Just RenamePatternRenameClicked
                     , label = "Rename"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "modal-cancel-btn"
                     , onPress = Just ModalCancelClicked
                     , label = "Cancel"
@@ -678,13 +679,13 @@ viewDeletePatternDialog state slug name =
                     , Element.text "?"
                     ]
         , actions =
-            [ Ui.Atom.btnDanger
+            [ Ui.Atom.Input.btnDanger
                 { id = "delete-pattern-modal__delete-btn"
                 , onPress = Just DeletePatternDeleteClicked
                 , label = "Delete pattern"
                 }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "delete-pattern-modal__cancel-btn"
                     , onPress = Just ModalCancelClicked
                     , label = "Cancel"
@@ -729,7 +730,7 @@ viewImportPatternsDialog state { hover, previews } =
                                     ++ error
                             ]
                         , Element.el [ Element.alignRight ]
-                            (Ui.Atom.btnSecondary
+                            (Ui.Atom.Input.btnSecondary
                                 { id = "remove-file-button"
                                 , onPress = Nothing
                                 , label = "Remove"
@@ -756,7 +757,7 @@ viewImportPatternsDialog state { hover, previews } =
                             , Ui.Typography.bodyBold "File can be imported."
                             ]
                         , Element.el [ Element.alignRight ]
-                            (Ui.Atom.btnSecondary
+                            (Ui.Atom.Input.btnSecondary
                                 { id = "remove-file-button"
                                 , onPress = Nothing
                                 , label = "Remove"
@@ -799,7 +800,7 @@ viewImportPatternsDialog state { hover, previews } =
                         [ Element.centerX
                         , Element.centerY
                         ]
-                        (Ui.Atom.btnSecondary
+                        (Ui.Atom.Input.btnSecondary
                             { id = "upload-file-button"
                             , onPress = Just ImportPatternsPick
                             , label = "Upload file"
@@ -809,13 +810,13 @@ viewImportPatternsDialog state { hover, previews } =
                 ]
         , actions =
             [ Element.el [] <|
-                Ui.Atom.btnPrimary
+                Ui.Atom.Input.btnPrimary
                     { id = "import-patterns-modal__import-btn"
                     , onPress = Just ImportPatternsImportClicked
                     , label = "Import"
                     }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnCancel
+                Ui.Atom.Input.btnCancel
                     { id = "import-patterns-modal__cancel-btn"
                     , onPress = Just ModalCancelClicked
                     , label = "Cancel"
@@ -857,12 +858,12 @@ viewBody model =
             , actions =
                 Element.row
                     [ Element.spacing Ui.Space.level2 ]
-                    [ Ui.Atom.btnPrimary
+                    [ Ui.Atom.Input.btnPrimary
                         { id = "add-pattern-btn"
                         , onPress = Just AddPatternClicked
                         , label = "Create new pattern"
                         }
-                    , Ui.Atom.btnPrimary
+                    , Ui.Atom.Input.btnPrimary
                         { id = "import-pattern-btn"
                         , onPress = Just ImportPatternsClicked
                         , label = "Import pattern"
@@ -966,7 +967,7 @@ viewPattern ({ pattern } as storedPattern) =
             [ Element.width Element.fill
             , Element.spacing Ui.Space.level1
             ]
-            [ Ui.Atom.btnSecondary
+            [ Ui.Atom.Input.btnSecondary
                 { id = storedPattern.slug ++ "-rename"
                 , onPress = Just (RenamePatternPressed storedPattern.slug)
                 , label = "Rename"
@@ -987,7 +988,7 @@ viewPattern ({ pattern } as storedPattern) =
                 , filename = storedPattern.slug ++ ".json"
                 }
             , Element.el [ Element.alignRight ] <|
-                Ui.Atom.btnDanger
+                Ui.Atom.Input.btnDanger
                     { id = storedPattern.slug ++ "__delete-pattern-btn"
                     , onPress =
                         Just <|

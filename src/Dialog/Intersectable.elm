@@ -30,6 +30,7 @@ import Pattern
         )
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Input
 
 
 {-| -}
@@ -308,7 +309,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
         expanded =
             otherIntersectableFormExpanded otherIntersectable
     in
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Just label
         , help = Nothing
@@ -338,7 +339,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
 
                 InlinedAxis { axis } ->
                     Just <|
-                        Ui.Atom.nestedHideable
+                        Ui.Atom.Input.nestedHideable
                             { show = expanded
                             , onPress = InlinedIntersectableExpandToggled
                             , shown =
@@ -353,7 +354,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
 
                 InlinedCircle { circle } ->
                     Just <|
-                        Ui.Atom.nestedHideable
+                        Ui.Atom.Input.nestedHideable
                             { show = expanded
                             , onPress = InlinedIntersectableExpandToggled
                             , shown =
@@ -368,7 +369,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
 
                 InlinedCurve { curve } ->
                     Just <|
-                        Ui.Atom.nestedHideable
+                        Ui.Atom.Input.nestedHideable
                             { show = expanded
                             , onPress = InlinedIntersectableExpandToggled
                             , shown =

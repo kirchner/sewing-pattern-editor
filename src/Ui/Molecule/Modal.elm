@@ -36,6 +36,7 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import Ui.Atom
+import Ui.Atom.Input
 import Ui.Color
 import Ui.Space
 import Ui.Typography
@@ -166,7 +167,7 @@ custom width state config =
                     ]
                     (Ui.Typography.bodyBold config.title)
                 , Element.el [ Element.alignRight ] <|
-                    Ui.Atom.btnIcon
+                    Ui.Atom.Input.btnIcon
                         { id = "modal-cancel-btn"
                         , onPress = Just config.onCancelPress
                         , icon = "times"

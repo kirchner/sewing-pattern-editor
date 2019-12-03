@@ -22,7 +22,8 @@ import Html.Attributes as Attributes
 import Html.Events as Events
 import Listbox
 import Listbox.Dropdown as Dropdown
-import Ui.Atom exposing (Child(..))
+import Ui.Atom
+import Ui.Atom.Input exposing (Child(..))
 import Ui.Color
 import Ui.Space
 import Ui.Typography

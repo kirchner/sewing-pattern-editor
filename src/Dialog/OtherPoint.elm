@@ -20,6 +20,7 @@ import Element exposing (Element)
 import Pattern exposing (A, Objects, Pattern, Point)
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Input
 
 
 
@@ -227,7 +228,7 @@ view :
     -> { otherPoint : Form pointForm, id : String, label : String }
     -> Element (Msg pointMsg)
 view viewPointFormHelp pattern objects { otherPoint, id, label } =
-    Ui.Atom.segmentControl
+    Ui.Atom.Input.segmentControl
         { id = id
         , label = Just label
         , help =
@@ -258,7 +259,7 @@ view viewPointFormHelp pattern objects { otherPoint, id, label } =
 
                 Inlined { expanded, point } ->
                     Just <|
-                        Ui.Atom.nestedHideable
+                        Ui.Atom.Input.nestedHideable
                             { show = expanded
                             , onPress = InlinedExpandToggled
                             , shown =
