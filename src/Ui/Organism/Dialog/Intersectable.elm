@@ -1,4 +1,4 @@
-module Dialog.Intersectable exposing
+module Ui.Organism.Dialog.Intersectable exposing
     ( Form, whichSize
     , initReferenced, initWith
     , new, clear

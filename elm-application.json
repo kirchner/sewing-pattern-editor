@@ -8,11 +8,7 @@
             "Route"
         ],
         "Interface": [
-            "Page.Editor",
-            "Dialog",
-            "Dialog.Detail",
-            "Dialog.Intersectable",
-            "Dialog.OtherPoint"
+            "Page.Editor"
         ],
         "Ui": [
             "Ui.Atom",
@@ -24,6 +20,10 @@
             "Ui.Molecule.ObjectList",
             "Ui.Molecule.Pattern",
             "Ui.Molecule.VariableList",
+            "Ui.Organism.Dialog",
+            "Ui.Organism.Dialog.Detail",
+            "Ui.Organism.Dialog.Intersectable",
+            "Ui.Organism.Dialog.OtherPoint",
             "Ui.Pattern",
             "Ui.Navigation",
             "Ui.Space",

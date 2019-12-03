@@ -1,4 +1,4 @@
-module Dialog.OtherPoint exposing
+module Ui.Organism.Dialog.OtherPoint exposing
     ( Form
     , initReferenced, initInlined, initWith
     , new, clear

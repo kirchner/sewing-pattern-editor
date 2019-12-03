@@ -1,4 +1,4 @@
-module Dialog.Detail exposing
+module Ui.Organism.Dialog.Detail exposing
     ( Form, init, initWith
     , ActionMenu(..)
     , new, clear

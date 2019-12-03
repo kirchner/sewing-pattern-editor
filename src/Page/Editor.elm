@@ -40,7 +40,6 @@ import Browser.Events
 import Browser.Navigation as Navigation
 import Circle2d
 import Color
-import Dialog
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -87,6 +86,7 @@ import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Navigation
+import Ui.Organism.Dialog
 import Ui.Space
 import Ui.Typography
 import Url exposing (Url)
@@ -165,8 +165,8 @@ type Tab
 
 
 type Dialog
-    = CreateObject Dialog.Create
-    | EditObject String Dialog.Edit
+    = CreateObject Ui.Organism.Dialog.Create
+    | EditObject String Ui.Organism.Dialog.Edit
     | CreateVariable
         { name : String
         , nameHelp : Maybe String
@@ -697,7 +697,7 @@ viewRightToolbar pattern model =
 
             Just (CreateObject dialog) ->
                 Element.map DialogCreateMsg <|
-                    Dialog.createView
+                    Ui.Organism.Dialog.createView
                         { pattern = pattern
                         , hoveredInCanvas = Nothing
                         }
@@ -705,7 +705,7 @@ viewRightToolbar pattern model =
 
             Just (EditObject name dialog) ->
                 Element.map DialogEditMsg <|
-                    Dialog.editView
+                    Ui.Organism.Dialog.editView
                         { pattern = pattern
                         , name = name
                         , hoveredInCanvas = Nothing
@@ -847,8 +847,8 @@ type Msg
     | MouseMove Position
     | MouseUp Position
       -- RIGHT TOOLBAR
-    | DialogCreateMsg Dialog.CreateMsg
-    | DialogEditMsg Dialog.EditMsg
+    | DialogCreateMsg Ui.Organism.Dialog.CreateMsg
+    | DialogEditMsg Ui.Organism.Dialog.EditMsg
       -- VARIABLE DIALOG
     | UserChangedVariableName String
     | UserChangedVariableValue String
@@ -951,19 +951,19 @@ updateWithData key msg model =
                             model.maybeDialog
 
                         Just CreatePoint ->
-                            Just (CreateObject Dialog.createPoint)
+                            Just (CreateObject Ui.Organism.Dialog.createPoint)
 
                         Just CreateAxis ->
-                            Just (CreateObject Dialog.createAxis)
+                            Just (CreateObject Ui.Organism.Dialog.createAxis)
 
                         Just CreateCircle ->
-                            Just (CreateObject Dialog.createCircle)
+                            Just (CreateObject Ui.Organism.Dialog.createCircle)
 
                         Just CreateCurve ->
-                            Just (CreateObject Dialog.createCurve)
+                            Just (CreateObject Ui.Organism.Dialog.createCurve)
 
                         Just CreateDetail ->
-                            Just (CreateObject Dialog.createDetail)
+                            Just (CreateObject Ui.Organism.Dialog.createDetail)
               }
             , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
             )
@@ -995,27 +995,27 @@ updateWithData key msg model =
                         Point aPoint ->
                             Maybe.map2 EditObject
                                 (Pattern.name aPoint)
-                                (Dialog.editPoint pattern aPoint)
+                                (Ui.Organism.Dialog.editPoint pattern aPoint)
 
                         Axis aAxis ->
                             Maybe.map2 EditObject
                                 (Pattern.name aAxis)
-                                (Dialog.editAxis pattern aAxis)
+                                (Ui.Organism.Dialog.editAxis pattern aAxis)
 
                         Circle aCircle ->
                             Maybe.map2 EditObject
                                 (Pattern.name aCircle)
-                                (Dialog.editCircle pattern aCircle)
+                                (Ui.Organism.Dialog.editCircle pattern aCircle)
 
                         Curve aCurve ->
                             Maybe.map2 EditObject
                                 (Pattern.name aCurve)
-                                (Dialog.editCurve pattern aCurve)
+                                (Ui.Organism.Dialog.editCurve pattern aCurve)
 
                         Detail aDetail ->
                             Maybe.map2 EditObject
                                 (Pattern.name aDetail)
-                                (Dialog.editDetail pattern aDetail)
+                                (Ui.Organism.Dialog.editDetail pattern aDetail)
               }
             , Cmd.none
             )
@@ -1231,13 +1231,13 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just (CreateObject dialog) ->
-                    case Dialog.createUpdate pattern dialogMsg dialog of
-                        Dialog.CreateOpen ( newDialog, dialogCmd ) ->
+                    case Ui.Organism.Dialog.createUpdate pattern dialogMsg dialog of
+                        Ui.Organism.Dialog.CreateOpen ( newDialog, dialogCmd ) ->
                             ( { model | maybeDialog = Just (CreateObject newDialog) }
                             , Cmd.map DialogCreateMsg dialogCmd
                             )
 
-                        Dialog.CreateSucceeded newPattern ->
+                        Ui.Organism.Dialog.CreateSucceeded newPattern ->
                             let
                                 newStoredPattern =
                                     { storedPattern | pattern = newPattern }
@@ -1249,7 +1249,7 @@ updateWithData key msg model =
                             , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
-                        Dialog.CreateCanceled ->
+                        Ui.Organism.Dialog.CreateCanceled ->
                             ( { model | maybeDialog = Nothing }
                             , Cmd.none
                             )
@@ -1272,13 +1272,13 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just (EditObject name dialog) ->
-                    case Dialog.editUpdate pattern dialogMsg dialog of
-                        Dialog.EditOpen ( newDialog, dialogCmd ) ->
+                    case Ui.Organism.Dialog.editUpdate pattern dialogMsg dialog of
+                        Ui.Organism.Dialog.EditOpen ( newDialog, dialogCmd ) ->
                             ( { model | maybeDialog = Just (EditObject name newDialog) }
                             , Cmd.map DialogEditMsg dialogCmd
                             )
 
-                        Dialog.EditSucceeded newPattern ->
+                        Ui.Organism.Dialog.EditSucceeded newPattern ->
                             let
                                 newStoredPattern =
                                     { storedPattern | pattern = newPattern }
@@ -1290,7 +1290,7 @@ updateWithData key msg model =
                             , Api.updatePattern ReceivedPatternUpdate newStoredPattern
                             )
 
-                        Dialog.EditCanceled ->
+                        Ui.Organism.Dialog.EditCanceled ->
                             ( { model | maybeDialog = Nothing }
                             , Cmd.none
                             )

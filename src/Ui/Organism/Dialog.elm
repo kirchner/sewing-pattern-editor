@@ -1,4 +1,4 @@
-module Dialog exposing
+module Ui.Organism.Dialog exposing
     ( Create, Edit
     , ObjectReferences, ThatObject(..), Objects
     , createSelection, createPreview, createHovered, createFocused
@@ -50,9 +50,6 @@ module Dialog exposing
 
 -}
 
-import Dialog.Detail as Detail exposing (ActionMenu(..))
-import Dialog.Intersectable as Intersectable
-import Dialog.OtherPoint as OtherPoint
 import Element exposing (Element)
 import Pattern
     exposing
@@ -80,6 +77,9 @@ import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Color
+import Ui.Organism.Dialog.Detail as Detail exposing (ActionMenu(..))
+import Ui.Organism.Dialog.Intersectable as Intersectable
+import Ui.Organism.Dialog.OtherPoint as OtherPoint
 import Ui.Space
 import Ui.Typography
 
