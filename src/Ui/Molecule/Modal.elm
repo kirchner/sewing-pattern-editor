@@ -1,4 +1,4 @@
-module Ui.Modal exposing
+module Ui.Molecule.Modal exposing
     ( State(..), subscriptions
     , ViewConfig, small, wide
     )

@@ -1,13 +1,13 @@
 module Ui.Molecule.ObjectList exposing
     ( State, init
-    , view
+    , Config, view
     , Msg, update
     )
 
 {-|
 
 @docs State, init
-@docs view
+@docs Config, view
 @docs Msg, update
 
 -}
@@ -32,6 +32,7 @@ import Ui.Typography
 ---- MODEL
 
 
+{-| -}
 type alias State =
     { hoveredObject : Maybe Object
     , focusedObject : Maybe Object
@@ -39,6 +40,7 @@ type alias State =
     }
 
 
+{-| -}
 init : State
 init =
     { hoveredObject = Nothing
@@ -51,6 +53,7 @@ init =
 ---- VIEW
 
 
+{-| -}
 type alias Config msg =
     { toMsg : Msg -> msg
     , hidePressed : Object -> msg
@@ -59,6 +62,7 @@ type alias Config msg =
     }
 
 
+{-| -}
 view : Config msg -> Pattern coordinates -> State -> Element msg
 view cfg pattern state =
     let
@@ -293,6 +297,7 @@ fontColor state object =
 ---- UPDATE
 
 
+{-| -}
 type Msg
     = -- OBJECTS
       HoveredObject Object
@@ -305,6 +310,7 @@ type Msg
     | PressedSpace
 
 
+{-| -}
 update : Msg -> Pattern coordinates -> State -> State
 update msg pattern state =
     case msg of

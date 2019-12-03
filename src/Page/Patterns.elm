@@ -62,7 +62,7 @@ import Svg.Attributes
 import Task
 import Ui.Atom
 import Ui.Color
-import Ui.Modal
+import Ui.Molecule.Modal
 import Ui.Navigation
 import Ui.Space
 import Ui.Typography
@@ -74,7 +74,7 @@ import Vector2d
 type alias Model =
     { seed : Random.Seed
     , storedPatterns : WebData (List (StoredPattern BottomLeft))
-    , dialog : Maybe ( Dialog, Ui.Modal.State )
+    , dialog : Maybe ( Dialog, Ui.Molecule.Modal.State )
     }
 
 
@@ -143,7 +143,7 @@ type Msg
     | ImportPatternsClicked
     | ImportPatternsImportClicked
       -- MODALS
-    | ModalStateChanged Ui.Modal.State
+    | ModalStateChanged Ui.Molecule.Modal.State
     | ModalCancelClicked
     | ModalClosed
 
@@ -187,7 +187,7 @@ update key msg model =
 
         -- ADD PATTERN
         AddPatternClicked ->
-            ( { model | dialog = Just ( CreatePattern "", Ui.Modal.Opening ) }
+            ( { model | dialog = Just ( CreatePattern "", Ui.Molecule.Modal.Opening ) }
             , Browser.Dom.focus "name-input"
                 |> Task.attempt (\_ -> NoOp)
             )
@@ -210,7 +210,7 @@ update key msg model =
                             Random.step Uuid.generator model.seed
                     in
                     ( { model
-                        | dialog = Just ( CreatePattern name, Ui.Modal.Closing )
+                        | dialog = Just ( CreatePattern name, Ui.Molecule.Modal.Closing )
                         , seed = newSeed
                       }
                     , Api.createPattern PatternCreateResponse <|
@@ -231,7 +231,7 @@ update key msg model =
                         | dialog =
                             Just
                                 ( RenamePattern slug storedPattern.name
-                                , Ui.Modal.Opening
+                                , Ui.Molecule.Modal.Opening
                                 )
                       }
                     , Cmd.batch
@@ -260,7 +260,7 @@ update key msg model =
                                 | dialog =
                                     Just
                                         ( RenamePattern slug newName
-                                        , Ui.Modal.Closing
+                                        , Ui.Molecule.Modal.Closing
                                         )
                               }
                             , Api.updatePattern PatternUpdateReceived
@@ -287,7 +287,7 @@ update key msg model =
 
         -- DELETE PATTERNS
         DeletePatternPressed slug name ->
-            ( { model | dialog = Just ( DeletePattern slug name, Ui.Modal.Opening ) }
+            ( { model | dialog = Just ( DeletePattern slug name, Ui.Molecule.Modal.Opening ) }
             , Cmd.none
             )
 
@@ -298,7 +298,7 @@ update key msg model =
                         | dialog =
                             Just
                                 ( DeletePattern slug name
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                       }
                     , Api.deletePattern PatternDeleteResponse slug
@@ -434,7 +434,7 @@ update key msg model =
                             { hover = False
                             , previews = []
                             }
-                        , Ui.Modal.Opening
+                        , Ui.Molecule.Modal.Opening
                         )
               }
             , Cmd.none
@@ -465,7 +465,7 @@ update key msg model =
                     in
                     ( { model
                         | seed = newSeed
-                        , dialog = Just ( ImportPatterns data, Ui.Modal.Closing )
+                        , dialog = Just ( ImportPatterns data, Ui.Molecule.Modal.Closing )
                       }
                     , Cmd.batch allCmds
                     )
@@ -490,7 +490,7 @@ update key msg model =
                     ( model, Cmd.none )
 
                 Just ( dialog, _ ) ->
-                    ( { model | dialog = Just ( dialog, Ui.Modal.Closing ) }
+                    ( { model | dialog = Just ( dialog, Ui.Molecule.Modal.Closing ) }
                     , Cmd.none
                     )
 
@@ -521,7 +521,7 @@ subscriptions model =
 
             Just ( _, state ) ->
                 Sub.batch
-                    [ Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
+                    [ Sub.map ModalStateChanged (Ui.Molecule.Modal.subscriptions state)
                     , Browser.Events.onKeyDown
                         (Decode.field "key" Decode.string
                             |> Decode.andThen
@@ -565,7 +565,7 @@ view model =
 ---- DIALOGS
 
 
-viewDialog : Model -> ( Dialog, Ui.Modal.State ) -> Element Msg
+viewDialog : Model -> ( Dialog, Ui.Molecule.Modal.State ) -> Element Msg
 viewDialog model ( dialog, state ) =
     case dialog of
         CreatePattern name ->
@@ -584,9 +584,9 @@ viewDialog model ( dialog, state ) =
             viewImportPatternsDialog state data
 
 
-viewCreatePatternDialog : Ui.Modal.State -> String -> Element Msg
+viewCreatePatternDialog : Ui.Molecule.Modal.State -> String -> Element Msg
 viewCreatePatternDialog state name =
-    Ui.Modal.small state
+    Ui.Molecule.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Create new pattern"
@@ -622,9 +622,9 @@ viewCreatePatternDialog state name =
         }
 
 
-viewRenamePatternDialog : Ui.Modal.State -> String -> String -> String -> Element Msg
+viewRenamePatternDialog : Ui.Molecule.Modal.State -> String -> String -> String -> Element Msg
 viewRenamePatternDialog state slug name oldName =
-    Ui.Modal.small state
+    Ui.Molecule.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Rename the pattern «" ++ oldName ++ "»?"
@@ -664,9 +664,9 @@ viewRenamePatternDialog state slug name oldName =
         }
 
 
-viewDeletePatternDialog : Ui.Modal.State -> String -> String -> Element Msg
+viewDeletePatternDialog : Ui.Molecule.Modal.State -> String -> String -> Element Msg
 viewDeletePatternDialog state slug name =
-    Ui.Modal.small state
+    Ui.Molecule.Modal.small state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Delete «" ++ name ++ "»?"
@@ -693,7 +693,7 @@ viewDeletePatternDialog state slug name =
         }
 
 
-viewImportPatternsDialog : Ui.Modal.State -> ImportPatternsData -> Element Msg
+viewImportPatternsDialog : Ui.Molecule.Modal.State -> ImportPatternsData -> Element Msg
 viewImportPatternsDialog state { hover, previews } =
     let
         hoverAttributes attrs =
@@ -765,7 +765,7 @@ viewImportPatternsDialog state { hover, previews } =
                         ]
                 )
     in
-    Ui.Modal.wide state
+    Ui.Molecule.Modal.wide state
         { onCancelPress = ModalCancelClicked
         , onClosed = ModalClosed
         , title = "Import patterns"

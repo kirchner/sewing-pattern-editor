@@ -80,8 +80,8 @@ import Task
 import Ui.Atom
 import Ui.Atom.Tabs
 import Ui.Color
-import Ui.Modal
 import Ui.Molecule.MenuBtn
+import Ui.Molecule.Modal
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
@@ -107,7 +107,7 @@ type Model
 type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
-    , maybeModal : Maybe ( Modal, Ui.Modal.State )
+    , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
 
     -- PATTERN
     , storedPattern : StoredPattern BottomLeft
@@ -253,7 +253,7 @@ view model =
 ---- MODAL
 
 
-viewModal : Pattern BottomLeft -> ( Modal, Ui.Modal.State ) -> Element Msg
+viewModal : Pattern BottomLeft -> ( Modal, Ui.Molecule.Modal.State ) -> Element Msg
 viewModal pattern ( modal, state ) =
     case modal of
         PointDeleteConfirm aPoint ->
@@ -302,7 +302,7 @@ viewModal pattern ( modal, state ) =
                                 )
                     ]
             in
-            Ui.Modal.small state
+            Ui.Molecule.Modal.small state
                 { onCancelPress = UserPressedModalCancel
                 , onClosed = UserClosedModal
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
@@ -384,9 +384,9 @@ viewModal pattern ( modal, state ) =
                 }
 
 
-viewDeleteModal : Ui.Modal.State -> { name : String, kind : String, onDeletePress : Msg } -> Element Msg
+viewDeleteModal : Ui.Molecule.Modal.State -> { name : String, kind : String, onDeletePress : Msg } -> Element Msg
 viewDeleteModal state { name, kind, onDeletePress } =
-    Ui.Modal.small state
+    Ui.Molecule.Modal.small state
         { onCancelPress = UserPressedModalCancel
         , onClosed = UserClosedModal
         , title = "Delete «" ++ name ++ "»?"
@@ -861,7 +861,7 @@ type Msg
     | UserPressedCurveDeleteModalDelete
     | UserPressedDetailDeleteModalDelete
     | UserPressedVariableDeleteModalDelete
-    | ChangedModalState Ui.Modal.State
+    | ChangedModalState Ui.Molecule.Modal.State
     | UserPressedModalCancel
     | UserClosedModal
 
@@ -1038,7 +1038,7 @@ updateWithData key msg model =
 
                             Detail aDetail ->
                                 DetailDeleteConfirm aDetail
-                        , Ui.Modal.Opening
+                        , Ui.Molecule.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1080,7 +1080,7 @@ updateWithData key msg model =
                 | maybeModal =
                     Just
                         ( VariableDeleteConfirm variable
-                        , Ui.Modal.Opening
+                        , Ui.Molecule.Modal.Opening
                         )
               }
             , Cmd.none
@@ -1422,7 +1422,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( PointDeleteConfirm aPoint
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1446,7 +1446,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( AxisDeleteConfirm aAxis
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1470,7 +1470,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( CircleDeleteConfirm aCircle
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1494,7 +1494,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( CurveDeleteConfirm aCurve
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1518,7 +1518,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( DetailDeleteConfirm aDetail
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1542,7 +1542,7 @@ updateWithData key msg model =
                         | maybeModal =
                             Just
                                 ( VariableDeleteConfirm variable
-                                , Ui.Modal.Closing
+                                , Ui.Molecule.Modal.Closing
                                 )
                         , storedPattern = newStoredPattern
                       }
@@ -1568,7 +1568,7 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just ( modal, state ) ->
-                    ( { model | maybeModal = Just ( modal, Ui.Modal.Closing ) }
+                    ( { model | maybeModal = Just ( modal, Ui.Molecule.Modal.Closing ) }
                     , Cmd.none
                     )
 
@@ -1599,7 +1599,7 @@ subscriptions model =
                         Sub.none
 
                     Just ( _, state ) ->
-                        Sub.map ChangedModalState (Ui.Modal.subscriptions state)
+                        Sub.map ChangedModalState (Ui.Molecule.Modal.subscriptions state)
                 , case data.patternContainerDimensions of
                     Just _ ->
                         Sub.none

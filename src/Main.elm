@@ -39,7 +39,7 @@ import Ports
 import Route exposing (Route)
 import Ui.Atom
 import Ui.Color
-import Ui.Modal
+import Ui.Molecule.Modal
 import Ui.Space
 import Url exposing (Url)
 
@@ -63,7 +63,7 @@ main =
 type alias Model =
     { key : Navigation.Key
     , page : Page
-    , newWorkerModal : Maybe Ui.Modal.State
+    , newWorkerModal : Maybe Ui.Molecule.Modal.State
     }
 
 
@@ -195,9 +195,9 @@ viewHelp body dialog =
         body
 
 
-viewNewWorkerDialog : Ui.Modal.State -> Element Msg
+viewNewWorkerDialog : Ui.Molecule.Modal.State -> Element Msg
 viewNewWorkerDialog state =
-    Ui.Modal.small state
+    Ui.Molecule.Modal.small state
         { onCancelPress = NewWorkerDialogCancelPressed
         , onClosed = ModalClosed
         , title = "New version available"
@@ -246,7 +246,7 @@ type Msg
     | OnNewWorker ()
     | NewWorkerDialogCancelPressed
     | NewWorkerDialogReloadPressed
-    | ModalStateChanged Ui.Modal.State
+    | ModalStateChanged Ui.Molecule.Modal.State
     | ModalClosed
 
 
@@ -325,17 +325,17 @@ update msg model =
 
         -- SERVICE WORKER
         ( OnNewWorker _, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Modal.Opening }
+            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Opening }
             , Cmd.none
             )
 
         ( NewWorkerDialogCancelPressed, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Modal.Closing }
+            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Closing }
             , Cmd.none
             )
 
         ( NewWorkerDialogReloadPressed, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Modal.Closing }
+            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Closing }
             , Cmd.none
             )
 
@@ -412,7 +412,7 @@ subscriptions model =
                 Sub.none
 
             Just state ->
-                Sub.map ModalStateChanged (Ui.Modal.subscriptions state)
+                Sub.map ModalStateChanged (Ui.Molecule.Modal.subscriptions state)
         , case model.page of
             NotFound ->
                 Sub.none

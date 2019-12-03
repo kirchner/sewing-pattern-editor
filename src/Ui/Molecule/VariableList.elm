@@ -20,6 +20,7 @@ import Ui.Space
 import Ui.Typography
 
 
+{-| -}
 type alias Config msg =
     { onHover : String -> msg
     , onLeave : String -> msg
@@ -30,6 +31,7 @@ type alias Config msg =
     }
 
 
+{-| -}
 view : Config msg -> Pattern coordinates -> Maybe String -> Maybe String -> Element msg
 view cfg pattern focusedVariable hoveredVariable =
     Element.el
