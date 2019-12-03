@@ -25,7 +25,6 @@ module Pattern exposing
     , Direction(..), Orientation(..), OneInTwo(..)
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
-    , Intersectable2d(..)
     , ComputeHelp(..)
     , Objects
     , objectsDependingOnPoint, objectsNotDependingOnPoint
@@ -117,8 +116,6 @@ module Pattern exposing
 
 @docs point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
 @docs float
-
-@docs Intersectable2d
 
 @docs ComputeHelp
 
@@ -213,6 +210,7 @@ import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
+import Intersectable2d exposing (Intersectable2d(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
@@ -1608,13 +1606,6 @@ computePoint2d (Point info) =
 
         TransformedPoint stuff ->
             StateResult.err NotComputableYet
-
-
-{-| -}
-type Intersectable2d u c
-    = Axis2d (Axis2d u c)
-    | Circle2d (Circle2d u c)
-    | Curve2d (Curve2d u c)
 
 
 {-| -}
