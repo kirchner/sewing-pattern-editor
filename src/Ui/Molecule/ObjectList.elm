@@ -21,8 +21,7 @@ import Element.Input as Input
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
-import Pattern exposing (Pattern)
-import Pattern.Draw exposing (Object(..))
+import Pattern exposing (Object(..), Pattern)
 import Ui.Atom
 import Ui.Color
 import Ui.Space

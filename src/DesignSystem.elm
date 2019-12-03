@@ -24,7 +24,6 @@ import Json.Decode as Decode
 import Length exposing (Meters, millimeters)
 import LineSegment2d
 import List.Extra as List
-import Pattern.Draw exposing (Object)
 import Pattern.Store exposing (StoredPattern)
 import Pixels exposing (pixels)
 import Point2d

@@ -1,7 +1,8 @@
 module Pattern exposing
     ( Pattern, empty
     , Point, Axis, Circle, Curve, Detail
-    , Intersectable(..), IntersectableTag(..), intersectableTag
+    , Object(..)
+    , Intersectable(..), IntersectableTag(..), intersectableTag, hashIntersectable, inlinedIntersectable
     , A, this, name, inlined, hash
     , whichSize
     , insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
@@ -51,7 +52,6 @@ module Pattern exposing
     , detail, DetailHelp
     , checkExpr, ExprHelp(..)
     , encode, decoder
-    , hashIntersectable, inlinedIntersectable
     )
 
 {-|
@@ -59,7 +59,9 @@ module Pattern exposing
 @docs Pattern, empty
 
 @docs Point, Axis, Circle, Curve, Detail
-@docs Intersectable, IntersectableTag, intersectableTag
+
+@docs Object
+@docs Intersectable, IntersectableTag, intersectableTag, hashIntersectable, inlinedIntersectable
 
 
 # Nest and reference
@@ -278,27 +280,27 @@ empty =
 
 {-| -}
 type Point
-    = Point PointInfo
+    = Point_ PointInfo
 
 
 {-| -}
 type Axis
-    = Axis AxisInfo
+    = Axis_ AxisInfo
 
 
 {-| -}
 type Circle
-    = Circle CircleInfo
+    = Circle_ CircleInfo
 
 
 {-| -}
 type Curve
-    = Curve CurveInfo
+    = Curve_ CurveInfo
 
 
 {-| -}
 type Detail
-    = Detail DetailInfo
+    = Detail_ DetailInfo
 
 
 {-| -}
@@ -390,6 +392,15 @@ hashIntersectable intersectable =
 
         IntersectableCurve aCurve ->
             hash aCurve
+
+
+{-| -}
+type Object
+    = Point (A Point)
+    | Axis (A Axis)
+    | Circle (A Circle)
+    | Curve (A Curve)
+    | Detail (A Detail)
 
 
 {-| -}
@@ -1054,9 +1065,9 @@ pointInfo aPoint (Pattern data) =
     case aPoint of
         That name_ ->
             Dict.get name_ data.points
-                |> Maybe.map (\(Point info) -> info)
+                |> Maybe.map (\(Point_ info) -> info)
 
-        This (Point info) ->
+        This (Point_ info) ->
             Just info
 
 
@@ -1123,9 +1134,9 @@ axisInfo aAxis (Pattern data) =
     case aAxis of
         That name_ ->
             Dict.get name_ data.axes
-                |> Maybe.map (\(Axis info) -> info)
+                |> Maybe.map (\(Axis_ info) -> info)
 
-        This (Axis info) ->
+        This (Axis_ info) ->
             Just info
 
 
@@ -1163,9 +1174,9 @@ circleInfo aCircle (Pattern data) =
     case aCircle of
         That name_ ->
             Dict.get name_ data.circles
-                |> Maybe.map (\(Circle info) -> info)
+                |> Maybe.map (\(Circle_ info) -> info)
 
-        This (Circle info) ->
+        This (Circle_ info) ->
             Just info
 
 
@@ -1204,9 +1215,9 @@ curveInfo aCurve (Pattern data) =
     case aCurve of
         That name_ ->
             Dict.get name_ data.curves
-                |> Maybe.map (\(Curve info) -> info)
+                |> Maybe.map (\(Curve_ info) -> info)
 
-        This (Curve info) ->
+        This (Curve_ info) ->
             Just info
 
 
@@ -1255,9 +1266,9 @@ detailInfo aDetail (Pattern data) =
     case aDetail of
         That name_ ->
             Dict.get name_ data.details
-                |> Maybe.map (\(Detail info) -> info)
+                |> Maybe.map (\(Detail_ info) -> info)
 
-        This (Detail info) ->
+        This (Detail_ info) ->
             Just info
 
 
@@ -1501,7 +1512,7 @@ point2d aPoint =
 
 
 computePoint2d : Point -> State (Pattern coordinates) (Result ComputeHelp (Point2d Meters coordinates))
-computePoint2d (Point info) =
+computePoint2d (Point_ info) =
     case info of
         Origin stuff ->
             StateResult.ok <|
@@ -1660,7 +1671,7 @@ axis2d aAxis =
 
 
 computeAxis2d : Axis -> State (Pattern coordinates) (Result ComputeHelp (Axis2d Meters coordinates))
-computeAxis2d (Axis info) =
+computeAxis2d (Axis_ info) =
     case info of
         ThroughOnePoint stuff ->
             StateResult.ok Axis2d.through
@@ -1720,7 +1731,7 @@ circle2d aCircle =
 
 
 computeCircle2d : Circle -> State (Pattern coordinates) (Result ComputeHelp (Circle2d Meters coordinates))
-computeCircle2d (Circle info) =
+computeCircle2d (Circle_ info) =
     case info of
         WithRadius stuff ->
             let
@@ -1785,7 +1796,7 @@ curve2d aCurve =
 
 
 computeCurve2d : Curve -> State (Pattern coordinates) (Result ComputeHelp (Curve2d Meters coordinates))
-computeCurve2d (Curve info) =
+computeCurve2d (Curve_ info) =
     case info of
         Straight stuff ->
             let
@@ -1868,7 +1879,7 @@ detail2d aDetail =
 
 
 computeDetail2d : Detail -> State (Pattern coordinates) (Result ComputeHelp (Detail2d Meters coordinates))
-computeDetail2d (Detail info) =
+computeDetail2d (Detail_ info) =
     StateResult.ok Detail2d
         |> StateResult.with
             (case info.firstCurve of
@@ -2897,7 +2908,7 @@ collectObjectsDependingOnPoint data pointName chains aPoint =
                                     Nothing ->
                                         State.modify addAsChecked
 
-                                    Just (Point info) ->
+                                    Just (Point_ info) ->
                                         collectObjectsDependingOnPointInfo data
                                             pointName
                                             { chains
@@ -2906,7 +2917,7 @@ collectObjectsDependingOnPoint data pointName chains aPoint =
                                             info
                         )
 
-        This (Point info) ->
+        This (Point_ info) ->
             collectObjectsDependingOnPointInfo data pointName chains info
 
 
@@ -3008,7 +3019,7 @@ collectObjectsDependingOnExpr data pointName chains expr =
 {-| -}
 origin : Float -> Float -> Point
 origin x y =
-    Point <|
+    Point_ <|
         Origin
             { x = x
             , y = y
@@ -3028,7 +3039,7 @@ fromOnePoint aBasePoint direction distance pattern =
         |> collectMaybe (checkExpr pattern distance)
         |> Result.map
             (always <|
-                Point <|
+                Point_ <|
                     FromOnePoint
                         { basePoint = aBasePoint
                         , direction = direction
@@ -3052,7 +3063,7 @@ betweenRatio aBasePointA aBasePointB ratio pattern =
         |> collectBool (checkObjectsCoincidence aBasePointA aBasePointB)
         |> Result.map
             (always <|
-                Point <|
+                Point_ <|
                     BetweenRatio
                         { basePointA = aBasePointA
                         , basePointB = aBasePointB
@@ -3082,7 +3093,7 @@ betweenLength aBasePointA aBasePointB distance from pattern =
         |> collectBool (checkObjectsCoincidence aBasePointA aBasePointB)
         |> Result.map
             (always <|
-                Point <|
+                Point_ <|
                     BetweenLength
                         { basePointA = aBasePointA
                         , basePointB = aBasePointB
@@ -3112,7 +3123,7 @@ intersection intersectableA intersectableB which pattern =
         |> collectBool (checkWhichInBound intersectableA intersectableB pattern which)
         |> Result.map
             (always <|
-                Point <|
+                Point_ <|
                     Intersection
                         { intersectableA = intersectableA
                         , intersectableB = intersectableB
@@ -3166,7 +3177,7 @@ throughOnePoint aPoint orientation pattern =
         |> collectMaybe (checkOrientation pattern orientation)
         |> Result.map
             (always <|
-                Axis <|
+                Axis_ <|
                     ThroughOnePoint
                         { point = aPoint
                         , orientation = orientation
@@ -3187,7 +3198,7 @@ throughTwoPoints aPointA aPointB pattern =
         |> collectBool (checkObjectsCoincidence aPointA aPointB)
         |> Result.map
             (always <|
-                Axis <|
+                Axis_ <|
                     ThroughTwoPoints
                         { pointA = aPointA
                         , pointB = aPointB
@@ -3214,7 +3225,7 @@ withRadius radius aCenterPoint pattern =
         |> collectMaybe (checkExpr pattern radius)
         |> Result.map
             (always <|
-                Circle <|
+                Circle_ <|
                     WithRadius
                         { centerPoint = aCenterPoint
                         , radius = radius
@@ -3244,7 +3255,7 @@ throughThreePoints aPointA aPointB aPointC pattern =
             )
         |> Result.map
             (always <|
-                Circle <|
+                Circle_ <|
                     ThroughThreePoints
                         { pointA = aPointA
                         , pointB = aPointB
@@ -3272,7 +3283,7 @@ straight aStartPoint aEndPoint pattern =
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
             (always <|
-                Curve <|
+                Curve_ <|
                     Straight
                         { startPoint = aStartPoint
                         , endPoint = aEndPoint
@@ -3293,7 +3304,7 @@ quadratic aStartPoint aControlPoint aEndPoint pattern =
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
             (always <|
-                Curve <|
+                Curve_ <|
                     Quadratic
                         { startPoint = aStartPoint
                         , controlPoint = aControlPoint
@@ -3315,7 +3326,7 @@ cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint pattern =
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
             (always <|
-                Curve <|
+                Curve_ <|
                     Cubic
                         { startPoint = aStartPoint
                         , startControlPoint = aStartControlPoint
@@ -3341,7 +3352,7 @@ transformedCurve aCurve aTransformation pattern =
 detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern coordinates -> Result DetailHelp Detail
 detail firstCurve nextCurves lastCurve pattern =
     Ok <|
-        Detail
+        Detail_
             { firstCurve = firstCurve
             , nextCurves = nextCurves
             , lastCurve = lastCurve
@@ -3498,7 +3509,7 @@ encode (Pattern data) =
 
 
 encodePoint : Point -> Value
-encodePoint (Point info) =
+encodePoint (Point_ info) =
     case info of
         Origin stuff ->
             withType "origin"
@@ -3543,7 +3554,7 @@ encodePoint (Point info) =
 
 
 encodeAxis : Axis -> Value
-encodeAxis (Axis info) =
+encodeAxis (Axis_ info) =
     case info of
         ThroughOnePoint stuff ->
             withType "throughOnePoint"
@@ -3565,7 +3576,7 @@ encodeAxis (Axis info) =
 
 
 encodeCircle : Circle -> Value
-encodeCircle (Circle info) =
+encodeCircle (Circle_ info) =
     case info of
         WithRadius stuff ->
             withType "withRadius"
@@ -3588,7 +3599,7 @@ encodeCircle (Circle info) =
 
 
 encodeCurve : Curve -> Value
-encodeCurve (Curve info) =
+encodeCurve (Curve_ info) =
     case info of
         Straight stuff ->
             withType "straight"
@@ -3619,7 +3630,7 @@ encodeCurve (Curve info) =
 
 
 encodeDetail : Detail -> Value
-encodeDetail (Detail stuff) =
+encodeDetail (Detail_ stuff) =
     Encode.object
         [ ( "firstCurve", encodeFirstCurve stuff.firstCurve )
         , ( "nextCurves", Encode.list encodeNextCurve stuff.nextCurves )
@@ -3907,7 +3918,7 @@ pointDecoder =
             |> Decode.map Intersection
             |> ensureType "intersection"
         ]
-        |> Decode.map Point
+        |> Decode.map Point_
 
 
 axisDecoder : Decoder Axis
@@ -3929,7 +3940,7 @@ axisDecoder =
             |> Decode.map TransformedAxis
             |> ensureType "transformedAxis"
         ]
-        |> Decode.map Axis
+        |> Decode.map Axis_
 
 
 circleDecoder : Decoder Circle
@@ -3952,7 +3963,7 @@ circleDecoder =
             |> Decode.map TransformedCircle
             |> ensureType "transformedCircle"
         ]
-        |> Decode.map Circle
+        |> Decode.map Circle_
 
 
 curveDecoder : Decoder Curve
@@ -3982,7 +3993,7 @@ curveDecoder =
             |> Decode.map TransformedCurve
             |> ensureType "transformedCurve"
         ]
-        |> Decode.map Curve
+        |> Decode.map Curve_
 
 
 detailDecoder : Decoder Detail
@@ -3991,7 +4002,7 @@ detailDecoder =
         |> Decode.required "firstCurve" firstCurveDecoder
         |> Decode.required "nextCurves" (Decode.list nextCurveDecoder)
         |> Decode.required "lastCurve" lastCurveDecoder
-        |> Decode.map Detail
+        |> Decode.map Detail_
 
 
 firstCurveDecoder : Decoder FirstCurve

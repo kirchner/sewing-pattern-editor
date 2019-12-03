@@ -49,7 +49,6 @@ import Json.Encode as Encode
 import Length
 import List.Extra as List
 import Pattern exposing (Pattern)
-import Pattern.Draw as Pattern
 import Pattern.Store exposing (StoredPattern)
 import Point2d
 import Ports
