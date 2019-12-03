@@ -25,7 +25,6 @@
             "Ui.Organism.Dialog.Intersectable",
             "Ui.Organism.Dialog.OtherPoint",
             "Ui.Pattern",
-            "Ui.Navigation",
             "Ui.Space",
             "Ui.Typography"
         ],

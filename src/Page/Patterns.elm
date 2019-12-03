@@ -64,7 +64,6 @@ import Ui.Atom
 import Ui.Atom.Input
 import Ui.Color
 import Ui.Molecule.Modal
-import Ui.Navigation
 import Ui.Space
 import Ui.Typography
 import Url
@@ -743,7 +742,7 @@ viewImportPatternsDialog state { hover, previews } =
                             [ Element.width Element.fill
                             , Element.clip
                             ]
-                            (Ui.Navigation.newTabLink
+                            (newTabLink
                                 { url = ""
                                 , label = fileName
                                 }
@@ -765,6 +764,19 @@ viewImportPatternsDialog state { hover, previews } =
                             )
                         ]
                 )
+
+        newTabLink : { url : String, label : String } -> Element msg
+        newTabLink { url, label } =
+            Element.newTabLink []
+                { url = url
+                , label =
+                    Element.el
+                        [ Font.underline
+                        , Font.color Ui.Color.primary
+                        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+                        ]
+                        (Ui.Typography.body label)
+                }
     in
     Ui.Molecule.Modal.wide state
         { onCancelPress = ModalCancelClicked
