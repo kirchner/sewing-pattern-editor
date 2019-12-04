@@ -23,6 +23,7 @@ import Html.Events
 import Json.Decode as Decode
 import Pattern exposing (Object(..), Pattern)
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
@@ -161,19 +162,19 @@ icon cfg state =
                 ]
                 (case object of
                     Point _ ->
-                        Ui.Atom.iconPoint
+                        Ui.Atom.Icon.point
 
                     Axis _ ->
-                        Ui.Atom.iconAxis
+                        Ui.Atom.Icon.axis
 
                     Circle _ ->
-                        Ui.Atom.iconCircle
+                        Ui.Atom.Icon.circle
 
                     Curve _ ->
-                        Ui.Atom.iconCurve
+                        Ui.Atom.Icon.curve
 
                     Detail _ ->
-                        Ui.Atom.iconDetail
+                        Ui.Atom.Icon.detail
                 )
     }
 
@@ -198,7 +199,7 @@ name cfg state =
                 , backgroundColor state object
                 , fontColor state object
                 ]
-                ( Ui.Theme.Typography.body (objectName object))
+                (Ui.Theme.Typography.body (objectName object))
     }
 
 
@@ -219,7 +220,7 @@ actions cfg state =
                                 [ Element.centerX
                                 , Element.centerY
                                 ]
-                                (Ui.Atom.fa icon_)
+                                (Ui.Atom.Icon.fa icon_)
                         }
             in
             Element.row

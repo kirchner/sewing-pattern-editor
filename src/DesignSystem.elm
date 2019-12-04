@@ -34,6 +34,7 @@ import Svg.Attributes
 import Task
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Atom.Object exposing (Intersectable(..))
 import Ui.Atom.Tabs
@@ -414,7 +415,7 @@ navigationBar open =
             ]
             { onPress = Just ClickedNavigationMenu
             , label =
-                Ui.Atom.faLarge <|
+                Ui.Atom.Icon.faLarge <|
                     if open then
                         "times"
 
@@ -893,41 +894,41 @@ viewIcons model =
             [ Element.spacing Ui.Theme.Spacing.level2
             , Element.padding Ui.Theme.Spacing.level2
             ]
-            [ Ui.Atom.fa "check"
-            , Ui.Atom.fa "exclamation"
-            , Ui.Atom.fa "check-circle"
-            , Ui.Atom.fa "exclamation-circle"
-            , Ui.Atom.fa "chevron-up"
-            , Ui.Atom.fa "chevron-down"
-            , Ui.Atom.iconPoint
-            , Ui.Atom.iconAxis
-            , Ui.Atom.iconCircle
-            , Ui.Atom.iconCurve
-            , Ui.Atom.iconDetail
+            [ Ui.Atom.Icon.fa "check"
+            , Ui.Atom.Icon.fa "exclamation"
+            , Ui.Atom.Icon.fa "check-circle"
+            , Ui.Atom.Icon.fa "exclamation-circle"
+            , Ui.Atom.Icon.fa "chevron-up"
+            , Ui.Atom.Icon.fa "chevron-down"
+            , Ui.Atom.Icon.point
+            , Ui.Atom.Icon.axis
+            , Ui.Atom.Icon.circle
+            , Ui.Atom.Icon.curve
+            , Ui.Atom.Icon.detail
             ]
         , Ui.Theme.Typography.headingThree "Body"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level3
             , Element.padding Ui.Theme.Spacing.level2
             ]
-            [ Ui.Atom.faBody "check"
-            , Ui.Atom.faBody "exclamation"
-            , Ui.Atom.faBody "check-circle"
-            , Ui.Atom.faBody "exclamation-circle"
-            , Ui.Atom.faBody "chevron-up"
-            , Ui.Atom.faBody "chevron-down"
+            [ Ui.Atom.Icon.faBody "check"
+            , Ui.Atom.Icon.faBody "exclamation"
+            , Ui.Atom.Icon.faBody "check-circle"
+            , Ui.Atom.Icon.faBody "exclamation-circle"
+            , Ui.Atom.Icon.faBody "chevron-up"
+            , Ui.Atom.Icon.faBody "chevron-down"
             ]
         , Ui.Theme.Typography.headingThree "Large"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level2
             ]
-            [ Ui.Atom.faLarge "check"
-            , Ui.Atom.faLarge "exclamation"
-            , Ui.Atom.faLarge "check-circle"
-            , Ui.Atom.faLarge "exclamation-circle"
-            , Ui.Atom.faLarge "chevron-up"
-            , Ui.Atom.faLarge "chevron-down"
+            [ Ui.Atom.Icon.faLarge "check"
+            , Ui.Atom.Icon.faLarge "exclamation"
+            , Ui.Atom.Icon.faLarge "check-circle"
+            , Ui.Atom.Icon.faLarge "exclamation-circle"
+            , Ui.Atom.Icon.faLarge "chevron-up"
+            , Ui.Atom.Icon.faLarge "chevron-down"
             ]
         ]
 

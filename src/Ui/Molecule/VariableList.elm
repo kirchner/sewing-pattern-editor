@@ -15,6 +15,7 @@ import Element.Input as Input
 import Html.Attributes
 import Pattern exposing (Pattern)
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
@@ -84,7 +85,7 @@ name cfg focusedVariable hoveredVariable =
                 , backgroundColor focusedVariable hoveredVariable variable
                 , fontColor focusedVariable hoveredVariable variable
                 ]
-                ( Ui.Theme.Typography.body variable)
+                (Ui.Theme.Typography.body variable)
     }
 
 
@@ -105,7 +106,7 @@ actions cfg focusedVariable hoveredVariable =
                                 [ Element.centerX
                                 , Element.centerY
                                 ]
-                                (Ui.Atom.fa icon_)
+                                (Ui.Atom.Icon.fa icon_)
                         }
             in
             Element.row

@@ -48,6 +48,7 @@ import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
@@ -78,7 +79,7 @@ btnPrimary { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label =  Ui.Theme.Typography.button label
+            , label = Ui.Theme.Typography.button label
             }
 
 
@@ -94,7 +95,7 @@ btnSecondary { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label =  Ui.Theme.Typography.button label
+            , label = Ui.Theme.Typography.button label
             }
 
 
@@ -111,7 +112,7 @@ btnDanger { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label =  Ui.Theme.Typography.button label
+            , label = Ui.Theme.Typography.button label
             }
 
 
@@ -127,7 +128,7 @@ btnCancel { id, onPress, label } =
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
-            , label =  Ui.Theme.Typography.button label
+            , label = Ui.Theme.Typography.button label
             }
 
 
@@ -154,8 +155,8 @@ btnCallToAction { id, onPress, label } =
                     [ Element.width Element.fill
                     , Element.spacing Ui.Theme.Spacing.level4
                     ]
-                    [  Ui.Theme.Typography.button label
-                    , Element.el [ Element.alignRight ] (Ui.Atom.fa "chevron-right")
+                    [ Ui.Theme.Typography.button label
+                    , Element.el [ Element.alignRight ] (Ui.Atom.Icon.fa "chevron-right")
                     ]
             }
 
@@ -181,7 +182,7 @@ btnIcon { id, onPress, icon } =
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
-            , label = btnIconLabel (Ui.Atom.fa icon)
+            , label = btnIconLabel (Ui.Atom.Icon.fa icon)
             }
 
 
@@ -195,7 +196,7 @@ btnIconDanger { id, onPress, icon } =
             , Element.mouseOver [ Font.color Ui.Theme.Color.dangerDark ]
             ]
             { onPress = onPress
-            , label = btnIconLabel (Ui.Atom.fa icon)
+            , label = btnIconLabel (Ui.Atom.Icon.fa icon)
             }
 
 
@@ -208,7 +209,7 @@ btnIconLarge { id, onPress, icon } =
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
-            , label = btnIconLabel (Ui.Atom.faLarge icon)
+            , label = btnIconLabel (Ui.Atom.Icon.faLarge icon)
             }
 
 
@@ -251,7 +252,7 @@ checkbox { id, onChange, checked, label } =
                     [ Element.centerY
                     , Element.paddingXY Ui.Theme.Spacing.level1 0
                     ]
-                    ( Ui.Theme.Typography.body label)
+                    (Ui.Theme.Typography.body label)
             }
 
 
@@ -585,7 +586,7 @@ radioRow { id, onChange, options, selected, label } =
                         , right = 0
                         }
                     ]
-                    ( Ui.Theme.Typography.bodyBold label)
+                    (Ui.Theme.Typography.bodyBold label)
             }
 
 
@@ -610,7 +611,7 @@ radioColumn { id, onChange, options, selected, label } =
                         , right = 0
                         }
                     ]
-                    ( Ui.Theme.Typography.bodyBold label)
+                    (Ui.Theme.Typography.bodyBold label)
             }
 
 
@@ -745,7 +746,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         [ attributeId (id ++ "-label")
                         , Element.width Element.fill
                         ]
-                        ( Ui.Theme.Typography.bodyBold labelText)
+                        (Ui.Theme.Typography.bodyBold labelText)
 
         control borderRounded =
             Element.el
@@ -778,8 +779,8 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         [ Element.spacing Ui.Theme.Spacing.level1
                         , Font.color Ui.Theme.Color.danger
                         ]
-                        [ Ui.Atom.fa "exclamation-circle"
-                        ,  Ui.Theme.Typography.bodyBold helpText
+                        [ Ui.Atom.Icon.fa "exclamation-circle"
+                        , Ui.Theme.Typography.bodyBold helpText
                         ]
     in
     case child of
@@ -920,13 +921,13 @@ disclosureButton { show, onPress } =
                 (Ui.Atom.withFocusOutline <|
                     Element.row
                         [ Element.spacing Ui.Theme.Spacing.level1 ]
-                        [  Ui.Theme.Typography.button <|
+                        [ Ui.Theme.Typography.button <|
                             if show then
                                 "Minimize"
 
                             else
                                 "Expand"
-                        , Ui.Atom.fa <|
+                        , Ui.Atom.Icon.fa <|
                             if show then
                                 "chevron-up"
 
@@ -1034,7 +1035,7 @@ segment selectedTag thisTag position label =
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
-            ( Ui.Theme.Typography.body label)
+            (Ui.Theme.Typography.body label)
         )
 
 
@@ -1147,7 +1148,7 @@ labelAbove { label, help } =
                 , right = 0
                 }
             ]
-            [  Ui.Theme.Typography.bodyBold label
+            [ Ui.Theme.Typography.bodyBold label
             , case help of
                 Nothing ->
                     Element.none
@@ -1157,8 +1158,8 @@ labelAbove { label, help } =
                         [ Element.spacing Ui.Theme.Spacing.level1
                         , Font.color Ui.Theme.Color.danger
                         ]
-                        [ Ui.Atom.fa "exclamation-circle"
-                        ,  Ui.Theme.Typography.bodyBold helpText
+                        [ Ui.Atom.Icon.fa "exclamation-circle"
+                        , Ui.Theme.Typography.bodyBold helpText
                         ]
             ]
 

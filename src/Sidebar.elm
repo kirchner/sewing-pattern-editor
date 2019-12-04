@@ -26,6 +26,7 @@ import Element.Background as Background
 import Element.Font as Font
 import Route
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 
@@ -134,7 +135,7 @@ viewNavigation currentPage =
                         [ Element.spacing Ui.Theme.Spacing.level2
                         , Font.size 16
                         ]
-                        [ Ui.Atom.fa (pageIcon page)
+                        [ Ui.Atom.Icon.fa (pageIcon page)
                         , Element.text (pageLabel page)
                         ]
                 }

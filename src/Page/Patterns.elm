@@ -61,9 +61,10 @@ import Svg
 import Svg.Attributes
 import Task
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Atom.Input
-import Ui.Theme.Color
 import Ui.Molecule.Modal
+import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url
@@ -595,7 +596,7 @@ viewCreatePatternDialog state name =
                 [ Element.width Element.fill
                 , Element.spacing Ui.Theme.Spacing.level2
                 ]
-                [  Ui.Theme.Typography.paragraphBody
+                [ Ui.Theme.Typography.paragraphBody
                     [ Element.text "Create a new pattern" ]
                 , Ui.Atom.Input.text
                     { id = "name-input"
@@ -634,7 +635,7 @@ viewRenamePatternDialog state slug name oldName =
                 , Element.spacing Ui.Theme.Spacing.level2
                 ]
                 [ Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
-                     Ui.Theme.Typography.paragraphBody
+                    Ui.Theme.Typography.paragraphBody
                         [ Element.text "What do you want to rename the pattern "
                         , Element.el [ Font.bold ] (Element.text ("«" ++ oldName ++ "»"))
                         , Element.text " to?"
@@ -672,7 +673,7 @@ viewDeletePatternDialog state slug name =
         , title = "Delete «" ++ name ++ "»?"
         , content =
             Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
-                 Ui.Theme.Typography.paragraphBody
+                Ui.Theme.Typography.paragraphBody
                     [ Element.text "Do you want to delete the pattern "
                     , Element.el [ Font.bold ] (Element.text ("«" ++ name ++ "»"))
                     , Element.text "?"
@@ -717,14 +718,14 @@ viewImportPatternsDialog state { hover, previews } =
                             [ Element.width Element.fill
                             , Element.clip
                             ]
-                            ( Ui.Theme.Typography.body fileName)
+                            (Ui.Theme.Typography.body fileName)
                         , Element.row
                             [ Element.alignRight
                             , Element.spacing Ui.Theme.Spacing.level1
                             , Font.color Ui.Theme.Color.danger
                             ]
-                            [ Ui.Atom.fa "exclamation-circle"
-                            ,  Ui.Theme.Typography.bodyBold <|
+                            [ Ui.Atom.Icon.fa "exclamation-circle"
+                            , Ui.Theme.Typography.bodyBold <|
                                 "This is not a valid pattern file: "
                                     ++ error
                             ]
@@ -752,8 +753,8 @@ viewImportPatternsDialog state { hover, previews } =
                             , Element.spacing Ui.Theme.Spacing.level1
                             , Font.color Ui.Theme.Color.success
                             ]
-                            [ Ui.Atom.fa "check-circle"
-                            ,  Ui.Theme.Typography.bodyBold "File can be imported."
+                            [ Ui.Atom.Icon.fa "check-circle"
+                            , Ui.Theme.Typography.bodyBold "File can be imported."
                             ]
                         , Element.el [ Element.alignRight ]
                             (Ui.Atom.Input.btnSecondary
@@ -775,7 +776,7 @@ viewImportPatternsDialog state { hover, previews } =
                         , Font.color Ui.Theme.Color.primary
                         , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
                         ]
-                        ( Ui.Theme.Typography.body label)
+                        (Ui.Theme.Typography.body label)
                 }
     in
     Ui.Molecule.Modal.wide state
@@ -996,7 +997,7 @@ viewPattern ({ pattern } as storedPattern) =
                 { url =
                     "data:application/json;charset=utf-8,"
                         ++ Url.percentEncode (Encode.encode 0 (Pattern.Store.encode storedPattern))
-                , label =  Ui.Theme.Typography.button "Download"
+                , label = Ui.Theme.Typography.button "Download"
                 , filename = storedPattern.slug ++ ".json"
                 }
             , Element.el [ Element.alignRight ] <|

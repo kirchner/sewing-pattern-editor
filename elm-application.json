@@ -13,6 +13,7 @@
         "Ui": [
             "Ui.Atom",
             "Ui.Atom.Dropdown",
+            "Ui.Atom.Icon",
             "Ui.Atom.Input",
             "Ui.Atom.Object",
             "Ui.Molecule.MenuBtn",

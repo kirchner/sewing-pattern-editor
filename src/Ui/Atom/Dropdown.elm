@@ -23,6 +23,7 @@ import Html.Events as Events
 import Listbox
 import Listbox.Dropdown as Dropdown
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Atom.Input exposing (Child(..))
 import Ui.Theme.Color
 import Ui.Theme.Spacing
@@ -100,7 +101,7 @@ viewWithMenu menu config instance options dropdown selection =
                     [ Element.htmlAttribute (Attributes.id (instance.id ++ "-label"))
                     , Element.alignLeft
                     ]
-                    ( Ui.Theme.Typography.bodyBold instance.label)
+                    (Ui.Theme.Typography.bodyBold instance.label)
                 , Element.el [ Element.alignRight ]
                     menu
                 ]
@@ -203,7 +204,7 @@ dropdownViewConfig appended printOption hashOption =
                         , Element.mouseOver
                             [ Font.color Ui.Theme.Color.primary ]
                         ]
-                        (Ui.Atom.fa "chevron-down")
+                        (Ui.Atom.Icon.fa "chevron-down")
                     ]
                 }
         , ul =

@@ -39,6 +39,7 @@ import Pattern
         , Point
         )
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Theme.Color
@@ -1510,7 +1511,7 @@ viewActionMenu actionMenu =
                 Element.row
                     [ Element.spacing Ui.Theme.Spacing.level1 ]
                     [ Element.text "Actions"
-                    , Ui.Atom.fa "angle-down"
+                    , Ui.Atom.Icon.fa "angle-down"
                     ]
             }
         ]

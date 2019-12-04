@@ -25,6 +25,7 @@ import Json.Decode as Decode exposing (Decoder)
 import List.Extra as List
 import Task
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
@@ -133,7 +134,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                             }
                         ]
                         { onPress = Just (onMsg (PressedActionButton action))
-                        , label =  Ui.Theme.Typography.button label
+                        , label = Ui.Theme.Typography.button label
                         }
                 , Ui.Atom.withFocusOutlineRight <|
                     Input.button
@@ -153,7 +154,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                         , Events.onMouseUp (onMsg MouseUpOnMenuButton)
                         ]
                         { onPress = Just (onMsg (PressedMenuButton id))
-                        , label = Ui.Atom.fa "chevron-down"
+                        , label = Ui.Atom.Icon.fa "chevron-down"
                         }
                 ]
 
@@ -239,7 +240,7 @@ viewAction onMsg selected index { label, action } =
                 Ui.Theme.Color.black
         , Element.htmlAttribute (Html.Events.onClick (onMsg (PressedMenuItem index action)))
         ]
-        ( Ui.Theme.Typography.button label)
+        (Ui.Theme.Typography.button label)
 
 
 

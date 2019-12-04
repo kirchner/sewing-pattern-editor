@@ -77,15 +77,16 @@ import Svg.Events
 import Svg.Lazy
 import Task
 import Ui.Atom
+import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Atom.Tabs
-import Ui.Theme.Color
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.Modal
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Organism.Dialog
+import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url exposing (Url)
@@ -262,7 +263,7 @@ viewModal pattern ( modal, state ) =
                     Pattern.objectsDependingOnPoint pattern aPoint
 
                 viewDependentObjects =
-                    [  Ui.Theme.Typography.paragraphBody
+                    [ Ui.Theme.Typography.paragraphBody
                         [ Element.el [ Font.bold ]
                             (Element.text "Note:")
                         , Element.text " The following objects depend on this point and will therefore be "
@@ -283,7 +284,7 @@ viewModal pattern ( modal, state ) =
                                 }
                             ]
                         <|
-                             Ui.Theme.Typography.paragraphBody
+                            Ui.Theme.Typography.paragraphBody
                                 (List.concat
                                     [ [ Element.text "The points " ]
                                     , dependentObjects.points
@@ -314,7 +315,7 @@ viewModal pattern ( modal, state ) =
                         , Element.padding Ui.Theme.Spacing.level2
                         , Background.color Ui.Theme.Color.white
                         ]
-                        ( Ui.Theme.Typography.paragraphBody
+                        (Ui.Theme.Typography.paragraphBody
                             [ Element.text "Do you want to remove the point "
                             , Element.el [ Font.bold ]
                                 (Element.text ("«" ++ objectName aPoint ++ "»"))
@@ -392,7 +393,7 @@ viewDeleteModal state { name, kind, onDeletePress } =
         , title = "Delete «" ++ name ++ "»?"
         , content =
             Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
-                 Ui.Theme.Typography.paragraphBody
+                Ui.Theme.Typography.paragraphBody
                     [ Element.text ("Do you want to remove the " ++ kind ++ " ")
                     , Element.el [ Font.bold ]
                         (Element.text ("«" ++ name ++ "»"))
@@ -487,14 +488,14 @@ viewTopToolbar model name =
             [ Element.centerX
             , Font.bold
             ]
-            ( Ui.Theme.Typography.body name)
+            (Ui.Theme.Typography.body name)
         , Element.newTabLink
             [ Element.alignRight
             , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
             , Element.paddingXY Ui.Theme.Spacing.level1 0
             ]
             { url = "https://github.com/kirchner/sewing-pattern-editor"
-            , label = Ui.Atom.faBrandLarge "github"
+            , label = Ui.Atom.Icon.faBrandLarge "github"
             }
         ]
 
@@ -724,7 +725,7 @@ viewVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [  Ui.Theme.Typography.paragraphBody
+        [ Ui.Theme.Typography.paragraphBody
             [ Element.text "Create a new "
             , Element.el
                 [ Font.bold ]
@@ -776,7 +777,7 @@ viewEditVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [  Ui.Theme.Typography.paragraphBody
+        [ Ui.Theme.Typography.paragraphBody
             [ Element.text "Edit the variable "
             , Element.el
                 [ Font.bold ]
