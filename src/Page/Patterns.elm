@@ -62,7 +62,7 @@ import Svg.Attributes
 import Task
 import Ui.Atom
 import Ui.Atom.Input
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Molecule.Modal
 import Ui.Space
 import Ui.Typography
@@ -698,12 +698,12 @@ viewImportPatternsDialog state { hover, previews } =
     let
         hoverAttributes attrs =
             if hover then
-                Border.color Ui.Color.primaryDark
-                    :: Background.color Ui.Color.secondary
+                Border.color Ui.Theme.Color.primaryDark
+                    :: Background.color Ui.Theme.Color.secondary
                     :: attrs
 
             else
-                Border.color Ui.Color.primary
+                Border.color Ui.Theme.Color.primary
                     :: attrs
 
         viewFile { fileName, content } =
@@ -721,7 +721,7 @@ viewImportPatternsDialog state { hover, previews } =
                         , Element.row
                             [ Element.alignRight
                             , Element.spacing Ui.Space.level1
-                            , Font.color Ui.Color.danger
+                            , Font.color Ui.Theme.Color.danger
                             ]
                             [ Ui.Atom.fa "exclamation-circle"
                             , Ui.Typography.bodyBold <|
@@ -750,7 +750,7 @@ viewImportPatternsDialog state { hover, previews } =
                         , Element.row
                             [ Element.alignRight
                             , Element.spacing Ui.Space.level1
-                            , Font.color Ui.Color.success
+                            , Font.color Ui.Theme.Color.success
                             ]
                             [ Ui.Atom.fa "check-circle"
                             , Ui.Typography.bodyBold "File can be imported."
@@ -772,8 +772,8 @@ viewImportPatternsDialog state { hover, previews } =
                 , label =
                     Element.el
                         [ Font.underline
-                        , Font.color Ui.Color.primary
-                        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+                        , Font.color Ui.Theme.Color.primary
+                        , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
                         ]
                         (Ui.Typography.body label)
                 }
@@ -895,7 +895,7 @@ viewBody model =
         , Element.el
             [ Element.width Element.fill
             , Element.height (Element.px Ui.Space.level1)
-            , Background.color Ui.Color.primary
+            , Background.color Ui.Theme.Color.primary
             ]
             Element.none
         ]
@@ -938,16 +938,16 @@ viewPattern ({ pattern } as storedPattern) =
         [ Border.width 1
 
         --, Border.rounded 4
-        , Border.color Ui.Color.primary
+        , Border.color Ui.Theme.Color.primary
         , Element.padding Ui.Space.level2
         , Element.spacing Ui.Space.level2
         , Element.mouseOver
-            [ Border.color Ui.Color.primaryDark
+            [ Border.color Ui.Theme.Color.primaryDark
             , Border.shadow
                 { offset = ( 0, 0 )
                 , size = 2
                 , blur = 8
-                , color = Ui.Color.primary
+                , color = Ui.Theme.Color.primary
                 }
             ]
         ]
@@ -966,10 +966,10 @@ viewPattern ({ pattern } as storedPattern) =
                     , label =
                         Element.el
                             [ Font.bold
-                            , Font.color Ui.Color.primary
+                            , Font.color Ui.Theme.Color.primary
                             , Font.underline
                             , Element.mouseOver
-                                [ Font.color Ui.Color.primaryDark ]
+                                [ Font.color Ui.Theme.Color.primaryDark ]
                             ]
                             (Element.text storedPattern.name)
                     }
@@ -987,8 +987,8 @@ viewPattern ({ pattern } as storedPattern) =
             , Element.downloadAs
                 [ Element.alignLeft
                 , Element.paddingXY 18 10
-                , Background.color Ui.Color.secondary
-                , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
+                , Background.color Ui.Theme.Color.secondary
+                , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
                 , Element.htmlAttribute <|
                     Html.Attributes.style "transition"
                         "background-color 0.2s ease-in-out 0s"

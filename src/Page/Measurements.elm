@@ -30,7 +30,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Header
 import Sidebar
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 
 
@@ -108,7 +108,7 @@ viewBody =
         , Element.el
             [ Element.width Element.fill
             , Element.height (Element.px Ui.Space.level1)
-            , Background.color Ui.Color.primary
+            , Background.color Ui.Theme.Color.primary
             ]
             Element.none
         ]

@@ -24,7 +24,7 @@ import Listbox
 import Listbox.Dropdown as Dropdown
 import Ui.Atom
 import Ui.Atom.Input exposing (Child(..))
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -173,17 +173,17 @@ dropdownViewConfig appended printOption hashOption =
 
                       else
                         Border.width 1
-                    , Border.color Ui.Color.black
-                    , Background.color Ui.Color.white
+                    , Border.color Ui.Theme.Color.black
+                    , Background.color Ui.Theme.Color.white
                     , Element.mouseOver
-                        [ Border.color Ui.Color.primary ]
+                        [ Border.color Ui.Theme.Color.primary ]
                     , Element.focused
-                        [ Border.color Ui.Color.primary
+                        [ Border.color Ui.Theme.Color.primary
                         , Border.innerShadow
                             { offset = ( 0, 0 )
                             , size = 1
                             , blur = 0
-                            , color = Ui.Color.primary
+                            , color = Ui.Theme.Color.primary
                             }
                         ]
                     ]
@@ -199,9 +199,9 @@ dropdownViewConfig appended printOption hashOption =
                         [ Element.alignRight
                         , Element.paddingXY Ui.Space.level1 0
                         , Element.focused
-                            [ Font.color Ui.Color.primary ]
+                            [ Font.color Ui.Theme.Color.primary ]
                         , Element.mouseOver
-                            [ Font.color Ui.Color.primary ]
+                            [ Font.color Ui.Theme.Color.primary ]
                         ]
                         (Ui.Atom.fa "chevron-down")
                     ]
@@ -218,10 +218,10 @@ dropdownViewConfig appended printOption hashOption =
                 { offset = ( 0, 0 )
                 , size = 0
                 , blur = 6
-                , color = Ui.Color.grayDark
+                , color = Ui.Theme.Color.grayDark
                 }
             , Element.scrollbarY
-            , Background.color Ui.Color.white
+            , Background.color Ui.Theme.Color.white
             ]
         , liOption =
             \{ focused, hovered, selected } thatPoint ->
@@ -231,20 +231,20 @@ dropdownViewConfig appended printOption hashOption =
                     , Font.size 16
                     , Font.color <|
                         if selected then
-                            Ui.Color.white
+                            Ui.Theme.Color.white
 
                         else
-                            Ui.Color.black
+                            Ui.Theme.Color.black
                     , Element.width Element.fill
                     , Background.color <|
                         if selected then
-                            Ui.Color.primary
+                            Ui.Theme.Color.primary
 
                         else if hovered || focused then
-                            Ui.Color.secondary
+                            Ui.Theme.Color.secondary
 
                         else
-                            Ui.Color.transparent
+                            Ui.Theme.Color.transparent
                     ]
                 , children =
                     [ Element.text (printOption thatPoint) ]

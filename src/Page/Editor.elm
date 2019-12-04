@@ -79,7 +79,7 @@ import Task
 import Ui.Atom
 import Ui.Atom.Input
 import Ui.Atom.Tabs
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.Modal
 import Ui.Molecule.ObjectList
@@ -312,7 +312,7 @@ viewModal pattern ( modal, state ) =
                         , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                         , Element.width Element.fill
                         , Element.padding Ui.Space.level2
-                        , Background.color Ui.Color.white
+                        , Background.color Ui.Theme.Color.white
                         ]
                         (Ui.Typography.paragraphBody
                             [ Element.text "Do you want to remove the point "
@@ -445,7 +445,7 @@ horizontalRule =
     Element.el
         [ Element.width Element.fill
         , Element.height (Element.px 2)
-        , Background.color Ui.Color.primary
+        , Background.color Ui.Theme.Color.primary
         ]
         Element.none
 
@@ -459,7 +459,7 @@ viewTopToolbar model name =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Space.level1 // 2)
-        , Background.color Ui.Color.secondary
+        , Background.color Ui.Theme.Color.secondary
         ]
         [ Ui.Molecule.MenuBtn.viewPrimary
             { id = "create-object"
@@ -490,7 +490,7 @@ viewTopToolbar model name =
             (Ui.Typography.body name)
         , Element.newTabLink
             [ Element.alignRight
-            , Element.mouseOver [ Font.color Ui.Color.primary ]
+            , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
             , Element.paddingXY Ui.Space.level1 0
             ]
             { url = "https://github.com/kirchner/sewing-pattern-editor"
@@ -521,9 +521,9 @@ viewWorkspace storedPattern model =
             , left = 1
             , right = 1
             }
-        , Border.color Ui.Color.secondaryDark
+        , Border.color Ui.Theme.Color.secondaryDark
         , Element.focused
-            [ Border.color Ui.Color.complementary ]
+            [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
@@ -675,14 +675,14 @@ viewRightToolbar pattern model =
         [ Element.width (Element.maximum 500 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
-        , Background.color Ui.Color.white
+        , Background.color Ui.Theme.Color.white
         , Border.widthEach
             { top = 1
             , bottom = 4
             , left = 1
             , right = 1
             }
-        , Border.color Ui.Color.secondaryDark
+        , Border.color Ui.Theme.Color.secondaryDark
         ]
         (case model.maybeDialog of
             Nothing ->

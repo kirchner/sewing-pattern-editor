@@ -41,7 +41,7 @@ import Pattern
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 
 
@@ -1448,21 +1448,21 @@ viewActionMenu actionMenu =
                 , bottom = Ui.Space.level1
                 }
             , Font.size 10
-            , Font.color Ui.Color.black
+            , Font.color Ui.Theme.Color.black
             , Border.widthEach
                 { left = 0
                 , right = 0
                 , top = 0
                 , bottom = 2
                 }
-            , Border.color Ui.Color.secondary
-            , Background.color Ui.Color.secondary
+            , Border.color Ui.Theme.Color.secondary
+            , Background.color Ui.Theme.Color.secondary
             , Element.mouseOver
-                [ Background.color Ui.Color.secondaryDark
-                , Border.color Ui.Color.black
+                [ Background.color Ui.Theme.Color.secondaryDark
+                , Border.color Ui.Theme.Color.black
                 ]
             , Element.focused
-                [ Border.color Ui.Color.black ]
+                [ Border.color Ui.Theme.Color.black ]
             , Element.htmlAttribute <|
                 Html.Attributes.style "transition" <|
                     String.join "; "
@@ -1480,9 +1480,9 @@ viewActionMenu actionMenu =
                                 Element.el
                                     [ Element.paddingXY 8 7
                                     , Element.width Element.fill
-                                    , Background.color Ui.Color.secondary
+                                    , Background.color Ui.Theme.Color.secondary
                                     , Element.mouseOver
-                                        [ Background.color Ui.Color.secondaryDark ]
+                                        [ Background.color Ui.Theme.Color.secondaryDark ]
                                     , Element.htmlAttribute (Html.Attributes.tabindex -1)
                                     , Element.htmlAttribute <|
                                         Html.Events.stopPropagationOn "click" <|
@@ -1495,7 +1495,7 @@ viewActionMenu actionMenu =
                             , Events.onMouseUp MouseUp
                             , Element.moveDown 2
                             , Font.size 14
-                            , Font.color Ui.Color.black
+                            , Font.color Ui.Theme.Color.black
                             ]
                             [ viewAction MoveDownPressed "Move down"
                             , viewAction MoveUpPressed "Move up"

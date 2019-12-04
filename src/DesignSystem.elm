@@ -36,7 +36,7 @@ import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Atom.Tabs
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
@@ -403,11 +403,11 @@ navigationBar open =
             , left = 0
             , right = 0
             }
-        , Border.color Ui.Color.secondaryDark
+        , Border.color Ui.Theme.Color.secondaryDark
         ]
         (Input.button
             [ Element.mouseOver
-                [ Font.color Ui.Color.primaryDark ]
+                [ Font.color Ui.Theme.Color.primaryDark ]
             , Element.padding Ui.Space.level3
             , Element.htmlAttribute <|
                 Html.Attributes.class "navigation-menu"
@@ -451,13 +451,13 @@ navigation deviceClass currentRoute =
                 Element.link
                     (if currentRoute == route then
                         [ Element.width Element.fill
-                        , Background.color Ui.Color.primaryLight
+                        , Background.color Ui.Theme.Color.primaryLight
                         ]
 
                      else
                         [ Element.width Element.fill
                         , Element.mouseOver
-                            [ Background.color Ui.Color.primaryBright ]
+                            [ Background.color Ui.Theme.Color.primaryBright ]
                         ]
                     )
                     { url = routeToUrl route
@@ -603,7 +603,7 @@ viewColor model =
                 [ Element.width Element.fill
                 , Element.height (Element.px (2 * Ui.Space.level8))
                 , Border.width 1
-                , Border.color Ui.Color.grayDark
+                , Border.color Ui.Theme.Color.grayDark
                 , Background.color backgroundColor
                 , Font.color fontColor
                 ]
@@ -615,22 +615,22 @@ viewColor model =
         [ Element.spacing Ui.Space.level4
         , Element.width Element.fill
         ]
-        [ colorBox Ui.Color.primaryBright Ui.Color.black "Primary Bright"
-        , colorBox Ui.Color.primaryLight Ui.Color.black "Primary Light"
-        , colorBox Ui.Color.primary Ui.Color.white "Primary"
-        , colorBox Ui.Color.primaryDark Ui.Color.white "Primary Dark"
-        , colorBox Ui.Color.secondary Ui.Color.black "Secondary"
-        , colorBox Ui.Color.secondaryDark Ui.Color.black "Secondary Dark"
-        , colorBox Ui.Color.complementary Ui.Color.white "Complementary"
-        , colorBox Ui.Color.complementaryDark Ui.Color.white "Complementary Dark"
-        , colorBox Ui.Color.neutral Ui.Color.black "Neutral"
-        , colorBox Ui.Color.neutralDark Ui.Color.black "Neutral Dark"
-        , colorBox Ui.Color.danger Ui.Color.white "Danger"
-        , colorBox Ui.Color.dangerDark Ui.Color.white "Danger Dark"
-        , colorBox Ui.Color.success Ui.Color.black "Success"
-        , colorBox Ui.Color.white Ui.Color.black "White"
-        , colorBox Ui.Color.black Ui.Color.white "Black"
-        , colorBox Ui.Color.grayDark Ui.Color.white "Gray Dark"
+        [ colorBox Ui.Theme.Color.primaryBright Ui.Theme.Color.black "Primary Bright"
+        , colorBox Ui.Theme.Color.primaryLight Ui.Theme.Color.black "Primary Light"
+        , colorBox Ui.Theme.Color.primary Ui.Theme.Color.white "Primary"
+        , colorBox Ui.Theme.Color.primaryDark Ui.Theme.Color.white "Primary Dark"
+        , colorBox Ui.Theme.Color.secondary Ui.Theme.Color.black "Secondary"
+        , colorBox Ui.Theme.Color.secondaryDark Ui.Theme.Color.black "Secondary Dark"
+        , colorBox Ui.Theme.Color.complementary Ui.Theme.Color.white "Complementary"
+        , colorBox Ui.Theme.Color.complementaryDark Ui.Theme.Color.white "Complementary Dark"
+        , colorBox Ui.Theme.Color.neutral Ui.Theme.Color.black "Neutral"
+        , colorBox Ui.Theme.Color.neutralDark Ui.Theme.Color.black "Neutral Dark"
+        , colorBox Ui.Theme.Color.danger Ui.Theme.Color.white "Danger"
+        , colorBox Ui.Theme.Color.dangerDark Ui.Theme.Color.white "Danger Dark"
+        , colorBox Ui.Theme.Color.success Ui.Theme.Color.black "Success"
+        , colorBox Ui.Theme.Color.white Ui.Theme.Color.black "White"
+        , colorBox Ui.Theme.Color.black Ui.Theme.Color.white "Black"
+        , colorBox Ui.Theme.Color.grayDark Ui.Theme.Color.white "Gray Dark"
         ]
 
 
@@ -645,13 +645,13 @@ viewSpace model =
             Element.el
                 [ Element.width Element.fill
                 , Element.height (Element.px (3 * Ui.Space.level8))
-                , Background.color Ui.Color.secondaryDark
+                , Background.color Ui.Theme.Color.secondaryDark
                 , Element.padding space
                 ]
                 (Element.el
                     [ Element.width Element.fill
                     , Element.height Element.fill
-                    , Background.color Ui.Color.secondary
+                    , Background.color Ui.Theme.Color.secondary
                     ]
                     (Element.el
                         [ Element.centerX
@@ -1313,7 +1313,7 @@ viewTabs model =
                         [ Element.height (Element.px 120)
                         , Element.width Element.fill
                         , Border.width Ui.Space.level1
-                        , Border.color Ui.Color.secondary
+                        , Border.color Ui.Theme.Color.secondary
                         ]
                         (Element.el
                             [ Element.centerX

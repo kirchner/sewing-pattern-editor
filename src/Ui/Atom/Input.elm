@@ -48,7 +48,7 @@ import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
 import Ui.Atom
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -72,9 +72,9 @@ btnPrimary { id, onPress, label } =
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Font.color Ui.Color.white
-            , Background.color Ui.Color.primaryLight
-            , Element.mouseOver [ Background.color Ui.Color.primary ]
+            , Font.color Ui.Theme.Color.white
+            , Background.color Ui.Theme.Color.primaryLight
+            , Element.mouseOver [ Background.color Ui.Theme.Color.primary ]
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
@@ -89,8 +89,8 @@ btnSecondary { id, onPress, label } =
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Background.color Ui.Color.secondary
-            , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
+            , Background.color Ui.Theme.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
@@ -105,9 +105,9 @@ btnDanger { id, onPress, label } =
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Font.color Ui.Color.white
-            , Background.color Ui.Color.danger
-            , Element.mouseOver [ Background.color Ui.Color.dangerDark ]
+            , Font.color Ui.Theme.Color.white
+            , Background.color Ui.Theme.Color.danger
+            , Element.mouseOver [ Background.color Ui.Theme.Color.dangerDark ]
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
@@ -122,9 +122,9 @@ btnCancel { id, onPress, label } =
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Font.color Ui.Color.primary
+            , Font.color Ui.Theme.Color.primary
             , Font.underline
-            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
             , label = Ui.Typography.button label
@@ -144,8 +144,8 @@ btnCallToAction { id, onPress, label } =
             , Element.width Element.fill
             , Element.paddingXY Ui.Space.level3 Ui.Space.level2
             , Border.rounded Ui.Space.level1
-            , Background.color Ui.Color.secondary
-            , Element.mouseOver [ Background.color Ui.Color.secondaryDark ]
+            , Background.color Ui.Theme.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
@@ -178,7 +178,7 @@ btnIcon { id, onPress, icon } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
             , label = btnIconLabel (Ui.Atom.fa icon)
@@ -191,8 +191,8 @@ btnIconDanger { id, onPress, icon } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Font.color Ui.Color.danger
-            , Element.mouseOver [ Font.color Ui.Color.dangerDark ]
+            , Font.color Ui.Theme.Color.danger
+            , Element.mouseOver [ Font.color Ui.Theme.Color.dangerDark ]
             ]
             { onPress = onPress
             , label = btnIconLabel (Ui.Atom.fa icon)
@@ -205,7 +205,7 @@ btnIconLarge { id, onPress, icon } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+            , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
             , label = btnIconLabel (Ui.Atom.faLarge icon)
@@ -260,32 +260,32 @@ checkboxIcon checked =
     Element.el
         [ Element.width (Element.px 26)
         , Element.height (Element.px 26)
-        , Font.color Ui.Color.white
+        , Font.color Ui.Theme.Color.white
         , Element.centerY
         , Font.size 20
         , Font.center
         , Border.rounded 3
         , Border.color <|
             if checked then
-                Ui.Color.primary
+                Ui.Theme.Color.primary
 
             else
-                Ui.Color.black
+                Ui.Theme.Color.black
         , Border.width 1
         , Background.color <|
             if checked then
-                Ui.Color.primary
+                Ui.Theme.Color.primary
 
             else
-                Ui.Color.white
+                Ui.Theme.Color.white
         , Element.focused
-            [ Border.color Ui.Color.primary
+            [ Border.color Ui.Theme.Color.primary
             , focusShadow
             ]
         ]
         (if checked then
             Element.el
-                [ Border.color Ui.Color.white
+                [ Border.color Ui.Theme.Color.white
                 , Element.height (Element.px 9)
                 , Element.width (Element.px 14)
                 , Element.rotate (degrees -50)
@@ -327,16 +327,16 @@ text data =
         withShadow attrs =
             if data.help == Nothing then
                 [ Element.focused
-                    [ Border.color Ui.Color.primary
+                    [ Border.color Ui.Theme.Color.primary
                     , focusShadow
                     ]
-                , Border.color Ui.Color.black
+                , Border.color Ui.Theme.Color.black
                 ]
                     ++ attrs
 
             else
                 [ dangerShadow
-                , Border.color Ui.Color.danger
+                , Border.color Ui.Theme.Color.danger
                 ]
                     ++ attrs
     in
@@ -347,7 +347,7 @@ text data =
                 , Element.width Element.fill
                 , Element.padding 10
                 , Font.size 16
-                , Background.color Ui.Color.white
+                , Background.color Ui.Theme.Color.white
                 , Border.rounded 3
                 , Border.width 1
                 ]
@@ -372,14 +372,14 @@ textAppended id data =
             , Element.width Element.fill
             , Element.padding 10
             , Font.size 16
-            , Background.color Ui.Color.white
+            , Background.color Ui.Theme.Color.white
             , borderWidthAppended
             , borderRoundAppended
             , Element.focused
-                [ Border.color Ui.Color.primary
+                [ Border.color Ui.Theme.Color.primary
                 , focusShadow
                 ]
-            , Border.color Ui.Color.black
+            , Border.color Ui.Theme.Color.black
             ]
             { onChange = data.onChange
             , text = data.text
@@ -415,16 +415,16 @@ formula data =
         withShadow attrs =
             if data.help == Nothing then
                 [ Element.focused
-                    [ Border.color Ui.Color.primary
+                    [ Border.color Ui.Theme.Color.primary
                     , focusShadow
                     ]
-                , Border.color Ui.Color.black
+                , Border.color Ui.Theme.Color.black
                 ]
                     ++ attrs
 
             else
                 [ dangerShadow
-                , Border.color Ui.Color.danger
+                , Border.color Ui.Theme.Color.danger
                 ]
                     ++ attrs
     in
@@ -438,7 +438,7 @@ formula data =
                 , Element.spacing Ui.Space.level1
                 , Font.size 16
                 , Font.family [ Font.monospace ]
-                , Background.color Ui.Color.white
+                , Background.color Ui.Theme.Color.white
                 , Border.width 1
                 , Border.rounded 3
                 , Element.htmlAttribute (Html.Attributes.rows lineCount)
@@ -491,14 +491,14 @@ formulaAppended id data =
             , Element.spacing Ui.Space.level1
             , Font.size 16
             , Font.family [ Font.monospace ]
-            , Background.color Ui.Color.white
+            , Background.color Ui.Theme.Color.white
             , borderWidthAppended
             , borderRoundAppended
             , Element.focused
-                [ Border.color Ui.Color.primary
+                [ Border.color Ui.Theme.Color.primary
                 , focusShadow
                 ]
-            , Border.color Ui.Color.black
+            , Border.color Ui.Theme.Color.black
             , Element.htmlAttribute (Html.Attributes.rows lineCount)
             , Element.htmlAttribute (Html.Attributes.style "white-space" "pre")
             , Element.clip
@@ -543,7 +543,7 @@ lineNumbers lineCount =
                 (Element.el
                     [ Element.height Element.fill
                     , Element.width (Element.px 1)
-                    , Background.color Ui.Color.black
+                    , Background.color Ui.Theme.Color.black
                     ]
                     Element.none
                 )
@@ -651,7 +651,7 @@ radioOptionCustom label status =
             ([ Element.width (Element.px 26)
              , Element.height (Element.px 26)
              , Element.alignTop
-             , Background.color Ui.Color.white
+             , Background.color Ui.Theme.Color.white
              , Border.rounded 13
              , Border.width <|
                 case status of
@@ -666,13 +666,13 @@ radioOptionCustom label status =
              , Border.color <|
                 case status of
                     Input.Idle ->
-                        Ui.Color.black
+                        Ui.Theme.Color.black
 
                     Input.Focused ->
-                        Ui.Color.black
+                        Ui.Theme.Color.black
 
                     Input.Selected ->
-                        Ui.Color.primary
+                        Ui.Theme.Color.primary
              ]
                 |> setClass
             )
@@ -753,8 +753,8 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 , Element.height Element.fill
                 , borderRounded
                 , Border.width 1
-                , Border.color Ui.Color.primary
-                , Background.color Ui.Color.secondary
+                , Border.color Ui.Theme.Color.primary
+                , Background.color Ui.Theme.Color.secondary
                 ]
                 (Element.row
                     [ attributeId (id ++ "-label")
@@ -776,7 +776,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 Just helpText ->
                     Element.row
                         [ Element.spacing Ui.Space.level1
-                        , Font.color Ui.Color.danger
+                        , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"
                         , Ui.Typography.bodyBold helpText
@@ -907,8 +907,8 @@ segmentControl { id, label, help, onChange, options, selected, child } =
 disclosureButton : { show : Bool, onPress : msg } -> Element msg
 disclosureButton { show, onPress } =
     Input.button
-        [ Element.mouseOver [ Font.color Ui.Color.primary ]
-        , Element.focused [ Font.color Ui.Color.primary ]
+        [ Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
+        , Element.focused [ Font.color Ui.Theme.Color.primary ]
         , fontColorEaseInOut
         ]
         { onPress = Just onPress
@@ -961,7 +961,7 @@ segments tags selectedTag =
             (Element.el
                 [ Element.width (Element.px 1)
                 , Element.height Element.fill
-                , Background.color Ui.Color.primary
+                , Background.color Ui.Theme.Color.primary
                 ]
                 Element.none
             )
@@ -988,23 +988,23 @@ segment selectedTag thisTag position label =
         , Element.paddingXY 0 7
         , Background.color <|
             if selected then
-                Ui.Color.primary
+                Ui.Theme.Color.primary
 
             else
-                Ui.Color.transparent
+                Ui.Theme.Color.transparent
         , backgroundColorEaseInOut
         , Font.color <|
             if selected then
-                Ui.Color.white
+                Ui.Theme.Color.white
 
             else
-                Ui.Color.black
+                Ui.Theme.Color.black
         , Element.mouseOver <|
             if selected then
                 []
 
             else
-                [ Background.color Ui.Color.secondaryDark ]
+                [ Background.color Ui.Theme.Color.secondaryDark ]
         , case position of
             First ->
                 Border.widthEach
@@ -1029,8 +1029,8 @@ segment selectedTag thisTag position label =
                     , left = 0
                     , right = 1
                     }
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.primary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.primary ]
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
@@ -1120,7 +1120,7 @@ focusShadow =
         { offset = ( 0, 0 )
         , size = 1
         , blur = 0
-        , color = Ui.Color.primary
+        , color = Ui.Theme.Color.primary
         }
 
 
@@ -1130,7 +1130,7 @@ dangerShadow =
         { offset = ( 0, 0 )
         , size = 1
         , blur = 0
-        , color = Ui.Color.danger
+        , color = Ui.Theme.Color.danger
         }
 
 
@@ -1155,7 +1155,7 @@ labelAbove { label, help } =
                 Just helpText ->
                     Element.row
                         [ Element.spacing Ui.Space.level1
-                        , Font.color Ui.Color.danger
+                        , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"
                         , Ui.Typography.bodyBold helpText

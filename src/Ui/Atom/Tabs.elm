@@ -16,7 +16,7 @@ import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
 import Ui.Atom
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -50,10 +50,10 @@ view { label, tabs, selected, content, onSelect } =
                     }
                 , Border.color <|
                     if tab.tag == selected then
-                        Ui.Color.primary
+                        Ui.Theme.Color.primary
 
                     else
-                        Ui.Color.transparent
+                        Ui.Theme.Color.transparent
                 ]
                 (Element.el
                     [ Border.widthEach
@@ -68,19 +68,19 @@ view { label, tabs, selected, content, onSelect } =
                         , bottomLeft = 0
                         , bottomRight = 0
                         }
-                    , Border.color Ui.Color.transparent
-                    , Element.focused [ Border.color Ui.Color.complementary ]
+                    , Border.color Ui.Theme.Color.transparent
+                    , Element.focused [ Border.color Ui.Theme.Color.complementary ]
                     ]
                     (Input.button
                         ([ Element.padding Ui.Space.level1
                          , Font.color <|
                             if tab.tag == selected then
-                                Ui.Color.primary
+                                Ui.Theme.Color.primary
 
                             else
-                                Ui.Color.grayDark
+                                Ui.Theme.Color.grayDark
                          , Element.mouseOver
-                            [ Font.color Ui.Color.black ]
+                            [ Font.color Ui.Theme.Color.black ]
                          , attributeId (tab.id ++ "--tab")
                          , attribute "role" "tab"
                          , attribute "aria-controls" (tab.id ++ "--tabpanel")

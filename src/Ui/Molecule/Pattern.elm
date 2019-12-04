@@ -29,7 +29,7 @@ import Quantity
 import State
 import Svg exposing (Svg)
 import Svg.Attributes
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Pattern exposing (Resolution)
 import Vector2d
 

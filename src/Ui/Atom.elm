@@ -46,7 +46,7 @@ import Polygon2d
 import QuadraticSpline2d
 import Svg
 import Svg.Attributes
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -69,8 +69,8 @@ link { id, onPress, label } =
     Input.button
         [ attributeId id
         , Font.underline
-        , Font.color Ui.Color.primary
-        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+        , Font.color Ui.Theme.Color.primary
+        , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
         , Element.htmlAttribute <|
             Html.Attributes.style "transition" "color 0.2s ease-in-out 0s"
         ]
@@ -258,8 +258,8 @@ withFocusOutline element =
         [ Element.width Element.fill
         , Border.width 3
         , Border.rounded 3
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.padding 4
@@ -286,8 +286,8 @@ withFocusOutlineTop element =
             , bottomLeft = 0
             , bottomRight = 0
             }
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -319,8 +319,8 @@ withFocusOutlineBottom element =
             , bottomLeft = 3
             , bottomRight = 3
             }
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -352,8 +352,8 @@ withFocusOutlineLeft element =
             , bottomLeft = 3
             , bottomRight = 0
             }
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -385,8 +385,8 @@ withFocusOutlineRight element =
             , bottomLeft = 0
             , bottomRight = 3
             }
-        , Border.color Ui.Color.transparent
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.paddingEach
@@ -407,7 +407,7 @@ focusShadow =
         { offset = ( 0, 0 )
         , size = 1
         , blur = 0
-        , color = Ui.Color.primary
+        , color = Ui.Theme.Color.primary
         }
 
 
@@ -417,7 +417,7 @@ dangerShadow =
         { offset = ( 0, 0 )
         , size = 1
         , blur = 0
-        , color = Ui.Color.danger
+        , color = Ui.Theme.Color.danger
         }
 
 

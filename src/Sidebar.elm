@@ -26,7 +26,7 @@ import Element.Background as Background
 import Element.Font as Font
 import Route
 import Ui.Atom
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 
 
@@ -82,14 +82,14 @@ view { headerHeight, currentPage } =
         [ Element.el
             [ Element.width Element.fill
             , Element.height (Element.px headerHeight)
-            , Background.color Ui.Color.primary
+            , Background.color Ui.Theme.Color.primary
             ]
             Element.none
         , viewNavigation currentPage
         , Element.el
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Background.color Ui.Color.primary
+            , Background.color Ui.Theme.Color.primary
             ]
             Element.none
         ]
@@ -109,23 +109,23 @@ viewNavigation currentPage =
                     }
                 , Font.color <|
                     if page == currentPage then
-                        Ui.Color.primaryDark
+                        Ui.Theme.Color.primaryDark
 
                     else
-                        Ui.Color.white
+                        Ui.Theme.Color.white
                 , Background.color <|
                     if page == currentPage then
-                        Ui.Color.white
+                        Ui.Theme.Color.white
 
                     else
-                        Ui.Color.primary
+                        Ui.Theme.Color.primary
                 , Element.mouseOver
                     [ Background.color <|
                         if page == currentPage then
-                            Ui.Color.white
+                            Ui.Theme.Color.white
 
                         else
-                            Ui.Color.primaryDark
+                            Ui.Theme.Color.primaryDark
                     ]
                 ]
                 { url = pageUrl page

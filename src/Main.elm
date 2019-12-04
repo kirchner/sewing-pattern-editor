@@ -39,7 +39,7 @@ import Ports
 import Route exposing (Route)
 import Ui.Atom
 import Ui.Atom.Input
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Molecule.Modal
 import Ui.Space
 import Url exposing (Url)
@@ -208,7 +208,7 @@ viewNewWorkerDialog state =
                 , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                 , Element.width Element.fill
                 , Element.padding Ui.Space.level2
-                , Background.color Ui.Color.white
+                , Background.color Ui.Theme.Color.white
                 ]
                 (Element.paragraph []
                     [ Element.text "A new version is available. You have to reload to activate it."

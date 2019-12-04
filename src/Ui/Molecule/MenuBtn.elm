@@ -25,7 +25,7 @@ import Json.Decode as Decode exposing (Decoder)
 import List.Extra as List
 import Task
 import Ui.Atom
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -78,9 +78,9 @@ type alias Action action =
 viewPrimary : Config action msg -> State -> Element msg
 viewPrimary =
     view
-        { background = Ui.Color.primaryLight
-        , backgroundMouseOver = Ui.Color.primary
-        , font = Ui.Color.white
+        { background = Ui.Theme.Color.primaryLight
+        , backgroundMouseOver = Ui.Theme.Color.primary
+        , font = Ui.Theme.Color.white
         }
 
 
@@ -88,9 +88,9 @@ viewPrimary =
 viewSecondary : Config action msg -> State -> Element msg
 viewSecondary =
     view
-        { background = Ui.Color.secondary
-        , backgroundMouseOver = Ui.Color.secondaryDark
-        , font = Ui.Color.black
+        { background = Ui.Theme.Color.secondary
+        , backgroundMouseOver = Ui.Theme.Color.secondaryDark
+        , font = Ui.Theme.Color.black
         }
 
 
@@ -176,9 +176,9 @@ viewMenu { id, onMsg, actions } (State { selected }) =
             { offset = ( 0, 0 )
             , size = 0
             , blur = 6
-            , color = Ui.Color.grayDark
+            , color = Ui.Theme.Color.grayDark
             }
-        , Background.color Ui.Color.white
+        , Background.color Ui.Theme.Color.white
         ]
         (List.indexedMap (viewAction onMsg selected) actions)
 
@@ -219,24 +219,24 @@ viewAction onMsg selected index { label, action } =
         , Element.width Element.fill
         , Element.mouseOver <|
             if selected == index then
-                [ Background.color Ui.Color.primary
-                , Font.color Ui.Color.white
+                [ Background.color Ui.Theme.Color.primary
+                , Font.color Ui.Theme.Color.white
                 ]
 
             else
-                [ Background.color Ui.Color.secondary ]
+                [ Background.color Ui.Theme.Color.secondary ]
         , Background.color <|
             if selected == index then
-                Ui.Color.primary
+                Ui.Theme.Color.primary
 
             else
-                Ui.Color.transparent
+                Ui.Theme.Color.transparent
         , Font.color <|
             if selected == index then
-                Ui.Color.white
+                Ui.Theme.Color.white
 
             else
-                Ui.Color.black
+                Ui.Theme.Color.black
         , Element.htmlAttribute (Html.Events.onClick (onMsg (PressedMenuItem index action)))
         ]
         (Ui.Typography.button label)

@@ -4,7 +4,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 
 
@@ -14,17 +14,17 @@ view { headerHeight, label, actions } =
         [ Element.width Element.fill
         , Element.height (Element.px headerHeight)
         , Element.paddingXY Ui.Space.level4 Ui.Space.level3
-        , Background.color Ui.Color.secondary
+        , Background.color Ui.Theme.Color.secondary
         , Border.widthEach
             { top = 0
             , bottom = 2
             , left = 0
             , right = 0
             }
-        , Border.color Ui.Color.primary
+        , Border.color Ui.Theme.Color.primary
         ]
         [ Element.el
-            [ Font.color Ui.Color.primaryDark
+            [ Font.color Ui.Theme.Color.primaryDark
             , Font.size 36
             ]
             (Element.text label)

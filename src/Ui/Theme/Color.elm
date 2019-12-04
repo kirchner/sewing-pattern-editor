@@ -1,4 +1,4 @@
-module Ui.Color exposing
+module Ui.Theme.Color exposing
     ( primaryBright, primaryLight, primary, primaryDark
     , secondary, secondaryDark
     , complementary, complementaryDark

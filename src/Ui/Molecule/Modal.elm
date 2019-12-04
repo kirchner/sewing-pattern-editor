@@ -37,7 +37,7 @@ import Html.Events
 import Json.Decode as Decode
 import Ui.Atom
 import Ui.Atom.Input
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -127,7 +127,7 @@ custom width state config =
     Element.el
         ([ Element.width Element.fill
          , Element.height Element.fill
-         , Background.color Ui.Color.grayDark
+         , Background.color Ui.Theme.Color.grayDark
          ]
             |> backdropAttrs
         )
@@ -137,8 +137,8 @@ custom width state config =
              , Element.width (Element.px width)
              , Border.width 1
              , Border.rounded 4
-             , Border.color Ui.Color.black
-             , Background.color Ui.Color.white
+             , Border.color Ui.Theme.Color.black
+             , Background.color Ui.Theme.Color.white
              , attribute "role" "dialog"
              , attribute "aria-modal" "true"
              , attribute "aria-labelledby" "dialog--title"
@@ -153,7 +153,7 @@ custom width state config =
             [ Element.row
                 [ Element.width Element.fill
                 , Element.padding Ui.Space.level2
-                , Background.color Ui.Color.secondary
+                , Background.color Ui.Theme.Color.secondary
                 , Border.roundEach
                     { topLeft = 4
                     , topRight = 4
@@ -187,7 +187,7 @@ custom width state config =
                     , left = 0
                     , right = 0
                     }
-                , Border.color Ui.Color.secondary
+                , Border.color Ui.Theme.Color.secondary
                 ]
                 config.actions
             ]

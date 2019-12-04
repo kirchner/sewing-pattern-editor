@@ -23,7 +23,7 @@ import Html.Events
 import Json.Decode as Decode
 import Pattern exposing (Object(..), Pattern)
 import Ui.Atom
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Space
 import Ui.Typography
 
@@ -90,8 +90,8 @@ view cfg pattern state =
             , left = 1
             , right = 1
             }
-        , Border.color Ui.Color.secondaryDark
-        , Element.focused [ Border.color Ui.Color.complementary ]
+        , Border.color Ui.Theme.Color.secondaryDark
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
         ]
         (Element.el
             [ Element.width Element.fill
@@ -211,7 +211,7 @@ actions cfg state =
                 action id icon_ onPress =
                     Input.button
                         [ Element.htmlAttribute (Html.Attributes.id (id ++ "--" ++ objectName object))
-                        , Element.mouseOver [ Font.color Ui.Color.primaryDark ]
+                        , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
                         ]
                         { onPress = Just onPress
                         , label =
@@ -260,37 +260,37 @@ actions cfg state =
 borderColor state object =
     Border.color <|
         if state.focusedObject == Just object then
-            Ui.Color.black
+            Ui.Theme.Color.black
 
         else if state.selectedObject == Just object then
-            Ui.Color.primary
+            Ui.Theme.Color.primary
 
         else if state.hoveredObject == Just object then
-            Ui.Color.secondary
+            Ui.Theme.Color.secondary
 
         else
-            Ui.Color.white
+            Ui.Theme.Color.white
 
 
 backgroundColor state object =
     Background.color <|
         if state.selectedObject == Just object then
-            Ui.Color.primary
+            Ui.Theme.Color.primary
 
         else if state.hoveredObject == Just object then
-            Ui.Color.secondary
+            Ui.Theme.Color.secondary
 
         else
-            Ui.Color.white
+            Ui.Theme.Color.white
 
 
 fontColor state object =
     Font.color <|
         if state.selectedObject == Just object then
-            Ui.Color.white
+            Ui.Theme.Color.white
 
         else
-            Ui.Color.black
+            Ui.Theme.Color.black
 
 
 

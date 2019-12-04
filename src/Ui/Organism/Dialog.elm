@@ -76,7 +76,7 @@ import Result.Extra as Result
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
-import Ui.Color
+import Ui.Theme.Color
 import Ui.Organism.Dialog.Detail as Detail exposing (ActionMenu(..))
 import Ui.Organism.Dialog.Intersectable as Intersectable
 import Ui.Organism.Dialog.OtherPoint as OtherPoint
