@@ -17,7 +17,7 @@ import Json.Decode as Decode
 import List.Extra as List
 import Ui.Atom
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -72,7 +72,7 @@ view { label, tabs, selected, content, onSelect } =
                     , Element.focused [ Border.color Ui.Theme.Color.complementary ]
                     ]
                     (Input.button
-                        ([ Element.padding Ui.Space.level1
+                        ([ Element.padding Ui.Theme.Spacing.level1
                          , Font.color <|
                             if tab.tag == selected then
                                 Ui.Theme.Color.primary
@@ -119,12 +119,12 @@ view { label, tabs, selected, content, onSelect } =
         ]
         [ Element.row
             [ Element.paddingEach
-                { top = Ui.Space.level1
+                { top = Ui.Theme.Spacing.level1
                 , bottom = 0
-                , left = Ui.Space.level2
-                , right = Ui.Space.level2
+                , left = Ui.Theme.Spacing.level2
+                , right = Ui.Theme.Spacing.level2
                 }
-            , Element.spacing Ui.Space.level2
+            , Element.spacing Ui.Theme.Spacing.level2
             , attribute "role" "tablist"
             , attribute "aria-label" label
             , onKeyDown onSelect tabs selected

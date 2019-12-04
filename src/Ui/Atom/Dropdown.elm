@@ -25,7 +25,7 @@ import Listbox.Dropdown as Dropdown
 import Ui.Atom
 import Ui.Atom.Input exposing (Child(..))
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -92,7 +92,7 @@ viewWithMenu menu config instance options dropdown selection =
     Ui.Atom.withFocusOutline <|
         Element.column
             [ Element.width Element.fill
-            , Element.spacing Ui.Space.level2
+            , Element.spacing Ui.Theme.Spacing.level2
             ]
             [ Element.row
                 [ Element.width Element.fill ]
@@ -151,7 +151,7 @@ dropdownViewConfig appended printOption hashOption =
                 { attributes =
                     [ Element.height Element.fill
                     , Element.width Element.fill
-                    , Element.padding (Ui.Space.level2 - 2)
+                    , Element.padding (Ui.Theme.Spacing.level2 - 2)
                     , Font.size 16
                     , if appended then
                         Border.roundEach
@@ -197,7 +197,7 @@ dropdownViewConfig appended printOption hashOption =
                                 printOption that
                     , Element.el
                         [ Element.alignRight
-                        , Element.paddingXY Ui.Space.level1 0
+                        , Element.paddingXY Ui.Theme.Spacing.level1 0
                         , Element.focused
                             [ Font.color Ui.Theme.Color.primary ]
                         , Element.mouseOver
@@ -212,7 +212,7 @@ dropdownViewConfig appended printOption hashOption =
                 (Element.fill
                     |> Element.maximum 200
                 )
-            , Element.moveDown Ui.Space.level2
+            , Element.moveDown Ui.Theme.Spacing.level2
             , Border.rounded 3
             , Border.shadow
                 { offset = ( 0, 0 )
@@ -227,7 +227,7 @@ dropdownViewConfig appended printOption hashOption =
             \{ focused, hovered, selected } thatPoint ->
                 { attributes =
                     [ Element.pointer
-                    , Element.padding Ui.Space.level2
+                    , Element.padding Ui.Theme.Spacing.level2
                     , Font.size 16
                     , Font.color <|
                         if selected then

@@ -80,7 +80,7 @@ import Ui.Theme.Color
 import Ui.Organism.Dialog.Detail as Detail exposing (ActionMenu(..))
 import Ui.Organism.Dialog.Intersectable as Intersectable
 import Ui.Organism.Dialog.OtherPoint as OtherPoint
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -842,7 +842,7 @@ viewActions : String -> Maybe String -> Element CreateMsg
 viewActions name nameHelp =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level1
+        , Element.spacing Ui.Theme.Spacing.level1
         ]
         [ Ui.Atom.Input.text
             { id = "name-input"
@@ -853,7 +853,7 @@ viewActions name nameHelp =
             }
         , Element.row
             [ Element.width Element.fill
-            , Element.spacing Ui.Space.level1
+            , Element.spacing Ui.Theme.Spacing.level1
             ]
             [ Element.el [ Element.alignLeft ] <|
                 Ui.Atom.Input.btnPrimary
@@ -885,7 +885,7 @@ viewPointForm : Pattern coordinates -> Pattern.Objects -> String -> Maybe String
 viewPointForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Element.map CreatePointMsg <|
             elCreateANew "point" <|
@@ -896,7 +896,7 @@ viewPointForm pattern objects name nameHelp form =
                     }
         , Element.column
             [ Element.width Element.fill
-            , Element.spacing Ui.Space.level2
+            , Element.spacing Ui.Theme.Spacing.level2
             ]
             [ viewActions name nameHelp
             , Element.el
@@ -1063,7 +1063,7 @@ viewAxisForm :
 viewAxisForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Element.map CreateAxisMsg <|
             elCreateANew "axis" <|
@@ -1139,7 +1139,7 @@ viewCircleForm :
 viewCircleForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Element.map CreateCircleMsg <|
             elCreateANew "circle" <|
@@ -1229,7 +1229,7 @@ viewCurveForm :
 viewCurveForm pattern objects name nameHelp form =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Element.map CreateCurveMsg <|
             elCreateANew "curve" <|
@@ -1351,7 +1351,7 @@ viewDetailForm :
 viewDetailForm pattern objects name nameHelp detail =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Element.map CreateDetailMsg <|
             elCreateANew "detail" <|
@@ -1378,7 +1378,7 @@ editView { pattern, name } edit =
         actions =
             Element.row
                 [ Element.width Element.fill
-                , Element.spacing Ui.Space.level1
+                , Element.spacing Ui.Theme.Spacing.level1
                 ]
                 [ Element.el [ Element.alignLeft ] <|
                     Ui.Atom.Input.btnPrimary
@@ -1402,7 +1402,7 @@ editView { pattern, name } edit =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level4
+        , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ case edit of
             EditPoint { objects, form } ->
@@ -1463,7 +1463,7 @@ elCreateANew : String -> Element msg -> Element msg
 elCreateANew thing element =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level2
+        , Element.spacing Ui.Theme.Spacing.level2
         ]
         [ title ("Create a new " ++ thing)
         , element
@@ -1479,7 +1479,7 @@ elEditThe :
 elEditThe { thing, name } element =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level2
+        , Element.spacing Ui.Theme.Spacing.level2
         ]
         [ title ("Edit the " ++ thing ++ " ‘" ++ name ++ "’")
         , element
@@ -1608,7 +1608,7 @@ nested =
         << Ui.Atom.Input.nested
         << Element.column
             [ Element.width Element.fill
-            , Element.spacing Ui.Space.level1
+            , Element.spacing Ui.Theme.Spacing.level1
             ]
 
 

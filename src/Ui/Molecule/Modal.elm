@@ -38,7 +38,7 @@ import Json.Decode as Decode
 import Ui.Atom
 import Ui.Atom.Input
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -80,13 +80,13 @@ type alias ViewConfig msg =
 {-| -}
 wide : State -> ViewConfig msg -> Element msg
 wide =
-    custom (20 * Ui.Space.level8)
+    custom (20 * Ui.Theme.Spacing.level8)
 
 
 {-| -}
 small : State -> ViewConfig msg -> Element msg
 small =
-    custom (10 * Ui.Space.level8)
+    custom (10 * Ui.Theme.Spacing.level8)
 
 
 custom : Int -> State -> ViewConfig msg -> Element msg
@@ -116,12 +116,12 @@ custom width state config =
                         :: attrs
 
                 Open ->
-                    Element.moveDown (2 * Ui.Space.level8)
+                    Element.moveDown (2 * Ui.Theme.Spacing.level8)
                         :: style "transition" "transform 0.3s"
                         :: attrs
 
                 Closing ->
-                    Element.moveDown (2 * Ui.Space.level8)
+                    Element.moveDown (2 * Ui.Theme.Spacing.level8)
                         :: attrs
     in
     Element.el
@@ -152,7 +152,7 @@ custom width state config =
             )
             [ Element.row
                 [ Element.width Element.fill
-                , Element.padding Ui.Space.level2
+                , Element.padding Ui.Theme.Spacing.level2
                 , Background.color Ui.Theme.Color.secondary
                 , Border.roundEach
                     { topLeft = 4
@@ -175,12 +175,12 @@ custom width state config =
                 ]
             , Element.el
                 [ Element.width Element.fill
-                , Element.padding Ui.Space.level3
+                , Element.padding Ui.Theme.Spacing.level3
                 ]
                 config.content
             , Element.row
                 [ Element.width Element.fill
-                , Element.padding Ui.Space.level2
+                , Element.padding Ui.Theme.Spacing.level2
                 , Border.widthEach
                     { top = 1
                     , bottom = 0

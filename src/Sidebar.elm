@@ -27,7 +27,7 @@ import Element.Font as Font
 import Route
 import Ui.Atom
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 
 
 type Page
@@ -102,10 +102,10 @@ viewNavigation currentPage =
             Element.link
                 [ Element.width Element.fill
                 , Element.paddingEach
-                    { top = Ui.Space.level2
-                    , bottom = Ui.Space.level2
-                    , left = Ui.Space.level3
-                    , right = Ui.Space.level4
+                    { top = Ui.Theme.Spacing.level2
+                    , bottom = Ui.Theme.Spacing.level2
+                    , left = Ui.Theme.Spacing.level3
+                    , right = Ui.Theme.Spacing.level4
                     }
                 , Font.color <|
                     if page == currentPage then
@@ -131,7 +131,7 @@ viewNavigation currentPage =
                 { url = pageUrl page
                 , label =
                     Element.row
-                        [ Element.spacing Ui.Space.level2
+                        [ Element.spacing Ui.Theme.Spacing.level2
                         , Font.size 16
                         ]
                         [ Ui.Atom.fa (pageIcon page)

@@ -5,7 +5,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 
 
 view : { headerHeight : Int, label : String, actions : Element msg } -> Element msg
@@ -13,7 +13,7 @@ view { headerHeight, label, actions } =
     Element.row
         [ Element.width Element.fill
         , Element.height (Element.px headerHeight)
-        , Element.paddingXY Ui.Space.level4 Ui.Space.level3
+        , Element.paddingXY Ui.Theme.Spacing.level4 Ui.Theme.Spacing.level3
         , Background.color Ui.Theme.Color.secondary
         , Border.widthEach
             { top = 0

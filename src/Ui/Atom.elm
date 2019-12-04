@@ -47,7 +47,7 @@ import QuadraticSpline2d
 import Svg
 import Svg.Attributes
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 

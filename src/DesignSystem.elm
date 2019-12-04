@@ -41,7 +41,7 @@ import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Pattern exposing (Intersectable(..))
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 import Url exposing (Url)
 import Url.Parser exposing (Parser)
@@ -369,7 +369,7 @@ body model =
                     Element.el
                         [ Element.width Element.fill
                         , Element.height Element.fill
-                        , Element.paddingXY Ui.Space.level2 Ui.Space.level2
+                        , Element.paddingXY Ui.Theme.Spacing.level2 Ui.Theme.Spacing.level2
                         , Element.scrollbarY
                         ]
                         (content model)
@@ -381,11 +381,11 @@ body model =
                     (Element.fill
                         |> Element.maximum 1024
                     )
-                , Element.paddingXY Ui.Space.level4 Ui.Space.level8
+                , Element.paddingXY Ui.Theme.Spacing.level4 Ui.Theme.Spacing.level8
                 , Element.height Element.fill
                 , Element.centerX
                 , Element.scrollbarY
-                , Element.spacing Ui.Space.level5
+                , Element.spacing Ui.Theme.Spacing.level5
                 ]
                 [ navigation model.deviceClass model.route
                 , content model
@@ -408,7 +408,7 @@ navigationBar open =
         (Input.button
             [ Element.mouseOver
                 [ Font.color Ui.Theme.Color.primaryDark ]
-            , Element.padding Ui.Space.level3
+            , Element.padding Ui.Theme.Spacing.level3
             , Element.htmlAttribute <|
                 Html.Attributes.class "navigation-menu"
             ]
@@ -430,14 +430,14 @@ navigation deviceClass currentRoute =
         group : String -> List (Element msg) -> Element msg
         group title links =
             Element.column
-                [ Element.spacing Ui.Space.level3
+                [ Element.spacing Ui.Theme.Spacing.level3
                 , Element.width Element.fill
                 ]
                 [ Element.el
                     [ Font.variant Font.smallCaps
                     , Font.size fontSize
                     , Font.bold
-                    , Element.padding Ui.Space.level2
+                    , Element.padding Ui.Theme.Spacing.level2
                     ]
                     (Element.text title)
                 , Element.column
@@ -463,7 +463,7 @@ navigation deviceClass currentRoute =
                     { url = routeToUrl route
                     , label =
                         Element.el
-                            [ Element.padding Ui.Space.level2
+                            [ Element.padding Ui.Theme.Spacing.level2
                             , Font.size fontSize
                             ]
                             (Element.text (routeToTitle route))
@@ -483,13 +483,13 @@ navigation deviceClass currentRoute =
                     Element.fill
 
                 _ ->
-                    Element.px (5 * Ui.Space.level8)
+                    Element.px (5 * Ui.Theme.Spacing.level8)
     in
     Element.column
         [ Element.width width
         , Element.height Element.fill
         , Element.padding 13
-        , Element.spacing Ui.Space.level3
+        , Element.spacing Ui.Theme.Spacing.level3
         ]
         [ group "foundations"
             [ link Typography
@@ -515,7 +515,7 @@ content : Model -> Element Msg
 content model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level3
+        , Element.spacing Ui.Theme.Spacing.level3
         , Element.alignTop
         ]
         [ Ui.Typography.headingOne (routeToTitle model.route)
@@ -562,13 +562,13 @@ content model =
 viewTypography : Model -> Element Msg
 viewTypography model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Type Scale"
         , Element.column
-            [ Element.paddingXY Ui.Space.level5 Ui.Space.level4
-            , Element.spacing Ui.Space.level4
+            [ Element.paddingXY Ui.Theme.Spacing.level5 Ui.Theme.Spacing.level4
+            , Element.spacing Ui.Theme.Spacing.level4
             ]
             [ Ui.Typography.headingOne "Heading One"
             , Ui.Typography.headingTwo "Heading Two"
@@ -601,18 +601,18 @@ viewColor model =
         colorBox backgroundColor fontColor name =
             Element.el
                 [ Element.width Element.fill
-                , Element.height (Element.px (2 * Ui.Space.level8))
+                , Element.height (Element.px (2 * Ui.Theme.Spacing.level8))
                 , Border.width 1
                 , Border.color Ui.Theme.Color.grayDark
                 , Background.color backgroundColor
                 , Font.color fontColor
                 ]
-                (Element.el [ Element.padding Ui.Space.level2 ]
+                (Element.el [ Element.padding Ui.Theme.Spacing.level2 ]
                     (Ui.Typography.bodyBold name)
                 )
     in
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ colorBox Ui.Theme.Color.primaryBright Ui.Theme.Color.black "Primary Bright"
@@ -644,7 +644,7 @@ viewSpace model =
         spaceBox space name =
             Element.el
                 [ Element.width Element.fill
-                , Element.height (Element.px (3 * Ui.Space.level8))
+                , Element.height (Element.px (3 * Ui.Theme.Spacing.level8))
                 , Background.color Ui.Theme.Color.secondaryDark
                 , Element.padding space
                 ]
@@ -664,32 +664,32 @@ viewSpace model =
                 )
     in
     Element.wrappedRow
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Element.column
-            [ Element.spacing Ui.Space.level4
+            [ Element.spacing Ui.Theme.Spacing.level4
             , Element.width
                 (Element.fill
-                    |> Element.minimum (4 * Ui.Space.level8)
+                    |> Element.minimum (4 * Ui.Theme.Spacing.level8)
                 )
             ]
-            [ spaceBox Ui.Space.level1 "Level 1"
-            , spaceBox Ui.Space.level2 "Level 2"
-            , spaceBox Ui.Space.level3 "Level 3"
-            , spaceBox Ui.Space.level4 "Level 4"
+            [ spaceBox Ui.Theme.Spacing.level1 "Level 1"
+            , spaceBox Ui.Theme.Spacing.level2 "Level 2"
+            , spaceBox Ui.Theme.Spacing.level3 "Level 3"
+            , spaceBox Ui.Theme.Spacing.level4 "Level 4"
             ]
         , Element.column
-            [ Element.spacing Ui.Space.level4
+            [ Element.spacing Ui.Theme.Spacing.level4
             , Element.width
                 (Element.fill
-                    |> Element.minimum (4 * Ui.Space.level8)
+                    |> Element.minimum (4 * Ui.Theme.Spacing.level8)
                 )
             ]
-            [ spaceBox Ui.Space.level5 "Level 5"
-            , spaceBox Ui.Space.level6 "Level 6"
-            , spaceBox Ui.Space.level7 "Level 7"
-            , spaceBox Ui.Space.level8 "Level 8"
+            [ spaceBox Ui.Theme.Spacing.level5 "Level 5"
+            , spaceBox Ui.Theme.Spacing.level6 "Level 6"
+            , spaceBox Ui.Theme.Spacing.level7 "Level 7"
+            , spaceBox Ui.Theme.Spacing.level8 "Level 8"
             ]
         ]
 
@@ -701,13 +701,13 @@ viewSpace model =
 viewButtons : Model -> Element Msg
 viewButtons model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Standard"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level4
-            , Element.padding Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level4
+            , Element.padding Ui.Theme.Spacing.level1
             ]
             [ Ui.Atom.Input.btnPrimary
                 { id = "primary-btn"
@@ -732,8 +732,8 @@ viewButtons model =
             ]
         , Ui.Typography.headingThree "Call to Action"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level4
-            , Element.padding Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level4
+            , Element.padding Ui.Theme.Spacing.level1
             ]
             [ Ui.Atom.Input.btnCallToAction
                 { id = "call-to-action-button"
@@ -743,8 +743,8 @@ viewButtons model =
             ]
         , Ui.Typography.headingThree "Icon"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level4
-            , Element.padding Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level4
+            , Element.padding Ui.Theme.Spacing.level1
             ]
             [ Ui.Atom.Input.btnIcon
                 { id = "icon-btn"
@@ -772,12 +772,12 @@ viewButtons model =
 viewFormElements : Model -> Element Msg
 viewFormElements model =
     Element.column
-        [ Element.spacing Ui.Space.level2
+        [ Element.spacing Ui.Theme.Spacing.level2
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Checkbox"
         , Element.el
-            [ Element.padding Ui.Space.level1
+            [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
             ]
             (Ui.Atom.Input.checkbox
@@ -789,7 +789,7 @@ viewFormElements model =
             )
         , Ui.Typography.headingThree "Radio Buttons"
         , Element.el
-            [ Element.padding Ui.Space.level1
+            [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
             ]
             (Ui.Atom.Input.radioColumn
@@ -810,7 +810,7 @@ viewFormElements model =
             )
         , Ui.Typography.headingThree "Dropdown"
         , Element.el
-            [ Element.padding Ui.Space.level1
+            [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
             ]
             (Ui.Atom.Dropdown.view
@@ -827,7 +827,7 @@ viewFormElements model =
             )
         , Ui.Typography.headingThree "Segment Control"
         , Element.el
-            [ Element.padding Ui.Space.level1
+            [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
             ]
             (Ui.Atom.Input.segmentControl
@@ -842,8 +842,8 @@ viewFormElements model =
             )
         , Ui.Typography.headingThree "Text"
         , Element.column
-            [ Element.padding Ui.Space.level1
-            , Element.spacing Ui.Space.level4
+            [ Element.padding Ui.Theme.Spacing.level1
+            , Element.spacing Ui.Theme.Spacing.level4
             , Element.width Element.fill
             ]
             [ Ui.Atom.Input.text
@@ -885,13 +885,13 @@ viewFormElements model =
 viewIcons : Model -> Element Msg
 viewIcons model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Normal"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level2
-            , Element.padding Ui.Space.level2
+            [ Element.spacing Ui.Theme.Spacing.level2
+            , Element.padding Ui.Theme.Spacing.level2
             ]
             [ Ui.Atom.fa "check"
             , Ui.Atom.fa "exclamation"
@@ -907,8 +907,8 @@ viewIcons model =
             ]
         , Ui.Typography.headingThree "Body"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level3
-            , Element.padding Ui.Space.level2
+            [ Element.spacing Ui.Theme.Spacing.level3
+            , Element.padding Ui.Theme.Spacing.level2
             ]
             [ Ui.Atom.faBody "check"
             , Ui.Atom.faBody "exclamation"
@@ -919,8 +919,8 @@ viewIcons model =
             ]
         , Ui.Typography.headingThree "Large"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level4
-            , Element.padding Ui.Space.level2
+            [ Element.spacing Ui.Theme.Spacing.level4
+            , Element.padding Ui.Theme.Spacing.level2
             ]
             [ Ui.Atom.faLarge "check"
             , Ui.Atom.faLarge "exclamation"
@@ -939,7 +939,7 @@ viewIcons model =
 viewObjects : Model -> Element Msg
 viewObjects model =
     Element.el
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         , Element.htmlAttribute (Html.Attributes.id "objects-container")
         ]
@@ -1286,7 +1286,7 @@ storedPatternRaw =
 viewTabs : Model -> Element Msg
 viewTabs model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         , Element.htmlAttribute (Html.Attributes.id "tabs-container")
         ]
@@ -1312,7 +1312,7 @@ viewTabs model =
                     Element.el
                         [ Element.height (Element.px 120)
                         , Element.width Element.fill
-                        , Border.width Ui.Space.level1
+                        , Border.width Ui.Theme.Spacing.level1
                         , Border.color Ui.Theme.Color.secondary
                         ]
                         (Element.el
@@ -1343,13 +1343,13 @@ viewTabs model =
 viewJoinedFormElements : Model -> Element Msg
 viewJoinedFormElements model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Segment Control + Dropdown"
         , Element.column
-            [ Element.padding Ui.Space.level1
-            , Element.spacing Ui.Space.level4
+            [ Element.padding Ui.Theme.Spacing.level1
+            , Element.spacing Ui.Theme.Spacing.level4
             , Element.width Element.fill
             ]
             [ Ui.Atom.Input.segmentControl
@@ -1397,8 +1397,8 @@ viewJoinedFormElements model =
             ]
         , Ui.Typography.headingThree "Segment Control + Text"
         , Element.column
-            [ Element.padding Ui.Space.level1
-            , Element.spacing Ui.Space.level4
+            [ Element.padding Ui.Theme.Spacing.level1
+            , Element.spacing Ui.Theme.Spacing.level4
             , Element.width Element.fill
             ]
             [ Ui.Atom.Input.segmentControl
@@ -1449,8 +1449,8 @@ viewJoinedFormElements model =
             ]
         , Ui.Typography.headingThree "Segment Control + Nested Form"
         , Element.column
-            [ Element.padding Ui.Space.level1
-            , Element.spacing Ui.Space.level4
+            [ Element.padding Ui.Theme.Spacing.level1
+            , Element.spacing Ui.Theme.Spacing.level4
             , Element.width Element.fill
             ]
             [ Ui.Atom.Input.segmentControl
@@ -1477,7 +1477,7 @@ viewJoinedFormElements model =
                                     , onPress = ClickedShowFormula
                                     , shown =
                                         Element.column
-                                            [ Element.spacing Ui.Space.level4
+                                            [ Element.spacing Ui.Theme.Spacing.level4
                                             , Element.width Element.fill
                                             ]
                                             [ Ui.Atom.Input.formula
@@ -1518,7 +1518,7 @@ viewJoinedFormElements model =
                                     , onPress = ClickedShowFormula
                                     , shown =
                                         Element.column
-                                            [ Element.spacing Ui.Space.level4
+                                            [ Element.spacing Ui.Theme.Spacing.level4
                                             , Element.width Element.fill
                                             ]
                                             [ Ui.Atom.Input.formula
@@ -1546,13 +1546,13 @@ viewJoinedFormElements model =
 viewDropdowns : Model -> Element Msg
 viewDropdowns model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
         [ Ui.Typography.headingThree "Action Button + Dropdown"
         , Element.wrappedRow
-            [ Element.spacing Ui.Space.level4
-            , Element.padding Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level4
+            , Element.padding Ui.Theme.Spacing.level1
             ]
             [ Ui.Molecule.MenuBtn.viewPrimary
                 { id = "create-btn"
@@ -1609,7 +1609,7 @@ viewDropdowns model =
 viewObjectList : Model -> Element Msg
 viewObjectList model =
     Element.column
-        [ Element.spacing Ui.Space.level4
+        [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         , Element.height Element.fill
         ]

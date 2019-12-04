@@ -86,7 +86,7 @@ import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Organism.Dialog
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 import Url exposing (Url)
 import Vector2d
@@ -278,7 +278,7 @@ viewModal pattern ( modal, state ) =
                             [ Element.paddingEach
                                 { top = 0
                                 , bottom = 0
-                                , left = Ui.Space.level1
+                                , left = Ui.Theme.Spacing.level1
                                 , right = 0
                                 }
                             ]
@@ -308,10 +308,10 @@ viewModal pattern ( modal, state ) =
                 , title = "Delete «" ++ objectName aPoint ++ "»?"
                 , content =
                     Element.column
-                        [ Element.spacing Ui.Space.level3
+                        [ Element.spacing Ui.Theme.Spacing.level3
                         , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                         , Element.width Element.fill
-                        , Element.padding Ui.Space.level2
+                        , Element.padding Ui.Theme.Spacing.level2
                         , Background.color Ui.Theme.Color.white
                         ]
                         (Ui.Typography.paragraphBody
@@ -458,7 +458,7 @@ viewTopToolbar : LoadedData -> String -> Element Msg
 viewTopToolbar model name =
     Element.row
         [ Element.width Element.fill
-        , Element.padding (Ui.Space.level1 // 2)
+        , Element.padding (Ui.Theme.Spacing.level1 // 2)
         , Background.color Ui.Theme.Color.secondary
         ]
         [ Ui.Molecule.MenuBtn.viewPrimary
@@ -491,7 +491,7 @@ viewTopToolbar model name =
         , Element.newTabLink
             [ Element.alignRight
             , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
-            , Element.paddingXY Ui.Space.level1 0
+            , Element.paddingXY Ui.Theme.Spacing.level1 0
             ]
             { url = "https://github.com/kirchner/sewing-pattern-editor"
             , label = Ui.Atom.faBrandLarge "github"
@@ -620,7 +620,7 @@ viewLeftToolbar pattern model =
         , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
-        , Element.spacing Ui.Space.level1
+        , Element.spacing Ui.Theme.Spacing.level1
         ]
         (Ui.Atom.Tabs.view
             { label = "Data"

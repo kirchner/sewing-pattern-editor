@@ -41,7 +41,7 @@ import Ui.Atom
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Molecule.Modal
-import Ui.Space
+import Ui.Theme.Spacing
 import Url exposing (Url)
 
 
@@ -204,10 +204,10 @@ viewNewWorkerDialog state =
         , title = "New version available"
         , content =
             Element.el
-                [ Element.spacing Ui.Space.level2
+                [ Element.spacing Ui.Theme.Spacing.level2
                 , Element.htmlAttribute (Html.Attributes.id "dialog--body")
                 , Element.width Element.fill
-                , Element.padding Ui.Space.level2
+                , Element.padding Ui.Theme.Spacing.level2
                 , Background.color Ui.Theme.Color.white
                 ]
                 (Element.paragraph []

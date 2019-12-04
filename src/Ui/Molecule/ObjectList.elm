@@ -24,7 +24,7 @@ import Json.Decode as Decode
 import Pattern exposing (Object(..), Pattern)
 import Ui.Atom
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -97,7 +97,7 @@ view cfg pattern state =
             [ Element.width Element.fill
             , Element.height Element.fill
             , Element.scrollbarY
-            , Element.paddingXY 0 Ui.Space.level1
+            , Element.paddingXY 0 Ui.Theme.Spacing.level1
             ]
             (Element.table
                 [ Element.htmlAttribute (Html.Attributes.tabindex 0)
@@ -139,10 +139,10 @@ icon cfg state =
         \object ->
             Element.el
                 [ Element.paddingEach
-                    { top = Ui.Space.level1
-                    , bottom = Ui.Space.level1
-                    , left = Ui.Space.level3
-                    , right = Ui.Space.level1
+                    { top = Ui.Theme.Spacing.level1
+                    , bottom = Ui.Theme.Spacing.level1
+                    , left = Ui.Theme.Spacing.level3
+                    , right = Ui.Theme.Spacing.level1
                     }
                 , Element.height Element.fill
                 , Element.centerY
@@ -184,7 +184,7 @@ name cfg state =
     , view =
         \object ->
             Element.el
-                [ Element.padding Ui.Space.level1
+                [ Element.padding Ui.Theme.Spacing.level1
                 , Events.onMouseEnter (cfg.toMsg (HoveredObject object))
                 , Events.onMouseLeave (cfg.toMsg (LeftObject object))
                 , Events.onClick (cfg.toMsg (ClickedObject object))
@@ -224,12 +224,12 @@ actions cfg state =
             in
             Element.row
                 [ Element.paddingEach
-                    { top = Ui.Space.level1
-                    , bottom = Ui.Space.level1
-                    , left = Ui.Space.level1
-                    , right = Ui.Space.level3
+                    { top = Ui.Theme.Spacing.level1
+                    , bottom = Ui.Theme.Spacing.level1
+                    , left = Ui.Theme.Spacing.level1
+                    , right = Ui.Theme.Spacing.level3
                     }
-                , Element.spacing Ui.Space.level2
+                , Element.spacing Ui.Theme.Spacing.level2
                 , Element.height Element.fill
                 , Element.centerY
                 , Events.onMouseEnter (cfg.toMsg (HoveredObject object))

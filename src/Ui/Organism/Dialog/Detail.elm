@@ -42,7 +42,7 @@ import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 
 
 
@@ -1225,11 +1225,11 @@ view viewPointHelp pattern objects { detail, id } =
         nested =
             Just
                 << Ui.Atom.Input.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Ui.Space.level1 ]
+                << Element.column [ Element.width Element.fill, Element.spacing Ui.Theme.Spacing.level1 ]
     in
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level1
+        , Element.spacing Ui.Theme.Spacing.level1
         ]
         (List.concat
             [ [ Ui.Atom.Input.segmentControl
@@ -1385,11 +1385,11 @@ viewNextCurve viewPointHelp pattern objects id index ( form, actionMenu ) =
         nested =
             Just
                 << Ui.Atom.Input.nested
-                << Element.column [ Element.width Element.fill, Element.spacing Ui.Space.level1 ]
+                << Element.column [ Element.width Element.fill, Element.spacing Ui.Theme.Spacing.level1 ]
     in
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Space.level1
+        , Element.spacing Ui.Theme.Spacing.level1
         ]
         [ Ui.Atom.Input.segmentControl
             { id = actualId
@@ -1430,22 +1430,22 @@ viewActionMenu : ActionMenu -> Element ActionMenuMsg
 viewActionMenu actionMenu =
     Element.row
         (if actionMenu == Closed then
-            [ Element.spacing Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level1
             , Element.alignRight
             ]
 
          else
-            [ Element.spacing Ui.Space.level1
+            [ Element.spacing Ui.Theme.Spacing.level1
             , Element.alignRight
             , Element.htmlAttribute (Html.Attributes.style "z-index" "1")
             ]
         )
         [ Input.button
             [ Element.paddingEach
-                { left = Ui.Space.level1
-                , right = Ui.Space.level1
-                , top = Ui.Space.level1
-                , bottom = Ui.Space.level1
+                { left = Ui.Theme.Spacing.level1
+                , right = Ui.Theme.Spacing.level1
+                , top = Ui.Theme.Spacing.level1
+                , bottom = Ui.Theme.Spacing.level1
                 }
             , Font.size 10
             , Font.color Ui.Theme.Color.black
@@ -1508,7 +1508,7 @@ viewActionMenu actionMenu =
             { onPress = Just Pressed
             , label =
                 Element.row
-                    [ Element.spacing Ui.Space.level1 ]
+                    [ Element.spacing Ui.Theme.Spacing.level1 ]
                     [ Element.text "Actions"
                     , Ui.Atom.fa "angle-down"
                     ]

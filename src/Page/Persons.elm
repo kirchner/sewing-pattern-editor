@@ -31,7 +31,7 @@ import Element.Background as Background
 import Header
 import Sidebar
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 
 
 type alias Model =
@@ -68,7 +68,7 @@ subscriptions model =
 
 headerHeight : Int
 headerHeight =
-    2 * Ui.Space.level8
+    2 * Ui.Theme.Spacing.level8
 
 
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
@@ -107,7 +107,7 @@ viewBody =
             Element.none
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Ui.Space.level1)
+            , Element.height (Element.px Ui.Theme.Spacing.level1)
             , Background.color Ui.Theme.Color.primary
             ]
             Element.none

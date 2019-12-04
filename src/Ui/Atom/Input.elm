@@ -49,7 +49,7 @@ import Json.Decode as Decode
 import List.Extra as List
 import Ui.Atom
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -71,7 +71,7 @@ btnPrimary { id, onPress, label } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.white
             , Background.color Ui.Theme.Color.primaryLight
             , Element.mouseOver [ Background.color Ui.Theme.Color.primary ]
@@ -88,7 +88,7 @@ btnSecondary { id, onPress, label } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
             , Background.color Ui.Theme.Color.secondary
             , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
             , backgroundColorEaseInOut
@@ -104,7 +104,7 @@ btnDanger { id, onPress, label } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.white
             , Background.color Ui.Theme.Color.danger
             , Element.mouseOver [ Background.color Ui.Theme.Color.dangerDark ]
@@ -121,7 +121,7 @@ btnCancel { id, onPress, label } =
     Ui.Atom.withFocusOutline <|
         Input.button
             [ attributeId id
-            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.primary
             , Font.underline
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
@@ -142,8 +142,8 @@ btnCallToAction { id, onPress, label } =
         Input.button
             [ attributeId id
             , Element.width Element.fill
-            , Element.paddingXY Ui.Space.level3 Ui.Space.level2
-            , Border.rounded Ui.Space.level1
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+            , Border.rounded Ui.Theme.Spacing.level1
             , Background.color Ui.Theme.Color.secondary
             , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
             , backgroundColorEaseInOut
@@ -152,7 +152,7 @@ btnCallToAction { id, onPress, label } =
             , label =
                 Element.row
                     [ Element.width Element.fill
-                    , Element.spacing Ui.Space.level4
+                    , Element.spacing Ui.Theme.Spacing.level4
                     ]
                     [ Ui.Typography.button label
                     , Element.el [ Element.alignRight ] (Ui.Atom.fa "chevron-right")
@@ -249,7 +249,7 @@ checkbox { id, onChange, checked, label } =
             , label =
                 Input.labelRight
                     [ Element.centerY
-                    , Element.paddingXY Ui.Space.level1 0
+                    , Element.paddingXY Ui.Theme.Spacing.level1 0
                     ]
                     (Ui.Typography.body label)
             }
@@ -435,7 +435,7 @@ formula data =
                 , Element.width Element.fill
                 , Element.inFront (lineNumbers lineCount)
                 , padding
-                , Element.spacing Ui.Space.level1
+                , Element.spacing Ui.Theme.Spacing.level1
                 , Font.size 16
                 , Font.family [ Font.monospace ]
                 , Background.color Ui.Theme.Color.white
@@ -488,7 +488,7 @@ formulaAppended id data =
             , Element.width Element.fill
             , Element.inFront (lineNumbers lineCount)
             , padding
-            , Element.spacing Ui.Space.level1
+            , Element.spacing Ui.Theme.Spacing.level1
             , Font.size 16
             , Font.family [ Font.monospace ]
             , Background.color Ui.Theme.Color.white
@@ -526,7 +526,7 @@ lineNumbers lineCount =
                 [ Font.size 16
                 , Font.family
                     [ Font.monospace ]
-                , Element.spacing Ui.Space.level1
+                , Element.spacing Ui.Theme.Spacing.level1
                 ]
                 (List.range 1 lineCount
                     |> List.map
@@ -571,7 +571,7 @@ radioRow { id, onChange, options, selected, label } =
         Input.radioRow
             [ attributeId id
             , Element.width Element.fill
-            , Element.spacing Ui.Space.level4
+            , Element.spacing Ui.Theme.Spacing.level4
             ]
             { onChange = onChange
             , options = options
@@ -580,7 +580,7 @@ radioRow { id, onChange, options, selected, label } =
                 Input.labelAbove
                     [ Element.paddingEach
                         { top = 0
-                        , bottom = Ui.Space.level2
+                        , bottom = Ui.Theme.Spacing.level2
                         , left = 0
                         , right = 0
                         }
@@ -596,7 +596,7 @@ radioColumn { id, onChange, options, selected, label } =
         Input.radio
             [ attributeId id
             , Element.width Element.fill
-            , Element.spacing Ui.Space.level2
+            , Element.spacing Ui.Theme.Spacing.level2
             ]
             { onChange = onChange
             , options = options
@@ -605,7 +605,7 @@ radioColumn { id, onChange, options, selected, label } =
                 Input.labelAbove
                     [ Element.paddingEach
                         { top = 0
-                        , bottom = Ui.Space.level2
+                        , bottom = Ui.Theme.Spacing.level2
                         , left = 0
                         , right = 0
                         }
@@ -643,7 +643,7 @@ radioOptionCustom label status =
                     attrs
     in
     Element.row
-        [ Element.spacing Ui.Space.level2
+        [ Element.spacing Ui.Theme.Spacing.level2
         , Element.alignLeft
         , Element.width Element.fill
         ]
@@ -775,7 +775,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
 
                 Just helpText ->
                     Element.row
-                        [ Element.spacing Ui.Space.level1
+                        [ Element.spacing Ui.Theme.Spacing.level1
                         , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"
@@ -791,7 +791,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                     [ Ui.Atom.withFocusOutline <|
                         Element.column
                             [ Element.width Element.fill
-                            , Element.spacing Ui.Space.level2
+                            , Element.spacing Ui.Theme.Spacing.level2
                             ]
                             [ header
                             , viewHelp
@@ -808,7 +808,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                     [ Ui.Atom.withFocusOutlineTop <|
                         Element.column
                             [ Element.width Element.fill
-                            , Element.spacing Ui.Space.level2
+                            , Element.spacing Ui.Theme.Spacing.level2
                             ]
                             [ header
                             , viewHelp
@@ -829,12 +829,12 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 [ Element.width Element.fill ]
                 [ Element.column
                     [ Element.width Element.fill
-                    , Element.spacing Ui.Space.level1
+                    , Element.spacing Ui.Theme.Spacing.level1
                     ]
                     [ Ui.Atom.withFocusOutline <|
                         Element.column
                             [ Element.width Element.fill
-                            , Element.spacing Ui.Space.level2
+                            , Element.spacing Ui.Theme.Spacing.level2
                             ]
                             [ header
                             , viewHelp
@@ -845,7 +845,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         , Element.paddingEach
                             { top = 0
                             , bottom = 0
-                            , left = Ui.Space.level2
+                            , left = Ui.Theme.Spacing.level2
                             , right = 0
                             }
                         ]
@@ -868,12 +868,12 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 [ if show then
                     Element.column
                         [ Element.width Element.fill
-                        , Element.spacing Ui.Space.level1
+                        , Element.spacing Ui.Theme.Spacing.level1
                         ]
                         [ Ui.Atom.withFocusOutline <|
                             Element.column
                                 [ Element.width Element.fill
-                                , Element.spacing Ui.Space.level2
+                                , Element.spacing Ui.Theme.Spacing.level2
                                 ]
                                 [ header
                                 , viewHelp
@@ -884,7 +884,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                             , Element.paddingEach
                                 { top = 0
                                 , bottom = 0
-                                , left = Ui.Space.level2
+                                , left = Ui.Theme.Spacing.level2
                                 , right = 0
                                 }
                             ]
@@ -894,7 +894,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                   else
                     Element.column
                         [ Element.width Element.fill
-                        , Element.spacing Ui.Space.level2
+                        , Element.spacing Ui.Theme.Spacing.level2
                         , Element.padding 7
                         ]
                         [ header
@@ -919,7 +919,7 @@ disclosureButton { show, onPress } =
                 ]
                 (Ui.Atom.withFocusOutline <|
                     Element.row
-                        [ Element.spacing Ui.Space.level1 ]
+                        [ Element.spacing Ui.Theme.Spacing.level1 ]
                         [ Ui.Typography.button <|
                             if show then
                                 "Minimize"
@@ -1139,10 +1139,10 @@ labelAbove { label, help } =
     Input.labelAbove [] <|
         Element.column
             [ sansSerif
-            , Element.spacing Ui.Space.level2
+            , Element.spacing Ui.Theme.Spacing.level2
             , Element.paddingEach
                 { top = 0
-                , bottom = Ui.Space.level1
+                , bottom = Ui.Theme.Spacing.level1
                 , left = 0
                 , right = 0
                 }
@@ -1154,7 +1154,7 @@ labelAbove { label, help } =
 
                 Just helpText ->
                     Element.row
-                        [ Element.spacing Ui.Space.level1
+                        [ Element.spacing Ui.Theme.Spacing.level1
                         , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"

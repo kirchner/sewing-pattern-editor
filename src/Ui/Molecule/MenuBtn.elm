@@ -26,7 +26,7 @@ import List.Extra as List
 import Task
 import Ui.Atom
 import Ui.Theme.Color
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 
 
@@ -120,7 +120,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                 ]
                 [ Ui.Atom.withFocusOutlineLeft <|
                     Input.button
-                        [ Element.paddingXY Ui.Space.level3 Ui.Space.level2
+                        [ Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
                         , Font.color colors.font
                         , Background.color colors.background
                         , Element.mouseOver [ Background.color colors.backgroundMouseOver ]
@@ -138,7 +138,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                 , Ui.Atom.withFocusOutlineRight <|
                     Input.button
                         [ attributeId (menuBtnId id)
-                        , Element.padding Ui.Space.level2
+                        , Element.padding Ui.Theme.Spacing.level2
                         , Font.color colors.font
                         , Background.color colors.background
                         , Element.mouseOver [ Background.color colors.backgroundMouseOver ]
@@ -215,7 +215,7 @@ viewAction : (Msg action -> msg) -> Int -> Int -> Action action -> Element msg
 viewAction onMsg selected index { label, action } =
     Element.el
         [ Element.pointer
-        , Element.padding Ui.Space.level2
+        , Element.padding Ui.Theme.Spacing.level2
         , Element.width Element.fill
         , Element.mouseOver <|
             if selected == index then

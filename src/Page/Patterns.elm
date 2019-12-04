@@ -64,7 +64,7 @@ import Ui.Atom
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Molecule.Modal
-import Ui.Space
+import Ui.Theme.Spacing
 import Ui.Typography
 import Url
 import Uuid
@@ -540,7 +540,7 @@ subscriptions model =
 
 headerHeight : Int
 headerHeight =
-    2 * Ui.Space.level8
+    2 * Ui.Theme.Spacing.level8
 
 
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
@@ -593,7 +593,7 @@ viewCreatePatternDialog state name =
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Ui.Space.level2
+                , Element.spacing Ui.Theme.Spacing.level2
                 ]
                 [ Ui.Typography.paragraphBody
                     [ Element.text "Create a new pattern" ]
@@ -631,7 +631,7 @@ viewRenamePatternDialog state slug name oldName =
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Ui.Space.level2
+                , Element.spacing Ui.Theme.Spacing.level2
                 ]
                 [ Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
                     Ui.Typography.paragraphBody
@@ -709,7 +709,7 @@ viewImportPatternsDialog state { hover, previews } =
         viewFile { fileName, content } =
             Element.row
                 [ Element.width Element.fill
-                , Element.spacing Ui.Space.level2
+                , Element.spacing Ui.Theme.Spacing.level2
                 ]
                 (case content of
                     Err error ->
@@ -720,7 +720,7 @@ viewImportPatternsDialog state { hover, previews } =
                             (Ui.Typography.body fileName)
                         , Element.row
                             [ Element.alignRight
-                            , Element.spacing Ui.Space.level1
+                            , Element.spacing Ui.Theme.Spacing.level1
                             , Font.color Ui.Theme.Color.danger
                             ]
                             [ Ui.Atom.fa "exclamation-circle"
@@ -749,7 +749,7 @@ viewImportPatternsDialog state { hover, previews } =
                             )
                         , Element.row
                             [ Element.alignRight
-                            , Element.spacing Ui.Space.level1
+                            , Element.spacing Ui.Theme.Spacing.level1
                             , Font.color Ui.Theme.Color.success
                             ]
                             [ Ui.Atom.fa "check-circle"
@@ -785,18 +785,18 @@ viewImportPatternsDialog state { hover, previews } =
         , content =
             Element.column
                 [ Element.width Element.fill
-                , Element.spacing Ui.Space.level2
+                , Element.spacing Ui.Theme.Spacing.level2
                 ]
                 [ Element.column
                     [ Element.width Element.fill
-                    , Element.spacing Ui.Space.level1
+                    , Element.spacing Ui.Theme.Spacing.level1
                     ]
                     (List.map viewFile previews)
                 , Element.el
                     ([ Element.width Element.fill
                      , Element.height (Element.px 200)
                      , Border.width 2
-                     , Border.rounded Ui.Space.level1
+                     , Border.rounded Ui.Theme.Spacing.level1
                      , Border.dashed
                      , hijackOn "dragenter" (Decode.succeed ImportPatternsDragEnter)
                      , hijackOn "dragover" (Decode.succeed ImportPatternsDragEnter)
@@ -869,7 +869,7 @@ viewBody model =
             , label = "Patterns"
             , actions =
                 Element.row
-                    [ Element.spacing Ui.Space.level2 ]
+                    [ Element.spacing Ui.Theme.Spacing.level2 ]
                     [ Ui.Atom.Input.btnPrimary
                         { id = "add-pattern-btn"
                         , onPress = Just AddPatternClicked
@@ -894,7 +894,7 @@ viewBody model =
                 )
         , Element.el
             [ Element.width Element.fill
-            , Element.height (Element.px Ui.Space.level1)
+            , Element.height (Element.px Ui.Theme.Spacing.level1)
             , Background.color Ui.Theme.Color.primary
             ]
             Element.none
@@ -915,8 +915,8 @@ viewPatterns storedPatterns =
         (Element.column
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Element.spacing Ui.Space.level4
-            , Element.paddingXY Ui.Space.level4 Ui.Space.level3
+            , Element.spacing Ui.Theme.Spacing.level4
+            , Element.paddingXY Ui.Theme.Spacing.level4 Ui.Theme.Spacing.level3
             ]
             (List.map
                 (List.map viewPattern
@@ -939,8 +939,8 @@ viewPattern ({ pattern } as storedPattern) =
 
         --, Border.rounded 4
         , Border.color Ui.Theme.Color.primary
-        , Element.padding Ui.Space.level2
-        , Element.spacing Ui.Space.level2
+        , Element.padding Ui.Theme.Spacing.level2
+        , Element.spacing Ui.Theme.Spacing.level2
         , Element.mouseOver
             [ Border.color Ui.Theme.Color.primaryDark
             , Border.shadow
@@ -952,7 +952,7 @@ viewPattern ({ pattern } as storedPattern) =
             ]
         ]
         [ Element.column
-            [ Element.spacing Ui.Space.level2
+            [ Element.spacing Ui.Theme.Spacing.level2
             , Element.pointer
             , Events.onClick (PatternCardClicked storedPattern.slug)
             ]
@@ -977,7 +977,7 @@ viewPattern ({ pattern } as storedPattern) =
             ]
         , Element.row
             [ Element.width Element.fill
-            , Element.spacing Ui.Space.level1
+            , Element.spacing Ui.Theme.Spacing.level1
             ]
             [ Ui.Atom.Input.btnSecondary
                 { id = storedPattern.slug ++ "-rename"
