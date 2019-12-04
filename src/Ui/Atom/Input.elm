@@ -50,6 +50,7 @@ import List.Extra as List
 import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
+import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
@@ -69,7 +70,7 @@ type alias BtnConfig msg =
 {-| -}
 btnPrimary : BtnConfig msg -> Element msg
 btnPrimary { id, onPress, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
@@ -86,7 +87,7 @@ btnPrimary { id, onPress, label } =
 {-| -}
 btnSecondary : BtnConfig msg -> Element msg
 btnSecondary { id, onPress, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
@@ -102,7 +103,7 @@ btnSecondary { id, onPress, label } =
 {-| -}
 btnDanger : BtnConfig msg -> Element msg
 btnDanger { id, onPress, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
@@ -119,7 +120,7 @@ btnDanger { id, onPress, label } =
 {-| -}
 btnCancel : BtnConfig msg -> Element msg
 btnCancel { id, onPress, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
@@ -139,7 +140,7 @@ btnCancel { id, onPress, label } =
 {-| -}
 btnCallToAction : BtnConfig msg -> Element msg
 btnCallToAction { id, onPress, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.width Element.fill
@@ -176,7 +177,7 @@ type alias IconBtnConfig msg =
 {-| -}
 btnIcon : IconBtnConfig msg -> Element msg
 btnIcon { id, onPress, icon } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
@@ -189,7 +190,7 @@ btnIcon { id, onPress, icon } =
 {-| -}
 btnIconDanger : IconBtnConfig msg -> Element msg
 btnIconDanger { id, onPress, icon } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Font.color Ui.Theme.Color.danger
@@ -203,7 +204,7 @@ btnIconDanger { id, onPress, icon } =
 {-| -}
 btnIconLarge : IconBtnConfig msg -> Element msg
 btnIconLarge { id, onPress, icon } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.button
             [ attributeId id
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
@@ -239,7 +240,7 @@ type alias CheckboxConfig msg =
 {-| -}
 checkbox : CheckboxConfig msg -> Element msg
 checkbox { id, onChange, checked, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.checkbox
             [ attributeId id
             , Element.width Element.fill
@@ -341,7 +342,7 @@ text data =
                 ]
                     ++ attrs
     in
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.text
             (withShadow
                 [ attributeId data.id
@@ -429,7 +430,7 @@ formula data =
                 ]
                     ++ attrs
     in
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.multiline
             (withShadow
                 [ attributeId data.id
@@ -568,7 +569,7 @@ type alias RadioConfig value msg =
 {-| -}
 radioRow : RadioConfig value msg -> Element msg
 radioRow { id, onChange, options, selected, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.radioRow
             [ attributeId id
             , Element.width Element.fill
@@ -593,7 +594,7 @@ radioRow { id, onChange, options, selected, label } =
 {-| -}
 radioColumn : RadioConfig value msg -> Element msg
 radioColumn { id, onChange, options, selected, label } =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Input.radio
             [ attributeId id
             , Element.width Element.fill
@@ -789,7 +790,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 [ Element.width Element.fill ]
                 [ Element.column
                     [ Element.width Element.fill ]
-                    [ Ui.Atom.withFocusOutline <|
+                    [ Ui.Theme.Focus.outline <|
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -806,7 +807,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 [ Element.width Element.fill ]
                 [ Element.column
                     [ Element.width Element.fill ]
-                    [ Ui.Atom.withFocusOutlineTop <|
+                    [ Ui.Theme.Focus.outlineTop <|
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -822,7 +823,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                                     }
                             ]
                     ]
-                , Ui.Atom.withFocusOutlineBottom appended
+                , Ui.Theme.Focus.outlineBottom appended
                 ]
 
         Just (Nested shown) ->
@@ -832,7 +833,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                     [ Element.width Element.fill
                     , Element.spacing Ui.Theme.Spacing.level1
                     ]
-                    [ Ui.Atom.withFocusOutline <|
+                    [ Ui.Theme.Focus.outline <|
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -871,7 +872,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         [ Element.width Element.fill
                         , Element.spacing Ui.Theme.Spacing.level1
                         ]
-                        [ Ui.Atom.withFocusOutline <|
+                        [ Ui.Theme.Focus.outline <|
                             Element.column
                                 [ Element.width Element.fill
                                 , Element.spacing Ui.Theme.Spacing.level2
@@ -918,7 +919,7 @@ disclosureButton { show, onPress } =
                 [ Element.alignRight
                 , Element.padding 3
                 ]
-                (Ui.Atom.withFocusOutline <|
+                (Ui.Theme.Focus.outline <|
                     Element.row
                         [ Element.spacing Ui.Theme.Spacing.level1 ]
                         [ Ui.Theme.Typography.button <|

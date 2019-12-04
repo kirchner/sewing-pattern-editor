@@ -27,6 +27,7 @@ import Task
 import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
+import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
@@ -119,7 +120,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                     else
                         Element.none
                 ]
-                [ Ui.Atom.withFocusOutlineLeft <|
+                [ Ui.Theme.Focus.outlineLeft <|
                     Input.button
                         [ Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
                         , Font.color colors.font
@@ -136,7 +137,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                         { onPress = Just (onMsg (PressedActionButton action))
                         , label = Ui.Theme.Typography.button label
                         }
-                , Ui.Atom.withFocusOutlineRight <|
+                , Ui.Theme.Focus.outlineRight <|
                     Input.button
                         [ attributeId (menuBtnId id)
                         , Element.padding Ui.Theme.Spacing.level2

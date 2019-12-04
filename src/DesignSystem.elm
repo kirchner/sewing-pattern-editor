@@ -42,6 +42,7 @@ import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Theme.Color
+import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url exposing (Url)
@@ -448,7 +449,7 @@ navigation deviceClass currentRoute =
 
         link : Route -> Element msg
         link route =
-            Ui.Atom.withFocusOutline <|
+            Ui.Theme.Focus.outline <|
                 Element.link
                     (if currentRoute == route then
                         [ Element.width Element.fill

@@ -26,6 +26,7 @@ import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Atom.Input exposing (Child(..))
 import Ui.Theme.Color
+import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
@@ -90,7 +91,7 @@ viewWithMenu :
     -> Maybe entry
     -> Element msg
 viewWithMenu menu config instance options dropdown selection =
-    Ui.Atom.withFocusOutline <|
+    Ui.Theme.Focus.outline <|
         Element.column
             [ Element.width Element.fill
             , Element.spacing Ui.Theme.Spacing.level2

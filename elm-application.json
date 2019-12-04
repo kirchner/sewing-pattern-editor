@@ -26,6 +26,7 @@
             "Ui.Organism.Dialog.Intersectable",
             "Ui.Organism.Dialog.OtherPoint",
             "Ui.Theme.Color",
+            "Ui.Theme.Focus",
             "Ui.Theme.Spacing",
             "Ui.Theme.Typography"
         ],
