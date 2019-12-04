@@ -1,4 +1,4 @@
-module Ui.Pattern exposing
+module Ui.Atom.Object exposing
     ( Point, PointInfo(..)
     , Intersectable(..)
     , Axis, AxisInfo(..)

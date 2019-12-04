@@ -14,6 +14,7 @@
             "Ui.Atom",
             "Ui.Atom.Dropdown",
             "Ui.Atom.Input",
+            "Ui.Atom.Object",
             "Ui.Molecule.MenuBtn",
             "Ui.Molecule.Modal",
             "Ui.Molecule.ObjectList",
@@ -23,7 +24,6 @@
             "Ui.Organism.Dialog.Detail",
             "Ui.Organism.Dialog.Intersectable",
             "Ui.Organism.Dialog.OtherPoint",
-            "Ui.Pattern",
             "Ui.Theme.Color",
             "Ui.Theme.Spacing",
             "Ui.Theme.Typography"

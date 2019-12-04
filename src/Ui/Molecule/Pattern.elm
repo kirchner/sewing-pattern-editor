@@ -29,8 +29,8 @@ import Quantity
 import State
 import Svg exposing (Svg)
 import Svg.Attributes
+import Ui.Atom.Object exposing (Resolution)
 import Ui.Theme.Color
-import Ui.Pattern exposing (Resolution)
 import Vector2d
 
 
@@ -187,7 +187,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                             False
 
                 pointLayers =
-                    objectLayers Ui.Pattern.drawPoint Point pointFocused pointHovered pointSelected objects.points
+                    objectLayers Ui.Atom.Object.drawPoint Point pointFocused pointHovered pointSelected objects.points
 
                 axisFocused aAxis =
                     case focusedObject of
@@ -214,7 +214,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                             False
 
                 axisLayers =
-                    objectLayers Ui.Pattern.drawAxis Axis axisFocused axisHovered axisSelected objects.axes
+                    objectLayers Ui.Atom.Object.drawAxis Axis axisFocused axisHovered axisSelected objects.axes
 
                 circleFocused aCircle =
                     case focusedObject of
@@ -241,7 +241,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                             False
 
                 circleLayers =
-                    objectLayers Ui.Pattern.drawCircle Circle circleFocused circleHovered circleSelected objects.circles
+                    objectLayers Ui.Atom.Object.drawCircle Circle circleFocused circleHovered circleSelected objects.circles
 
                 curveFocused aCurve =
                     case focusedObject of
@@ -268,7 +268,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                             False
 
                 curveLayers =
-                    objectLayers Ui.Pattern.drawCurve Curve curveFocused curveHovered curveSelected objects.curves
+                    objectLayers Ui.Atom.Object.drawCurve Curve curveFocused curveHovered curveSelected objects.curves
 
                 detailFocused aDetail =
                     case focusedObject of
@@ -295,7 +295,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                             False
 
                 detailLayers =
-                    objectLayers Ui.Pattern.drawDetail Detail detailFocused detailHovered detailSelected objects.details
+                    objectLayers Ui.Atom.Object.drawDetail Detail detailFocused detailHovered detailSelected objects.details
             in
             Svg.g [] <|
                 List.concat

@@ -12,7 +12,7 @@ module Pattern.Compute exposing
 
 import Pattern exposing (A, Axis, Circle, ComputeHelp, Curve, Detail, Intersectable(..), Pattern, Point)
 import StateResult exposing (StateResult, andThen, embed, get, map, map2, map3, map4, map5, ok, traverse)
-import Ui.Pattern
+import Ui.Atom.Object
 
 
 {-| -}
@@ -22,11 +22,11 @@ type alias Result coordinates a =
 
 {-| -}
 type alias Objects coordinates =
-    { points : List ( A Point, Ui.Pattern.Point coordinates )
-    , axes : List ( A Axis, Ui.Pattern.Axis coordinates )
-    , circles : List ( A Circle, Ui.Pattern.Circle coordinates )
-    , curves : List ( A Curve, Ui.Pattern.Curve coordinates )
-    , details : List ( A Detail, Ui.Pattern.Detail coordinates )
+    { points : List ( A Point, Ui.Atom.Object.Point coordinates )
+    , axes : List ( A Axis, Ui.Atom.Object.Axis coordinates )
+    , circles : List ( A Circle, Ui.Atom.Object.Circle coordinates )
+    , curves : List ( A Curve, Ui.Atom.Object.Curve coordinates )
+    , details : List ( A Detail, Ui.Atom.Object.Detail coordinates )
     }
 
 
@@ -54,18 +54,18 @@ compute =
 
 
 {-| -}
-point : Bool -> A Pattern.Point -> Result coordinates (Ui.Pattern.Point coordinates)
+point : Bool -> A Pattern.Point -> Result coordinates (Ui.Atom.Object.Point coordinates)
 point topLevel aPoint =
     if topLevel || Pattern.inlined aPoint then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
                     Nothing ->
-                        map (Ui.Pattern.Point Nothing)
+                        map (Ui.Atom.Object.Point Nothing)
                             (Pattern.point2d aPoint)
 
                     Just info ->
-                        map2 Ui.Pattern.Point
+                        map2 Ui.Atom.Object.Point
                             (pointInfo info)
                             (Pattern.point2d aPoint)
         in
@@ -73,21 +73,21 @@ point topLevel aPoint =
             |> andThen computeInfo
 
     else
-        map (Ui.Pattern.Point Nothing)
+        map (Ui.Atom.Object.Point Nothing)
             (Pattern.point2d aPoint)
 
 
-pointInfo : Pattern.PointInfo -> Result coordinates (Maybe (Ui.Pattern.PointInfo coordinates))
+pointInfo : Pattern.PointInfo -> Result coordinates (Maybe (Ui.Atom.Object.PointInfo coordinates))
 pointInfo info =
     case info of
         Pattern.Origin stuff ->
-            ok (Just Ui.Pattern.Origin)
+            ok (Just Ui.Atom.Object.Origin)
 
         Pattern.FromOnePoint stuff ->
             let
                 toPointInfo basePoint =
                     Just <|
-                        Ui.Pattern.FromOnePoint
+                        Ui.Atom.Object.FromOnePoint
                             { basePoint = basePoint
                             , label = stuff.distance
                             }
@@ -99,7 +99,7 @@ pointInfo info =
             let
                 toPointInfo basePointA basePointB =
                     Just <|
-                        Ui.Pattern.BetweenTwoPoints
+                        Ui.Atom.Object.BetweenTwoPoints
                             { basePointA = basePointA
                             , basePointB = basePointB
                             , label = stuff.ratio
@@ -113,7 +113,7 @@ pointInfo info =
             let
                 toPointInfo basePointA basePointB =
                     Just <|
-                        Ui.Pattern.BetweenTwoPoints
+                        Ui.Atom.Object.BetweenTwoPoints
                             { basePointA = basePointA
                             , basePointB = basePointB
                             , label = stuff.distance
@@ -127,7 +127,7 @@ pointInfo info =
             let
                 toPointInfo intersectableA intersectableB =
                     Just <|
-                        Ui.Pattern.Intersection
+                        Ui.Atom.Object.Intersection
                             { intersectableA = intersectableA
                             , intersectableB = intersectableB
                             }
@@ -138,8 +138,8 @@ pointInfo info =
                         case ( stuff.intersectableA, stuff.intersectableB ) of
                             ( IntersectableAxis aAxisA, IntersectableAxis aAxisB ) ->
                                 map2 toPointInfo
-                                    (map Ui.Pattern.IntersectableAxis (axis False aAxisA))
-                                    (map Ui.Pattern.IntersectableAxis (axis False aAxisB))
+                                    (map Ui.Atom.Object.IntersectableAxis (axis False aAxisA))
+                                    (map Ui.Atom.Object.IntersectableAxis (axis False aAxisB))
 
                             _ ->
                                 ok Nothing
@@ -154,18 +154,18 @@ pointInfo info =
 
 
 {-| -}
-axis : Bool -> A Pattern.Axis -> Result coordinates (Ui.Pattern.Axis coordinates)
+axis : Bool -> A Pattern.Axis -> Result coordinates (Ui.Atom.Object.Axis coordinates)
 axis topLevel aAxis =
     if topLevel || Pattern.inlined aAxis then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
                     Nothing ->
-                        map (Ui.Pattern.Axis Nothing)
+                        map (Ui.Atom.Object.Axis Nothing)
                             (Pattern.axis2d aAxis)
 
                     Just info ->
-                        map2 Ui.Pattern.Axis
+                        map2 Ui.Atom.Object.Axis
                             (axisInfo info)
                             (Pattern.axis2d aAxis)
         in
@@ -173,18 +173,18 @@ axis topLevel aAxis =
             |> andThen computeInfo
 
     else
-        map (Ui.Pattern.Axis Nothing)
+        map (Ui.Atom.Object.Axis Nothing)
             (Pattern.axis2d aAxis)
 
 
-axisInfo : Pattern.AxisInfo -> Result coordinates (Maybe (Ui.Pattern.AxisInfo coordinates))
+axisInfo : Pattern.AxisInfo -> Result coordinates (Maybe (Ui.Atom.Object.AxisInfo coordinates))
 axisInfo info =
     case info of
         Pattern.ThroughOnePoint stuff ->
             let
                 toAxisInfo point_ =
                     Just <|
-                        Ui.Pattern.ThroughOnePoint
+                        Ui.Atom.Object.ThroughOnePoint
                             { point = point_ }
             in
             map toAxisInfo
@@ -194,7 +194,7 @@ axisInfo info =
             let
                 toAxisInfo pointA pointB =
                     Just <|
-                        Ui.Pattern.ThroughTwoPoints
+                        Ui.Atom.Object.ThroughTwoPoints
                             { pointA = pointA
                             , pointB = pointB
                             }
@@ -212,18 +212,18 @@ axisInfo info =
 
 
 {-| -}
-circle : Bool -> A Pattern.Circle -> Result coordinates (Ui.Pattern.Circle coordinates)
+circle : Bool -> A Pattern.Circle -> Result coordinates (Ui.Atom.Object.Circle coordinates)
 circle topLevel aCircle =
     if topLevel || Pattern.inlined aCircle then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
                     Nothing ->
-                        map (Ui.Pattern.Circle Nothing)
+                        map (Ui.Atom.Object.Circle Nothing)
                             (Pattern.circle2d aCircle)
 
                     Just info ->
-                        map2 Ui.Pattern.Circle
+                        map2 Ui.Atom.Object.Circle
                             (circleInfo info)
                             (Pattern.circle2d aCircle)
         in
@@ -231,18 +231,18 @@ circle topLevel aCircle =
             |> andThen computeInfo
 
     else
-        map (Ui.Pattern.Circle Nothing)
+        map (Ui.Atom.Object.Circle Nothing)
             (Pattern.circle2d aCircle)
 
 
-circleInfo : Pattern.CircleInfo -> Result coordinates (Maybe (Ui.Pattern.CircleInfo coordinates))
+circleInfo : Pattern.CircleInfo -> Result coordinates (Maybe (Ui.Atom.Object.CircleInfo coordinates))
 circleInfo info =
     case info of
         Pattern.WithRadius stuff ->
             let
                 toCircle centerPoint =
                     Just <|
-                        Ui.Pattern.WithRadius
+                        Ui.Atom.Object.WithRadius
                             { centerPoint = centerPoint
                             , label = stuff.radius
                             }
@@ -254,7 +254,7 @@ circleInfo info =
             let
                 toCircle pointA pointB pointC =
                     Just <|
-                        Ui.Pattern.ThroughThreePoints
+                        Ui.Atom.Object.ThroughThreePoints
                             { pointA = pointA
                             , pointB = pointB
                             , pointC = pointC
@@ -274,18 +274,18 @@ circleInfo info =
 
 
 {-| -}
-curve : Bool -> A Pattern.Curve -> Result coordinates (Ui.Pattern.Curve coordinates)
+curve : Bool -> A Pattern.Curve -> Result coordinates (Ui.Atom.Object.Curve coordinates)
 curve topLevel aCurve =
     if topLevel || Pattern.inlined aCurve then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
                     Nothing ->
-                        map (Ui.Pattern.Curve Nothing)
+                        map (Ui.Atom.Object.Curve Nothing)
                             (Pattern.curve2d aCurve)
 
                     Just info ->
-                        map2 Ui.Pattern.Curve
+                        map2 Ui.Atom.Object.Curve
                             (curveInfo info)
                             (Pattern.curve2d aCurve)
         in
@@ -293,18 +293,18 @@ curve topLevel aCurve =
             |> andThen computeInfo
 
     else
-        map (Ui.Pattern.Curve Nothing)
+        map (Ui.Atom.Object.Curve Nothing)
             (Pattern.curve2d aCurve)
 
 
-curveInfo : Pattern.CurveInfo -> Result coordinates (Maybe (Ui.Pattern.CurveInfo coordinates))
+curveInfo : Pattern.CurveInfo -> Result coordinates (Maybe (Ui.Atom.Object.CurveInfo coordinates))
 curveInfo info =
     case info of
         Pattern.Straight stuff ->
             let
                 toCurveInfo startPoint endPoint =
                     Just <|
-                        Ui.Pattern.LineSegment
+                        Ui.Atom.Object.LineSegment
                             { startPoint = startPoint
                             , endPoint = endPoint
                             }
@@ -317,7 +317,7 @@ curveInfo info =
             let
                 toCurveInfo firstControlPoint secondControlPoint thirdControlPoint =
                     Just <|
-                        Ui.Pattern.QuadraticSpline
+                        Ui.Atom.Object.QuadraticSpline
                             { firstControlPoint = firstControlPoint
                             , secondControlPoint = secondControlPoint
                             , thirdControlPoint = thirdControlPoint
@@ -332,7 +332,7 @@ curveInfo info =
             let
                 toCurveInfo firstControlPoint secondControlPoint thirdControlPoint fourthControlPoint =
                     Just <|
-                        Ui.Pattern.CubicSpline
+                        Ui.Atom.Object.CubicSpline
                             { firstControlPoint = firstControlPoint
                             , secondControlPoint = secondControlPoint
                             , thirdControlPoint = thirdControlPoint
@@ -354,14 +354,14 @@ curveInfo info =
 
 
 {-| -}
-detail : Bool -> A Pattern.Detail -> Result coordinates (Ui.Pattern.Detail coordinates)
+detail : Bool -> A Pattern.Detail -> Result coordinates (Ui.Atom.Object.Detail coordinates)
 detail topLevel aDetail =
     if topLevel || Pattern.inlined aDetail then
         let
             computeInfo maybeInfo =
                 case maybeInfo of
                     Nothing ->
-                        map (Ui.Pattern.Detail [] [])
+                        map (Ui.Atom.Object.Detail [] [])
                             (Pattern.detail2d aDetail)
 
                     Just info ->
@@ -380,13 +380,13 @@ detail topLevel aDetail =
             |> andThen computeInfo
 
     else
-        map (Ui.Pattern.Detail [] [])
+        map (Ui.Atom.Object.Detail [] [])
             (Pattern.detail2d aDetail)
 
 
 type alias DetailInfo coordinates =
-    { points : List (Ui.Pattern.Point coordinates)
-    , curves : List (Ui.Pattern.Curve coordinates)
+    { points : List (Ui.Atom.Object.Point coordinates)
+    , curves : List (Ui.Atom.Object.Curve coordinates)
     }
 
 
