@@ -27,7 +27,7 @@ import Task
 import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 
@@ -133,7 +133,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                             }
                         ]
                         { onPress = Just (onMsg (PressedActionButton action))
-                        , label = Ui.Typography.button label
+                        , label =  Ui.Theme.Typography.button label
                         }
                 , Ui.Atom.withFocusOutlineRight <|
                     Input.button
@@ -239,7 +239,7 @@ viewAction onMsg selected index { label, action } =
                 Ui.Theme.Color.black
         , Element.htmlAttribute (Html.Events.onClick (onMsg (PressedMenuItem index action)))
         ]
-        (Ui.Typography.button label)
+        ( Ui.Theme.Typography.button label)
 
 
 

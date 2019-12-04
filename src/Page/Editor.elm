@@ -87,7 +87,7 @@ import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Organism.Dialog
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 import Url exposing (Url)
 import Vector2d
 import VoronoiDiagram2d
@@ -262,7 +262,7 @@ viewModal pattern ( modal, state ) =
                     Pattern.objectsDependingOnPoint pattern aPoint
 
                 viewDependentObjects =
-                    [ Ui.Typography.paragraphBody
+                    [  Ui.Theme.Typography.paragraphBody
                         [ Element.el [ Font.bold ]
                             (Element.text "Note:")
                         , Element.text " The following objects depend on this point and will therefore be "
@@ -283,7 +283,7 @@ viewModal pattern ( modal, state ) =
                                 }
                             ]
                         <|
-                            Ui.Typography.paragraphBody
+                             Ui.Theme.Typography.paragraphBody
                                 (List.concat
                                     [ [ Element.text "The points " ]
                                     , dependentObjects.points
@@ -314,7 +314,7 @@ viewModal pattern ( modal, state ) =
                         , Element.padding Ui.Theme.Spacing.level2
                         , Background.color Ui.Theme.Color.white
                         ]
-                        (Ui.Typography.paragraphBody
+                        ( Ui.Theme.Typography.paragraphBody
                             [ Element.text "Do you want to remove the point "
                             , Element.el [ Font.bold ]
                                 (Element.text ("«" ++ objectName aPoint ++ "»"))
@@ -392,7 +392,7 @@ viewDeleteModal state { name, kind, onDeletePress } =
         , title = "Delete «" ++ name ++ "»?"
         , content =
             Element.el [ Element.htmlAttribute (Html.Attributes.id "dialog--body") ] <|
-                Ui.Typography.paragraphBody
+                 Ui.Theme.Typography.paragraphBody
                     [ Element.text ("Do you want to remove the " ++ kind ++ " ")
                     , Element.el [ Font.bold ]
                         (Element.text ("«" ++ name ++ "»"))
@@ -487,7 +487,7 @@ viewTopToolbar model name =
             [ Element.centerX
             , Font.bold
             ]
-            (Ui.Typography.body name)
+            ( Ui.Theme.Typography.body name)
         , Element.newTabLink
             [ Element.alignRight
             , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
@@ -724,7 +724,7 @@ viewVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Ui.Typography.paragraphBody
+        [  Ui.Theme.Typography.paragraphBody
             [ Element.text "Create a new "
             , Element.el
                 [ Font.bold ]
@@ -776,7 +776,7 @@ viewEditVariable name value =
         , Element.padding 15
         , Element.spacing 15
         ]
-        [ Ui.Typography.paragraphBody
+        [  Ui.Theme.Typography.paragraphBody
             [ Element.text "Edit the variable "
             , Element.el
                 [ Font.bold ]

@@ -1,4 +1,4 @@
-module Ui.Typography exposing
+module Ui.Theme.Typography exposing
     ( headingOne, headingTwo, headingThree, headingFour
     , bodyBold, body
     , paragraphBody

@@ -18,7 +18,7 @@ import List.Extra as List
 import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 type alias Config tag msg =
@@ -94,7 +94,7 @@ view { label, tabs, selected, content, onSelect } =
                             |> addTabindex tab.tag
                         )
                         { onPress = Just (onSelect tab.tag (tab.id ++ "--tab"))
-                        , label = Ui.Typography.bodyBold tab.label
+                        , label =  Ui.Theme.Typography.bodyBold tab.label
                         }
                     )
                 )

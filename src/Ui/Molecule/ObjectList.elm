@@ -25,7 +25,7 @@ import Pattern exposing (Object(..), Pattern)
 import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 
@@ -198,7 +198,7 @@ name cfg state =
                 , backgroundColor state object
                 , fontColor state object
                 ]
-                (Ui.Typography.body (objectName object))
+                ( Ui.Theme.Typography.body (objectName object))
     }
 
 

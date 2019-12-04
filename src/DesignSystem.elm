@@ -42,7 +42,7 @@ import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
 import Ui.Pattern exposing (Intersectable(..))
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 import Url exposing (Url)
 import Url.Parser exposing (Parser)
 import Vector2d
@@ -518,7 +518,7 @@ content model =
         , Element.spacing Ui.Theme.Spacing.level3
         , Element.alignTop
         ]
-        [ Ui.Typography.headingOne (routeToTitle model.route)
+        [  Ui.Theme.Typography.headingOne (routeToTitle model.route)
         , case model.route of
             Typography ->
                 viewTypography model
@@ -565,21 +565,21 @@ viewTypography model =
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Type Scale"
+        [  Ui.Theme.Typography.headingThree "Type Scale"
         , Element.column
             [ Element.paddingXY Ui.Theme.Spacing.level5 Ui.Theme.Spacing.level4
             , Element.spacing Ui.Theme.Spacing.level4
             ]
-            [ Ui.Typography.headingOne "Heading One"
-            , Ui.Typography.headingTwo "Heading Two"
-            , Ui.Typography.headingThree "Heading Three"
-            , Ui.Typography.headingFour "Heading Four"
-            , Ui.Typography.bodyBold "Body Bold"
-            , Ui.Typography.body "Body"
-            , Ui.Typography.button "Button"
+            [  Ui.Theme.Typography.headingOne "Heading One"
+            ,  Ui.Theme.Typography.headingTwo "Heading Two"
+            ,  Ui.Theme.Typography.headingThree "Heading Three"
+            ,  Ui.Theme.Typography.headingFour "Heading Four"
+            ,  Ui.Theme.Typography.bodyBold "Body Bold"
+            ,  Ui.Theme.Typography.body "Body"
+            ,  Ui.Theme.Typography.button "Button"
             ]
-        , Ui.Typography.headingThree "Paragraphs and Links"
-        , Ui.Typography.paragraphBody
+        ,  Ui.Theme.Typography.headingThree "Paragraphs and Links"
+        ,  Ui.Theme.Typography.paragraphBody
             [ Element.text "This is a pragraph with a "
             , Ui.Atom.link
                 { id = "link"
@@ -608,7 +608,7 @@ viewColor model =
                 , Font.color fontColor
                 ]
                 (Element.el [ Element.padding Ui.Theme.Spacing.level2 ]
-                    (Ui.Typography.bodyBold name)
+                    ( Ui.Theme.Typography.bodyBold name)
                 )
     in
     Element.column
@@ -657,7 +657,7 @@ viewSpace model =
                         [ Element.centerX
                         , Element.centerY
                         ]
-                        (Ui.Typography.bodyBold
+                        ( Ui.Theme.Typography.bodyBold
                             (name ++ ": " ++ String.fromInt space ++ "px")
                         )
                     )
@@ -704,7 +704,7 @@ viewButtons model =
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Standard"
+        [  Ui.Theme.Typography.headingThree "Standard"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level1
@@ -730,7 +730,7 @@ viewButtons model =
                 , label = "Cancel"
                 }
             ]
-        , Ui.Typography.headingThree "Call to Action"
+        ,  Ui.Theme.Typography.headingThree "Call to Action"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level1
@@ -741,7 +741,7 @@ viewButtons model =
                 , label = "Call to Action"
                 }
             ]
-        , Ui.Typography.headingThree "Icon"
+        ,  Ui.Theme.Typography.headingThree "Icon"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level1
@@ -775,7 +775,7 @@ viewFormElements model =
         [ Element.spacing Ui.Theme.Spacing.level2
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Checkbox"
+        [  Ui.Theme.Typography.headingThree "Checkbox"
         , Element.el
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
@@ -787,7 +787,7 @@ viewFormElements model =
                 , label = "Checkbox"
                 }
             )
-        , Ui.Typography.headingThree "Radio Buttons"
+        ,  Ui.Theme.Typography.headingThree "Radio Buttons"
         , Element.el
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
@@ -808,7 +808,7 @@ viewFormElements model =
                 , label = "Select a fruit"
                 }
             )
-        , Ui.Typography.headingThree "Dropdown"
+        ,  Ui.Theme.Typography.headingThree "Dropdown"
         , Element.el
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
@@ -825,7 +825,7 @@ viewFormElements model =
                 model.dropdown
                 model.selection
             )
-        , Ui.Typography.headingThree "Segment Control"
+        ,  Ui.Theme.Typography.headingThree "Segment Control"
         , Element.el
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.width Element.fill
@@ -840,7 +840,7 @@ viewFormElements model =
                 , child = Nothing
                 }
             )
-        , Ui.Typography.headingThree "Text"
+        ,  Ui.Theme.Typography.headingThree "Text"
         , Element.column
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.spacing Ui.Theme.Spacing.level4
@@ -888,7 +888,7 @@ viewIcons model =
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Normal"
+        [  Ui.Theme.Typography.headingThree "Normal"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level2
             , Element.padding Ui.Theme.Spacing.level2
@@ -905,7 +905,7 @@ viewIcons model =
             , Ui.Atom.iconCurve
             , Ui.Atom.iconDetail
             ]
-        , Ui.Typography.headingThree "Body"
+        ,  Ui.Theme.Typography.headingThree "Body"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level3
             , Element.padding Ui.Theme.Spacing.level2
@@ -917,7 +917,7 @@ viewIcons model =
             , Ui.Atom.faBody "chevron-up"
             , Ui.Atom.faBody "chevron-down"
             ]
-        , Ui.Typography.headingThree "Large"
+        ,  Ui.Theme.Typography.headingThree "Large"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level2
@@ -1319,7 +1319,7 @@ viewTabs model =
                             [ Element.centerX
                             , Element.centerY
                             ]
-                            (Ui.Typography.body <|
+                            ( Ui.Theme.Typography.body <|
                                 case tab of
                                     ObjectsTab ->
                                         "Objects"
@@ -1346,7 +1346,7 @@ viewJoinedFormElements model =
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Segment Control + Dropdown"
+        [  Ui.Theme.Typography.headingThree "Segment Control + Dropdown"
         , Element.column
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.spacing Ui.Theme.Spacing.level4
@@ -1395,7 +1395,7 @@ viewJoinedFormElements model =
                             model.selectionAppended
                 }
             ]
-        , Ui.Typography.headingThree "Segment Control + Text"
+        ,  Ui.Theme.Typography.headingThree "Segment Control + Text"
         , Element.column
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.spacing Ui.Theme.Spacing.level4
@@ -1447,7 +1447,7 @@ viewJoinedFormElements model =
                             }
                 }
             ]
-        , Ui.Typography.headingThree "Segment Control + Nested Form"
+        ,  Ui.Theme.Typography.headingThree "Segment Control + Nested Form"
         , Element.column
             [ Element.padding Ui.Theme.Spacing.level1
             , Element.spacing Ui.Theme.Spacing.level4
@@ -1549,7 +1549,7 @@ viewDropdowns model =
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
         ]
-        [ Ui.Typography.headingThree "Action Button + Dropdown"
+        [  Ui.Theme.Typography.headingThree "Action Button + Dropdown"
         , Element.wrappedRow
             [ Element.spacing Ui.Theme.Spacing.level4
             , Element.padding Ui.Theme.Spacing.level1

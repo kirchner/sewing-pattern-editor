@@ -48,7 +48,7 @@ import Svg
 import Svg.Attributes
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 

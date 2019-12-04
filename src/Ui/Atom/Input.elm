@@ -50,7 +50,7 @@ import List.Extra as List
 import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 
@@ -78,7 +78,7 @@ btnPrimary { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label = Ui.Typography.button label
+            , label =  Ui.Theme.Typography.button label
             }
 
 
@@ -94,7 +94,7 @@ btnSecondary { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label = Ui.Typography.button label
+            , label =  Ui.Theme.Typography.button label
             }
 
 
@@ -111,7 +111,7 @@ btnDanger { id, onPress, label } =
             , backgroundColorEaseInOut
             ]
             { onPress = onPress
-            , label = Ui.Typography.button label
+            , label =  Ui.Theme.Typography.button label
             }
 
 
@@ -127,7 +127,7 @@ btnCancel { id, onPress, label } =
             , Element.mouseOver [ Font.color Ui.Theme.Color.primaryDark ]
             ]
             { onPress = onPress
-            , label = Ui.Typography.button label
+            , label =  Ui.Theme.Typography.button label
             }
 
 
@@ -154,7 +154,7 @@ btnCallToAction { id, onPress, label } =
                     [ Element.width Element.fill
                     , Element.spacing Ui.Theme.Spacing.level4
                     ]
-                    [ Ui.Typography.button label
+                    [  Ui.Theme.Typography.button label
                     , Element.el [ Element.alignRight ] (Ui.Atom.fa "chevron-right")
                     ]
             }
@@ -251,7 +251,7 @@ checkbox { id, onChange, checked, label } =
                     [ Element.centerY
                     , Element.paddingXY Ui.Theme.Spacing.level1 0
                     ]
-                    (Ui.Typography.body label)
+                    ( Ui.Theme.Typography.body label)
             }
 
 
@@ -585,7 +585,7 @@ radioRow { id, onChange, options, selected, label } =
                         , right = 0
                         }
                     ]
-                    (Ui.Typography.bodyBold label)
+                    ( Ui.Theme.Typography.bodyBold label)
             }
 
 
@@ -610,7 +610,7 @@ radioColumn { id, onChange, options, selected, label } =
                         , right = 0
                         }
                     ]
-                    (Ui.Typography.bodyBold label)
+                    ( Ui.Theme.Typography.bodyBold label)
             }
 
 
@@ -745,7 +745,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         [ attributeId (id ++ "-label")
                         , Element.width Element.fill
                         ]
-                        (Ui.Typography.bodyBold labelText)
+                        ( Ui.Theme.Typography.bodyBold labelText)
 
         control borderRounded =
             Element.el
@@ -779,7 +779,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"
-                        , Ui.Typography.bodyBold helpText
+                        ,  Ui.Theme.Typography.bodyBold helpText
                         ]
     in
     case child of
@@ -920,7 +920,7 @@ disclosureButton { show, onPress } =
                 (Ui.Atom.withFocusOutline <|
                     Element.row
                         [ Element.spacing Ui.Theme.Spacing.level1 ]
-                        [ Ui.Typography.button <|
+                        [  Ui.Theme.Typography.button <|
                             if show then
                                 "Minimize"
 
@@ -1034,7 +1034,7 @@ segment selectedTag thisTag position label =
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
-            (Ui.Typography.body label)
+            ( Ui.Theme.Typography.body label)
         )
 
 
@@ -1147,7 +1147,7 @@ labelAbove { label, help } =
                 , right = 0
                 }
             ]
-            [ Ui.Typography.bodyBold label
+            [  Ui.Theme.Typography.bodyBold label
             , case help of
                 Nothing ->
                     Element.none
@@ -1158,7 +1158,7 @@ labelAbove { label, help } =
                         , Font.color Ui.Theme.Color.danger
                         ]
                         [ Ui.Atom.fa "exclamation-circle"
-                        , Ui.Typography.bodyBold helpText
+                        ,  Ui.Theme.Typography.bodyBold helpText
                         ]
             ]
 

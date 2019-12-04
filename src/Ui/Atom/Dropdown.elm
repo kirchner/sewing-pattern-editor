@@ -26,7 +26,7 @@ import Ui.Atom
 import Ui.Atom.Input exposing (Child(..))
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 {-| -}
@@ -100,7 +100,7 @@ viewWithMenu menu config instance options dropdown selection =
                     [ Element.htmlAttribute (Attributes.id (instance.id ++ "-label"))
                     , Element.alignLeft
                     ]
-                    (Ui.Typography.bodyBold instance.label)
+                    ( Ui.Theme.Typography.bodyBold instance.label)
                 , Element.el [ Element.alignRight ]
                     menu
                 ]

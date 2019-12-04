@@ -17,7 +17,7 @@ import Pattern exposing (Pattern)
 import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Typography
+import Ui.Theme.Typography
 
 
 {-| -}
@@ -84,7 +84,7 @@ name cfg focusedVariable hoveredVariable =
                 , backgroundColor focusedVariable hoveredVariable variable
                 , fontColor focusedVariable hoveredVariable variable
                 ]
-                (Ui.Typography.body variable)
+                ( Ui.Theme.Typography.body variable)
     }
 
 
