@@ -17,6 +17,7 @@ module Pattern exposing
     , points, axes, circles, curves, curvesWith, details, transformations, variables
     , objects
     , pointInfo, PointInfo(..)
+    , OriginStuff, FromOnePointStuff, BetweenRatioStuff, BetweenLengthStuff, IntersectionStuff, TransformedPointStuff
     , axisInfo, AxisInfo(..)
     , circleInfo, CircleInfo(..)
     , curveInfo, CurveInfo(..), StraightStuff, QuadraticStuff, CubicStuff
@@ -101,6 +102,7 @@ module Pattern exposing
 ## Info
 
 @docs pointInfo, PointInfo
+@docs OriginStuff, FromOnePointStuff, BetweenRatioStuff, BetweenLengthStuff, IntersectionStuff, TransformedPointStuff
 @docs axisInfo, AxisInfo
 @docs circleInfo, CircleInfo
 @docs curveInfo, CurveInfo, StraightStuff, QuadraticStuff, CubicStuff
