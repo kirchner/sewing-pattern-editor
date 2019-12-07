@@ -1,0 +1,1803 @@
+{
+  "slug": "03cc4cc4-4c00-440c-8488-4804ff0b88b8",
+  "name": "BodiceBlock,Leena'sPatternmaker",
+  "pattern": {
+    "points": {
+      "A10": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A7"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A3"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A11": {
+        "type": "betweenRatio",
+        "basePointA": {
+          "type": "that",
+          "name": "A9"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A10"
+        },
+        "ratio": "0.5"
+      },
+      "A12": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "Origin"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A3"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A13": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "Origin"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A4"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A14": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "Origin"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A5"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A15": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "Origin"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A6"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A16": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A11"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A4"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A17": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A11"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A5"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A18": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A11"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A6"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A19": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A4"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A16"
+        },
+        "distance": "bust_arc_f/2",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A1a": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "direction": {
+          "type": "up"
+        },
+        "distance": "0.5"
+      },
+      "A2": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "bust_circ/2+5"
+      },
+      "A20": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A19"
+        },
+        "direction": {
+          "type": "up"
+        },
+        "distance": "waist_length-bust_height"
+      },
+      "A21": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A2"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A8"
+        },
+        "distance": "neck_width",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A22": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A21"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableCircle",
+          "circle": {
+            "type": "this",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A20"
+              },
+              "radius": "bust_height-neck_lenth_back"
+            }
+          }
+        },
+        "which": 1
+      },
+      "A22a": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A22"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A2"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A22b": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A22a"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "neck_depth"
+      },
+      "A23": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A8"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "front_shoulder_height"
+      },
+      "A24": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A23"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A11"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A25": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A7"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "back_shoulder_height"
+      },
+      "A26": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A25"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A24"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A27": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A7"
+        },
+        "distance": "neck_width",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A28": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A27"
+        },
+        "direction": {
+          "type": "up"
+        },
+        "distance": "2.5"
+      },
+      "A29": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableCircle",
+          "circle": {
+            "type": "this",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A28"
+              },
+              "radius": "shoulder_length+2"
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughTwoPoints",
+              "pointA": {
+                "type": "that",
+                "name": "A25"
+              },
+              "pointB": {
+                "type": "that",
+                "name": "A26"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A3": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A2"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "amskye_length"
+      },
+      "A30": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A28"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "7"
+      },
+      "A31": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A30"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "3"
+      },
+      "A32": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A28"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A29"
+        },
+        "distance": "4",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A32a": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A32"
+        },
+        "direction": {
+          "type": "directionAngle",
+          "angle": "angleOfLine(A28,A29)+90"
+        },
+        "distance": "0.6"
+      },
+      "A33": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A32"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A29"
+        },
+        "distance": "2",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A33a": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A33"
+        },
+        "direction": {
+          "type": "directionAngle",
+          "angle": "angleOfLine(A33,A29)+90"
+        },
+        "distance": "0.6"
+      },
+      "A34": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableCircle",
+          "circle": {
+            "type": "this",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A22"
+              },
+              "radius": "dart_width_bust"
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableCircle",
+          "circle": {
+            "type": "this",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A20"
+              },
+              "radius": "bust_height-neck_lenth_back"
+            }
+          }
+        },
+        "which": 1
+      },
+      "A35": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableCircle",
+          "circle": {
+            "type": "this",
+            "circle": {
+              "type": "withRadius",
+              "centerPoint": {
+                "type": "that",
+                "name": "A34"
+              },
+              "radius": "shoulder_length"
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughTwoPoints",
+              "pointA": {
+                "type": "that",
+                "name": "A23"
+              },
+              "pointB": {
+                "type": "that",
+                "name": "A24"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A36": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A31"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A15"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A37": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A31"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A14"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A38": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A37"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A36"
+        },
+        "distance": "5",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A39": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A13"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A37"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A39a": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A12"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A39"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A39b": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A39a"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A39"
+        },
+        "distance": "2",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A4": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A2"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A3"
+        },
+        "distance": "back_length",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A40": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A39"
+        },
+        "direction": {
+          "type": "rightward"
+        },
+        "distance": "a"
+      },
+      "A41": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A39"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "a"
+      },
+      "A42": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A16"
+        },
+        "direction": {
+          "type": "rightward"
+        },
+        "distance": "a"
+      },
+      "A43": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A16"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "a"
+      },
+      "A44": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A19"
+        },
+        "direction": {
+          "type": "rightward"
+        },
+        "distance": "a"
+      },
+      "A45": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A19"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "a"
+      },
+      "A46": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A19"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A6"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A47": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A19"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A5"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "A48": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A47"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "5"
+      },
+      "A49": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A18"
+        },
+        "direction": {
+          "type": "rightward"
+        },
+        "distance": "b"
+      },
+      "A5": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A2"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A4"
+        },
+        "distance": "distance(A2,A4)+abdomen_height",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A50": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A18"
+        },
+        "direction": {
+          "type": "leftward"
+        },
+        "distance": "b"
+      },
+      "A51": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A9"
+        },
+        "direction": {
+          "type": "up"
+        },
+        "distance": "distance(A8,A9)/4"
+      },
+      "A52": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A10"
+        },
+        "direction": {
+          "type": "up"
+        },
+        "distance": "distance(A7,A10)/2"
+      },
+      "A6": {
+        "type": "fromOnePoint",
+        "basePoint": {
+          "type": "that",
+          "name": "A4"
+        },
+        "direction": {
+          "type": "down"
+        },
+        "distance": "hip_height"
+      },
+      "A7": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "Origin"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A2"
+        },
+        "distance": "across_back",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A8": {
+        "type": "betweenLength",
+        "basePointA": {
+          "type": "that",
+          "name": "A7"
+        },
+        "basePointB": {
+          "type": "that",
+          "name": "A2"
+        },
+        "distance": "armscye_width",
+        "from": {
+          "type": "firstInTwo"
+        }
+      },
+      "A9": {
+        "type": "intersection",
+        "intersectableA": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A8"
+              },
+              "orientation": {
+                "type": "vertical"
+              }
+            }
+          }
+        },
+        "intersectableB": {
+          "type": "intersectableAxis",
+          "axis": {
+            "type": "this",
+            "axis": {
+              "type": "throughOnePoint",
+              "point": {
+                "type": "that",
+                "name": "A3"
+              },
+              "orientation": {
+                "type": "horizontal"
+              }
+            }
+          }
+        },
+        "which": 1
+      },
+      "Origin": {
+        "type": "origin",
+        "x": 0,
+        "y": 0
+      }
+    },
+    "axes": {},
+    "circles": {},
+    "curves": {
+      "actual_lower_armhole_back": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A29"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A29"
+            },
+            "direction": {
+              "type": "directionAngle",
+              "angle": "angleOfLine(A29,A28)+90"
+            },
+            "distance": "distance(A29,A52)/3"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A52"
+            },
+            "direction": {
+              "type": "up"
+            },
+            "distance": "distance(A52,A25)/4"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A52"
+        }
+      },
+      "back_neck_arc": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A28"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A28"
+            },
+            "direction": {
+              "type": "down"
+            },
+            "distance": "distance(A27,A28)/2"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A1a"
+            },
+            "direction": {
+              "type": "leftward"
+            },
+            "distance": "2*distance(Origin,A27)/3"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A1a"
+        }
+      },
+      "front_neck_curve": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A22"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A22"
+            },
+            "direction": {
+              "type": "down"
+            },
+            "distance": "distance(A2,A21)/2"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A22b"
+            },
+            "direction": {
+              "type": "rightward"
+            },
+            "distance": "distance(A22a,A22b)/2"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A22b"
+        }
+      },
+      "lower_armhole_back": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A11"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A11"
+            },
+            "direction": {
+              "type": "rightward"
+            },
+            "distance": "distance(A11,A10)/2"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A52"
+            },
+            "direction": {
+              "type": "down"
+            },
+            "distance": "2*distance(A52,A10)/3"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A52"
+        }
+      },
+      "lower_armhole_front": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A51"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A51"
+            },
+            "direction": {
+              "type": "down"
+            },
+            "distance": "distance(A51,A9)/2"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A11"
+            },
+            "direction": {
+              "type": "leftward"
+            },
+            "distance": "distance(A11,A9)/2"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A11"
+        }
+      },
+      "upper_armhole_front": {
+        "type": "cubic",
+        "startPoint": {
+          "type": "that",
+          "name": "A35"
+        },
+        "startControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A35"
+            },
+            "direction": {
+              "type": "directionAngle",
+              "angle": "angleOfLine(A35,A34)-90"
+            },
+            "distance": "distance(A35,A51)/3"
+          }
+        },
+        "endControlPoint": {
+          "type": "this",
+          "point": {
+            "type": "fromOnePoint",
+            "basePoint": {
+              "type": "that",
+              "name": "A51"
+            },
+            "direction": {
+              "type": "up"
+            },
+            "distance": "distance(A51,A23)/3"
+          }
+        },
+        "endPoint": {
+          "type": "that",
+          "name": "A51"
+        }
+      }
+    },
+    "details": {
+      "back": {
+        "firstCurve": {
+          "type": "firstReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "lower_armhole_back"
+          },
+          "reversed": false
+        },
+        "nextCurves": [
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A11"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A42"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A17"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A50"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A36"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A15"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A14"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A13"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A12"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A1a"
+            }
+          },
+          {
+            "type": "nextReferencedCurve",
+            "curve": {
+              "type": "that",
+              "name": "back_neck_arc"
+            },
+            "reversed": true
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A32a"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A31"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A33a"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A29"
+            }
+          }
+        ],
+        "lastCurve": {
+          "type": "lastReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "actual_lower_armhole_back"
+          },
+          "reversed": false
+        }
+      },
+      "center_front": {
+        "firstCurve": {
+          "type": "firstReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "front_neck_curve"
+          },
+          "reversed": false
+        },
+        "nextCurves": [
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A3"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A4"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A5"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A6"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A46"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A48"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A45"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A20"
+            }
+          }
+        ],
+        "lastCurve": {
+          "type": "lastStraight"
+        }
+      },
+      "front_side": {
+        "firstCurve": {
+          "type": "firstReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "upper_armhole_front"
+          },
+          "reversed": false
+        },
+        "nextCurves": [
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A35"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A34"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A20"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A44"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A48"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A46"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A49"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A17"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A43"
+            }
+          },
+          {
+            "type": "nextStraight",
+            "endPoint": {
+              "type": "that",
+              "name": "A11"
+            }
+          }
+        ],
+        "lastCurve": {
+          "type": "lastReferencedCurve",
+          "curve": {
+            "type": "that",
+            "name": "lower_armhole_front"
+          },
+          "reversed": false
+        }
+      }
+    },
+    "transformations": {},
+    "variables": {
+      "a": "(distance(A4,A13)\n-waist_circ/2\n)/6",
+      "abdomen_height": "9",
+      "across_back": "(33+1.6)/2",
+      "amskye_length": "20.4",
+      "armscye_width": "(bust_circ+8)/8-1.5",
+      "b": "(distance(A6,A15)\n-hip_circ/2\n)/2",
+      "back_length": "38.8",
+      "back_shoulder_height": "2.35",
+      "bust_arc_f": "(bust_circ+8)/5",
+      "bust_circ": "76",
+      "bust_height": "31.3",
+      "dart_width_bust": "4.5",
+      "front_shoulder_height": "4.6",
+      "hip_circ": "82.5",
+      "hip_height": "19",
+      "hip_with_abdomen_arc_f": "82.5/2+4",
+      "neck_circ": "35.5",
+      "neck_depth": "neck_circ/5+0.5",
+      "neck_lenth_back": "neck_circ/5-0.5",
+      "neck_width": "neck_circ/5-1",
+      "shoulder_length": "12.2",
+      "waist_circ": "58",
+      "waist_length": "48.5",
+      "width_bust": "(bust_circ+8)/2",
+      "width_hip": "(hip_circ+4)/2",
+      "width_waist": "(waist_circ+6)/2"
+    }
+  },
+  "zoom": 0.006400113658527876,
+  "center": {
+    "x": -23.763125639605704,
+    "y": 14.84522601046704
+  }
+}
