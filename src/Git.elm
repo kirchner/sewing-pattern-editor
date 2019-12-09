@@ -2,6 +2,7 @@ module Git exposing
     ( Identity(..)
     , getPattern
     , Meta, getMeta
+    , Repo, Permissions, getRepo
     )
 
 {-|
@@ -19,6 +20,7 @@ module Git exposing
 
 @docs getPattern
 @docs Meta, getMeta
+@docs Repo, Permissions, getRepo
 
 -}
 
@@ -118,6 +120,60 @@ contentsDecoder : Decoder Contents
 contentsDecoder =
     Decode.succeed Contents
         |> Decode.required "content" Decode.string
+
+
+
+---- REPO
+
+
+type alias Repo =
+    { permissions : Permissions }
+
+
+type alias Permissions =
+    { admin : Bool
+    , push : Bool
+    , pull : Bool
+    }
+
+
+noPermissions : Permissions
+noPermissions =
+    { admin = False
+    , push = False
+    , pull = False
+    }
+
+
+getRepo :
+    Identity
+    ->
+        { owner : String
+        , repo : String
+        , onRepo : Result Http.Error Repo -> msg
+        }
+    -> Cmd msg
+getRepo identity { owner, repo, onRepo } =
+    get identity
+        { endpoint = [ "repos", owner, repo ]
+        , params = []
+        , onData = onRepo
+        , decoder = repoDecoder
+        }
+
+
+repoDecoder : Decoder Repo
+repoDecoder =
+    Decode.succeed Repo
+        |> Decode.optional "permissions" permissionsDecoder noPermissions
+
+
+permissionsDecoder : Decoder Permissions
+permissionsDecoder =
+    Decode.succeed Permissions
+        |> Decode.required "admin" Decode.bool
+        |> Decode.required "push" Decode.bool
+        |> Decode.required "pull" Decode.bool
 
 
 

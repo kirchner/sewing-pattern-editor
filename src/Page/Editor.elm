@@ -50,7 +50,7 @@ import Element.Lazy as Element
 import Element.Region as Region
 import Frame2d exposing (Frame2d)
 import Geometry.Svg as Svg
-import Git exposing (Meta)
+import Git exposing (Meta, Permissions, Repo)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -72,6 +72,7 @@ import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import Process
 import Quantity
+import Route
 import State
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -92,6 +93,7 @@ import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url exposing (Url)
+import Url.Builder
 import Vector2d
 import VoronoiDiagram2d
 
@@ -102,17 +104,27 @@ import VoronoiDiagram2d
 
 {-| -}
 type Model
-    = Loading LoadingData
+    = RequestingToken RequestingTokenData
+    | Loading LoadingData
     | Error
     | Loaded LoadedData
 
 
-type alias LoadingData =
+type alias RequestingTokenData =
     { owner : String
+    , repo : String
+    , ref : String
+    }
+
+
+type alias LoadingData =
+    { identity : Git.Identity
+    , owner : String
     , repo : String
     , ref : String
     , maybePattern : Maybe (Pattern BottomLeft)
     , maybeMeta : Maybe Meta
+    , maybePermissions : Maybe Permissions
     }
 
 
@@ -125,6 +137,7 @@ type alias LoadedData =
     , owner : String
     , repo : String
     , ref : String
+    , permissions : Permissions
     , pattern : Pattern BottomLeft
     , name : String
     , zoom : Float
@@ -196,38 +209,68 @@ type Dialog
 
 
 {-| -}
-init : String -> String -> Maybe String -> ( Model, Cmd Msg )
-init owner repo maybeRef =
+init : String -> String -> Maybe String -> Maybe String -> ( Model, Cmd Msg )
+init owner repo maybeRef maybeCode =
     let
         ref =
             Maybe.withDefault "master" maybeRef
     in
+    case maybeCode of
+        Nothing ->
+            initLoading owner repo ref Git.Anonymous
+
+        Just code ->
+            ( RequestingToken
+                { owner = owner
+                , repo = repo
+                , ref = ref
+                }
+            , Http.get
+                { url =
+                    Url.Builder.absolute [ "access_token" ]
+                        [ Url.Builder.string "code" code ]
+                , expect =
+                    Http.expectJson ReceivedGithubAccessToken
+                        (Decode.field "access_token" Decode.string)
+                }
+            )
+
+
+initLoading : String -> String -> String -> Git.Identity -> ( Model, Cmd Msg )
+initLoading owner repo ref identity =
     ( Loading
-        { owner = owner
+        { identity = identity
+        , owner = owner
         , repo = repo
         , ref = ref
         , maybePattern = Nothing
         , maybeMeta = Nothing
+        , maybePermissions = Nothing
         }
     , Cmd.batch
-        [ Git.getPattern Git.Anonymous
+        [ Git.getPattern identity
             { owner = owner
             , repo = repo
             , ref = ref
             , onPattern = ReceivedPattern
             }
-        , Git.getMeta Git.Anonymous
+        , Git.getMeta identity
             { owner = owner
             , repo = repo
             , ref = ref
             , onMeta = ReceivedMeta
             }
+        , Git.getRepo identity
+            { owner = owner
+            , repo = repo
+            , onRepo = ReceivedRepo
+            }
         ]
     )
 
 
-initLoaded : String -> String -> String -> Pattern BottomLeft -> Meta -> ( Model, Cmd Msg )
-initLoaded owner repo ref pattern meta =
+initLoaded : String -> String -> String -> Pattern BottomLeft -> Meta -> Permissions -> ( Model, Cmd Msg )
+initLoaded owner repo ref pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
@@ -237,6 +280,7 @@ initLoaded owner repo ref pattern meta =
         , owner = owner
         , repo = repo
         , ref = ref
+        , permissions = permissions
         , pattern = pattern
         , name = meta.name
         , zoom = 1
@@ -278,14 +322,25 @@ initLoaded owner repo ref pattern meta =
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view model =
     case model of
-        Loading _ ->
-            { title = "Loading pattern.."
+        RequestingToken _ ->
+            { title = "Requesting GitHub API Access Token..."
             , body =
                 Element.el
                     [ Element.centerX
                     , Element.centerY
                     ]
-                    (Element.text "Loading pattern..")
+                    (Element.text "Requesting GitHub API Access Token...")
+            , dialog = Nothing
+            }
+
+        Loading _ ->
+            { title = "Loading pattern..."
+            , body =
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (Element.text "Loading pattern...")
             , dialog = Nothing
             }
 
@@ -519,28 +574,11 @@ viewTopToolbar model =
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
         , Background.color Ui.Theme.Color.secondary
         ]
-        [ Ui.Molecule.MenuBtn.viewPrimary
-            { id = "create-object"
-            , onMsg = CreateObjectMenuBtnMsg
-            , actions =
-                [ { label = "Create a point"
-                  , action = CreatePoint
-                  }
-                , { label = "Create an axis"
-                  , action = CreateAxis
-                  }
-                , { label = "Create a circle"
-                  , action = CreateCircle
-                  }
-                , { label = "Create a curve"
-                  , action = CreateCurve
-                  }
-                , { label = "Create a detail"
-                  , action = CreateDetail
-                  }
-                ]
-            }
-            model.createObjectMenuBtn
+        [ if model.permissions.push then
+            viewCreateBtn model
+
+          else
+            viewSignInBtn
         , Element.el
             [ Element.centerX
             , Font.bold
@@ -555,6 +593,43 @@ viewTopToolbar model =
             , label = Ui.Atom.Icon.faBrandLarge "github"
             }
         ]
+
+
+viewCreateBtn : LoadedData -> Element Msg
+viewCreateBtn model =
+    Ui.Molecule.MenuBtn.viewPrimary
+        { id = "create-object"
+        , onMsg = CreateObjectMenuBtnMsg
+        , actions =
+            [ { label = "Create a point"
+              , action = CreatePoint
+              }
+            , { label = "Create an axis"
+              , action = CreateAxis
+              }
+            , { label = "Create a circle"
+              , action = CreateCircle
+              }
+            , { label = "Create a curve"
+              , action = CreateCurve
+              }
+            , { label = "Create a detail"
+              , action = CreateDetail
+              }
+            ]
+        }
+        model.createObjectMenuBtn
+
+
+viewSignInBtn : Element Msg
+viewSignInBtn =
+    Element.el []
+        (Ui.Atom.Input.btnPrimary
+            { id = "sign-in-btn"
+            , onPress = Just UserPressedSignIn
+            , label = "Sign in via GitHub"
+            }
+        )
 
 
 
@@ -870,8 +945,10 @@ viewEditVariable name value =
 {-| -}
 type Msg
     = NoOp
+    | ReceivedGithubAccessToken (Result Http.Error String)
     | ReceivedPattern (Result Http.Error (Pattern BottomLeft))
     | ReceivedMeta (Result Http.Error Meta)
+    | ReceivedRepo (Result Http.Error Repo)
     | ReceivedPatternUpdate (Result Http.Error ())
       -- LOCAL STORAGE
     | ChangedZoom { owner : String, repo : String, ref : String } Float
@@ -879,6 +956,7 @@ type Msg
     | ChangedAnything
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
+    | UserPressedSignIn
       -- LEFT TOOLBAR
     | UserSelectedTab Tab String
       -- LEFT TOOLBAR OBJECTS
@@ -937,14 +1015,31 @@ type CreateAction
 update : Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
 update key msg model =
     case model of
+        RequestingToken data ->
+            case msg of
+                ReceivedGithubAccessToken (Ok accessToken) ->
+                    initLoading data.owner data.repo data.ref (Git.OauthToken accessToken)
+
+                ReceivedGithubAccessToken (Err _) ->
+                    ( Error, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         Loading data ->
             let
                 tryInitLoaded newModel =
                     case newModel of
                         Loading newData ->
-                            case ( newData.maybePattern, newData.maybeMeta ) of
-                                ( Just pattern, Just meta ) ->
-                                    initLoaded newData.owner newData.repo newData.ref pattern meta
+                            case ( newData.maybePattern, newData.maybeMeta, newData.maybePermissions ) of
+                                ( Just pattern, Just meta, Just permissions ) ->
+                                    initLoaded
+                                        newData.owner
+                                        newData.repo
+                                        newData.ref
+                                        pattern
+                                        meta
+                                        permissions
 
                                 _ ->
                                     ( newModel, Cmd.none )
@@ -970,6 +1065,14 @@ update key msg model =
                             Ok meta ->
                                 Loading { data | maybeMeta = Just meta }
 
+                    ReceivedRepo result ->
+                        case result of
+                            Err error ->
+                                Error
+
+                            Ok repo ->
+                                Loading { data | maybePermissions = Just repo.permissions }
+
                     _ ->
                         model
 
@@ -985,6 +1088,9 @@ updateWithData : Navigation.Key -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
 updateWithData key msg model =
     case msg of
         NoOp ->
+            ( model, Cmd.none )
+
+        ReceivedGithubAccessToken _ ->
             ( model, Cmd.none )
 
         ReceivedPattern result ->
@@ -1020,6 +1126,18 @@ updateWithData key msg model =
 
                 Ok meta ->
                     ( { model | name = meta.name }
+                    , Cmd.none
+                    )
+
+        ReceivedRepo result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok repo ->
+                    ( { model | permissions = repo.permissions }
                     , Cmd.none
                     )
 
@@ -1077,6 +1195,21 @@ updateWithData key msg model =
                             Just (CreateObject Ui.Organism.Dialog.createDetail)
               }
             , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
+            )
+
+        UserPressedSignIn ->
+            ( model
+            , Navigation.load <|
+                Url.Builder.crossOrigin "https://github.com"
+                    [ "login", "oauth", "authorize" ]
+                    [ Url.Builder.string "client_id" "4c42610602df0d750c13"
+                    , Url.Builder.string "redirect_uri"
+                        (Url.Builder.crossOrigin "http://localhost:2345"
+                            [ Route.toString (Route.Editor model.owner model.repo Nothing Nothing) ]
+                            []
+                        )
+                    , Url.Builder.string "scope" "repo"
+                    ]
             )
 
         -- LEFT TOOLBAR
@@ -1661,6 +1794,9 @@ updateWithData key msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
+        RequestingToken _ ->
+            Sub.none
+
         Loading _ ->
             Sub.none
 

@@ -1,12 +1,14 @@
 module Route exposing
     ( Route(..)
     , fromUrl, toString
+    , replaceUrl
     )
 
 {-|
 
 @docs Route
 @docs fromUrl, toString
+@docs replaceUrl
 
 -}
 
@@ -28,9 +30,11 @@ module Route exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Browser.Navigation
 import Url exposing (Url)
 import Url.Builder as Builder
-import Url.Parser as Parser exposing ((</>), Parser, map, oneOf, s, string, top)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, map, oneOf, s, string, top)
+import Url.Parser.Query as Query
 
 
 {-| -}
@@ -38,7 +42,7 @@ type Route
     = Patterns
     | Measurements
     | Persons
-    | Editor String String (Maybe String)
+    | Editor String String (Maybe String) (Maybe String)
 
 
 {-| -}
@@ -54,13 +58,13 @@ toString route =
         Persons ->
             "/persons"
 
-        Editor owner repo maybeRef ->
+        Editor owner repo maybeRef _ ->
             case maybeRef of
                 Nothing ->
-                    Builder.absolute [ owner, repo ] []
+                    String.join "/" [ owner, repo ]
 
                 Just ref ->
-                    Builder.absolute [ owner, repo, "tree", ref ] []
+                    String.join "/" [ owner, repo, "tree", ref ]
 
 
 parser : Parser (Route -> a) a
@@ -70,8 +74,10 @@ parser =
         , map Patterns (s "patterns")
         , map Measurements (s "measurements")
         , map Persons (s "persons")
-        , map (\owner repo -> Editor owner repo Nothing) (string </> string)
-        , map (\owner repo ref -> Editor owner repo (Just ref)) (string </> string </> s "tree" </> string)
+        , map (\owner repo maybeCode -> Editor owner repo Nothing maybeCode)
+            (string </> string <?> Query.string "code")
+        , map (\owner repo ref maybeCode -> Editor owner repo (Just ref) maybeCode)
+            (string </> string </> s "tree" </> string <?> Query.string "code")
         ]
 
 
@@ -79,3 +85,9 @@ parser =
 fromUrl : Url -> Maybe Route
 fromUrl =
     Parser.parse parser
+
+
+{-| -}
+replaceUrl : Browser.Navigation.Key -> Route -> Cmd msg
+replaceUrl key route =
+    Browser.Navigation.replaceUrl key (toString route)

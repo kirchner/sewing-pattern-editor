@@ -5,9 +5,7 @@
   "author": "Fabian Kirchner <kirchner@posteo.de>",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "dev": "parcel index.html",
-    "build": "parcel build index.html",
-    "postinstall": "parcel build index.html"
+    "dev": "node server.js"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.11.2",
@@ -16,5 +14,8 @@
     "node-elm-compiler": "^5.0.4",
     "parcel": "^1.12.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "express": "^4.17.1",
+    "parcel-bundler": "^1.12.4"
+  }
 }
