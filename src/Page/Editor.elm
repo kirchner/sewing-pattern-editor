@@ -50,6 +50,7 @@ import Element.Lazy as Element
 import Element.Region as Region
 import Frame2d exposing (Frame2d)
 import Geometry.Svg as Svg
+import Git exposing (Meta)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -58,11 +59,12 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
-import Length
+import Length exposing (Meters)
 import LineSegment2d
 import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
+import LocalStorage
 import Pattern exposing (A, Axis, Circle, Curve, Detail, InsertHelp(..), Object(..), Pattern, Point)
 import Pattern.Store exposing (StoredPattern)
 import Pixels
@@ -100,9 +102,18 @@ import VoronoiDiagram2d
 
 {-| -}
 type Model
-    = Loading
+    = Loading LoadingData
     | Error
     | Loaded LoadedData
+
+
+type alias LoadingData =
+    { owner : String
+    , repo : String
+    , ref : String
+    , maybePattern : Maybe (Pattern BottomLeft)
+    , maybeMeta : Maybe Meta
+    }
 
 
 type alias LoadedData =
@@ -111,7 +122,13 @@ type alias LoadedData =
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
 
     -- PATTERN
-    , storedPattern : StoredPattern BottomLeft
+    , owner : String
+    , repo : String
+    , ref : String
+    , pattern : Pattern BottomLeft
+    , name : String
+    , zoom : Float
+    , center : Point2d Meters BottomLeft
     , patternState : Ui.Molecule.Pattern.State
 
     -- TOP TOOLBAR
@@ -179,22 +196,51 @@ type Dialog
 
 
 {-| -}
-init : String -> ( Model, Cmd Msg )
-init slug =
+init : String -> String -> Maybe String -> ( Model, Cmd Msg )
+init owner repo maybeRef =
+    let
+        ref =
+            Maybe.withDefault "master" maybeRef
+    in
     ( Loading
-    , Api.getPattern ReceivedPattern slug
+        { owner = owner
+        , repo = repo
+        , ref = ref
+        , maybePattern = Nothing
+        , maybeMeta = Nothing
+        }
+    , Cmd.batch
+        [ Git.getPattern Git.Anonymous
+            { owner = owner
+            , repo = repo
+            , ref = ref
+            , onPattern = ReceivedPattern
+            }
+        , Git.getMeta Git.Anonymous
+            { owner = owner
+            , repo = repo
+            , ref = ref
+            , onMeta = ReceivedMeta
+            }
+        ]
     )
 
 
-initLoaded : StoredPattern BottomLeft -> ( Model, Cmd Msg )
-initLoaded storedPattern =
+initLoaded : String -> String -> String -> Pattern BottomLeft -> Meta -> ( Model, Cmd Msg )
+initLoaded owner repo ref pattern meta =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
         , maybeModal = Nothing
 
         -- PATTERN
-        , storedPattern = storedPattern
+        , owner = owner
+        , repo = repo
+        , ref = ref
+        , pattern = pattern
+        , name = meta.name
+        , zoom = 1
+        , center = Point2d.origin
         , patternState = Ui.Molecule.Pattern.init
 
         -- TOP TOOLBAR
@@ -209,7 +255,18 @@ initLoaded storedPattern =
         , maybeDialog = Nothing
         , preventActionMenuClose = False
         }
-    , Cmd.none
+    , Cmd.batch
+        [ LocalStorage.requestZoom
+            { owner = owner
+            , repo = repo
+            , ref = ref
+            }
+        , LocalStorage.requestCenter
+            { owner = owner
+            , repo = repo
+            , ref = ref
+            }
+        ]
     )
 
 
@@ -221,7 +278,7 @@ initLoaded storedPattern =
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view model =
     case model of
-        Loading ->
+        Loading _ ->
             { title = "Loading pattern.."
             , body =
                 Element.el
@@ -245,8 +302,8 @@ view model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body = viewEditor data.storedPattern data
-            , dialog = Maybe.map (viewModal data.storedPattern.pattern) data.maybeModal
+            , body = viewEditor data
+            , dialog = Maybe.map (viewModal data.pattern) data.maybeModal
             }
 
 
@@ -419,13 +476,13 @@ viewDeleteModal state { name, kind, onDeletePress } =
 ---- EDITOR
 
 
-viewEditor : StoredPattern BottomLeft -> LoadedData -> Element Msg
-viewEditor storedPattern model =
+viewEditor : LoadedData -> Element Msg
+viewEditor model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ viewTopToolbar model storedPattern.name
+        [ viewTopToolbar model
         , horizontalRule
         , Element.row
             [ Element.height Element.fill
@@ -433,9 +490,9 @@ viewEditor storedPattern model =
             , Element.clip
             , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
             ]
-            [ viewLeftToolbar storedPattern.pattern model
-            , viewWorkspace storedPattern model
-            , viewRightToolbar storedPattern.pattern model
+            [ viewLeftToolbar model
+            , viewWorkspace model
+            , viewRightToolbar model
             ]
         , horizontalRule
         ]
@@ -455,8 +512,8 @@ horizontalRule =
 ---- TOP TOOLBAR
 
 
-viewTopToolbar : LoadedData -> String -> Element Msg
-viewTopToolbar model name =
+viewTopToolbar : LoadedData -> Element Msg
+viewTopToolbar model =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
@@ -488,7 +545,7 @@ viewTopToolbar model name =
             [ Element.centerX
             , Font.bold
             ]
-            (Ui.Theme.Typography.body name)
+            (Ui.Theme.Typography.body model.name)
         , Element.newTabLink
             [ Element.alignRight
             , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
@@ -504,8 +561,8 @@ viewTopToolbar model name =
 ---- WORKSPACE
 
 
-viewWorkspace : StoredPattern BottomLeft -> LoadedData -> Element Msg
-viewWorkspace storedPattern model =
+viewWorkspace : LoadedData -> Element Msg
+viewWorkspace model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -531,16 +588,12 @@ viewWorkspace storedPattern model =
             , Element.width Element.fill
             , Element.height Element.fill
             ]
-            (viewPattern model.patternContainerDimensions model.maybeDrag storedPattern model)
+            (viewPattern model.patternContainerDimensions model.maybeDrag model)
         )
 
 
-viewPattern : Maybe Dimensions -> Maybe Drag -> StoredPattern BottomLeft -> LoadedData -> Element Msg
-viewPattern maybeDimensions maybeDrag storedPattern model =
-    let
-        { pattern, center, zoom } =
-            storedPattern
-    in
+viewPattern : Maybe Dimensions -> Maybe Drag -> LoadedData -> Element Msg
+viewPattern maybeDimensions maybeDrag model =
     case maybeDimensions of
         Nothing ->
             Element.none
@@ -548,16 +601,16 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
         Just { width, height } ->
             let
                 resolution =
-                    Pixels.pixels (zoom * width / 336)
+                    Pixels.pixels (model.zoom * width / 336)
                         |> Quantity.per (Length.millimeters 1)
 
                 currentCenter =
                     case maybeDrag of
                         Nothing ->
-                            center
+                            model.center
 
                         Just drag ->
-                            center
+                            model.center
                                 |> Point2d.translateBy
                                     (Vector2d.at_ resolution <|
                                         Vector2d.fromPixels
@@ -586,7 +639,7 @@ viewPattern maybeDimensions maybeDrag storedPattern model =
                         , resolution = resolution
                         , center = currentCenter
                         }
-                        pattern
+                        model.pattern
                         model.patternState
                 )
 
@@ -614,8 +667,8 @@ viewZoom model =
 ---- LEFT TOOLBAR
 
 
-viewLeftToolbar : Pattern BottomLeft -> LoadedData -> Element Msg
-viewLeftToolbar pattern model =
+viewLeftToolbar : LoadedData -> Element Msg
+viewLeftToolbar model =
     Element.el
         [ Element.width (Element.px 400)
         , Element.height Element.fill
@@ -647,7 +700,7 @@ viewLeftToolbar pattern model =
                                 , editPressed = UserPressedEditObject
                                 , removePressed = UserPressedRemoveObject
                                 }
-                                pattern
+                                model.pattern
                                 model.patternState
 
                         VariablesTab ->
@@ -659,7 +712,7 @@ viewLeftToolbar pattern model =
                                 , editPressed = UserPressedEditVariable
                                 , removePressed = UserPressedRemoveVariable
                                 }
-                                pattern
+                                model.pattern
                                 model.focusedVariable
                                 model.hoveredVariable
             }
@@ -670,8 +723,8 @@ viewLeftToolbar pattern model =
 ---- RIGHT TOOLBAR
 
 
-viewRightToolbar : Pattern BottomLeft -> LoadedData -> Element Msg
-viewRightToolbar pattern model =
+viewRightToolbar : LoadedData -> Element Msg
+viewRightToolbar model =
     Element.el
         [ Element.width (Element.maximum 500 Element.fill)
         , Element.height Element.fill
@@ -698,7 +751,7 @@ viewRightToolbar pattern model =
             Just (CreateObject dialog) ->
                 Element.map DialogCreateMsg <|
                     Ui.Organism.Dialog.createView
-                        { pattern = pattern
+                        { pattern = model.pattern
                         , hoveredInCanvas = Nothing
                         }
                         dialog
@@ -706,7 +759,7 @@ viewRightToolbar pattern model =
             Just (EditObject name dialog) ->
                 Element.map DialogEditMsg <|
                     Ui.Organism.Dialog.editView
-                        { pattern = pattern
+                        { pattern = model.pattern
                         , name = name
                         , hoveredInCanvas = Nothing
                         }
@@ -817,8 +870,13 @@ viewEditVariable name value =
 {-| -}
 type Msg
     = NoOp
-    | ReceivedPattern (Result Http.Error (StoredPattern BottomLeft))
+    | ReceivedPattern (Result Http.Error (Pattern BottomLeft))
+    | ReceivedMeta (Result Http.Error Meta)
     | ReceivedPatternUpdate (Result Http.Error ())
+      -- LOCAL STORAGE
+    | ChangedZoom { owner : String, repo : String, ref : String } Float
+    | ChangedCenter { owner : String, repo : String, ref : String } (Point2d Meters BottomLeft)
+    | ChangedAnything
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
       -- LEFT TOOLBAR
@@ -879,18 +937,41 @@ type CreateAction
 update : Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
 update key msg model =
     case model of
-        Loading ->
-            case msg of
-                ReceivedPattern result ->
-                    case result of
-                        Err error ->
-                            ( Error, Cmd.none )
+        Loading data ->
+            let
+                tryInitLoaded newModel =
+                    case newModel of
+                        Loading newData ->
+                            case ( newData.maybePattern, newData.maybeMeta ) of
+                                ( Just pattern, Just meta ) ->
+                                    initLoaded newData.owner newData.repo newData.ref pattern meta
 
-                        Ok storedPattern ->
-                            initLoaded storedPattern
+                                _ ->
+                                    ( newModel, Cmd.none )
 
-                _ ->
-                    ( model, Cmd.none )
+                        _ ->
+                            ( newModel, Cmd.none )
+            in
+            tryInitLoaded <|
+                case msg of
+                    ReceivedPattern result ->
+                        case result of
+                            Err error ->
+                                Error
+
+                            Ok pattern ->
+                                Loading { data | maybePattern = Just pattern }
+
+                    ReceivedMeta result ->
+                        case result of
+                            Err error ->
+                                Error
+
+                            Ok meta ->
+                                Loading { data | maybeMeta = Just meta }
+
+                    _ ->
+                        model
 
         Error ->
             ( model, Cmd.none )
@@ -902,13 +983,6 @@ update key msg model =
 
 updateWithData : Navigation.Key -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
 updateWithData key msg model =
-    let
-        { pattern, zoom, center } =
-            storedPattern
-
-        storedPattern =
-            model.storedPattern
-    in
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -920,8 +994,8 @@ updateWithData key msg model =
                     , Cmd.none
                     )
 
-                Ok newStoredPattern ->
-                    ( { model | storedPattern = newStoredPattern }
+                Ok newPattern ->
+                    ( { model | pattern = newPattern }
                     , Cmd.none
                     )
 
@@ -936,6 +1010,43 @@ updateWithData key msg model =
                     ( model
                     , Cmd.none
                     )
+
+        ReceivedMeta result ->
+            case result of
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Ok meta ->
+                    ( { model | name = meta.name }
+                    , Cmd.none
+                    )
+
+        -- LOCAL STORAGE
+        ChangedZoom { owner, repo, ref } zoom ->
+            if model.owner == owner && model.repo == repo && model.ref == ref then
+                ( { model | zoom = zoom }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
+
+        ChangedCenter { owner, repo, ref } center ->
+            if model.owner == owner && model.repo == repo && model.ref == ref then
+                ( { model
+                    | center = center
+                    , maybeDrag = Nothing
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
+
+        ChangedAnything ->
+            ( model, Cmd.none )
 
         -- TOP TOOLBAR
         CreateObjectMenuBtnMsg menuBtnMsg ->
@@ -978,9 +1089,7 @@ updateWithData key msg model =
         ObjectListMsg objectListMsg ->
             ( { model
                 | patternState =
-                    Ui.Molecule.ObjectList.update objectListMsg
-                        model.storedPattern.pattern
-                        model.patternState
+                    Ui.Molecule.ObjectList.update objectListMsg model.pattern model.patternState
               }
             , Cmd.none
             )
@@ -995,27 +1104,27 @@ updateWithData key msg model =
                         Point aPoint ->
                             Maybe.map2 EditObject
                                 (Pattern.name aPoint)
-                                (Ui.Organism.Dialog.editPoint pattern aPoint)
+                                (Ui.Organism.Dialog.editPoint model.pattern aPoint)
 
                         Axis aAxis ->
                             Maybe.map2 EditObject
                                 (Pattern.name aAxis)
-                                (Ui.Organism.Dialog.editAxis pattern aAxis)
+                                (Ui.Organism.Dialog.editAxis model.pattern aAxis)
 
                         Circle aCircle ->
                             Maybe.map2 EditObject
                                 (Pattern.name aCircle)
-                                (Ui.Organism.Dialog.editCircle pattern aCircle)
+                                (Ui.Organism.Dialog.editCircle model.pattern aCircle)
 
                         Curve aCurve ->
                             Maybe.map2 EditObject
                                 (Pattern.name aCurve)
-                                (Ui.Organism.Dialog.editCurve pattern aCurve)
+                                (Ui.Organism.Dialog.editCurve model.pattern aCurve)
 
                         Detail aDetail ->
                             Maybe.map2 EditObject
                                 (Pattern.name aDetail)
-                                (Ui.Organism.Dialog.editDetail pattern aDetail)
+                                (Ui.Organism.Dialog.editDetail model.pattern aDetail)
               }
             , Cmd.none
             )
@@ -1061,7 +1170,7 @@ updateWithData key msg model =
         UserPressedEditVariable variable ->
             ( { model
                 | maybeDialog =
-                    case Pattern.variableInfo variable pattern of
+                    case Pattern.variableInfo variable model.pattern of
                         Nothing ->
                             Nothing
 
@@ -1106,7 +1215,7 @@ updateWithData key msg model =
             ( { model
                 | patternState =
                     Ui.Molecule.Pattern.update patternMsg
-                        model.storedPattern.pattern
+                        model.pattern
                         model.patternState
               }
             , Cmd.none
@@ -1142,27 +1251,23 @@ updateWithData key msg model =
                     )
 
         UserPressedZoomPlus ->
-            let
-                newStoredPattern =
-                    { storedPattern
-                        | zoom = zoom * 1.1
-                        , center = Point2d.scaleAbout Point2d.origin 1.1 center
-                    }
-            in
-            ( { model | storedPattern = newStoredPattern }
-            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+            ( model
+            , LocalStorage.updateZoom
+                { owner = model.owner
+                , repo = model.repo
+                , ref = model.ref
+                }
+                (model.zoom * 1.1)
             )
 
         UserPressedZoomMinus ->
-            let
-                newStoredPattern =
-                    { storedPattern
-                        | zoom = zoom / 1.1
-                        , center = Point2d.scaleAbout Point2d.origin (1 / 1.1) center
-                    }
-            in
-            ( { model | storedPattern = newStoredPattern }
-            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+            ( model
+            , LocalStorage.updateZoom
+                { owner = model.owner
+                , repo = model.repo
+                , ref = model.ref
+                }
+                (model.zoom / 1.1)
             )
 
         MouseDown position ->
@@ -1196,16 +1301,16 @@ updateWithData key msg model =
                 Just { width } ->
                     let
                         resolution =
-                            Pixels.pixels (zoom * width / 336)
+                            Pixels.pixels (model.zoom * width / 336)
                                 |> Quantity.per (Length.millimeters 1)
 
                         newCenter =
                             case model.maybeDrag of
                                 Nothing ->
-                                    center
+                                    model.center
 
                                 Just drag ->
-                                    center
+                                    model.center
                                         |> Point2d.translateBy
                                             (Vector2d.at_ resolution <|
                                                 Vector2d.fromPixels
@@ -1213,15 +1318,14 @@ updateWithData key msg model =
                                                     , y = drag.start.y - drag.current.y
                                                     }
                                             )
-
-                        newStoredPattern =
-                            { storedPattern | center = newCenter }
                     in
-                    ( { model
-                        | maybeDrag = Nothing
-                        , storedPattern = newStoredPattern
-                      }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    ( model
+                    , LocalStorage.updateCenter
+                        { owner = model.owner
+                        , repo = model.repo
+                        , ref = model.ref
+                        }
+                        newCenter
                     )
 
         -- RIGHT TOOLBAR
@@ -1231,22 +1335,19 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just (CreateObject dialog) ->
-                    case Ui.Organism.Dialog.createUpdate pattern dialogMsg dialog of
+                    case Ui.Organism.Dialog.createUpdate model.pattern dialogMsg dialog of
                         Ui.Organism.Dialog.CreateOpen ( newDialog, dialogCmd ) ->
                             ( { model | maybeDialog = Just (CreateObject newDialog) }
                             , Cmd.map DialogCreateMsg dialogCmd
                             )
 
                         Ui.Organism.Dialog.CreateSucceeded newPattern ->
-                            let
-                                newStoredPattern =
-                                    { storedPattern | pattern = newPattern }
-                            in
                             ( { model
                                 | maybeDialog = Nothing
-                                , storedPattern = newStoredPattern
+                                , pattern = newPattern
                               }
-                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                            , Cmd.none
                             )
 
                         Ui.Organism.Dialog.CreateCanceled ->
@@ -1272,22 +1373,19 @@ updateWithData key msg model =
                     ( model, Cmd.none )
 
                 Just (EditObject name dialog) ->
-                    case Ui.Organism.Dialog.editUpdate pattern dialogMsg dialog of
+                    case Ui.Organism.Dialog.editUpdate model.pattern dialogMsg dialog of
                         Ui.Organism.Dialog.EditOpen ( newDialog, dialogCmd ) ->
                             ( { model | maybeDialog = Just (EditObject name newDialog) }
                             , Cmd.map DialogEditMsg dialogCmd
                             )
 
                         Ui.Organism.Dialog.EditSucceeded newPattern ->
-                            let
-                                newStoredPattern =
-                                    { storedPattern | pattern = newPattern }
-                            in
                             ( { model
                                 | maybeDialog = Nothing
-                                , storedPattern = newStoredPattern
+                                , pattern = newPattern
                               }
-                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                            , Cmd.none
                             )
 
                         Ui.Organism.Dialog.EditCanceled ->
@@ -1348,17 +1446,11 @@ updateWithData key msg model =
         UserPressedVariableCreateSubmit ->
             case model.maybeDialog of
                 Just (CreateVariable data) ->
-                    case
-                        Pattern.insertVariable data.name
-                            data.value
-                            storedPattern.pattern
-                    of
+                    case Pattern.insertVariable data.name data.value model.pattern of
                         Err NameTaken ->
                             ( { model
                                 | maybeDialog =
-                                    Just <|
-                                        CreateVariable
-                                            { data | nameHelp = Just "Name already taken" }
+                                    Just (CreateVariable { data | nameHelp = Just "Name already taken" })
                               }
                             , Cmd.none
                             )
@@ -1367,15 +1459,12 @@ updateWithData key msg model =
                             ( model, Cmd.none )
 
                         Ok newPattern ->
-                            let
-                                newStoredPattern =
-                                    { storedPattern | pattern = newPattern }
-                            in
                             ( { model
                                 | maybeDialog = Nothing
-                                , storedPattern = newStoredPattern
+                                , pattern = newPattern
                               }
-                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                            , Cmd.none
                             )
 
                 _ ->
@@ -1384,20 +1473,17 @@ updateWithData key msg model =
         UserPressedVariableEditUpdate ->
             case model.maybeDialog of
                 Just (EditVariable data) ->
-                    case Pattern.replaceVariable data.name data.value pattern of
+                    case Pattern.replaceVariable data.name data.value model.pattern of
                         Err _ ->
                             ( model, Cmd.none )
 
                         Ok newPattern ->
-                            let
-                                newStoredPattern =
-                                    { storedPattern | pattern = newPattern }
-                            in
                             ( { model
                                 | maybeDialog = Nothing
-                                , storedPattern = newStoredPattern
+                                , pattern = newPattern
                               }
-                            , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                            , Cmd.none
                             )
 
                 _ ->
@@ -1414,10 +1500,7 @@ updateWithData key msg model =
                 Just ( PointDeleteConfirm aPoint, state ) ->
                     let
                         newPattern =
-                            Pattern.removePoint aPoint pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removePoint aPoint model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1425,9 +1508,10 @@ updateWithData key msg model =
                                 ( PointDeleteConfirm aPoint
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO, Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1438,10 +1522,7 @@ updateWithData key msg model =
                 Just ( AxisDeleteConfirm aAxis, state ) ->
                     let
                         newPattern =
-                            Pattern.removeAxis aAxis pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removeAxis aAxis model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1449,9 +1530,10 @@ updateWithData key msg model =
                                 ( AxisDeleteConfirm aAxis
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1462,10 +1544,7 @@ updateWithData key msg model =
                 Just ( CircleDeleteConfirm aCircle, state ) ->
                     let
                         newPattern =
-                            Pattern.removeCircle aCircle pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removeCircle aCircle model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1473,9 +1552,10 @@ updateWithData key msg model =
                                 ( CircleDeleteConfirm aCircle
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1486,10 +1566,7 @@ updateWithData key msg model =
                 Just ( CurveDeleteConfirm aCurve, state ) ->
                     let
                         newPattern =
-                            Pattern.removeCurve aCurve pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removeCurve aCurve model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1497,9 +1574,10 @@ updateWithData key msg model =
                                 ( CurveDeleteConfirm aCurve
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1510,10 +1588,7 @@ updateWithData key msg model =
                 Just ( DetailDeleteConfirm aDetail, state ) ->
                     let
                         newPattern =
-                            Pattern.removeDetail aDetail pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removeDetail aDetail model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1521,9 +1596,10 @@ updateWithData key msg model =
                                 ( DetailDeleteConfirm aDetail
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1534,10 +1610,7 @@ updateWithData key msg model =
                 Just ( VariableDeleteConfirm variable, state ) ->
                     let
                         newPattern =
-                            Pattern.removeVariable variable pattern
-
-                        newStoredPattern =
-                            { storedPattern | pattern = newPattern }
+                            Pattern.removeVariable variable model.pattern
                     in
                     ( { model
                         | maybeModal =
@@ -1545,9 +1618,10 @@ updateWithData key msg model =
                                 ( VariableDeleteConfirm variable
                                 , Ui.Molecule.Modal.Closing
                                 )
-                        , storedPattern = newStoredPattern
+                        , pattern = newPattern
                       }
-                    , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
+                    , Cmd.none
                     )
 
                 _ ->
@@ -1587,7 +1661,7 @@ updateWithData key msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
-        Loading ->
+        Loading _ ->
             Sub.none
 
         Error ->
@@ -1627,6 +1701,11 @@ subscriptions model =
                                         (Decode.field "screenX" Decode.float)
                                         (Decode.field "screenY" Decode.float)
                             ]
+                , LocalStorage.changedStore
+                    { changedZoom = ChangedZoom
+                    , changedCenter = ChangedCenter
+                    , changedAnything = ChangedAnything
+                    }
                 ]
 
 

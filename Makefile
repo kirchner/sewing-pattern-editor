@@ -10,9 +10,8 @@ serve-design-system:
 build-app:
 	yarn parcel build ./index.html
 
-serve-app: build-app
-	PORT=2345 go run server.go
-
+serve-app:
+	yarn parcel serve --port=2345 ./index.html
 
 test:
 	elm-test

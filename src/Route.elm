@@ -1,11 +1,11 @@
 module Route exposing
-    ( Route(..), Point(..)
+    ( Route(..)
     , fromUrl, toString
     )
 
 {-|
 
-@docs Route, Point
+@docs Route
 @docs fromUrl, toString
 
 -}
@@ -30,7 +30,7 @@ module Route exposing
 
 import Url exposing (Url)
 import Url.Builder as Builder
-import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string, top)
+import Url.Parser as Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
 {-| -}
@@ -38,13 +38,7 @@ type Route
     = Patterns
     | Measurements
     | Persons
-    | Editor String (Maybe Point)
-
-
-{-| -}
-type Point
-    = NewLeftOf
-    | NewRightOf
+    | Editor String String (Maybe String)
 
 
 {-| -}
@@ -60,51 +54,24 @@ toString route =
         Persons ->
             "/persons"
 
-        Editor patternSlug maybePoint ->
-            case maybePoint of
+        Editor owner repo maybeRef ->
+            case maybeRef of
                 Nothing ->
-                    Builder.absolute
-                        [ "editor"
-                        , patternSlug
-                        ]
-                        []
+                    Builder.absolute [ owner, repo ] []
 
-                Just point ->
-                    Builder.absolute
-                        [ "editor"
-                        , patternSlug
-                        , "points"
-                        , case point of
-                            NewLeftOf ->
-                                "new-left-of"
-
-                            NewRightOf ->
-                                "new-right-of"
-                        ]
-                        []
+                Just ref ->
+                    Builder.absolute [ owner, repo, "tree", ref ] []
 
 
 parser : Parser (Route -> a) a
 parser =
     oneOf
-        [ Parser.map Patterns top
-        , Parser.map Patterns (s "patterns")
-        , Parser.map Measurements (s "measurements")
-        , Parser.map Persons (s "persons")
-        , Parser.map Editor
-            (s "editor"
-                </> string
-                </> pointParser
-            )
-        ]
-
-
-pointParser : Parser (Maybe Point -> a) a
-pointParser =
-    oneOf
-        [ Parser.map (Just NewLeftOf) (s "points" </> s "new-left-of")
-        , Parser.map (Just NewRightOf) (s "points" </> s "new-right-of")
-        , Parser.map Nothing top
+        [ map Patterns top
+        , map Patterns (s "patterns")
+        , map Measurements (s "measurements")
+        , map Persons (s "persons")
+        , map (\owner repo -> Editor owner repo Nothing) (string </> string)
+        , map (\owner repo ref -> Editor owner repo (Just ref)) (string </> string </> s "tree" </> string)
         ]
 
 

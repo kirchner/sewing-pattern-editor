@@ -92,6 +92,26 @@ const initElm = () => {
     });
   });
 
+  app.ports.storeCache.subscribe(function(data) {
+    localStorage.setItem(data.key, data.value);
+
+    setTimeout(function() { app.ports.onStoreChange.send({ key: data.key, value: data.value }); }, 0);
+  });
+
+  app.ports.requestCache.subscribe(function(data) {
+    var value = localStorage.getItem(data.key);
+
+    if (value !== null) {
+      app.ports.onStoreChange.send({ key: data.key, value: value });
+    }
+  });
+
+  window.addEventListener("storage", function(event) {
+    if (event.storageArea === localStorage) {
+      app.ports.onStoreChange.send({ key: event.key, value: event.newValue });
+    }
+  });
+
   return app;
 };
 

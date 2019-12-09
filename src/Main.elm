@@ -39,8 +39,8 @@ import Ports
 import Route exposing (Route)
 import Ui.Atom
 import Ui.Atom.Input
-import Ui.Theme.Color
 import Ui.Molecule.Modal
+import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Url exposing (Url)
 
@@ -390,10 +390,10 @@ changeRouteTo maybeRoute model =
                             , Cmd.map PersonsMsg personsCmd
                             )
 
-                        Route.Editor patternSlug maybePoint ->
+                        Route.Editor owner repo maybeRef ->
                             let
                                 ( editor, editorCmd ) =
-                                    Editor.init patternSlug
+                                    Editor.init owner repo maybeRef
                             in
                             ( { model | page = Editor editor }
                             , Cmd.map EditorMsg editorCmd

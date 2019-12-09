@@ -179,8 +179,9 @@ update key msg model =
 
         PatternCardClicked slug ->
             ( model
-            , Browser.Navigation.pushUrl key <|
-                Route.toString (Route.Editor slug Nothing)
+              --, Browser.Navigation.pushUrl key <|
+              --    Route.toString (Route.Editor slug Nothing)
+            , Cmd.none
             )
 
         PatternCardMenuClicked slug ->
@@ -963,7 +964,7 @@ viewPattern ({ pattern } as storedPattern) =
                 , Element.alignLeft
                 ]
                 (Element.link []
-                    { url = Route.toString (Route.Editor storedPattern.slug Nothing)
+                    { url = "" --Route.toString (Route.Editor storedPattern.slug Nothing)
                     , label =
                         Element.el
                             [ Font.bold
