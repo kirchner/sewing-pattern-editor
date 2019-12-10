@@ -957,6 +957,7 @@ type Msg
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedSignIn
+    | ReceivedClientId (Result Http.Error String)
       -- LEFT TOOLBAR
     | UserSelectedTab Tab String
       -- LEFT TOOLBAR OBJECTS
@@ -1199,18 +1200,31 @@ updateWithData key domain msg model =
 
         UserPressedSignIn ->
             ( model
-            , Navigation.load <|
-                Url.Builder.crossOrigin "https://github.com"
-                    [ "login", "oauth", "authorize" ]
-                    [ Url.Builder.string "client_id" "4c42610602df0d750c13"
-                    , Url.Builder.string "redirect_uri"
-                        (Url.Builder.crossOrigin domain
-                            [ Route.toString (Route.Editor model.owner model.repo Nothing Nothing) ]
-                            []
-                        )
-                    , Url.Builder.string "scope" "repo"
-                    ]
+            , Http.get
+                { url = "/client_id"
+                , expect = Http.expectString ReceivedClientId
+                }
             )
+
+        ReceivedClientId result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok clientId ->
+                    ( model
+                    , Navigation.load <|
+                        Url.Builder.crossOrigin "https://github.com"
+                            [ "login", "oauth", "authorize" ]
+                            [ Url.Builder.string "client_id" clientId
+                            , Url.Builder.string "redirect_uri"
+                                (Url.Builder.crossOrigin domain
+                                    [ Route.toString (Route.Editor model.owner model.repo Nothing Nothing) ]
+                                    []
+                                )
+                            , Url.Builder.string "scope" "repo"
+                            ]
+                    )
 
         -- LEFT TOOLBAR
         UserSelectedTab tab id ->
