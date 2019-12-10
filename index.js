@@ -17,59 +17,6 @@
 import { Elm } from './src/Main.elm';
 import '@fortawesome/fontawesome-free/css/all.css';
 
-
-if (module.hot) {
-  module.hot.dispose(() => {
-    window.location.reload();
-  });
-}
-
-
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js")
-  .then(registration => {
-    console.log("[registration] scope: ", registration.scope);
-
-    if (registration.installing) {
-      console.log("[registration] installing worker found");
-
-      registration.installing.addEventListener("statechange", () => {
-        if (registration.active) {
-          console.log(
-            "[installing worker] [statechange] worker installed, state: ",
-            registration.active.state
-          );
-
-          if (registration.active.state == "activated") {
-            window.location.reload();
-          }
-        }
-      });
-    } else if (registration.active) {
-      console.log("[registration] active worker found");
-
-      const app = initElm();
-
-      registration.addEventListener("updatefound", () => {
-        console.log("[registration] [updatefound]");
-
-        const newWorker = registration.installing;
-
-        newWorker.addEventListener("statechange", () => {
-          console.log("[new worker] [statechange] state: ", newWorker.state);
-
-          if (newWorker.state === "installed") {
-            app.ports.onNewWorker.send(null);
-          }
-        });
-      });
-    }
-  })
-  .catch(err => console.error("[registration] failed: ", err));
-}
-
-
 const initElm = () => {
   var app = Elm.Main.init({
     flags: {}
@@ -120,3 +67,8 @@ const getRandomInts = (n) => {
   crypto.getRandomValues(randInts);
   return Array.from(randInts);
 };
+
+
+window.addEventListener("DOMContentLoaded", function() {
+  initElm();
+});

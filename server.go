@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -22,17 +26,13 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.Methods("GET").PathPrefix("/patterns").Handler(gziphandler.GzipHandler(
-		serveIndex(distPath)))
-	r.Methods("GET").PathPrefix("/measurements").Handler(gziphandler.GzipHandler(
-		serveIndex(distPath)))
-	r.Methods("GET").PathPrefix("/persons").Handler(gziphandler.GzipHandler(
-		serveIndex(distPath)))
-	r.Methods("GET").PathPrefix("/editor").Handler(gziphandler.GzipHandler(
-		serveIndex(distPath)))
+	r.Methods("GET").PathPrefix("/static").Handler(http.StripPrefix("/static", gziphandler.GzipHandler(
+		http.FileServer(http.Dir(distPath)))))
+	r.HandleFunc("/access_token", accessTokenHandler).
+		Methods("GET")
 
 	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(
-		http.FileServer(http.Dir(distPath))))
+		serveIndex(distPath)))
 
 	http.Handle("/", r)
 
@@ -44,4 +44,52 @@ func serveIndex(distPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, distPath+"/index.html")
 	})
+}
+
+func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
+	clientId := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+
+	if len(r.URL.Query()["code"]) != 1 {
+		log.Println("no code provided")
+		return
+	}
+	code := r.URL.Query()["code"][0]
+
+	reqBody, err := json.Marshal(map[string]string{
+		"client_id":     clientId,
+		"client_secret": clientSecret,
+		"code":          code,
+	})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	req, err := http.NewRequest("POST",
+		"https://github.com/login/oauth/access_token",
+		bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Fprint(w, string(body))
 }
