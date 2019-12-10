@@ -63,6 +63,7 @@ main =
 
 type alias Model =
     { key : Navigation.Key
+    , domain : String
     , page : Page
     , newWorkerModal : Maybe Ui.Molecule.Modal.State
     }
@@ -85,6 +86,23 @@ init : {} -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     changeRouteTo (Route.fromUrl url)
         { key = key
+        , domain =
+            String.concat
+                [ case url.protocol of
+                    Url.Http ->
+                        "http"
+
+                    Url.Https ->
+                        "https"
+                , "://"
+                , url.host
+                , case url.port_ of
+                    Nothing ->
+                        ""
+
+                    Just port_ ->
+                        ":" ++ String.fromInt port_
+                ]
         , page = NotFound
         , newWorkerModal = Nothing
         }
@@ -315,7 +333,7 @@ update msg model =
         ( EditorMsg patternMsg, Editor editorModel ) ->
             let
                 ( newEditorModel, patternCmd ) =
-                    Editor.update model.key patternMsg editorModel
+                    Editor.update model.key model.domain patternMsg editorModel
             in
             ( { model | page = Editor newEditorModel }
             , Cmd.map EditorMsg patternCmd

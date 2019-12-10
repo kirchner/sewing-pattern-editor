@@ -1012,8 +1012,8 @@ type CreateAction
 
 
 {-| -}
-update : Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
-update key msg model =
+update : Navigation.Key -> String -> Msg -> Model -> ( Model, Cmd Msg )
+update key domain msg model =
     case model of
         RequestingToken data ->
             case msg of
@@ -1080,12 +1080,12 @@ update key msg model =
             ( model, Cmd.none )
 
         Loaded data ->
-            updateWithData key msg data
+            updateWithData key domain msg data
                 |> Tuple.mapFirst Loaded
 
 
-updateWithData : Navigation.Key -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateWithData key msg model =
+updateWithData : Navigation.Key -> String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateWithData key domain msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -1204,7 +1204,7 @@ updateWithData key msg model =
                     [ "login", "oauth", "authorize" ]
                     [ Url.Builder.string "client_id" "4c42610602df0d750c13"
                     , Url.Builder.string "redirect_uri"
-                        (Url.Builder.crossOrigin "http://localhost:2345"
+                        (Url.Builder.crossOrigin domain
                             [ Route.toString (Route.Editor model.owner model.repo Nothing Nothing) ]
                             []
                         )
