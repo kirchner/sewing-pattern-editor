@@ -581,14 +581,17 @@ viewTopToolbar model =
             , Font.bold
             ]
             (Ui.Theme.Typography.body model.name)
-        , Element.newTabLink
-            [ Element.alignRight
-            , Element.mouseOver [ Font.color Ui.Theme.Color.primary ]
-            , Element.paddingXY Ui.Theme.Spacing.level1 0
+        , Element.row
+            [ Element.paddingXY Ui.Theme.Spacing.level4 0
+            , Element.spacing Ui.Theme.Spacing.level1
+            , Font.color Ui.Theme.Color.grayDark
             ]
-            { url = "https://github.com/kirchner/sewing-pattern-editor"
-            , label = Ui.Atom.Icon.faBrandLarge "github"
-            }
+            [ Ui.Theme.Typography.button "github"
+            , Ui.Theme.Typography.button "/"
+            , Ui.Theme.Typography.button model.repo.owner
+            , Ui.Theme.Typography.button "/"
+            , Ui.Theme.Typography.button model.repo.name
+            ]
         ]
 
 
