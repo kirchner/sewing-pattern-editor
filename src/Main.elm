@@ -408,10 +408,10 @@ changeRouteTo maybeRoute model =
                             , Cmd.map PersonsMsg personsCmd
                             )
 
-                        Route.Editor owner repo maybeRef maybeCode ->
+                        Route.GitHub repo ref maybeCode ->
                             let
                                 ( editor, editorCmd ) =
-                                    Editor.init owner repo maybeRef maybeCode
+                                    Editor.init repo ref maybeCode
                             in
                             ( { model | page = Editor editor }
                             , Cmd.map EditorMsg editorCmd

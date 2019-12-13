@@ -31,6 +31,7 @@ module Route exposing
 -}
 
 import Browser.Navigation
+import Git
 import Url exposing (Url)
 import Url.Builder as Builder
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, map, oneOf, s, string, top)
@@ -42,7 +43,7 @@ type Route
     = Patterns
     | Measurements
     | Persons
-    | Editor String String (Maybe String) (Maybe String)
+    | GitHub Git.Repo Git.Ref (Maybe String)
 
 
 {-| -}
@@ -58,26 +59,19 @@ toString route =
         Persons ->
             "/persons"
 
-        Editor owner repo maybeRef _ ->
-            case maybeRef of
-                Nothing ->
-                    String.join "/" [ owner, repo ]
-
-                Just ref ->
-                    String.join "/" [ owner, repo, "tree", ref ]
+        GitHub repo ref _ ->
+            String.join "/"
+                [ "github"
+                , repo.owner
+                , repo.name
+                , Git.refToString ref
+                ]
 
 
 parser : Parser (Route -> a) a
 parser =
     oneOf
-        [ map Patterns top
-        , map Patterns (s "patterns")
-        , map Measurements (s "measurements")
-        , map Persons (s "persons")
-        , map (\owner repo maybeCode -> Editor owner repo Nothing maybeCode)
-            (string </> string <?> Query.string "code")
-        , map (\owner repo ref maybeCode -> Editor owner repo (Just ref) maybeCode)
-            (string </> string </> s "tree" </> string <?> Query.string "code")
+        [ map GitHub (s "github" </> Git.repoParser </> Git.refParser <?> Query.string "code")
         ]
 
 

@@ -1,26 +1,19 @@
 module Git exposing
-    ( Identity(..)
-    , getPattern
+    ( Identity(..), Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
+    , repoParser, refParser
+    , PatternData, getPattern
     , Meta, getMeta
-    , Repo, Permissions, getRepo
+    , Permissions, getPermissions
     )
 
 {-|
 
-    github:
+@docs Identity, Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
+@docs repoParser, refParser
 
-        commit1 <- commit2 <- commit3 (master)
-
-
-    locally:
-
-        commit1 <- commit2 <- commit3 (master) [ <- commit4 <- commit5 ]
-
-@docs Identity
-
-@docs getPattern
+@docs PatternData, getPattern
 @docs Meta, getMeta
-@docs Repo, Permissions, getRepo
+@docs Permissions, getPermissions
 
 -}
 
@@ -31,6 +24,7 @@ import Json.Decode.Pipeline as Decode
 import Pattern exposing (Pattern)
 import Regex
 import Url.Builder exposing (QueryParameter)
+import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
 type Identity
@@ -38,24 +32,125 @@ type Identity
     | OauthToken String
 
 
+type alias Repo =
+    { owner : String
+    , name : String
+    }
+
+
+repoParser : Parser (Repo -> a) a
+repoParser =
+    map Repo (string </> string)
+
+
+type Ref
+    = Commit String
+    | Branch String
+    | Tag String
+
+
+refParser : Parser (Ref -> a) a
+refParser =
+    oneOf
+        [ map Commit (s "commits" </> string)
+        , map Branch (s "branches" </> string)
+        , map Tag (s "tags" </> string)
+        , map defaultRef top
+        ]
+
+
+refToString : Ref -> String
+refToString ref =
+    case ref of
+        Commit sha ->
+            "commits/" ++ sha
+
+        Branch name ->
+            "branches/" ++ name
+
+        Tag name ->
+            "tags/" ++ name
+
+
+refFromString : String -> Maybe Ref
+refFromString rawRef =
+    case String.split "/" rawRef of
+        "commits" :: sha :: [] ->
+            Just (Commit sha)
+
+        "branches" :: name :: [] ->
+            Just (Branch name)
+
+        "Tags" :: name :: [] ->
+            Just (Tag name)
+
+        _ ->
+            Nothing
+
+
+defaultRef : Ref
+defaultRef =
+    Branch "master"
+
+
+commit : String -> Ref
+commit =
+    Commit
+
+
+branch : String -> Ref
+branch =
+    Branch
+
+
+tag : String -> Ref
+tag =
+    Tag
+
+
+
+---- GET PATTERN
+
+
+type alias PatternData coordinates =
+    { pattern : Pattern coordinates
+    , sha : String
+    }
+
+
 getPattern :
     Identity
     ->
-        { owner : String
-        , repo : String
-        , ref : String
-        , onPattern : Result Http.Error (Pattern coordinates) -> msg
+        { repo : Repo
+        , ref : Ref
+        , onPatternData : Result Http.Error (PatternData coordinates) -> msg
         }
     -> Cmd msg
-getPattern identity { owner, repo, ref, onPattern } =
+getPattern identity { repo, ref, onPatternData } =
     get identity
-        { endpoint = [ "repos", owner, repo, "contents", "pattern.json" ]
-        , params = [ Url.Builder.string "ref" ref ]
-        , onData = onPattern
+        { repo = repo
+        , endpoint = [ "contents", "pattern.json" ]
+        , params = [ refParam ref ]
+        , onData = onPatternData
         , decoder =
             contentsDecoder
-                |> Decode.andThen (decodeContent Pattern.decoder)
+                |> Decode.andThen
+                    (\contents ->
+                        case Decode.decodeString Pattern.decoder contents.content of
+                            Err _ ->
+                                Decode.fail "could not decode pattern"
+
+                            Ok pattern ->
+                                Decode.succeed
+                                    { pattern = pattern
+                                    , sha = contents.sha
+                                    }
+                    )
         }
+
+
+
+---- GET META
 
 
 type alias Meta =
@@ -74,60 +169,66 @@ metaDecoder =
 getMeta :
     Identity
     ->
-        { owner : String
-        , repo : String
-        , ref : String
+        { repo : Repo
+        , ref : Ref
         , onMeta : Result Http.Error Meta -> msg
         }
     -> Cmd msg
-getMeta identity { owner, repo, ref, onMeta } =
+getMeta identity { repo, ref, onMeta } =
     get identity
-        { endpoint = [ "repos", owner, repo, "contents", "meta.json" ]
-        , params = [ Url.Builder.string "ref" ref ]
+        { repo = repo
+        , endpoint = [ "contents", "meta.json" ]
+        , params = [ refParam ref ]
         , onData = onMeta
         , decoder =
             contentsDecoder
-                |> Decode.andThen (decodeContent metaDecoder)
+                |> Decode.andThen
+                    (\contents ->
+                        case Decode.decodeString metaDecoder contents.content of
+                            Err _ ->
+                                Decode.fail "could not decode meta"
+
+                            Ok meta ->
+                                Decode.succeed meta
+                    )
         }
 
 
-decodeContent : Decoder a -> Contents -> Decoder a
-decodeContent aDecoder { content } =
+
+---- CONTENTS
+
+
+type alias Contents =
+    { content : String
+    , sha : String
+    }
+
+
+contentsDecoder : Decoder Contents
+contentsDecoder =
+    Decode.succeed Contents
+        |> Decode.required "content" (Decode.andThen decodeBase64 Decode.string)
+        |> Decode.required "sha" Decode.string
+
+
+decodeBase64 : String -> Decoder String
+decodeBase64 base64encodedText =
     let
         removeNewlines =
             Regex.replace
                 (Maybe.withDefault Regex.never (Regex.fromString "\\n"))
                 (\_ -> "")
     in
-    case Base64.decode (removeNewlines content) of
+    case Base64.decode (removeNewlines base64encodedText) of
         Err error ->
             Decode.fail error
 
-        Ok encodedContent ->
-            case Decode.decodeString aDecoder encodedContent of
-                Err _ ->
-                    Decode.fail "could not decode pattern.json content"
-
-                Ok pattern ->
-                    Decode.succeed pattern
-
-
-type alias Contents =
-    { content : String }
-
-
-contentsDecoder : Decoder Contents
-contentsDecoder =
-    Decode.succeed Contents
-        |> Decode.required "content" Decode.string
+        Ok text ->
+            Decode.succeed text
 
 
 
----- REPO
-
-
-type alias Repo =
-    { permissions : Permissions }
+---- GET PERMISSIONS
 
 
 type alias Permissions =
@@ -145,35 +246,34 @@ noPermissions =
     }
 
 
-getRepo :
+getPermissions :
     Identity
     ->
-        { owner : String
-        , repo : String
-        , onRepo : Result Http.Error Repo -> msg
+        { repo : Repo
+        , onPermissions : Result Http.Error Permissions -> msg
         }
     -> Cmd msg
-getRepo identity { owner, repo, onRepo } =
+getPermissions identity { repo, onPermissions } =
     get identity
-        { endpoint = [ "repos", owner, repo ]
+        { repo = repo
+        , endpoint = []
         , params = []
-        , onData = onRepo
-        , decoder = repoDecoder
+        , onData = onPermissions
+        , decoder = permissionsDecoder
         }
-
-
-repoDecoder : Decoder Repo
-repoDecoder =
-    Decode.succeed Repo
-        |> Decode.optional "permissions" permissionsDecoder noPermissions
 
 
 permissionsDecoder : Decoder Permissions
 permissionsDecoder =
-    Decode.succeed Permissions
-        |> Decode.required "admin" Decode.bool
-        |> Decode.required "push" Decode.bool
-        |> Decode.required "pull" Decode.bool
+    Decode.oneOf
+        [ Decode.field "permissions"
+            (Decode.succeed Permissions
+                |> Decode.required "admin" Decode.bool
+                |> Decode.required "push" Decode.bool
+                |> Decode.required "pull" Decode.bool
+            )
+        , Decode.succeed noPermissions
+        ]
 
 
 
@@ -183,17 +283,18 @@ permissionsDecoder =
 get :
     Identity
     ->
-        { endpoint : List String
+        { repo : Repo
+        , endpoint : List String
         , params : List QueryParameter
         , onData : Result Http.Error a -> msg
         , decoder : Decoder a
         }
     -> Cmd msg
-get identity { endpoint, params, onData, decoder } =
+get identity { repo, endpoint, params, onData, decoder } =
     Http.request
         { method = "GET"
         , headers = headers identity
-        , url = url endpoint params
+        , url = url repo endpoint params
         , body = Http.emptyBody
         , expect = Http.expectJson onData decoder
         , timeout = Nothing
@@ -214,6 +315,21 @@ headers identity =
             ]
 
 
-url : List String -> List QueryParameter -> String
-url =
+url : Repo -> List String -> List QueryParameter -> String
+url repo endpoint =
     Url.Builder.crossOrigin "https://api.github.com"
+        ("repos" :: repo.owner :: repo.name :: endpoint)
+
+
+refParam : Ref -> Url.Builder.QueryParameter
+refParam ref =
+    Url.Builder.string "ref" <|
+        case ref of
+            Commit sha ->
+                sha
+
+            Branch name ->
+                name
+
+            Tag name ->
+                name

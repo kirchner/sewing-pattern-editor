@@ -50,7 +50,7 @@ import Element.Lazy as Element
 import Element.Region as Region
 import Frame2d exposing (Frame2d)
 import Geometry.Svg as Svg
-import Git exposing (Meta, Permissions, Repo)
+import Git
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -111,20 +111,18 @@ type Model
 
 
 type alias RequestingTokenData =
-    { owner : String
-    , repo : String
-    , ref : String
+    { repo : Git.Repo
+    , ref : Git.Ref
     }
 
 
 type alias LoadingData =
     { identity : Git.Identity
-    , owner : String
-    , repo : String
-    , ref : String
-    , maybePattern : Maybe (Pattern BottomLeft)
-    , maybeMeta : Maybe Meta
-    , maybePermissions : Maybe Permissions
+    , repo : Git.Repo
+    , ref : Git.Ref
+    , maybePatternData : Maybe (Git.PatternData BottomLeft)
+    , maybeMeta : Maybe Git.Meta
+    , maybePermissions : Maybe Git.Permissions
     }
 
 
@@ -134,10 +132,10 @@ type alias LoadedData =
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
 
     -- PATTERN
-    , owner : String
-    , repo : String
-    , ref : String
-    , permissions : Permissions
+    , repo : Git.Repo
+    , ref : Git.Ref
+    , permissions : Git.Permissions
+    , sha : String
     , pattern : Pattern BottomLeft
     , name : String
     , zoom : Float
@@ -209,20 +207,15 @@ type Dialog
 
 
 {-| -}
-init : String -> String -> Maybe String -> Maybe String -> ( Model, Cmd Msg )
-init owner repo maybeRef maybeCode =
-    let
-        ref =
-            Maybe.withDefault "master" maybeRef
-    in
+init : Git.Repo -> Git.Ref -> Maybe String -> ( Model, Cmd Msg )
+init repo ref maybeCode =
     case maybeCode of
         Nothing ->
-            initLoading owner repo ref Git.Anonymous
+            initLoading repo ref Git.Anonymous
 
         Just code ->
             ( RequestingToken
-                { owner = owner
-                , repo = repo
+                { repo = repo
                 , ref = ref
                 }
             , Http.get
@@ -236,51 +229,54 @@ init owner repo maybeRef maybeCode =
             )
 
 
-initLoading : String -> String -> String -> Git.Identity -> ( Model, Cmd Msg )
-initLoading owner repo ref identity =
+initLoading : Git.Repo -> Git.Ref -> Git.Identity -> ( Model, Cmd Msg )
+initLoading repo ref identity =
     ( Loading
         { identity = identity
-        , owner = owner
         , repo = repo
         , ref = ref
-        , maybePattern = Nothing
+        , maybePatternData = Nothing
         , maybeMeta = Nothing
         , maybePermissions = Nothing
         }
     , Cmd.batch
         [ Git.getPattern identity
-            { owner = owner
-            , repo = repo
+            { repo = repo
             , ref = ref
-            , onPattern = ReceivedPattern
+            , onPatternData = ReceivedPatternData
             }
         , Git.getMeta identity
-            { owner = owner
-            , repo = repo
+            { repo = repo
             , ref = ref
             , onMeta = ReceivedMeta
             }
-        , Git.getRepo identity
-            { owner = owner
-            , repo = repo
-            , onRepo = ReceivedRepo
+        , Git.getPermissions identity
+            { repo = repo
+            , onPermissions = ReceivedPermissions
             }
         ]
     )
 
 
-initLoaded : String -> String -> String -> Pattern BottomLeft -> Meta -> Permissions -> ( Model, Cmd Msg )
-initLoaded owner repo ref pattern meta permissions =
+initLoaded :
+    Git.Repo
+    -> Git.Ref
+    -> String
+    -> Pattern BottomLeft
+    -> Git.Meta
+    -> Git.Permissions
+    -> ( Model, Cmd Msg )
+initLoaded repo ref sha pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
         , maybeModal = Nothing
 
         -- PATTERN
-        , owner = owner
         , repo = repo
         , ref = ref
         , permissions = permissions
+        , sha = sha
         , pattern = pattern
         , name = meta.name
         , zoom = 1
@@ -301,13 +297,11 @@ initLoaded owner repo ref pattern meta permissions =
         }
     , Cmd.batch
         [ LocalStorage.requestZoom
-            { owner = owner
-            , repo = repo
+            { repo = repo
             , ref = ref
             }
         , LocalStorage.requestCenter
-            { owner = owner
-            , repo = repo
+            { repo = repo
             , ref = ref
             }
         ]
@@ -946,14 +940,14 @@ viewEditVariable name value =
 type Msg
     = NoOp
     | ReceivedGithubAccessToken (Result Http.Error String)
-    | ReceivedPattern (Result Http.Error (Pattern BottomLeft))
-    | ReceivedMeta (Result Http.Error Meta)
-    | ReceivedRepo (Result Http.Error Repo)
+    | ReceivedPatternData (Result Http.Error (Git.PatternData BottomLeft))
+    | ReceivedMeta (Result Http.Error Git.Meta)
+    | ReceivedPermissions (Result Http.Error Git.Permissions)
     | ReceivedPatternUpdate (Result Http.Error ())
       -- LOCAL STORAGE
-    | ChangedZoom { owner : String, repo : String, ref : String } Float
-    | ChangedCenter { owner : String, repo : String, ref : String } (Point2d Meters BottomLeft)
-    | ChangedAnything
+    | ChangedZoom LocalStorage.Address Float
+    | ChangedCenter LocalStorage.Address (Point2d Meters BottomLeft)
+    | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedSignIn
@@ -1019,7 +1013,7 @@ update key domain msg model =
         RequestingToken data ->
             case msg of
                 ReceivedGithubAccessToken (Ok accessToken) ->
-                    initLoading data.owner data.repo data.ref (Git.OauthToken accessToken)
+                    initLoading data.repo data.ref (Git.OauthToken accessToken)
 
                 ReceivedGithubAccessToken (Err _) ->
                     ( Error, Cmd.none )
@@ -1032,13 +1026,18 @@ update key domain msg model =
                 tryInitLoaded newModel =
                     case newModel of
                         Loading newData ->
-                            case ( newData.maybePattern, newData.maybeMeta, newData.maybePermissions ) of
-                                ( Just pattern, Just meta, Just permissions ) ->
+                            case
+                                ( newData.maybePatternData
+                                , newData.maybeMeta
+                                , newData.maybePermissions
+                                )
+                            of
+                                ( Just patternData, Just meta, Just permissions ) ->
                                     initLoaded
-                                        newData.owner
                                         newData.repo
                                         newData.ref
-                                        pattern
+                                        patternData.sha
+                                        patternData.pattern
                                         meta
                                         permissions
 
@@ -1050,13 +1049,13 @@ update key domain msg model =
             in
             tryInitLoaded <|
                 case msg of
-                    ReceivedPattern result ->
+                    ReceivedPatternData result ->
                         case result of
                             Err error ->
                                 Error
 
-                            Ok pattern ->
-                                Loading { data | maybePattern = Just pattern }
+                            Ok patternData ->
+                                Loading { data | maybePatternData = Just patternData }
 
                     ReceivedMeta result ->
                         case result of
@@ -1066,13 +1065,13 @@ update key domain msg model =
                             Ok meta ->
                                 Loading { data | maybeMeta = Just meta }
 
-                    ReceivedRepo result ->
+                    ReceivedPermissions result ->
                         case result of
                             Err error ->
                                 Error
 
-                            Ok repo ->
-                                Loading { data | maybePermissions = Just repo.permissions }
+                            Ok permissions ->
+                                Loading { data | maybePermissions = Just permissions }
 
                     _ ->
                         model
@@ -1094,15 +1093,18 @@ updateWithData key domain msg model =
         ReceivedGithubAccessToken _ ->
             ( model, Cmd.none )
 
-        ReceivedPattern result ->
+        ReceivedPatternData result ->
             case result of
                 Err error ->
                     ( model
                     , Cmd.none
                     )
 
-                Ok newPattern ->
-                    ( { model | pattern = newPattern }
+                Ok patternData ->
+                    ( { model
+                        | sha = patternData.sha
+                        , pattern = patternData.pattern
+                      }
                     , Cmd.none
                     )
 
@@ -1130,21 +1132,21 @@ updateWithData key domain msg model =
                     , Cmd.none
                     )
 
-        ReceivedRepo result ->
+        ReceivedPermissions result ->
             case result of
                 Err error ->
                     ( model
                     , Cmd.none
                     )
 
-                Ok repo ->
-                    ( { model | permissions = repo.permissions }
+                Ok newPermissions ->
+                    ( { model | permissions = newPermissions }
                     , Cmd.none
                     )
 
         -- LOCAL STORAGE
-        ChangedZoom { owner, repo, ref } zoom ->
-            if model.owner == owner && model.repo == repo && model.ref == ref then
+        ChangedZoom { repo, ref } zoom ->
+            if model.repo == repo && model.ref == ref then
                 ( { model | zoom = zoom }
                 , Cmd.none
                 )
@@ -1152,8 +1154,8 @@ updateWithData key domain msg model =
             else
                 ( model, Cmd.none )
 
-        ChangedCenter { owner, repo, ref } center ->
-            if model.owner == owner && model.repo == repo && model.ref == ref then
+        ChangedCenter { repo, ref } center ->
+            if model.repo == repo && model.ref == ref then
                 ( { model
                     | center = center
                     , maybeDrag = Nothing
@@ -1164,7 +1166,7 @@ updateWithData key domain msg model =
             else
                 ( model, Cmd.none )
 
-        ChangedAnything ->
+        ChangedWhatever ->
             ( model, Cmd.none )
 
         -- TOP TOOLBAR
@@ -1219,7 +1221,9 @@ updateWithData key domain msg model =
                             [ Url.Builder.string "client_id" clientId
                             , Url.Builder.string "redirect_uri"
                                 (Url.Builder.crossOrigin domain
-                                    [ Route.toString (Route.Editor model.owner model.repo Nothing Nothing) ]
+                                    [ Route.toString
+                                        (Route.GitHub model.repo model.ref Nothing)
+                                    ]
                                     []
                                 )
                             , Url.Builder.string "scope" "repo"
@@ -1400,8 +1404,7 @@ updateWithData key domain msg model =
         UserPressedZoomPlus ->
             ( model
             , LocalStorage.updateZoom
-                { owner = model.owner
-                , repo = model.repo
+                { repo = model.repo
                 , ref = model.ref
                 }
                 (model.zoom * 1.1)
@@ -1410,8 +1413,7 @@ updateWithData key domain msg model =
         UserPressedZoomMinus ->
             ( model
             , LocalStorage.updateZoom
-                { owner = model.owner
-                , repo = model.repo
+                { repo = model.repo
                 , ref = model.ref
                 }
                 (model.zoom / 1.1)
@@ -1468,8 +1470,7 @@ updateWithData key domain msg model =
                     in
                     ( model
                     , LocalStorage.updateCenter
-                        { owner = model.owner
-                        , repo = model.repo
+                        { repo = model.repo
                         , ref = model.ref
                         }
                         newCenter
@@ -1854,7 +1855,7 @@ subscriptions model =
                 , LocalStorage.changedStore
                     { changedZoom = ChangedZoom
                     , changedCenter = ChangedCenter
-                    , changedAnything = ChangedAnything
+                    , changedWhatever = ChangedWhatever
                     }
                 ]
 

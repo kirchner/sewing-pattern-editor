@@ -1,11 +1,11 @@
 check:
 	unbuffer elm make --output=/dev/null src/Main.elm 2>&1 | less -r
 
-dev:
-	yarn dev
-
 build:
 	yarn build
+
+run: build
+	go run server.go
 
 check-design-system:
 	unbuffer elm make --output=/dev/null src/DesignSystem.elm 2>&1 | less -r
