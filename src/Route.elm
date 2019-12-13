@@ -41,8 +41,6 @@ import Url.Parser.Query as Query
 {-| -}
 type Route
     = Patterns
-    | Measurements
-    | Persons
     | GitHub Git.Repo Git.Ref (Maybe String)
 
 
@@ -52,12 +50,6 @@ toString route =
     case route of
         Patterns ->
             "/patterns"
-
-        Measurements ->
-            "/measurements"
-
-        Persons ->
-            "/persons"
 
         GitHub repo ref _ ->
             String.join "/"

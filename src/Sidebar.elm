@@ -33,8 +33,6 @@ import Ui.Theme.Spacing
 
 type Page
     = Patterns
-    | Measurements
-    | Persons
 
 
 pageUrl : Page -> String
@@ -43,12 +41,6 @@ pageUrl page =
         Patterns ->
             Route.toString Route.Patterns
 
-        Measurements ->
-            Route.toString Route.Measurements
-
-        Persons ->
-            Route.toString Route.Persons
-
 
 pageIcon : Page -> String
 pageIcon page =
@@ -56,24 +48,12 @@ pageIcon page =
         Patterns ->
             "tshirt"
 
-        Measurements ->
-            "ruler"
-
-        Persons ->
-            "users"
-
 
 pageLabel : Page -> String
 pageLabel page =
     case page of
         Patterns ->
             "Patterns"
-
-        Measurements ->
-            "Measurements"
-
-        Persons ->
-            "Persons"
 
 
 view : { headerHeight : Int, currentPage : Page } -> Element msg
@@ -143,6 +123,4 @@ viewNavigation currentPage =
     Element.column
         []
         [ viewEntry Patterns
-        , viewEntry Measurements
-        , viewEntry Persons
         ]
