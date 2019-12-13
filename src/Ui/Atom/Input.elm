@@ -1168,10 +1168,7 @@ labelAbove { label, help } =
 sansSerif : Attribute msg
 sansSerif =
     Font.family
-        [ Font.external
-            { name = "Rubik"
-            , url = "https://fonts.googleapis.com/css?family=Rubik:300"
-            }
+        [ Font.typeface "Rubik"
         , Font.sansSerif
         ]
 

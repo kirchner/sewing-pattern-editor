@@ -165,10 +165,7 @@ viewHelp body dialog =
         [ Element.width Element.fill
         , Element.height Element.fill
         , Font.family
-            [ Font.external
-                { name = "Rubik"
-                , url = "https://fonts.googleapis.com/css?family=Rubik:300"
-                }
+            [ Font.typeface "Rubik"
             , Font.sansSerif
             ]
         , Element.inFront (Maybe.withDefault Element.none dialog)

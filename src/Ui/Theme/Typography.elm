@@ -27,12 +27,7 @@ headingOne : String -> Element msg
 headingOne text =
     Element.paragraph
         [ Font.size 44
-        , Font.family
-            [ Font.external
-                { name = "Mansalva"
-                , url = "https://fonts.googleapis.com/css?family=Mansalva"
-                }
-            ]
+        , Font.family [ Font.typeface "Mansalva" ]
         , Region.heading 1
         ]
         [ Element.text text ]
