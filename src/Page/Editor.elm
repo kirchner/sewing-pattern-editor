@@ -138,6 +138,7 @@ type alias LoadedData =
     , permissions : Git.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
+    , stored : Bool
     , name : String
     , zoom : Float
     , center : Point2d Meters BottomLeft
@@ -281,6 +282,7 @@ initLoaded identity repo ref sha pattern meta permissions =
         , permissions = permissions
         , sha = sha
         , pattern = pattern
+        , stored = True
         , name = meta.name
         , zoom = 1
         , center = Point2d.origin
@@ -546,7 +548,6 @@ viewEditor model =
             , viewWorkspace model
             , viewRightToolbar model
             ]
-        , horizontalRule
         ]
 
 
@@ -583,14 +584,24 @@ viewTopToolbar model =
             (Ui.Theme.Typography.body model.name)
         , Element.row
             [ Element.paddingXY Ui.Theme.Spacing.level4 0
-            , Element.spacing Ui.Theme.Spacing.level1
+            , Element.spacing Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.grayDark
             ]
-            [ Ui.Theme.Typography.button "github"
-            , Ui.Theme.Typography.button "/"
-            , Ui.Theme.Typography.button model.repo.owner
-            , Ui.Theme.Typography.button "/"
-            , Ui.Theme.Typography.button model.repo.name
+            [ Element.row
+                [ Element.spacing Ui.Theme.Spacing.level1
+                ]
+                [ Ui.Theme.Typography.button "github"
+                , Ui.Theme.Typography.button "/"
+                , Ui.Theme.Typography.button model.repo.owner
+                , Ui.Theme.Typography.button "/"
+                , Ui.Theme.Typography.button model.repo.name
+                ]
+            , Ui.Atom.Icon.faSmall <|
+                if model.stored then
+                    "check-circle"
+
+                else
+                    "arrow-alt-circle-up"
             ]
         ]
 
@@ -1127,7 +1138,10 @@ updateWithData key domain msg model =
                     ( model, Cmd.none )
 
                 Ok newSha ->
-                    ( { model | sha = newSha }
+                    ( { model
+                        | sha = newSha
+                        , stored = True
+                      }
                     , Cmd.none
                     )
 
@@ -1516,6 +1530,7 @@ updateWithData key domain msg model =
                             ( { model
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
+                                , stored = False
                               }
                             , Git.putPattern model.identity
                                 { repo = model.repo
@@ -1559,6 +1574,7 @@ updateWithData key domain msg model =
                             ( { model
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
+                                , stored = False
                               }
                             , Git.putPattern model.identity
                                 { repo = model.repo
@@ -1643,6 +1659,7 @@ updateWithData key domain msg model =
                             ( { model
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
+                                , stored = False
                               }
                             , Git.putPattern model.identity
                                 { repo = model.repo
@@ -1667,6 +1684,7 @@ updateWithData key domain msg model =
                             ( { model
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
+                                , stored = False
                               }
                             , Git.putPattern model.identity
                                 { repo = model.repo
@@ -1700,6 +1718,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
@@ -1727,6 +1746,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
@@ -1754,6 +1774,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
@@ -1781,6 +1802,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
@@ -1808,6 +1830,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
@@ -1835,6 +1858,7 @@ updateWithData key domain msg model =
                                 , Ui.Molecule.Modal.Closing
                                 )
                         , pattern = newPattern
+                        , stored = False
                       }
                     , Git.putPattern model.identity
                         { repo = model.repo
