@@ -598,19 +598,24 @@ viewCreateBtn model =
         { id = "create-object"
         , onMsg = CreateObjectMenuBtnMsg
         , actions =
-            [ { label = "Create a point"
+            [ { icon = Ui.Atom.Icon.point
+              , label = "Create a point"
               , action = CreatePoint
               }
-            , { label = "Create an axis"
+            , { icon = Ui.Atom.Icon.axis
+              , label = "Create an axis"
               , action = CreateAxis
               }
-            , { label = "Create a circle"
+            , { icon = Ui.Atom.Icon.circle
+              , label = "Create a circle"
               , action = CreateCircle
               }
-            , { label = "Create a curve"
+            , { icon = Ui.Atom.Icon.curve
+              , label = "Create a curve"
               , action = CreateCurve
               }
-            , { label = "Create a detail"
+            , { icon = Ui.Atom.Icon.detail
+              , label = "Create a detail"
               , action = CreateDetail
               }
             ]

@@ -1,5 +1,5 @@
 module Ui.Atom.Icon exposing
-    ( fa, faBody, faLarge, faBrandLarge
+    ( fa, faSmall, faBody, faLarge, faBrandLarge
     , point, axis, circle, curve, detail
     )
 
@@ -8,7 +8,7 @@ module Ui.Atom.Icon exposing
 
 # Icons
 
-@docs fa, faBody, faLarge, faBrandLarge
+@docs fa, faSmall, faBody, faLarge, faBrandLarge
 @docs point, axis, circle, curve, detail
 
 -}
@@ -31,6 +31,12 @@ import Svg.Attributes
 fa : String -> Element msg
 fa name =
     faHelp "fas" 14 name
+
+
+{-| -}
+faSmall : String -> Element msg
+faSmall name =
+    faHelp "fas" 12 name
 
 
 {-| -}
@@ -87,7 +93,7 @@ point =
                 , Html.Attributes.style "height" "14px"
                 ]
                 [ Svg.circle2d
-                    [ Svg.Attributes.fill "black"
+                    [ Svg.Attributes.fill "currentColor"
                     ]
                     (Circle2d.withRadius
                         (pixels 2)
@@ -109,7 +115,7 @@ axis =
                 [ Svg.lineSegment2d
                     [ Svg.Attributes.fill "none"
                     , Svg.Attributes.strokeWidth "3"
-                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.stroke "currentColor"
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (LineSegment2d.from
@@ -132,7 +138,7 @@ circle =
                 [ Svg.circle2d
                     [ Svg.Attributes.fill "none"
                     , Svg.Attributes.strokeWidth "2"
-                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.stroke "currentColor"
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (Circle2d.withRadius
@@ -155,7 +161,7 @@ curve =
                 [ Svg.quadraticSpline2d
                     [ Svg.Attributes.fill "none"
                     , Svg.Attributes.strokeWidth "2"
-                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.stroke "currentColor"
                     , Svg.Attributes.strokeLinecap "round"
                     ]
                     (QuadraticSpline2d.fromControlPoints
@@ -179,7 +185,7 @@ detail =
                 [ Svg.polygon2d
                     [ Svg.Attributes.fill "none"
                     , Svg.Attributes.strokeWidth "2"
-                    , Svg.Attributes.stroke "black"
+                    , Svg.Attributes.stroke "currentColor"
                     ]
                     (Polygon2d.singleLoop
                         [ Point2d.pixels -5 5

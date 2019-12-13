@@ -65,13 +65,14 @@ init =
 type alias Config action msg =
     { id : String
     , onMsg : Msg action -> msg
-    , actions : List (Action action)
+    , actions : List (Action action msg)
     }
 
 
 {-| -}
-type alias Action action =
-    { label : String
+type alias Action action msg =
+    { icon : Element msg
+    , label : String
     , action : action
     }
 
@@ -110,7 +111,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
         Nothing ->
             Element.none
 
-        Just { label, action } ->
+        Just { icon, label, action } ->
             Element.row
                 [ Element.spacing 1
                 , Element.below <|
@@ -122,7 +123,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                 ]
                 [ Ui.Theme.Focus.outlineLeft <|
                     Input.button
-                        [ Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+                        [ Element.paddingXY Ui.Theme.Spacing.level2 Ui.Theme.Spacing.level2
                         , Font.color colors.font
                         , Background.color colors.background
                         , Element.mouseOver [ Background.color colors.backgroundMouseOver ]
@@ -135,12 +136,14 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                             }
                         ]
                         { onPress = Just (onMsg (PressedActionButton action))
-                        , label = Ui.Theme.Typography.button label
+                        , label = icon
                         }
                 , Ui.Theme.Focus.outlineRight <|
                     Input.button
                         [ attributeId (menuBtnId id)
-                        , Element.padding Ui.Theme.Spacing.level2
+                        , Element.paddingXY Ui.Theme.Spacing.level1 Ui.Theme.Spacing.level2
+                        , Element.height (Element.px 38)
+                        , Element.width (Element.px 22)
                         , Font.color colors.font
                         , Background.color colors.background
                         , Element.mouseOver [ Background.color colors.backgroundMouseOver ]
@@ -155,7 +158,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                         , Events.onMouseUp (onMsg MouseUpOnMenuButton)
                         ]
                         { onPress = Just (onMsg (PressedMenuButton id))
-                        , label = Ui.Atom.Icon.fa "chevron-down"
+                        , label = Ui.Atom.Icon.faSmall "chevron-down"
                         }
                 ]
 
@@ -170,8 +173,6 @@ viewMenu { id, onMsg, actions } (State { selected }) =
         , Element.htmlAttribute <|
             Html.Events.preventDefaultOn "keydown" (keyDownDecoder actions selected onMsg)
         , Events.onLoseFocus (onMsg BluredMenu)
-        , Element.width (Element.minimum 200 Element.fill)
-        , Element.moveDown 4
         , Element.moveRight 7
         , Border.rounded 3
         , Border.shadow
@@ -185,7 +186,7 @@ viewMenu { id, onMsg, actions } (State { selected }) =
         (List.indexedMap (viewAction onMsg selected) actions)
 
 
-keyDownDecoder : List (Action action) -> Int -> (Msg action -> msg) -> Decoder ( msg, Bool )
+keyDownDecoder : List (Action action msg) -> Int -> (Msg action -> msg) -> Decoder ( msg, Bool )
 keyDownDecoder actions selected onMsg =
     Decode.field "key" Decode.string
         |> Decode.andThen
@@ -213,11 +214,12 @@ keyDownDecoder actions selected onMsg =
             )
 
 
-viewAction : (Msg action -> msg) -> Int -> Int -> Action action -> Element msg
-viewAction onMsg selected index { label, action } =
-    Element.el
+viewAction : (Msg action -> msg) -> Int -> Int -> Action action msg -> Element msg
+viewAction onMsg selected index { icon, label, action } =
+    Element.row
         [ Element.pointer
         , Element.padding Ui.Theme.Spacing.level2
+        , Element.spacing Ui.Theme.Spacing.level3
         , Element.width Element.fill
         , Element.mouseOver <|
             if selected == index then
@@ -241,7 +243,9 @@ viewAction onMsg selected index { label, action } =
                 Ui.Theme.Color.black
         , Element.htmlAttribute (Html.Events.onClick (onMsg (PressedMenuItem index action)))
         ]
-        (Ui.Theme.Typography.button label)
+        [ icon
+        , Ui.Theme.Typography.button label
+        ]
 
 
 
