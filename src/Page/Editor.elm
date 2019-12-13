@@ -132,6 +132,7 @@ type alias LoadedData =
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
 
     -- PATTERN
+    , identity : Git.Identity
     , repo : Git.Repo
     , ref : Git.Ref
     , permissions : Git.Permissions
@@ -259,20 +260,22 @@ initLoading repo ref identity =
 
 
 initLoaded :
-    Git.Repo
+    Git.Identity
+    -> Git.Repo
     -> Git.Ref
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded repo ref sha pattern meta permissions =
+initLoaded identity repo ref sha pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
         , maybeModal = Nothing
 
         -- PATTERN
+        , identity = identity
         , repo = repo
         , ref = ref
         , permissions = permissions
@@ -941,6 +944,7 @@ type Msg
     = NoOp
     | ReceivedGithubAccessToken (Result Http.Error String)
     | ReceivedPatternData (Result Http.Error (Git.PatternData BottomLeft))
+    | ReceivedSha (Result Http.Error String)
     | ReceivedMeta (Result Http.Error Git.Meta)
     | ReceivedPermissions (Result Http.Error Git.Permissions)
     | ReceivedPatternUpdate (Result Http.Error ())
@@ -1034,6 +1038,7 @@ update key domain msg model =
                             of
                                 ( Just patternData, Just meta, Just permissions ) ->
                                     initLoaded
+                                        newData.identity
                                         newData.repo
                                         newData.ref
                                         patternData.sha
@@ -1105,6 +1110,16 @@ updateWithData key domain msg model =
                         | sha = patternData.sha
                         , pattern = patternData.pattern
                       }
+                    , Cmd.none
+                    )
+
+        ReceivedSha result ->
+            case result of
+                Err error ->
+                    ( model, Cmd.none )
+
+                Ok newSha ->
+                    ( { model | sha = newSha }
                     , Cmd.none
                     )
 
@@ -1494,8 +1509,13 @@ updateWithData key domain msg model =
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
                               }
-                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                            , Cmd.none
+                            , Git.putPattern model.identity
+                                { repo = model.repo
+                                , message = "create object"
+                                , pattern = newPattern
+                                , sha = model.sha
+                                , onSha = ReceivedSha
+                                }
                             )
 
                         Ui.Organism.Dialog.CreateCanceled ->
@@ -1532,8 +1552,13 @@ updateWithData key domain msg model =
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
                               }
-                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                            , Cmd.none
+                            , Git.putPattern model.identity
+                                { repo = model.repo
+                                , message = "edit object"
+                                , pattern = newPattern
+                                , sha = model.sha
+                                , onSha = ReceivedSha
+                                }
                             )
 
                         Ui.Organism.Dialog.EditCanceled ->
@@ -1611,8 +1636,13 @@ updateWithData key domain msg model =
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
                               }
-                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                            , Cmd.none
+                            , Git.putPattern model.identity
+                                { repo = model.repo
+                                , message = "create variable"
+                                , pattern = newPattern
+                                , sha = model.sha
+                                , onSha = ReceivedSha
+                                }
                             )
 
                 _ ->
@@ -1630,8 +1660,13 @@ updateWithData key domain msg model =
                                 | maybeDialog = Nothing
                                 , pattern = newPattern
                               }
-                              -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                            , Cmd.none
+                            , Git.putPattern model.identity
+                                { repo = model.repo
+                                , message = "edit variable"
+                                , pattern = newPattern
+                                , sha = model.sha
+                                , onSha = ReceivedSha
+                                }
                             )
 
                 _ ->
@@ -1658,8 +1693,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO, Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete point"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->
@@ -1680,8 +1720,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete axis"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->
@@ -1702,8 +1747,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete circle"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->
@@ -1724,8 +1774,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete curve"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->
@@ -1746,8 +1801,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete detail"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->
@@ -1768,8 +1828,13 @@ updateWithData key domain msg model =
                                 )
                         , pattern = newPattern
                       }
-                      -- TODO , Api.updatePattern ReceivedPatternUpdate newStoredPattern
-                    , Cmd.none
+                    , Git.putPattern model.identity
+                        { repo = model.repo
+                        , message = "delete variable"
+                        , pattern = newPattern
+                        , sha = model.sha
+                        , onSha = ReceivedSha
+                        }
                     )
 
                 _ ->

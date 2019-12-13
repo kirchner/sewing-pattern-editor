@@ -1,7 +1,7 @@
 module Git exposing
     ( Identity(..), Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
     , repoParser, refParser
-    , PatternData, getPattern
+    , PatternData, getPattern, putPattern
     , Meta, getMeta
     , Permissions, getPermissions
     )
@@ -11,7 +11,7 @@ module Git exposing
 @docs Identity, Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
 @docs repoParser, refParser
 
-@docs PatternData, getPattern
+@docs PatternData, getPattern, putPattern
 @docs Meta, getMeta
 @docs Permissions, getPermissions
 
@@ -21,6 +21,7 @@ import Base64
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
+import Json.Encode as Encode exposing (Value)
 import Pattern exposing (Pattern)
 import Regex
 import Url.Builder exposing (QueryParameter)
@@ -109,7 +110,7 @@ tag =
 
 
 
----- GET PATTERN
+---- PATTERN
 
 
 type alias PatternData coordinates =
@@ -146,6 +147,38 @@ getPattern identity { repo, ref, onPatternData } =
                                     , sha = contents.sha
                                     }
                     )
+        }
+
+
+putPattern :
+    Identity
+    ->
+        { repo : Repo
+        , message : String
+        , pattern : Pattern coordinates
+        , sha : String
+        , onSha : Result Http.Error String -> msg
+        }
+    -> Cmd msg
+putPattern identity { repo, message, pattern, sha, onSha } =
+    let
+        content =
+            pattern
+                |> Pattern.encode
+                |> Encode.encode 2
+                |> Base64.encode
+    in
+    put identity
+        { repo = repo
+        , endpoint = [ "contents", "pattern.json" ]
+        , body =
+            Encode.object
+                [ ( "message", Encode.string message )
+                , ( "content", Encode.string content )
+                , ( "sha", Encode.string sha )
+                ]
+        , onData = onSha
+        , decoder = Decode.at [ "content", "sha" ] Decode.string
         }
 
 
@@ -296,6 +329,28 @@ get identity { repo, endpoint, params, onData, decoder } =
         , headers = headers identity
         , url = url repo endpoint params
         , body = Http.emptyBody
+        , expect = Http.expectJson onData decoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+put :
+    Identity
+    ->
+        { repo : Repo
+        , endpoint : List String
+        , body : Value
+        , onData : Result Http.Error a -> msg
+        , decoder : Decoder a
+        }
+    -> Cmd msg
+put identity { repo, endpoint, body, onData, decoder } =
+    Http.request
+        { method = "PUT"
+        , headers = headers identity
+        , url = url repo endpoint []
+        , body = Http.jsonBody body
         , expect = Http.expectJson onData decoder
         , timeout = Nothing
         , tracker = Nothing
