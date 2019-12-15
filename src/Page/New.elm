@@ -278,7 +278,7 @@ viewContent identity model =
                         Ui.Theme.Typography.paragraphButton
                             [ Element.text
                                 """Store all data within a GitHub repository.
-                                You will need to log in with your GitHub
+                                You will need to sign in with your GitHub
                                 account and authorize the sewing pattern editor
                                 to create and modify repositories within your
                                 GitHub account."""
@@ -303,7 +303,7 @@ viewContent identity model =
                             Ui.Atom.Input.btnPrimary
                                 { id = "log-in-btn"
                                 , onPress = Just UserPressedLogIn
-                                , label = "Log in to GitHub"
+                                , label = "Sign in to GitHub"
                                 }
 
                     Git.OauthToken _ ->

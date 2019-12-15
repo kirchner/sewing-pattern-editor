@@ -293,8 +293,11 @@ initLoaded repo ref sha pattern meta permissions =
 
 
 {-| -}
-view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view model =
+view :
+    Git.Identity
+    -> Model
+    -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view identity model =
     case model of
         Loading _ ->
             { title = "Loading pattern..."
@@ -320,7 +323,7 @@ view model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body = viewEditor data
+            , body = viewEditor identity data
             , dialog = Maybe.map (viewModal data.pattern) data.maybeModal
             }
 
@@ -494,13 +497,13 @@ viewDeleteModal state { name, kind, onDeletePress } =
 ---- EDITOR
 
 
-viewEditor : LoadedData -> Element Msg
-viewEditor model =
+viewEditor : Git.Identity -> LoadedData -> Element Msg
+viewEditor identity model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ viewTopToolbar model
+        [ viewTopToolbar identity model
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
@@ -528,8 +531,8 @@ horizontalRule =
 ---- TOP TOOLBAR
 
 
-viewTopToolbar : LoadedData -> Element Msg
-viewTopToolbar model =
+viewTopToolbar : Git.Identity -> LoadedData -> Element Msg
+viewTopToolbar identity model =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
@@ -596,6 +599,17 @@ viewTopToolbar model =
                     , label = "Print"
                     }
                 ]
+            , case identity of
+                Git.Anonymous ->
+                    Element.el [] <|
+                        Ui.Atom.Input.btnPrimary
+                            { id = "sign-in-btn"
+                            , onPress = Just UserPressedSignIn
+                            , label = "Sign in via GitHub"
+                            }
+
+                Git.OauthToken _ ->
+                    Element.none
             ]
         ]
 
@@ -744,7 +758,7 @@ viewLeftToolbar model =
                 viewCreateBtn model
 
               else
-                viewSignInBtn
+                Element.none
             , Element.el
                 [ Element.alignRight ]
                 (Element.row []

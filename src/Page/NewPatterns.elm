@@ -4,8 +4,12 @@ import Browser.Navigation
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
+import Git
+import Http
 import LocalStorage
-import Time
+import Route
+import Time exposing (Posix)
+import Ui.Atom.Input
 import Ui.Molecule.PatternList
 import Ui.Theme.Color
 import Ui.Theme.Spacing
@@ -16,17 +20,39 @@ import Ui.Theme.Typography
 ---- MODEL
 
 
-type alias Model =
+type Model
+    = Loading LoadingData
+    | Loaded LoadedData
+
+
+type alias LoadingData =
     { addresses : List LocalStorage.Address
+    , patterns : List ProcessedPattern
+    }
+
+
+type alias LoadedData =
+    { addresses : List LocalStorage.Address
+    , patterns : List ProcessedPattern
     , search : String
+    }
+
+
+type alias ProcessedPattern =
+    { address : LocalStorage.Address
+    , name : String
+    , description : String
+    , storage : Ui.Molecule.PatternList.Storage
+    , updatedAt : Posix
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { addresses = []
-      , search = ""
-      }
+    ( Loading
+        { addresses = []
+        , patterns = []
+        }
     , LocalStorage.requestAddresses
     )
 
@@ -35,44 +61,73 @@ init =
 ---- VIEW
 
 
-view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view model =
+view :
+    Git.Identity
+    -> Model
+    -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view identity model =
     { title = "Patterns"
-    , body = viewPatterns model
+    , body =
+        case model of
+            Loading _ ->
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (Element.text "Loading patterns...")
+
+            Loaded data ->
+                viewPatterns identity data
     , dialog = Nothing
     }
 
 
-viewPatterns : Model -> Element Msg
-viewPatterns model =
+viewPatterns : Git.Identity -> LoadedData -> Element Msg
+viewPatterns identity model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
-        [ viewTopBar
+        [ viewTopBar identity
         , viewContent model
         ]
 
 
-viewTopBar : Element Msg
-viewTopBar =
+viewTopBar : Git.Identity -> Element Msg
+viewTopBar identity =
     Element.row
         [ Element.width Element.fill
+        , Element.padding (Ui.Theme.Spacing.level1 // 2)
         , Element.height (Element.px (2 * Ui.Theme.Spacing.level6))
         , Background.color Ui.Theme.Color.secondary
         ]
-        []
+        [ case identity of
+            Git.Anonymous ->
+                Element.el
+                    [ Element.paddingXY Ui.Theme.Spacing.level4 0
+                    , Element.alignRight
+                    ]
+                    (Ui.Atom.Input.btnPrimary
+                        { id = "sign-in-btn"
+                        , onPress = Just UserPressedSignIn
+                        , label = "Sign in via GitHub"
+                        }
+                    )
+
+            Git.OauthToken _ ->
+                Element.none
+        ]
 
 
-viewContent : Model -> Element Msg
+viewContent : LoadedData -> Element Msg
 viewContent model =
     let
-        toPatternInfo address =
-            { name = "TODO"
-            , description = "TODO"
-            , storage = Ui.Molecule.PatternList.Github address.repo.owner address.repo.name
-            , updatedAt = Time.millisToPosix 0
-            , onClone = UserPressedClone address
+        toPatternInfo processedPattern =
+            { name = processedPattern.name
+            , description = processedPattern.description
+            , storage = processedPattern.storage
+            , updatedAt = processedPattern.updatedAt
+            , onClone = UserPressedClone processedPattern.address
             }
     in
     Element.column
@@ -90,7 +145,7 @@ viewContent model =
             , onSearchChange = UserChangedSearch
             , onImport = UserPressedImport
             , onCreate = UserPressedCreate
-            , patternInfos = List.map toPatternInfo model.addresses
+            , patternInfos = List.map toPatternInfo model.patterns
             , now = Time.millisToPosix 0
             }
         ]
@@ -105,12 +160,118 @@ type Msg
     | UserPressedImport
     | UserPressedCreate
     | ChangedAddresses (List LocalStorage.Address)
+    | ReceivedMeta LocalStorage.Address (List LocalStorage.Address) (Result Http.Error Git.Meta)
     | ChangedWhatever
     | UserPressedClone LocalStorage.Address
+    | UserPressedSignIn
 
 
-update : Browser.Navigation.Key -> Msg -> Model -> ( Model, Cmd Msg )
-update key msg model =
+update :
+    Browser.Navigation.Key
+    -> String
+    -> String
+    -> Git.Identity
+    -> Msg
+    -> Model
+    -> ( Model, Cmd Msg )
+update key domain clientId identity msg model =
+    case model of
+        Loading data ->
+            updateLoading identity msg data
+
+        Loaded data ->
+            updateLoaded key domain clientId msg data
+                |> Tuple.mapFirst Loaded
+
+
+updateLoading : Git.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
+updateLoading identity msg model =
+    case msg of
+        ChangedAddresses newAddresses ->
+            ( Loading { model | addresses = newAddresses }
+            , case newAddresses of
+                [] ->
+                    Cmd.none
+
+                first :: rest ->
+                    Git.getMeta identity
+                        { repo = first.repo
+                        , ref = first.ref
+                        , onMeta = ReceivedMeta first rest
+                        }
+            )
+
+        ReceivedMeta _ addresses (Err httpError) ->
+            ( if List.isEmpty addresses then
+                Loaded
+                    { addresses = model.addresses
+                    , patterns = model.patterns
+                    , search = ""
+                    }
+
+              else
+                Loading model
+            , case addresses of
+                [] ->
+                    Cmd.none
+
+                first :: rest ->
+                    Git.getMeta identity
+                        { repo = first.repo
+                        , ref = first.ref
+                        , onMeta = ReceivedMeta first rest
+                        }
+            )
+
+        ReceivedMeta address addresses (Ok meta) ->
+            let
+                newPatterns =
+                    { address = address
+                    , name = meta.name
+                    , description = meta.description
+                    , storage =
+                        Ui.Molecule.PatternList.Github address.repo.owner address.repo.name
+                    , updatedAt = Time.millisToPosix 0
+                    }
+                        :: model.patterns
+            in
+            ( if List.isEmpty addresses then
+                Loaded
+                    { addresses = model.addresses
+                    , patterns = newPatterns
+                    , search = ""
+                    }
+
+              else
+                Loading
+                    { model | patterns = newPatterns }
+            , case addresses of
+                [] ->
+                    Cmd.none
+
+                first :: rest ->
+                    Git.getMeta identity
+                        { repo = first.repo
+                        , ref = first.ref
+                        , onMeta = ReceivedMeta first rest
+                        }
+            )
+
+        ChangedWhatever ->
+            ( Loading model, Cmd.none )
+
+        _ ->
+            ( Loading model, Cmd.none )
+
+
+updateLoaded :
+    Browser.Navigation.Key
+    -> String
+    -> String
+    -> Msg
+    -> LoadedData
+    -> ( LoadedData, Cmd Msg )
+updateLoaded key domain clientId msg model =
     case msg of
         UserChangedSearch newSearch ->
             ( { model | search = newSearch }
@@ -125,15 +286,15 @@ update key msg model =
             , Browser.Navigation.pushUrl key "/new"
             )
 
-        ChangedAddresses newAddresses ->
-            ( { model | addresses = newAddresses }
-            , Cmd.none
-            )
-
-        ChangedWhatever ->
+        UserPressedClone address ->
             ( model, Cmd.none )
 
-        UserPressedClone address ->
+        UserPressedSignIn ->
+            ( model
+            , Git.requestAuthorization clientId (Route.crossOrigin domain Route.Patterns [])
+            )
+
+        _ ->
             ( model, Cmd.none )
 
 

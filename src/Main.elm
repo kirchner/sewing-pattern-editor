@@ -186,7 +186,7 @@ view model =
                 Patterns patternsModel ->
                     let
                         { title, body, dialog } =
-                            Patterns.view patternsModel
+                            Patterns.view data.identity patternsModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternsMsg body) ]
@@ -204,7 +204,7 @@ view model =
                 Editor editorModel ->
                     let
                         { title, body, dialog } =
-                            Editor.view editorModel
+                            Editor.view data.identity editorModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map EditorMsg body) ]
@@ -359,7 +359,13 @@ update msg model =
                 ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
                     let
                         ( newPatternsModel, patternsCmd ) =
-                            Patterns.update data.key patternsMsg patternsModel
+                            Patterns.update
+                                data.key
+                                data.domain
+                                data.clientId
+                                data.identity
+                                patternsMsg
+                                patternsModel
                     in
                     ( Loaded { data | page = Patterns newPatternsModel }
                     , Cmd.map PatternsMsg patternsCmd
