@@ -165,8 +165,22 @@ viewTopBar : Element Msg
 viewTopBar =
     Element.row
         [ Element.width Element.fill
-        , Element.height (Element.px (2 * Ui.Theme.Spacing.level6))
+        , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
         , Background.color Ui.Theme.Color.secondary
+        , Element.inFront <|
+            Element.el
+                [ Element.centerX
+                , Element.width
+                    (Element.fill
+                        |> Element.maximum 780
+                    )
+                , Element.height Element.fill
+                , Element.padding 7
+                ]
+                (Element.el
+                    [ Element.centerY ]
+                    (Ui.Theme.Typography.headingOne "Create a new pattern")
+                )
         ]
         [ Element.el [ Element.padding Ui.Theme.Spacing.level4 ] <|
             Ui.Theme.Focus.outline <|
@@ -197,8 +211,6 @@ viewContent identity model =
             )
         ]
         [ Element.el [ Element.padding 7 ] <|
-            Ui.Theme.Typography.headingOne "Create a new pattern"
-        , Element.el [ Element.padding 7 ] <|
             Ui.Theme.Typography.paragraphBody
                 [ Element.text
                     """A pattern contains all the information on how all

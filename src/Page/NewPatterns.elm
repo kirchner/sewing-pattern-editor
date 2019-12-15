@@ -98,8 +98,22 @@ viewTopBar identity =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
-        , Element.height (Element.px (2 * Ui.Theme.Spacing.level6))
+        , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
         , Background.color Ui.Theme.Color.secondary
+        , Element.inFront <|
+            Element.el
+                [ Element.centerX
+                , Element.width
+                    (Element.fill
+                        |> Element.maximum 780
+                    )
+                , Element.height Element.fill
+                , Element.padding 7
+                ]
+                (Element.el
+                    [ Element.centerY ]
+                    (Ui.Theme.Typography.headingOne "Patterns")
+                )
         ]
         [ case identity of
             Git.Anonymous ->
@@ -138,9 +152,7 @@ viewContent model =
                 |> Element.maximum 780
             )
         ]
-        [ Element.el [ Element.padding 7 ] <|
-            Ui.Theme.Typography.headingOne "Patterns"
-        , Ui.Molecule.PatternList.view
+        [ Ui.Molecule.PatternList.view
             { search = model.search
             , onSearchChange = UserChangedSearch
             , onImport = UserPressedImport
