@@ -36,7 +36,7 @@ fa name =
 {-| -}
 faSmall : String -> Element msg
 faSmall name =
-    faHelp "fas" 12 name
+    faHelp "fas" 10 name
 
 
 {-| -}

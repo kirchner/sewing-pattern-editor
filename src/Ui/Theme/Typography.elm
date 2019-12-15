@@ -1,19 +1,16 @@
 module Ui.Theme.Typography exposing
     ( headingOne, headingTwo, headingThree, headingFour
-    , bodyBold, body
-    , paragraphBody
-    , button
+    , bodyBold, body, paragraphBody
+    , button, paragraphButton
     )
 
 {-|
 
 @docs headingOne, headingTwo, headingThree, headingFour
 
-@docs bodyBold, body
+@docs bodyBold, body, paragraphBody
 
-@docs paragraphBody
-
-@docs button
+@docs button, paragraphButton
 
 -}
 
@@ -94,3 +91,13 @@ button text =
     Element.el
         [ Font.size 14 ]
         (Element.text text)
+
+
+{-| -}
+paragraphButton : List (Element msg) -> Element msg
+paragraphButton elements =
+    Element.paragraph
+        [ Font.size 14
+        , Element.width Element.fill
+        ]
+        elements

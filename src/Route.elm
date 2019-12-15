@@ -1,14 +1,16 @@
 module Route exposing
-    ( Route(..)
-    , fromUrl, toString
-    , replaceUrl
+    ( Route(..), NewParameters, fromUrl
+    , WithCode, fromUrlWithCode
+    , absolute, relative, crossOrigin
+    , replaceUrl, pushUrl
     )
 
 {-|
 
-@docs Route
-@docs fromUrl, toString
-@docs replaceUrl
+@docs Route, NewParameters, fromUrl
+@docs WithCode, fromUrlWithCode
+@docs absolute, relative, crossOrigin
+@docs replaceUrl, pushUrl
 
 -}
 
@@ -33,7 +35,7 @@ module Route exposing
 import Browser.Navigation
 import Git
 import Url exposing (Url)
-import Url.Builder as Builder
+import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, map, oneOf, s, string, top)
 import Url.Parser.Query as Query
 
@@ -41,39 +43,137 @@ import Url.Parser.Query as Query
 {-| -}
 type Route
     = Patterns
-    | GitHub Git.Repo Git.Ref (Maybe String)
+    | New NewParameters
+    | GitHub Git.Repo Git.Ref
+
+
+type alias NewParameters =
+    { name : Maybe String
+    , description : Maybe String
+    , storageSolution : Maybe String
+    , slug : Maybe String
+    , repositoryName : Maybe String
+    , visibility : Maybe String
+    }
 
 
 {-| -}
-toString : Route -> String
-toString route =
-    case route of
-        Patterns ->
-            "/patterns"
-
-        GitHub repo ref _ ->
-            String.join "/"
-                [ "github"
-                , repo.owner
-                , repo.name
-                , Git.refToString ref
-                ]
-
-
-parser : Parser (Route -> a) a
-parser =
-    oneOf
-        [ map GitHub (s "github" </> Git.repoParser </> Git.refParser <?> Query.string "code")
-        ]
+type alias WithCode =
+    { route : Route
+    , code : Maybe String
+    }
 
 
 {-| -}
 fromUrl : Url -> Maybe Route
 fromUrl =
+    Parser.parse routeParser
+
+
+{-| -}
+fromUrlWithCode : Url -> Maybe WithCode
+fromUrlWithCode =
     Parser.parse parser
 
 
 {-| -}
 replaceUrl : Browser.Navigation.Key -> Route -> Cmd msg
 replaceUrl key route =
-    Browser.Navigation.replaceUrl key (toString route)
+    Browser.Navigation.replaceUrl key (absolute route [])
+
+
+{-| -}
+pushUrl : Browser.Navigation.Key -> Route -> Cmd msg
+pushUrl key route =
+    Browser.Navigation.pushUrl key (absolute route [])
+
+
+{-| -}
+absolute : Route -> List QueryParameter -> String
+absolute route otherParameters =
+    Url.Builder.absolute (pathSegments route)
+        (parameters route ++ otherParameters)
+
+
+{-| -}
+relative : Route -> List QueryParameter -> String
+relative route otherParameters =
+    Url.Builder.relative (pathSegments route)
+        (parameters route ++ otherParameters)
+
+
+{-| -}
+crossOrigin : String -> Route -> List QueryParameter -> String
+crossOrigin domain route otherParameters =
+    Url.Builder.crossOrigin domain
+        (pathSegments route)
+        (parameters route ++ otherParameters)
+
+
+pathSegments : Route -> List String
+pathSegments route =
+    case route of
+        Patterns ->
+            []
+
+        New _ ->
+            [ "new" ]
+
+        GitHub repo ref ->
+            "github" :: repo.owner :: repo.name :: Git.refToPathSegments ref
+
+
+parameters : Route -> List QueryParameter
+parameters route =
+    case route of
+        Patterns ->
+            []
+
+        New params ->
+            List.filterMap identity
+                [ Maybe.map (Url.Builder.string "name") params.name
+                , Maybe.map (Url.Builder.string "description") params.description
+                , Maybe.map (Url.Builder.string "storageSolution") params.storageSolution
+                , Maybe.map (Url.Builder.string "slug") params.slug
+                , Maybe.map (Url.Builder.string "repositoryName") params.repositoryName
+                , Maybe.map (Url.Builder.string "visibility") params.visibility
+                ]
+
+        GitHub repo ref ->
+            []
+
+
+
+---- PARSER
+
+
+parser : Parser (WithCode -> a) a
+parser =
+    map WithCode (routeParser <?> Query.string "code")
+
+
+routeParser : Parser (Route -> a) a
+routeParser =
+    oneOf
+        [ map Patterns top
+        , map New (top </> s "new" </> newParameters)
+        , map GitHub
+            (top
+                </> s "github"
+                </> Git.repoParser
+                </> Git.refParser
+            )
+        ]
+
+
+newParameters : Parser (NewParameters -> a) a
+newParameters =
+    map NewParameters
+        (top
+            <?> Query.string "name"
+            <?> Query.string "description"
+            <?> Query.string "storageSolution"
+            <?> Query.string "slug"
+            <?> Query.string "repositoryName"
+            <?> Query.string "visibility"
+        )

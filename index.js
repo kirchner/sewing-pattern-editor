@@ -22,50 +22,47 @@ const initElm = () => {
     flags: {}
   });
 
-  app.ports.requestSeed.subscribe(() => {
-    const crypto = window.crypto || window.msCrypto;
+  if (app.ports.selectAllTextIn) {
+    app.ports.selectAllTextIn.subscribe(id => {
+      window.requestAnimationFrame(() => {
+        const input = document.getElementById(id);
 
-    const randInts = getRandomInts(5);
-    app.ports.seedReceived.send([randInts[0], randInts.slice(1)]);
-  });
+        if (input !== null) {
+          input.select();
+        }
+      });
+    });
+  }
 
-  app.ports.selectAllTextIn.subscribe(id => {
-    window.requestAnimationFrame(() => {
-      const input = document.getElementById(id);
+  if (app.ports.storeCache) {
+    app.ports.storeCache.subscribe(function(data) {
+      localStorage.setItem(data.key, data.value);
 
-      if (input !== null) {
-        input.select();
+      setTimeout(function() {
+        app.ports.onStoreChange.send({ key: data.key, value: data.value });
+      }, 0);
+    });
+  }
+
+  if (app.ports.requestCache) {
+    app.ports.requestCache.subscribe(function(data) {
+      var value = localStorage.getItem(data.key);
+
+      if (value !== null) {
+        app.ports.onStoreChange.send({ key: data.key, value: value });
       }
     });
-  });
-
-  app.ports.storeCache.subscribe(function(data) {
-    localStorage.setItem(data.key, data.value);
-
-    setTimeout(function() { app.ports.onStoreChange.send({ key: data.key, value: data.value }); }, 0);
-  });
-
-  app.ports.requestCache.subscribe(function(data) {
-    var value = localStorage.getItem(data.key);
-
-    if (value !== null) {
-      app.ports.onStoreChange.send({ key: data.key, value: value });
-    }
-  });
+  }
 
   window.addEventListener("storage", function(event) {
     if (event.storageArea === localStorage) {
-      app.ports.onStoreChange.send({ key: event.key, value: event.newValue });
+      if (app.ports.onStoreChange) {
+        app.ports.onStoreChange.send({ key: event.key, value: event.newValue });
+      }
     }
   });
 
   return app;
-};
-
-const getRandomInts = (n) => {
-  const randInts = new Uint32Array(n);
-  crypto.getRandomValues(randInts);
-  return Array.from(randInts);
 };
 
 

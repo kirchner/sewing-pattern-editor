@@ -1,23 +1,32 @@
 module Git exposing
-    ( Identity(..), Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
+    ( Identity(..), requestAuthorization
+    , Repo, Ref, defaultRef, commit, branch, tag
+    , refToString, refToPathSegments, refFromString
     , repoParser, refParser
     , PatternData, getPattern, putPattern
-    , Meta, getMeta
+    , Meta, getMeta, putMeta
     , Permissions, getPermissions
+    , User, getAuthenticatedUser
+    , Repository, createRepository
     )
 
 {-|
 
-@docs Identity, Repo, Ref, defaultRef, commit, branch, tag, refToString, refFromString
+@docs Identity, requestAuthorization
+@docs Repo, Ref, defaultRef, commit, branch, tag
+@docs refToString, refToPathSegments, refFromString
 @docs repoParser, refParser
 
 @docs PatternData, getPattern, putPattern
-@docs Meta, getMeta
+@docs Meta, getMeta, putMeta
 @docs Permissions, getPermissions
+@docs User, getAuthenticatedUser
+@docs Repository, createRepository
 
 -}
 
 import Base64
+import Browser.Navigation
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
@@ -31,6 +40,17 @@ import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 type Identity
     = Anonymous
     | OauthToken String
+
+
+requestAuthorization : String -> String -> Cmd msg
+requestAuthorization clientId redirectUri =
+    Browser.Navigation.load <|
+        Url.Builder.crossOrigin "https://github.com"
+            [ "login", "oauth", "authorize" ]
+            [ Url.Builder.string "client_id" clientId
+            , Url.Builder.string "redirect_uri" redirectUri
+            , Url.Builder.string "scope" "repo"
+            ]
 
 
 type alias Repo =
@@ -58,6 +78,19 @@ refParser =
         , map Tag (s "tags" </> string)
         , map defaultRef top
         ]
+
+
+refToPathSegments : Ref -> List String
+refToPathSegments ref =
+    case ref of
+        Commit sha ->
+            [ "commits", sha ]
+
+        Branch name ->
+            [ "branches", name ]
+
+        Tag name ->
+            [ "tags", name ]
 
 
 refToString : Ref -> String
@@ -199,6 +232,14 @@ metaDecoder =
         |> Decode.required "description" Decode.string
 
 
+encodeMeta : Meta -> Value
+encodeMeta meta =
+    Encode.object
+        [ ( "name", Encode.string meta.name )
+        , ( "description", Encode.string meta.description )
+        ]
+
+
 getMeta :
     Identity
     ->
@@ -224,6 +265,38 @@ getMeta identity { repo, ref, onMeta } =
                             Ok meta ->
                                 Decode.succeed meta
                     )
+        }
+
+
+putMeta :
+    Identity
+    ->
+        { repo : Repo
+        , message : String
+        , meta : Meta
+        , sha : String
+        , onSha : Result Http.Error String -> msg
+        }
+    -> Cmd msg
+putMeta identity { repo, message, meta, sha, onSha } =
+    let
+        content =
+            meta
+                |> encodeMeta
+                |> Encode.encode 2
+                |> Base64.encode
+    in
+    put identity
+        { repo = repo
+        , endpoint = [ "contents", "meta.json" ]
+        , body =
+            Encode.object
+                [ ( "message", Encode.string message )
+                , ( "content", Encode.string content )
+                , ( "sha", Encode.string sha )
+                ]
+        , onData = onSha
+        , decoder = Decode.at [ "content", "sha" ] Decode.string
         }
 
 
@@ -307,6 +380,83 @@ permissionsDecoder =
             )
         , Decode.succeed noPermissions
         ]
+
+
+
+---- USER
+
+
+type alias User =
+    { login : String }
+
+
+userDecoder : Decoder User
+userDecoder =
+    Decode.succeed User
+        |> Decode.required "login" Decode.string
+
+
+getAuthenticatedUser :
+    Identity
+    -> { onUser : Result Http.Error User -> msg }
+    -> Cmd msg
+getAuthenticatedUser identity { onUser } =
+    Http.request
+        { method = "GET"
+        , headers = headers identity
+        , url = Url.Builder.crossOrigin "https://api.github.com" [ "user" ] []
+        , body = Http.emptyBody
+        , expect = Http.expectJson onUser userDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+
+---- CREATE REPOSITORY
+
+
+type alias Repository =
+    { name : String
+    , description : String
+    , homepage : String
+    , private : Bool
+    }
+
+
+createRepository :
+    Identity
+    ->
+        { repository : Repository
+        , onRepository : Result Http.Error Repository -> msg
+        }
+    -> Cmd msg
+createRepository identity { repository, onRepository } =
+    Http.request
+        { method = "POST"
+        , headers = headers identity
+        , url = Url.Builder.crossOrigin "https://api.github.com" [ "user", "repos" ] []
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "name", Encode.string repository.name )
+                    , ( "description", Encode.string repository.description )
+                    , ( "homepage", Encode.string repository.homepage )
+                    , ( "private", Encode.bool repository.private )
+                    ]
+        , expect = Http.expectJson onRepository repositoryDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+repositoryDecoder : Decoder Repository
+repositoryDecoder =
+    Decode.succeed Repository
+        |> Decode.required "name" Decode.string
+        |> Decode.required "description" Decode.string
+        |> Decode.required "homepage" Decode.string
+        |> Decode.required "private" Decode.bool
 
 
 

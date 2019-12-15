@@ -104,21 +104,13 @@ import VoronoiDiagram2d
 
 {-| -}
 type Model
-    = RequestingToken RequestingTokenData
-    | Loading LoadingData
+    = Loading LoadingData
     | Error
     | Loaded LoadedData
 
 
-type alias RequestingTokenData =
-    { repo : Git.Repo
-    , ref : Git.Ref
-    }
-
-
 type alias LoadingData =
-    { identity : Git.Identity
-    , repo : Git.Repo
+    { repo : Git.Repo
     , ref : Git.Ref
     , maybePatternData : Maybe (Git.PatternData BottomLeft)
     , maybeMeta : Maybe Git.Meta
@@ -132,7 +124,6 @@ type alias LoadedData =
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
 
     -- PATTERN
-    , identity : Git.Identity
     , repo : Git.Repo
     , ref : Git.Ref
     , permissions : Git.Permissions
@@ -209,33 +200,15 @@ type Dialog
 
 
 {-| -}
-init : Git.Repo -> Git.Ref -> Maybe String -> ( Model, Cmd Msg )
-init repo ref maybeCode =
-    case maybeCode of
-        Nothing ->
-            initLoading repo ref Git.Anonymous
-
-        Just code ->
-            ( RequestingToken
-                { repo = repo
-                , ref = ref
-                }
-            , Http.get
-                { url =
-                    Url.Builder.absolute [ "access_token" ]
-                        [ Url.Builder.string "code" code ]
-                , expect =
-                    Http.expectJson ReceivedGithubAccessToken
-                        (Decode.field "access_token" Decode.string)
-                }
-            )
+init : Git.Identity -> Git.Repo -> Git.Ref -> ( Model, Cmd Msg )
+init identity repo ref =
+    initLoading identity repo ref
 
 
-initLoading : Git.Repo -> Git.Ref -> Git.Identity -> ( Model, Cmd Msg )
-initLoading repo ref identity =
+initLoading : Git.Identity -> Git.Repo -> Git.Ref -> ( Model, Cmd Msg )
+initLoading identity repo ref =
     ( Loading
-        { identity = identity
-        , repo = repo
+        { repo = repo
         , ref = ref
         , maybePatternData = Nothing
         , maybeMeta = Nothing
@@ -261,22 +234,20 @@ initLoading repo ref identity =
 
 
 initLoaded :
-    Git.Identity
-    -> Git.Repo
+    Git.Repo
     -> Git.Ref
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded identity repo ref sha pattern meta permissions =
+initLoaded repo ref sha pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
         , maybeModal = Nothing
 
         -- PATTERN
-        , identity = identity
         , repo = repo
         , ref = ref
         , permissions = permissions
@@ -321,17 +292,6 @@ initLoaded identity repo ref sha pattern meta permissions =
 view : Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view model =
     case model of
-        RequestingToken _ ->
-            { title = "Requesting GitHub API Access Token..."
-            , body =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (Element.text "Requesting GitHub API Access Token...")
-            , dialog = Nothing
-            }
-
         Loading _ ->
             { title = "Loading pattern..."
             , body =
@@ -571,21 +531,29 @@ viewTopToolbar model =
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
         , Background.color Ui.Theme.Color.secondary
+        , Element.behindContent <|
+            Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Font.bold
+                ]
+                (Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (Ui.Theme.Typography.body model.name)
+                )
         ]
         [ if model.permissions.push then
             viewCreateBtn model
 
           else
             viewSignInBtn
-        , Element.el
-            [ Element.centerX
-            , Font.bold
-            ]
-            (Ui.Theme.Typography.body model.name)
         , Element.row
             [ Element.paddingXY Ui.Theme.Spacing.level4 0
             , Element.spacing Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.grayDark
+            , Element.alignRight
             ]
             [ Element.row
                 [ Element.spacing Ui.Theme.Spacing.level1
@@ -596,12 +564,25 @@ viewTopToolbar model =
                 , Ui.Theme.Typography.button "/"
                 , Ui.Theme.Typography.button model.repo.name
                 ]
-            , Ui.Atom.Icon.faSmall <|
+            , Ui.Atom.Icon.fa <|
                 if model.stored then
                     "check-circle"
 
                 else
                     "arrow-alt-circle-up"
+            , Element.row
+                []
+                [ Ui.Atom.Input.btnSecondaryBorderedLeft
+                    { id = "download-btn"
+                    , onPress = Nothing
+                    , label = "Download"
+                    }
+                , Ui.Atom.Input.btnSecondaryBorderedRight
+                    { id = "print-btn"
+                    , onPress = Nothing
+                    , label = "Print"
+                    }
+                ]
             ]
         ]
 
@@ -974,7 +955,6 @@ type Msg
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedSignIn
-    | ReceivedClientId (Result Http.Error String)
       -- LEFT TOOLBAR
     | UserSelectedTab Tab String
       -- LEFT TOOLBAR OBJECTS
@@ -1030,20 +1010,16 @@ type CreateAction
 
 
 {-| -}
-update : Navigation.Key -> String -> Msg -> Model -> ( Model, Cmd Msg )
-update key domain msg model =
+update :
+    Navigation.Key
+    -> String
+    -> String
+    -> Git.Identity
+    -> Msg
+    -> Model
+    -> ( Model, Cmd Msg )
+update key domain clientId identity msg model =
     case model of
-        RequestingToken data ->
-            case msg of
-                ReceivedGithubAccessToken (Ok accessToken) ->
-                    initLoading data.repo data.ref (Git.OauthToken accessToken)
-
-                ReceivedGithubAccessToken (Err _) ->
-                    ( Error, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
         Loading data ->
             let
                 tryInitLoaded newModel =
@@ -1057,7 +1033,6 @@ update key domain msg model =
                             of
                                 ( Just patternData, Just meta, Just permissions ) ->
                                     initLoaded
-                                        newData.identity
                                         newData.repo
                                         newData.ref
                                         patternData.sha
@@ -1104,12 +1079,19 @@ update key domain msg model =
             ( model, Cmd.none )
 
         Loaded data ->
-            updateWithData key domain msg data
+            updateWithData key domain clientId identity msg data
                 |> Tuple.mapFirst Loaded
 
 
-updateWithData : Navigation.Key -> String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateWithData key domain msg model =
+updateWithData :
+    Navigation.Key
+    -> String
+    -> String
+    -> Git.Identity
+    -> Msg
+    -> LoadedData
+    -> ( LoadedData, Cmd Msg )
+updateWithData key domain clientId identity msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -1239,33 +1221,11 @@ updateWithData key domain msg model =
 
         UserPressedSignIn ->
             ( model
-            , Http.get
-                { url = "/client_id"
-                , expect = Http.expectString ReceivedClientId
-                }
+            , Git.requestAuthorization clientId <|
+                Route.crossOrigin domain
+                    (Route.GitHub model.repo model.ref)
+                    []
             )
-
-        ReceivedClientId result ->
-            case result of
-                Err _ ->
-                    ( model, Cmd.none )
-
-                Ok clientId ->
-                    ( model
-                    , Navigation.load <|
-                        Url.Builder.crossOrigin "https://github.com"
-                            [ "login", "oauth", "authorize" ]
-                            [ Url.Builder.string "client_id" clientId
-                            , Url.Builder.string "redirect_uri"
-                                (Url.Builder.crossOrigin domain
-                                    [ Route.toString
-                                        (Route.GitHub model.repo model.ref Nothing)
-                                    ]
-                                    []
-                                )
-                            , Url.Builder.string "scope" "repo"
-                            ]
-                    )
 
         -- LEFT TOOLBAR
         UserSelectedTab tab id ->
@@ -1532,7 +1492,7 @@ updateWithData key domain msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern model.identity
+                            , Git.putPattern identity
                                 { repo = model.repo
                                 , message = "create object"
                                 , pattern = newPattern
@@ -1576,7 +1536,7 @@ updateWithData key domain msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern model.identity
+                            , Git.putPattern identity
                                 { repo = model.repo
                                 , message = "edit object"
                                 , pattern = newPattern
@@ -1661,7 +1621,7 @@ updateWithData key domain msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern model.identity
+                            , Git.putPattern identity
                                 { repo = model.repo
                                 , message = "create variable"
                                 , pattern = newPattern
@@ -1686,7 +1646,7 @@ updateWithData key domain msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern model.identity
+                            , Git.putPattern identity
                                 { repo = model.repo
                                 , message = "edit variable"
                                 , pattern = newPattern
@@ -1720,7 +1680,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete point"
                         , pattern = newPattern
@@ -1748,7 +1708,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete axis"
                         , pattern = newPattern
@@ -1776,7 +1736,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete circle"
                         , pattern = newPattern
@@ -1804,7 +1764,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete curve"
                         , pattern = newPattern
@@ -1832,7 +1792,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete detail"
                         , pattern = newPattern
@@ -1860,7 +1820,7 @@ updateWithData key domain msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern model.identity
+                    , Git.putPattern identity
                         { repo = model.repo
                         , message = "delete variable"
                         , pattern = newPattern
@@ -1906,9 +1866,6 @@ updateWithData key domain msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
-        RequestingToken _ ->
-            Sub.none
-
         Loading _ ->
             Sub.none
 

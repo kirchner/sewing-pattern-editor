@@ -32,6 +32,7 @@ import Quantity exposing (per)
 import Svg exposing (Svg)
 import Svg.Attributes
 import Task
+import Time
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Icon
@@ -41,6 +42,8 @@ import Ui.Atom.Tabs
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.ObjectList
 import Ui.Molecule.Pattern
+import Ui.Molecule.PatternList
+import Ui.Organism.CreatePattern
 import Ui.Theme.Color
 import Ui.Theme.Focus
 import Ui.Theme.Spacing
@@ -84,6 +87,8 @@ type alias Model =
     , patternState : Ui.Molecule.Pattern.State
     , menuBtnPrimary : Ui.Molecule.MenuBtn.State
     , menuBtnSecondary : Ui.Molecule.MenuBtn.State
+    , search : String
+    , storageTag : Ui.Organism.CreatePattern.StorageTag
     }
 
 
@@ -177,6 +182,9 @@ type Route
     | JoinedFormElements
     | Dropdowns
     | ObjectList
+    | PatternList
+      -- ORGANISMS
+    | CreatePattern
 
 
 routeToTitle : Route -> String
@@ -215,6 +223,12 @@ routeToTitle route =
         ObjectList ->
             "Object List"
 
+        PatternList ->
+            "Pattern List"
+
+        CreatePattern ->
+            "Create Pattern"
+
 
 routeToUrl : Route -> String
 routeToUrl route =
@@ -252,6 +266,12 @@ routeToUrl route =
         ObjectList ->
             "/object-list"
 
+        PatternList ->
+            "/pattern-list"
+
+        CreatePattern ->
+            "/create-pattern"
+
 
 routeFromUrl : Url -> Maybe Route
 routeFromUrl url =
@@ -273,6 +293,8 @@ urlParser =
         , Url.Parser.map JoinedFormElements (Url.Parser.s "joined-form-elements")
         , Url.Parser.map Dropdowns (Url.Parser.s "dropdowns")
         , Url.Parser.map ObjectList (Url.Parser.s "object-list")
+        , Url.Parser.map PatternList (Url.Parser.s "pattern-list")
+        , Url.Parser.map CreatePattern (Url.Parser.s "create-pattern")
         ]
 
 
@@ -317,6 +339,8 @@ init { width, height } url key =
         , patternState = Ui.Molecule.Pattern.init
         , menuBtnPrimary = Ui.Molecule.MenuBtn.init
         , menuBtnSecondary = Ui.Molecule.MenuBtn.init
+        , search = ""
+        , storageTag = Ui.Organism.CreatePattern.GithubTag
         }
 
 
@@ -506,6 +530,10 @@ navigation deviceClass currentRoute =
             [ link JoinedFormElements
             , link Dropdowns
             , link ObjectList
+            , link PatternList
+            ]
+        , group "organisms"
+            [ link CreatePattern
             ]
         ]
 
@@ -551,6 +579,12 @@ content model =
 
             ObjectList ->
                 viewObjectList model
+
+            PatternList ->
+                viewPatternList model
+
+            CreatePattern ->
+                viewCreatePattern model
         ]
 
 
@@ -795,13 +829,41 @@ viewFormElements model =
                 { id = "radio-column"
                 , onChange = FruitChanged
                 , options =
-                    [ Ui.Atom.Input.option Apple "Apple"
-                    , Ui.Atom.Input.option Banana "Banana"
-                    , Ui.Atom.Input.option Cherry "Cherry"
-                    , Ui.Atom.Input.option Durian "Durian"
-                    , Ui.Atom.Input.option Elderberries "Elderberries"
-                    , Ui.Atom.Input.option Figs "Figs"
-                    , Ui.Atom.Input.option Grapefruit "Grapefruit"
+                    [ Ui.Atom.Input.option
+                        { value = Apple
+                        , label = "Apple"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Banana
+                        , label = "Banana"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Cherry
+                        , label = "Cherry"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Durian
+                        , label = "Durian"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Elderberries
+                        , label = "Elderberries"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Figs
+                        , label = "Figs"
+                        , child = Element.none
+                        }
+                    , Ui.Atom.Input.option
+                        { value = Grapefruit
+                        , label = "Grapefruit"
+                        , child = Element.none
+                        }
                     ]
                 , selected = model.fruit
                 , label = "Select a fruit"
@@ -1634,6 +1696,78 @@ viewObjectList model =
 
 
 
+---- PATTERN LIST
+
+
+viewPatternList : Model -> Element Msg
+viewPatternList model =
+    Element.column
+        [ Element.spacing Ui.Theme.Spacing.level8
+        , Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Ui.Molecule.PatternList.view
+            { search = model.search
+            , onSearchChange = UserChangedSearch
+            , onImport = NoOp
+            , onCreate = NoOp
+            , patternInfos =
+                [ { name = "Bodice Block, Leena's Patternmaker"
+                  , description = "A simple bodice block taken from the Seamly2d documentation."
+                  , storage = Ui.Molecule.PatternList.Github "kirchner" "bodice-block"
+                  , updatedAt = Time.millisToPosix 1000000
+                  , onClone = NoOp
+                  }
+                , { name = "Trousers"
+                  , description = "Some pair of trousers."
+                  , storage = Ui.Molecule.PatternList.LocalStorage "trousers"
+                  , updatedAt = Time.millisToPosix 1200000
+                  , onClone = NoOp
+                  }
+                ]
+            , now = Time.millisToPosix 1300000
+            }
+        , Ui.Molecule.PatternList.view
+            { search = model.search
+            , onSearchChange = UserChangedSearch
+            , onImport = NoOp
+            , onCreate = NoOp
+            , patternInfos = []
+            , now = Time.millisToPosix 1300000
+            }
+        ]
+
+
+
+---- PATTERN LIST
+
+
+viewCreatePattern : Model -> Element Msg
+viewCreatePattern model =
+    Element.column
+        [ Element.spacing Ui.Theme.Spacing.level8
+        , Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Ui.Organism.CreatePattern.view
+            { name = ""
+            , onNameChange = \_ -> NoOp
+            , description = ""
+            , onDescriptionChange = \_ -> NoOp
+            , storageTag = model.storageTag
+            , onStorageChange = UserChangedStorageTag
+            , onCreate = NoOp
+            , slug = ""
+            , onSlugChange = \_ -> NoOp
+            , owner = ""
+            , onOwnerChange = \_ -> NoOp
+            , repositoryName = ""
+            , onRepositoryNameChange = \_ -> NoOp
+            }
+        ]
+
+
+
 ---- UPDATE
 
 
@@ -1661,6 +1795,10 @@ type Msg
       -- MENU BUTTON
     | MenuBtnPrimaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | MenuBtnSecondaryMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
+      -- PATTERN LIST
+    | UserChangedSearch String
+      -- CREATE PATTERN
+    | UserChangedStorageTag Ui.Organism.CreatePattern.StorageTag
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1823,6 +1961,18 @@ update msg model =
             in
             ( { model | menuBtnSecondary = newMenuBtn }
             , Cmd.map MenuBtnSecondaryMsg menuBtnCmd
+            )
+
+        -- PATTERN LIST
+        UserChangedSearch newSearch ->
+            ( { model | search = newSearch }
+            , Cmd.none
+            )
+
+        -- CREATE PATTERN
+        UserChangedStorageTag newStorageTag ->
+            ( { model | storageTag = newStorageTag }
+            , Cmd.none
             )
 
 

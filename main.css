@@ -16,22 +16,6 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/*
-:focus {
-  outline: 3px dotted rgb(38, 132, 132) !important;
-  outline-offset: 1px !important;
-}
-
-.navigation-menu:focus {
-  outline: none !important;
-}
-
-.segment-control:focus {
-  z-index: 1;
-  position: relative;
-}
-*/
-
 /* rubik-300 - latin
  *
  * Rubik-Light.ttf: Copyright 2015 The Rubik Project Authors (meir@sadan.com)

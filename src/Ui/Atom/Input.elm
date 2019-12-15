@@ -4,8 +4,9 @@ module Ui.Atom.Input exposing
     , IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
     , CheckboxConfig, checkbox
     , TextConfig, text, textAppended, formula, formulaAppended
-    , RadioConfig, radioRow, radioColumn, option
+    , RadioConfig, radioRow, radioColumn, OptionConfig, option
     , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
+    , btnSecondaryBorderedLeft, btnSecondaryBorderedRight
     )
 
 {-|
@@ -30,7 +31,7 @@ module Ui.Atom.Input exposing
 
 # Radio Selection
 
-@docs RadioConfig, radioRow, radioColumn, option
+@docs RadioConfig, radioRow, radioColumn, OptionConfig, option
 
 @docs SegmentControlConfig, segmentControl, Child, nested, nestedHideable
 
@@ -92,6 +93,47 @@ btnSecondary { id, onPress, label } =
             [ attributeId id
             , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
             , Background.color Ui.Theme.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
+            , backgroundColorEaseInOut
+            ]
+            { onPress = onPress
+            , label = Ui.Theme.Typography.button label
+            }
+
+
+{-| -}
+btnSecondaryBorderedLeft : BtnConfig msg -> Element msg
+btnSecondaryBorderedLeft { id, onPress, label } =
+    Ui.Theme.Focus.outlineLeft <|
+        Input.button
+            [ attributeId id
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+            , Background.color Ui.Theme.Color.secondary
+            , Border.width 1
+            , Border.color Ui.Theme.Color.secondaryDark
+            , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
+            , backgroundColorEaseInOut
+            ]
+            { onPress = onPress
+            , label = Ui.Theme.Typography.button label
+            }
+
+
+{-| -}
+btnSecondaryBorderedRight : BtnConfig msg -> Element msg
+btnSecondaryBorderedRight { id, onPress, label } =
+    Ui.Theme.Focus.outlineRight <|
+        Input.button
+            [ attributeId id
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+            , Background.color Ui.Theme.Color.secondary
+            , Border.widthEach
+                { left = 0
+                , right = 1
+                , top = 1
+                , bottom = 1
+                }
+            , Border.color Ui.Theme.Color.secondaryDark
             , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
             , backgroundColorEaseInOut
             ]
@@ -616,24 +658,21 @@ radioColumn { id, onChange, options, selected, label } =
             }
 
 
+type alias OptionConfig value msg =
+    { value : value
+    , label : String
+    , child : Element msg
+    }
+
+
 {-| -}
-option : value -> String -> Input.Option value msg
-option value label =
-    Input.optionWith value (radioOption label)
+option : OptionConfig value msg -> Input.Option value msg
+option cfg =
+    Input.optionWith cfg.value (radioOption cfg.label cfg.child)
 
 
-optionCustom : value -> Element msg -> Input.Option value msg
-optionCustom value label =
-    Input.optionWith value (radioOptionCustom label)
-
-
-radioOption : String -> Input.OptionState -> Element msg
-radioOption label status =
-    radioOptionCustom (Element.text label) status
-
-
-radioOptionCustom : Element msg -> Input.OptionState -> Element msg
-radioOptionCustom label status =
+radioOption : String -> Element msg -> Input.OptionState -> Element msg
+radioOption label child status =
     let
         setClass attrs =
             case status of
@@ -679,11 +718,18 @@ radioOptionCustom label status =
                 |> setClass
             )
             Element.none
-        , Element.el
+        , Element.column
             [ Element.width Element.fill
-            , Element.htmlAttribute (Html.Attributes.class "unfocusable")
+            , Element.spacing Ui.Theme.Spacing.level2
+            , Element.paddingXY 0 6
             ]
-            label
+            [ Element.el
+                [ Element.width Element.fill
+                , Element.htmlAttribute (Html.Attributes.class "unfocusable")
+                ]
+                (Ui.Theme.Typography.body label)
+            , child
+            ]
         ]
 
 

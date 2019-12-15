@@ -113,7 +113,7 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
 
         Just { icon, label, action } ->
             Element.row
-                [ Element.spacing 1
+                [ Element.spacing 0
                 , Element.below <|
                     if open then
                         viewMenu config state

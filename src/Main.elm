@@ -19,11 +19,12 @@ module Main exposing (main)
 -}
 
 import Browser
-import Browser.Navigation as Navigation
+import Browser.Navigation
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
+import Git
 import Html exposing (Html)
 import Html.Attributes
 import Http
@@ -31,7 +32,8 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Page.Editor as Editor
-import Page.Patterns as Patterns
+import Page.New as New
+import Page.NewPatterns as Patterns
 import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
@@ -41,6 +43,7 @@ import Ui.Molecule.Modal
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Url exposing (Url)
+import Url.Builder
 
 
 main : Program {} Model Msg
@@ -59,11 +62,33 @@ main =
 ---- MODEL
 
 
-type alias Model =
-    { key : Navigation.Key
+type Model
+    = RequestingClientId RequestingClientIdData
+    | RequestingToken RequestingTokenData
+    | Loaded LoadedData
+
+
+type alias RequestingClientIdData =
+    { key : Browser.Navigation.Key
     , domain : String
+    , url : Url
+    }
+
+
+type alias RequestingTokenData =
+    { key : Browser.Navigation.Key
+    , domain : String
+    , clientId : String
+    , route : Route
+    }
+
+
+type alias LoadedData =
+    { identity : Git.Identity
+    , key : Browser.Navigation.Key
+    , domain : String
+    , clientId : String
     , page : Page
-    , newWorkerModal : Maybe Ui.Molecule.Modal.State
     }
 
 
@@ -73,16 +98,17 @@ type alias Model =
 
 type Page
     = NotFound
+    | Loading
       -- PAGES
     | Patterns Patterns.Model
+    | New New.Model
     | Editor Editor.Model
 
 
-init : {} -> Url -> Navigation.Key -> ( Model, Cmd Msg )
+init : {} -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
-    changeRouteTo (Route.fromUrl url)
-        { key = key
-        , domain =
+    let
+        domain =
             String.concat
                 [ case url.protocol of
                     Url.Http ->
@@ -99,9 +125,17 @@ init _ url key =
                     Just port_ ->
                         ":" ++ String.fromInt port_
                 ]
-        , page = NotFound
-        , newWorkerModal = Nothing
+    in
+    ( RequestingClientId
+        { key = key
+        , domain = domain
+        , url = url
         }
+    , Http.get
+        { url = "/client_id"
+        , expect = Http.expectString ReceivedClientId
+        }
+    )
 
 
 
@@ -110,49 +144,75 @@ init _ url key =
 
 view : Model -> Browser.Document Msg
 view model =
-    case model.page of
-        NotFound ->
-            { title = "Sewing pattern editor"
-            , body = [ Html.text "We are sorry, this page does not exist." ]
-            }
-
-        Patterns patternsModel ->
-            let
-                { title, body, dialog } =
-                    Patterns.view patternsModel
-            in
-            { title = title
+    case model of
+        RequestingClientId _ ->
+            { title = "Requesting Client ID..."
             , body =
-                [ viewHelp (Element.map PatternsMsg body) <|
-                    case model.newWorkerModal of
-                        Nothing ->
-                            Maybe.map (Element.map PatternsMsg) dialog
-
-                        Just state ->
-                            Just (viewNewWorkerDialog state)
+                [ viewHelp <|
+                    Element.el [ Element.centerX, Element.centerY ] <|
+                        Element.text "Requesting Client ID..."
                 ]
             }
 
-        Editor editorModel ->
-            let
-                { title, body, dialog } =
-                    Editor.view editorModel
-            in
-            { title = title
+        RequestingToken data ->
+            { title = "Requesting GitHub API Access Token..."
             , body =
-                [ viewHelp (Element.map EditorMsg body) <|
-                    case model.newWorkerModal of
-                        Nothing ->
-                            Maybe.map (Element.map EditorMsg) dialog
-
-                        Just state ->
-                            Just (viewNewWorkerDialog state)
+                [ viewHelp <|
+                    Element.el [ Element.centerX, Element.centerY ] <|
+                        Element.text "Requesting GitHub API Access Token..."
                 ]
             }
 
+        Loaded data ->
+            case data.page of
+                NotFound ->
+                    { title = "Sewing pattern editor"
+                    , body =
+                        [ viewHelp <|
+                            Element.el [ Element.centerX, Element.centerY ] <|
+                                Element.text "We are sorry, this page does not exist."
+                        ]
+                    }
 
-viewHelp : Element msg -> Maybe (Element msg) -> Html msg
-viewHelp body dialog =
+                Loading ->
+                    { title = "Sewing pattern editor"
+                    , body =
+                        [ viewHelp <|
+                            Element.el [ Element.centerX, Element.centerY ] <|
+                                Element.text "Loading..."
+                        ]
+                    }
+
+                Patterns patternsModel ->
+                    let
+                        { title, body, dialog } =
+                            Patterns.view patternsModel
+                    in
+                    { title = title
+                    , body = [ viewHelp (Element.map PatternsMsg body) ]
+                    }
+
+                New newModel ->
+                    let
+                        { title, body, dialog } =
+                            New.view data.identity newModel
+                    in
+                    { title = title
+                    , body = [ viewHelp (Element.map NewMsg body) ]
+                    }
+
+                Editor editorModel ->
+                    let
+                        { title, body, dialog } =
+                            Editor.view editorModel
+                    in
+                    { title = title
+                    , body = [ viewHelp (Element.map EditorMsg body) ]
+                    }
+
+
+viewHelp : Element msg -> Html msg
+viewHelp body =
     Element.layoutWith
         { options =
             [ Element.focusStyle
@@ -168,43 +228,8 @@ viewHelp body dialog =
             [ Font.typeface "Rubik"
             , Font.sansSerif
             ]
-        , Element.inFront (Maybe.withDefault Element.none dialog)
         ]
         body
-
-
-viewNewWorkerDialog : Ui.Molecule.Modal.State -> Element Msg
-viewNewWorkerDialog state =
-    Ui.Molecule.Modal.small state
-        { onCancelPress = NewWorkerDialogCancelPressed
-        , onClosed = ModalClosed
-        , title = "New version available"
-        , content =
-            Element.el
-                [ Element.spacing Ui.Theme.Spacing.level2
-                , Element.htmlAttribute (Html.Attributes.id "dialog--body")
-                , Element.width Element.fill
-                , Element.padding Ui.Theme.Spacing.level2
-                , Background.color Ui.Theme.Color.white
-                ]
-                (Element.paragraph []
-                    [ Element.text "A new version is available. You have to reload to activate it."
-                    ]
-                )
-        , actions =
-            [ Ui.Atom.Input.btnPrimary
-                { id = "new-worker-modal__reload-btn"
-                , onPress = Just NewWorkerDialogReloadPressed
-                , label = "Reload"
-                }
-            , Element.el [ Element.alignRight ] <|
-                Ui.Atom.Input.btnCancel
-                    { id = "new-worker-modal__cancel-btn"
-                    , onPress = Just NewWorkerDialogCancelPressed
-                    , label = "Cancel"
-                    }
-            ]
-        }
 
 
 
@@ -212,149 +237,228 @@ viewNewWorkerDialog state =
 
 
 type Msg
-    = NoOp
-    | UrlRequested Browser.UrlRequest
+    = UrlRequested Browser.UrlRequest
     | UrlChanged Url
+      -- CLIENT ID
+    | ReceivedClientId (Result Http.Error String)
+      -- TOKENS
+    | ReceivedGithubAccessToken (Result Http.Error String)
       -- PAGES
     | PatternsMsg Patterns.Msg
+    | NewMsg New.Msg
     | EditorMsg Editor.Msg
-      -- SERVICE WORKER
-    | OnNewWorker ()
-    | NewWorkerDialogCancelPressed
-    | NewWorkerDialogReloadPressed
-    | ModalStateChanged Ui.Molecule.Modal.State
-    | ModalClosed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.page ) of
-        ( NoOp, _ ) ->
-            ( model, Cmd.none )
+    case model of
+        RequestingClientId data ->
+            case msg of
+                ReceivedClientId (Err httpError) ->
+                    ( model, Cmd.none )
 
-        ( UrlRequested urlRequest, _ ) ->
-            case urlRequest of
-                Browser.Internal url ->
-                    ( model
-                    , Navigation.pushUrl model.key url.path
+                ReceivedClientId (Ok clientId) ->
+                    case Route.fromUrlWithCode data.url of
+                        Nothing ->
+                            ( Loaded
+                                { identity = Git.Anonymous
+                                , key = data.key
+                                , domain = data.domain
+                                , clientId = clientId
+                                , page = NotFound
+                                }
+                            , Cmd.none
+                            )
+
+                        Just { route, code } ->
+                            case code of
+                                Nothing ->
+                                    changeRouteTo route
+                                        { identity = Git.Anonymous
+                                        , key = data.key
+                                        , domain = data.domain
+                                        , clientId = clientId
+                                        , page = NotFound
+                                        }
+
+                                Just actualCode ->
+                                    ( RequestingToken
+                                        { key = data.key
+                                        , domain = data.domain
+                                        , clientId = clientId
+                                        , route = route
+                                        }
+                                    , Http.get
+                                        { url =
+                                            Url.Builder.absolute [ "access_token" ]
+                                                [ Url.Builder.string "code" actualCode ]
+                                        , expect =
+                                            Http.expectJson ReceivedGithubAccessToken
+                                                (Decode.field "access_token" Decode.string)
+                                        }
+                                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        RequestingToken data ->
+            case msg of
+                ReceivedGithubAccessToken (Err httpError) ->
+                    ( model, Cmd.none )
+
+                ReceivedGithubAccessToken (Ok accessToken) ->
+                    ( Loaded
+                        { identity = Git.OauthToken accessToken
+                        , key = data.key
+                        , domain = data.domain
+                        , clientId = data.clientId
+                        , page = Loading
+                        }
+                    , Route.replaceUrl data.key data.route
                     )
 
-                Browser.External externalUrl ->
-                    ( model
-                    , Navigation.load externalUrl
+                _ ->
+                    ( model, Cmd.none )
+
+        Loaded data ->
+            case ( msg, data.page ) of
+                ( UrlRequested urlRequest, _ ) ->
+                    case urlRequest of
+                        Browser.Internal url ->
+                            ( model
+                            , Browser.Navigation.pushUrl data.key url.path
+                            )
+
+                        Browser.External externalUrl ->
+                            ( model
+                            , Browser.Navigation.load externalUrl
+                            )
+
+                ( UrlChanged url, _ ) ->
+                    case Route.fromUrl url of
+                        Nothing ->
+                            ( Loaded { data | page = NotFound }
+                            , Cmd.none
+                            )
+
+                        Just route ->
+                            changeRouteTo route data
+
+                -- CLIENT ID
+                ( ReceivedClientId _, _ ) ->
+                    ( model, Cmd.none )
+
+                -- TOKENS
+                ( ReceivedGithubAccessToken _, _ ) ->
+                    ( model, Cmd.none )
+
+                -- PAGES
+                ( _, NotFound ) ->
+                    ( model, Cmd.none )
+
+                ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
+                    let
+                        ( newPatternsModel, patternsCmd ) =
+                            Patterns.update data.key patternsMsg patternsModel
+                    in
+                    ( Loaded { data | page = Patterns newPatternsModel }
+                    , Cmd.map PatternsMsg patternsCmd
                     )
 
-        ( UrlChanged url, _ ) ->
-            changeRouteTo (Route.fromUrl url) model
+                ( PatternsMsg _, _ ) ->
+                    ( model, Cmd.none )
 
-        -- PAGES
-        ( _, NotFound ) ->
-            ( model, Cmd.none )
+                ( NewMsg newMsg, New newModel ) ->
+                    let
+                        ( newNewModel, newCmd ) =
+                            New.update
+                                data.key
+                                data.domain
+                                data.clientId
+                                data.identity
+                                newMsg
+                                newModel
+                    in
+                    ( Loaded { data | page = New newNewModel }
+                    , Cmd.map NewMsg newCmd
+                    )
 
-        ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
+                ( NewMsg _, _ ) ->
+                    ( model, Cmd.none )
+
+                ( EditorMsg patternMsg, Editor editorModel ) ->
+                    let
+                        ( newEditorModel, patternCmd ) =
+                            Editor.update
+                                data.key
+                                data.domain
+                                data.clientId
+                                data.identity
+                                patternMsg
+                                editorModel
+                    in
+                    ( Loaded { data | page = Editor newEditorModel }
+                    , Cmd.map EditorMsg patternCmd
+                    )
+
+                ( EditorMsg _, _ ) ->
+                    ( model, Cmd.none )
+
+
+changeRouteTo : Route -> LoadedData -> ( Model, Cmd Msg )
+changeRouteTo route data =
+    case route of
+        Route.Patterns ->
             let
-                ( newPatternsModel, patternsCmd ) =
-                    Patterns.update model.key patternsMsg patternsModel
+                ( patterns, patternsCmd ) =
+                    Patterns.init
             in
-            ( { model | page = Patterns newPatternsModel }
+            ( Loaded { data | page = Patterns patterns }
             , Cmd.map PatternsMsg patternsCmd
             )
 
-        ( PatternsMsg _, _ ) ->
-            ( model, Cmd.none )
-
-        ( EditorMsg patternMsg, Editor editorModel ) ->
+        Route.New newParameters ->
             let
-                ( newEditorModel, patternCmd ) =
-                    Editor.update model.key model.domain patternMsg editorModel
+                ( new, newCmd ) =
+                    New.init data.identity newParameters
             in
-            ( { model | page = Editor newEditorModel }
-            , Cmd.map EditorMsg patternCmd
+            ( Loaded { data | page = New new }
+            , Cmd.map NewMsg newCmd
             )
 
-        ( EditorMsg _, _ ) ->
-            ( model, Cmd.none )
-
-        -- SERVICE WORKER
-        ( OnNewWorker _, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Opening }
-            , Cmd.none
+        Route.GitHub repo ref ->
+            let
+                ( editor, editorCmd ) =
+                    Editor.init data.identity repo ref
+            in
+            ( Loaded { data | page = Editor editor }
+            , Cmd.map EditorMsg editorCmd
             )
-
-        ( NewWorkerDialogCancelPressed, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Closing }
-            , Cmd.none
-            )
-
-        ( NewWorkerDialogReloadPressed, _ ) ->
-            ( { model | newWorkerModal = Just Ui.Molecule.Modal.Closing }
-            , Cmd.none
-            )
-
-        ( ModalStateChanged newState, _ ) ->
-            ( { model | newWorkerModal = Just newState }
-            , Cmd.none
-            )
-
-        ( ModalClosed, _ ) ->
-            ( { model | newWorkerModal = Nothing }
-            , Navigation.reload
-            )
-
-
-changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
-changeRouteTo maybeRoute model =
-    let
-        ( newModel, cmd ) =
-            case maybeRoute of
-                Nothing ->
-                    ( { model | page = NotFound }
-                    , Cmd.none
-                    )
-
-                Just newRoute ->
-                    case newRoute of
-                        Route.Patterns ->
-                            let
-                                ( patterns, patternsCmd ) =
-                                    Patterns.init
-                            in
-                            ( { model | page = Patterns patterns }
-                            , Cmd.map PatternsMsg patternsCmd
-                            )
-
-                        Route.GitHub repo ref maybeCode ->
-                            let
-                                ( editor, editorCmd ) =
-                                    Editor.init repo ref maybeCode
-                            in
-                            ( { model | page = Editor editor }
-                            , Cmd.map EditorMsg editorCmd
-                            )
-    in
-    ( newModel
-    , cmd
-    )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Ports.onNewWorker OnNewWorker
-        , case model.newWorkerModal of
-            Nothing ->
-                Sub.none
+    case model of
+        RequestingClientId _ ->
+            Sub.none
 
-            Just state ->
-                Sub.map ModalStateChanged (Ui.Molecule.Modal.subscriptions state)
-        , case model.page of
-            NotFound ->
-                Sub.none
+        RequestingToken _ ->
+            Sub.none
 
-            -- PAGES
-            Patterns patternsModel ->
-                Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
+        Loaded data ->
+            case data.page of
+                NotFound ->
+                    Sub.none
 
-            Editor editorModel ->
-                Sub.map EditorMsg (Editor.subscriptions editorModel)
-        ]
+                Loading ->
+                    Sub.none
+
+                -- PAGES
+                Patterns patternsModel ->
+                    Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
+
+                New newModel ->
+                    Sub.map NewMsg (New.subscriptions newModel)
+
+                Editor editorModel ->
+                    Sub.map EditorMsg (Editor.subscriptions editorModel)
