@@ -156,13 +156,13 @@ viewNew identity model =
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
-        [ viewTopBar
+        [ viewTopBar identity
         , viewContent identity model
         ]
 
 
-viewTopBar : Element Msg
-viewTopBar =
+viewTopBar : Git.Identity -> Element Msg
+viewTopBar identity =
     Element.row
         [ Element.width Element.fill
         , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
@@ -175,7 +175,7 @@ viewTopBar =
                         |> Element.maximum 780
                     )
                 , Element.height Element.fill
-                , Element.padding 7
+                , Element.padding (7 + Ui.Theme.Spacing.level1)
                 ]
                 (Element.el
                     [ Element.centerY ]
@@ -197,6 +197,21 @@ viewTopBar =
                             , Ui.Theme.Typography.body "Back to patterns"
                             ]
                     }
+        , case identity of
+            Git.Anonymous ->
+                Element.el
+                    [ Element.paddingXY Ui.Theme.Spacing.level1 0
+                    , Element.alignRight
+                    ]
+                    (Ui.Atom.Input.btnPrimary
+                        { id = "sign-in-btn"
+                        , onPress = Just UserPressedSignIn
+                        , label = "Sign in via GitHub"
+                        }
+                    )
+
+            Git.OauthToken _ ->
+                Element.none
         ]
 
 
@@ -209,6 +224,12 @@ viewContent identity model =
             (Element.fill
                 |> Element.maximum 780
             )
+        , Element.paddingEach
+            { top = Ui.Theme.Spacing.level1
+            , bottom = Ui.Theme.Spacing.level8
+            , left = Ui.Theme.Spacing.level1
+            , right = Ui.Theme.Spacing.level1
+            }
         ]
         [ Element.el [ Element.padding 7 ] <|
             Ui.Theme.Typography.paragraphBody
@@ -264,6 +285,7 @@ viewContent identity model =
                 , help = Nothing
                 }
             ]
+        , horizontalRule
         , Ui.Atom.Input.radioColumn
             { id = "storage-radio-group"
             , onChange = UserChangedStorageSolution
@@ -314,8 +336,8 @@ viewContent identity model =
                         Element.el [] <|
                             Ui.Atom.Input.btnPrimary
                                 { id = "log-in-btn"
-                                , onPress = Just UserPressedLogIn
-                                , label = "Sign in to GitHub"
+                                , onPress = Just UserPressedSignIn
+                                , label = "Sign in via GitHub"
                                 }
 
                     Git.OauthToken _ ->
@@ -368,6 +390,7 @@ viewContent identity model =
                                     ]
                                 }
                             ]
+        , horizontalRule
         , Element.el [ Element.width Element.shrink ] <|
             Ui.Atom.Input.btnPrimary
                 { id = "create-pattern-btn"
@@ -375,6 +398,21 @@ viewContent identity model =
                 , label = "Create pattern"
                 }
         ]
+
+
+horizontalRule : Element msg
+horizontalRule =
+    Element.el
+        [ Element.width Element.fill
+        , Element.paddingXY 7 0
+        ]
+        (Element.el
+            [ Element.width Element.fill
+            , Element.height (Element.px 1)
+            , Background.color Ui.Theme.Color.secondary
+            ]
+            Element.none
+        )
 
 
 
@@ -387,7 +425,7 @@ type Msg
     | UserChangedDescription String
     | UserChangedStorageSolution StorageSolutionTag
     | UserChangedSlug String
-    | UserPressedLogIn
+    | UserPressedSignIn
     | UserChangedRepositoryName String
     | UserChangedVisibility Visibility
     | UserPressedCreate
@@ -489,7 +527,7 @@ updateLoaded key domain clientId identity msg model =
             , Cmd.none
             )
 
-        UserPressedLogIn ->
+        UserPressedSignIn ->
             ( model
             , Git.requestAuthorization clientId <|
                 Route.crossOrigin domain

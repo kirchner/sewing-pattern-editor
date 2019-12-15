@@ -66,8 +66,9 @@ view { search, onSearchChange, onImport, onCreate, patternInfos, now } =
         Element.column
             [ Element.width Element.fill
             , Element.spacing Ui.Theme.Spacing.level7
+            , Element.padding Ui.Theme.Spacing.level1
             ]
-            [ Element.row
+            [ Element.wrappedRow
                 [ Element.width Element.fill ]
                 [ Element.el [ Element.width Element.fill ] <|
                     Ui.Atom.Input.text
@@ -78,19 +79,21 @@ view { search, onSearchChange, onImport, onCreate, patternInfos, now } =
                         , help = Nothing
                         }
                 , Element.row
-                    [ Element.width Element.shrink
-                    , Element.alignBottom
-                    ]
-                    [ Ui.Atom.Input.btnSecondary
-                        { id = "import-pattern-btn"
-                        , onPress = Just onImport
-                        , label = "Import a pattern"
-                        }
-                    , Ui.Atom.Input.btnPrimary
-                        { id = "new-pattern-btn"
-                        , onPress = Just onCreate
-                        , label = "Create a new pattern"
-                        }
+                    [ Element.alignBottom ]
+                    [ Element.el [] <|
+                        Ui.Atom.Input.btnSecondary
+                            { id = "import-pattern-btn"
+                            , onPress = Just onImport
+                            , label = "Import a pattern"
+                            }
+                    , Element.el
+                        [ Element.alignRight ]
+                        (Ui.Atom.Input.btnPrimary
+                            { id = "new-pattern-btn"
+                            , onPress = Just onCreate
+                            , label = "Create a new pattern"
+                            }
+                        )
                     ]
                 ]
             , Element.column

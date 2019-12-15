@@ -97,7 +97,6 @@ viewTopBar : Git.Identity -> Element Msg
 viewTopBar identity =
     Element.row
         [ Element.width Element.fill
-        , Element.padding (Ui.Theme.Spacing.level1 // 2)
         , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
         , Background.color Ui.Theme.Color.secondary
         , Element.inFront <|
@@ -108,7 +107,7 @@ viewTopBar identity =
                         |> Element.maximum 780
                     )
                 , Element.height Element.fill
-                , Element.padding 7
+                , Element.padding (7 + Ui.Theme.Spacing.level1)
                 ]
                 (Element.el
                     [ Element.centerY ]
@@ -118,7 +117,7 @@ viewTopBar identity =
         [ case identity of
             Git.Anonymous ->
                 Element.el
-                    [ Element.paddingXY Ui.Theme.Spacing.level4 0
+                    [ Element.paddingXY Ui.Theme.Spacing.level1 0
                     , Element.alignRight
                     ]
                     (Ui.Atom.Input.btnPrimary
