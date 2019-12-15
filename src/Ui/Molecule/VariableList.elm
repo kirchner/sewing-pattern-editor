@@ -29,6 +29,7 @@ type alias Config msg =
     , onBlur : String -> msg
     , editPressed : String -> msg
     , removePressed : String -> msg
+    , editable : Bool
     }
 
 
@@ -126,9 +127,13 @@ actions cfg focusedVariable hoveredVariable =
                 , fontColor focusedVariable hoveredVariable variable
                 ]
                 (if focusedVariable == Just variable || hoveredVariable == Just variable then
-                    [ action "edit-btn" "edit" (cfg.editPressed variable)
-                    , action "remove-btn" "trash" (cfg.removePressed variable)
-                    ]
+                    if cfg.editable then
+                        [ action "edit-btn" "edit" (cfg.editPressed variable)
+                        , action "remove-btn" "trash" (cfg.removePressed variable)
+                        ]
+
+                    else
+                        []
 
                  else
                     []

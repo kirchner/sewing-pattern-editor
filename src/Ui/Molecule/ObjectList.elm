@@ -60,6 +60,7 @@ type alias Config msg =
     , hidePressed : Object -> msg
     , editPressed : Object -> msg
     , removePressed : Object -> msg
+    , editable : Bool
     }
 
 
@@ -247,10 +248,14 @@ actions cfg state =
                 , fontColor state object
                 ]
                 (if state.focusedObject == Just object || state.hoveredObject == Just object then
-                    [ action "hide-btn" "eye" (cfg.hidePressed object)
-                    , action "edit-btn" "edit" (cfg.editPressed object)
-                    , action "remove-btn" "trash" (cfg.removePressed object)
-                    ]
+                    if cfg.editable then
+                        [ action "hide-btn" "eye" (cfg.hidePressed object)
+                        , action "edit-btn" "edit" (cfg.editPressed object)
+                        , action "remove-btn" "trash" (cfg.removePressed object)
+                        ]
+
+                    else
+                        []
 
                  else
                     []

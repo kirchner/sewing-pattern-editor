@@ -840,6 +840,7 @@ viewLeftToolbar model =
                                 , hidePressed = UserPressedHideObject
                                 , editPressed = UserPressedEditObject
                                 , removePressed = UserPressedRemoveObject
+                                , editable = model.permissions.push
                                 }
                                 model.pattern
                                 model.patternState
@@ -852,6 +853,7 @@ viewLeftToolbar model =
                                 , onBlur = UserBluredVariable
                                 , editPressed = UserPressedEditVariable
                                 , removePressed = UserPressedRemoveVariable
+                                , editable = model.permissions.push
                                 }
                                 model.pattern
                                 model.focusedVariable
