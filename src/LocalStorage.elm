@@ -82,7 +82,7 @@ requestAddresses =
 updateZoom : Address -> Float -> Cmd msg
 updateZoom { repo, ref } zoom =
     storeCache
-        { key = key [ repo.owner, repo.name, Git.refToString ref, "zoom" ]
+        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "zoom" ]
         , value = Encode.encode 0 (Encode.float zoom)
         }
 
@@ -90,7 +90,7 @@ updateZoom { repo, ref } zoom =
 requestZoom : Address -> Cmd msg
 requestZoom { repo, ref } =
     requestCache
-        { key = key [ repo.owner, repo.name, Git.refToString ref, "zoom" ] }
+        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "zoom" ] }
 
 
 
@@ -100,7 +100,7 @@ requestZoom { repo, ref } =
 updateCenter : Address -> Point2d Meters coordinates -> Cmd msg
 updateCenter { repo, ref } center =
     storeCache
-        { key = key [ repo.owner, repo.name, Git.refToString ref, "center" ]
+        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "center" ]
         , value = Encode.encode 0 (encodeCenter center)
         }
 
@@ -108,7 +108,7 @@ updateCenter { repo, ref } center =
 requestCenter : Address -> Cmd msg
 requestCenter { repo, ref } =
     requestCache
-        { key = key [ repo.owner, repo.name, Git.refToString ref, "center" ] }
+        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "center" ] }
 
 
 encodeCenter : Point2d Meters coordinates -> Value
@@ -192,7 +192,7 @@ changedStore cfg =
                             Ok addresses ->
                                 cfg.changedAddresses addresses
 
-                    owner :: repo :: "commits" :: sha :: value :: [] ->
+                    "github" :: owner :: repo :: "commits" :: sha :: value :: [] ->
                         valueChanged
                             { owner = owner
                             , name = repo
@@ -200,7 +200,7 @@ changedStore cfg =
                             (Git.commit sha)
                             value
 
-                    owner :: repo :: "branches" :: name :: value :: [] ->
+                    "github" :: owner :: repo :: "branches" :: name :: value :: [] ->
                         valueChanged
                             { owner = owner
                             , name = repo
@@ -208,7 +208,7 @@ changedStore cfg =
                             (Git.branch name)
                             value
 
-                    owner :: repo :: "tags" :: name :: value :: [] ->
+                    "github" :: owner :: repo :: "tags" :: name :: value :: [] ->
                         valueChanged
                             { owner = owner
                             , name = repo
