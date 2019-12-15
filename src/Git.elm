@@ -1,6 +1,7 @@
 module Git exposing
     ( Identity(..), requestAuthorization
     , Repo, Ref, defaultRef, commit, branch, tag
+    , repoDecoder, encodeRepo, refDecoder, encodeRef
     , refToString, refToPathSegments, refFromString
     , repoParser, refParser
     , PatternData, getPattern, putPattern
@@ -14,6 +15,7 @@ module Git exposing
 
 @docs Identity, requestAuthorization
 @docs Repo, Ref, defaultRef, commit, branch, tag
+@docs repoDecoder, encodeRepo, refDecoder, encodeRef
 @docs refToString, refToPathSegments, refFromString
 @docs repoParser, refParser
 
@@ -59,6 +61,21 @@ type alias Repo =
     }
 
 
+repoDecoder : Decoder Repo
+repoDecoder =
+    Decode.succeed Repo
+        |> Decode.required "owner" Decode.string
+        |> Decode.required "name" Decode.string
+
+
+encodeRepo : Repo -> Value
+encodeRepo repo =
+    Encode.object
+        [ ( "owner", Encode.string repo.owner )
+        , ( "name", Encode.string repo.name )
+        ]
+
+
 repoParser : Parser (Repo -> a) a
 repoParser =
     map Repo (string </> string)
@@ -68,6 +85,28 @@ type Ref
     = Commit String
     | Branch String
     | Tag String
+
+
+refDecoder : Decoder Ref
+refDecoder =
+    Decode.oneOf
+        [ Decode.map Commit (Decode.field "commit" Decode.string)
+        , Decode.map Branch (Decode.field "branch" Decode.string)
+        , Decode.map Tag (Decode.field "tag" Decode.string)
+        ]
+
+
+encodeRef : Ref -> Value
+encodeRef ref =
+    case ref of
+        Commit sha ->
+            Encode.object [ ( "commit", Encode.string sha ) ]
+
+        Branch name ->
+            Encode.object [ ( "branch", Encode.string name ) ]
+
+        Tag name ->
+            Encode.object [ ( "branch", Encode.string name ) ]
 
 
 refParser : Parser (Ref -> a) a

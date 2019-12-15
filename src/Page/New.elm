@@ -7,6 +7,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Git
 import Http
+import LocalStorage
 import Pattern
 import Route exposing (Route)
 import String.Extra as String
@@ -43,6 +44,9 @@ type alias LoadedData =
     , slug : Generated
     , repositoryName : String
     , visibility : Visibility
+
+    -- NEW REPO
+    , newRepo : Maybe Git.Repo
     }
 
 
@@ -119,6 +123,7 @@ initLoaded newParameters owner =
             newParameters.visibility
                 |> Maybe.andThen visibilityFromString
                 |> Maybe.withDefault Public
+        , newRepo = Nothing
         }
     , Cmd.none
     )
@@ -377,6 +382,8 @@ type Msg
     | ReceivedRepository String String Git.Repo (Result Http.Error Git.Repository)
     | ReceivedShaOfMeta Git.Repo (Result Http.Error String)
     | ReceivedShaOfPattern Git.Repo (Result Http.Error String)
+    | ChangedWhatever
+    | ChangedAddresses (List LocalStorage.Address)
 
 
 type StorageSolutionTag
@@ -582,14 +589,40 @@ updateLoaded key domain clientId identity msg model =
             ( model, Cmd.none )
 
         ReceivedShaOfPattern repo (Ok _) ->
-            ( model
-            , Route.pushUrl key (Route.GitHub repo Git.defaultRef)
+            ( { model | newRepo = Just repo }
+            , LocalStorage.requestAddresses
             )
+
+        ChangedAddresses addresses ->
+            case model.newRepo of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just repo ->
+                    ( model
+                    , Cmd.batch
+                        [ Route.pushUrl key (Route.GitHub repo Git.defaultRef)
+                        , LocalStorage.updateAddresses
+                            ({ repo = repo
+                             , ref = Git.defaultRef
+                             }
+                                :: addresses
+                            )
+                        ]
+                    )
+
+        ChangedWhatever ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    LocalStorage.changedStore
+        { changedZoom = \_ _ -> ChangedWhatever
+        , changedCenter = \_ _ -> ChangedWhatever
+        , changedAddresses = ChangedAddresses
+        , changedWhatever = ChangedWhatever
+        }
 
 
 

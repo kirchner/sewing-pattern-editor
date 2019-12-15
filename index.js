@@ -50,6 +50,8 @@ const initElm = () => {
 
       if (value !== null) {
         app.ports.onStoreChange.send({ key: data.key, value: value });
+      } else {
+        app.ports.onStoreMissing.send({ key: data.key });
       }
     });
   }

@@ -90,6 +90,7 @@ import Ui.Molecule.Pattern
 import Ui.Molecule.VariableList
 import Ui.Organism.Dialog
 import Ui.Theme.Color
+import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url exposing (Url)
@@ -122,6 +123,7 @@ type alias LoadedData =
     { maybeDrag : Maybe Drag
     , patternContainerDimensions : Maybe Dimensions
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
+    , addresses : Maybe (List LocalStorage.Address)
 
     -- PATTERN
     , repo : Git.Repo
@@ -246,6 +248,7 @@ initLoaded repo ref sha pattern meta permissions =
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
         , maybeModal = Nothing
+        , addresses = Nothing
 
         -- PATTERN
         , repo = repo
@@ -280,6 +283,7 @@ initLoaded repo ref sha pattern meta permissions =
             { repo = repo
             , ref = ref
             }
+        , LocalStorage.requestAddresses
         ]
     )
 
@@ -497,7 +501,6 @@ viewEditor model =
         , Element.height Element.fill
         ]
         [ viewTopToolbar model
-        , horizontalRule
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
@@ -544,11 +547,21 @@ viewTopToolbar model =
                     (Ui.Theme.Typography.body model.name)
                 )
         ]
-        [ if model.permissions.push then
-            viewCreateBtn model
-
-          else
-            viewSignInBtn
+        [ Element.el [ Element.paddingXY Ui.Theme.Spacing.level2 0 ] <|
+            Ui.Theme.Focus.outline <|
+                Element.link
+                    [ Font.color Ui.Theme.Color.primary
+                    , Element.mouseOver
+                        [ Font.color Ui.Theme.Color.primaryDark ]
+                    ]
+                    { url = "/"
+                    , label =
+                        Element.row
+                            [ Element.spacing Ui.Theme.Spacing.level1 ]
+                            [ Ui.Atom.Icon.fa "arrow-left"
+                            , Ui.Theme.Typography.body "Back to patterns"
+                            ]
+                    }
         , Element.row
             [ Element.paddingXY Ui.Theme.Spacing.level4 0
             , Element.spacing Ui.Theme.Spacing.level2
@@ -638,12 +651,6 @@ viewWorkspace model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.inFront <|
-            Element.el
-                [ Element.alignRight
-                , Element.alignBottom
-                ]
-                (viewZoom model)
         , Background.color (Element.rgb 255 255 255)
         , Border.widthEach
             { top = 1
@@ -716,39 +723,87 @@ viewPattern maybeDimensions maybeDrag model =
                 )
 
 
-viewZoom : LoadedData -> Element Msg
-viewZoom model =
-    Element.row
-        [ Element.padding 20
-        , Element.spacing 10
-        ]
-        [ Ui.Atom.Input.btnIconLarge
-            { id = "zoom-plus-btn"
-            , onPress = Just UserPressedZoomPlus
-            , icon = "search-plus"
-            }
-        , Ui.Atom.Input.btnIconLarge
-            { id = "zoom-minus-btn"
-            , onPress = Just UserPressedZoomMinus
-            , icon = "search-minus"
-            }
-        ]
-
-
 
 ---- LEFT TOOLBAR
 
 
 viewLeftToolbar : LoadedData -> Element Msg
 viewLeftToolbar model =
-    Element.el
+    Element.column
         [ Element.width (Element.px 400)
         , Element.height Element.fill
         , Element.clip
         , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
         , Element.spacing Ui.Theme.Spacing.level1
         ]
-        (Ui.Atom.Tabs.view
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.padding Ui.Theme.Spacing.level1
+            ]
+            [ if model.permissions.push then
+                viewCreateBtn model
+
+              else
+                viewSignInBtn
+            , Element.el
+                [ Element.alignRight ]
+                (Element.row []
+                    [ Ui.Theme.Focus.outlineLeft <|
+                        Input.button
+                            [ Element.htmlAttribute <|
+                                Html.Attributes.id "zoom-plus-btn"
+                            , Element.height (Element.px 38)
+                            , Element.width (Element.px 38)
+                            , Element.centerX
+                            , Element.centerY
+                            , Border.roundEach
+                                { topLeft = 3
+                                , topRight = 0
+                                , bottomLeft = 3
+                                , bottomRight = 0
+                                }
+                            , Background.color Ui.Theme.Color.secondary
+                            , Element.mouseOver
+                                [ Background.color Ui.Theme.Color.secondaryDark ]
+                            ]
+                            { onPress = Just UserPressedZoomPlus
+                            , label =
+                                Element.el
+                                    [ Element.centerX
+                                    , Element.centerY
+                                    ]
+                                    (Ui.Atom.Icon.fa "search-plus")
+                            }
+                    , Ui.Theme.Focus.outlineRight <|
+                        Input.button
+                            [ Element.htmlAttribute <|
+                                Html.Attributes.id "zoom-minus-btn"
+                            , Element.height (Element.px 38)
+                            , Element.width (Element.px 38)
+                            , Element.centerX
+                            , Element.centerY
+                            , Border.roundEach
+                                { topLeft = 0
+                                , topRight = 3
+                                , bottomLeft = 0
+                                , bottomRight = 3
+                                }
+                            , Background.color Ui.Theme.Color.secondary
+                            , Element.mouseOver
+                                [ Background.color Ui.Theme.Color.secondaryDark ]
+                            ]
+                            { onPress = Just UserPressedZoomMinus
+                            , label =
+                                Element.el
+                                    [ Element.centerX
+                                    , Element.centerY
+                                    ]
+                                    (Ui.Atom.Icon.fa "search-minus")
+                            }
+                    ]
+                )
+            ]
+        , Ui.Atom.Tabs.view
             { label = "Data"
             , tabs =
                 [ { tag = ObjectsTab
@@ -788,7 +843,7 @@ viewLeftToolbar model =
                                 model.focusedVariable
                                 model.hoveredVariable
             }
-        )
+        ]
 
 
 
@@ -951,6 +1006,7 @@ type Msg
       -- LOCAL STORAGE
     | ChangedZoom LocalStorage.Address Float
     | ChangedCenter LocalStorage.Address (Point2d Meters BottomLeft)
+    | ChangedAddresses (List LocalStorage.Address)
     | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1184,6 +1240,18 @@ updateWithData key domain clientId identity msg model =
 
             else
                 ( model, Cmd.none )
+
+        ChangedAddresses newAddresses ->
+            ( { model | addresses = Just newAddresses }
+            , LocalStorage.updateAddresses
+                (List.uniqueBy (\{ repo } -> repo.owner ++ "/" ++ repo.name)
+                    ({ repo = model.repo
+                     , ref = model.ref
+                     }
+                        :: newAddresses
+                    )
+                )
+            )
 
         ChangedWhatever ->
             ( model, Cmd.none )
@@ -1909,6 +1977,7 @@ subscriptions model =
                 , LocalStorage.changedStore
                     { changedZoom = ChangedZoom
                     , changedCenter = ChangedCenter
+                    , changedAddresses = ChangedAddresses
                     , changedWhatever = ChangedWhatever
                     }
                 ]
