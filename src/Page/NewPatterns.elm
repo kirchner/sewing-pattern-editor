@@ -199,7 +199,15 @@ updateLoading : Git.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
 updateLoading identity msg model =
     case msg of
         ChangedAddresses newAddresses ->
-            ( Loading { model | addresses = newAddresses }
+            ( if List.isEmpty newAddresses then
+                Loaded
+                    { addresses = []
+                    , patterns = []
+                    , search = ""
+                    }
+
+              else
+                Loading { model | addresses = newAddresses }
             , case newAddresses of
                 [] ->
                     Cmd.none
