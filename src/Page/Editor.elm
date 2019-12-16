@@ -681,7 +681,11 @@ viewWorkspace model =
             , Element.width Element.fill
             , Element.height Element.fill
             ]
-            (viewPattern model.patternContainerDimensions model.maybeDrag model)
+            (Element.lazy3 viewPattern
+                model.patternContainerDimensions
+                model.maybeDrag
+                model
+            )
         )
 
 
@@ -1257,16 +1261,22 @@ updateWithData key domain clientId identity msg model =
             else
                 ( model, Cmd.none )
 
-        ChangedAddresses newAddresses ->
+        ChangedAddresses addresses ->
+            let
+                newAddresses =
+                    List.uniqueBy (\{ repo } -> repo.owner ++ "/" ++ repo.name)
+                        ({ repo = model.repo
+                         , ref = model.ref
+                         }
+                            :: addresses
+                        )
+            in
             ( { model | addresses = Just newAddresses }
-            , LocalStorage.updateAddresses
-                (List.uniqueBy (\{ repo } -> repo.owner ++ "/" ++ repo.name)
-                    ({ repo = model.repo
-                     , ref = model.ref
-                     }
-                        :: newAddresses
-                    )
-                )
+            , if addresses /= newAddresses then
+                LocalStorage.updateAddresses newAddresses
+
+              else
+                Cmd.none
             )
 
         ChangedWhatever ->
