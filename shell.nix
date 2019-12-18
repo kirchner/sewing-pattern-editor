@@ -23,6 +23,7 @@ stdenv.mkDerivation {
     latestPkgs.elmPackages.elm-format
     latestPkgs.elmPackages.elm-doc-preview
     expect
+    golangci-lint
   ];
 
   shellHook = ''

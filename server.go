@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/gorilla/mux"
@@ -26,15 +27,22 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.Methods("GET").PathPrefix("/static").Handler(http.StripPrefix("/static", gziphandler.GzipHandler(
-		http.FileServer(http.Dir(distPath)))))
-	r.HandleFunc("/client_id", clientIdHandler).
-		Methods("GET")
-	r.HandleFunc("/access_token", accessTokenHandler).
-		Methods("GET")
+	if environment() == "production" {
+		r.Methods("GET").PathPrefix("/static").
+			Handler(http.StripPrefix("/static",
+				gziphandler.GzipHandler(http.FileServer(http.Dir(distPath)))))
+	} else if environment() == "development" {
+		go execParcel()
 
-	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(
-		serveIndex(distPath)))
+		r.Methods("GET").PathPrefix("/static").
+			Handler(http.StripPrefix("/static",
+				gziphandler.GzipHandler(serveAsset())))
+	}
+
+	r.HandleFunc("/client_id", clientIdHandler).Methods("GET")
+	r.HandleFunc("/access_token", accessTokenHandler).Methods("GET")
+
+	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(serveIndex(distPath)))
 
 	http.Handle("/", r)
 
@@ -42,21 +50,55 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
+func serveAsset() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp, err := http.Get("http://localhost:1234/static" + r.URL.Path)
+		defer resp.Body.Close()
+		if err != nil {
+			log.Println(err)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
+
+		fmt.Fprint(w, string(body))
+	})
+}
+
 func serveIndex(distPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, distPath+"/index.html")
+		if environment() == "production" {
+			http.ServeFile(w, r, distPath+"/index.html")
+		} else if environment() == "development" {
+			resp, err := http.Get("http://localhost:1234/index.html")
+			defer resp.Body.Close()
+			if err != nil {
+				log.Println(err)
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
+
+			fmt.Fprint(w, string(body))
+		}
 	})
 }
 
 func clientIdHandler(w http.ResponseWriter, r *http.Request) {
-	clientId := os.Getenv("CLIENT_ID")
-	fmt.Fprint(w, clientId)
+	fmt.Fprint(w, clientId())
 }
 
 func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
-	clientId := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
-
 	if len(r.URL.Query()["code"]) != 1 {
 		log.Println("no code provided")
 		return
@@ -64,8 +106,8 @@ func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query()["code"][0]
 
 	reqBody, err := json.Marshal(map[string]string{
-		"client_id":     clientId,
-		"client_secret": clientSecret,
+		"client_id":     clientId(),
+		"client_secret": clientSecret(),
 		"code":          code,
 	})
 	if err != nil {
@@ -99,4 +141,27 @@ func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, string(body))
+}
+
+func execParcel() {
+	cmd := exec.Command("yarn", "parcel", "serve", "index.html", "--public-url=/static", "--port=1234")
+	cmd.Stdout = os.Stdout
+	err := cmd.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// ENV VARIABLES
+
+func environment() string {
+	return os.Getenv("ENVIRONMENT")
+}
+
+func clientId() string {
+	return os.Getenv("CLIENT_ID")
+}
+
+func clientSecret() string {
+	return os.Getenv("CLIENT_SECRET")
 }
