@@ -531,7 +531,7 @@ updateLoaded key domain clientId identity msg model =
             ( model
             , Git.requestAuthorization clientId <|
                 Route.crossOrigin domain
-                    (Route.New
+                    (Route.PatternNew
                         { name = Just model.name
                         , description = Just model.description
                         , storageSolution =

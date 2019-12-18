@@ -44,8 +44,8 @@ import Url.Parser.Query as Query
 {-| -}
 type Route
     = Patterns
-    | New NewParameters
     | Pattern LocalStorage.Address
+    | PatternNew NewParameters
 
 
 type alias NewParameters =
@@ -117,11 +117,11 @@ pathSegments route =
         Patterns ->
             []
 
-        New _ ->
-            [ "new" ]
-
         Pattern address ->
             LocalStorage.addressToPathSegments address
+
+        PatternNew _ ->
+            [ "new" ]
 
 
 parameters : Route -> List QueryParameter
@@ -130,7 +130,10 @@ parameters route =
         Patterns ->
             []
 
-        New params ->
+        Pattern _ ->
+            []
+
+        PatternNew params ->
             List.filterMap identity
                 [ Maybe.map (Url.Builder.string "name") params.name
                 , Maybe.map (Url.Builder.string "description") params.description
@@ -139,9 +142,6 @@ parameters route =
                 , Maybe.map (Url.Builder.string "repositoryName") params.repositoryName
                 , Maybe.map (Url.Builder.string "visibility") params.visibility
                 ]
-
-        Pattern _ ->
-            []
 
 
 
@@ -157,8 +157,8 @@ routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
         [ map Patterns top
-        , map New (top </> s "new" </> newParameters)
         , map Pattern (top </> LocalStorage.addressParser)
+        , map PatternNew (top </> s "new" </> newParameters)
         ]
 
 

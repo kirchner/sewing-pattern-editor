@@ -423,15 +423,6 @@ changeRouteTo route data =
             , Cmd.map PatternsMsg patternsCmd
             )
 
-        Route.New newParameters ->
-            let
-                ( new, newCmd ) =
-                    New.init data.identity newParameters
-            in
-            ( Loaded { data | page = New new }
-            , Cmd.map NewMsg newCmd
-            )
-
         Route.Pattern address ->
             let
                 ( editor, editorCmd ) =
@@ -439,6 +430,15 @@ changeRouteTo route data =
             in
             ( Loaded { data | page = Editor editor }
             , Cmd.map EditorMsg editorCmd
+            )
+
+        Route.PatternNew newParameters ->
+            let
+                ( new, newCmd ) =
+                    New.init data.identity newParameters
+            in
+            ( Loaded { data | page = New new }
+            , Cmd.map NewMsg newCmd
             )
 
 
