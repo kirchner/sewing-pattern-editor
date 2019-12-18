@@ -40,7 +40,7 @@ func main() {
 	}
 
 	r.HandleFunc("/client_id", clientIdHandler).Methods("GET")
-	r.HandleFunc("/access_token", accessTokenHandler).Methods("GET")
+	r.HandleFunc("/access_token", accessTokenHandler).Methods("POST")
 
 	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(serveIndex(distPath)))
 
@@ -99,11 +99,14 @@ func clientIdHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
-	if len(r.URL.Query()["code"]) != 1 {
+	if err := r.ParseMultipartForm(1024); err != nil {
+		log.Println("could not parse form")
+	}
+	if r.PostFormValue("code") == "" {
 		log.Println("no code provided")
 		return
 	}
-	code := r.URL.Query()["code"][0]
+	code := r.PostFormValue("code")
 
 	reqBody, err := json.Marshal(map[string]string{
 		"client_id":     clientId(),

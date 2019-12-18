@@ -288,10 +288,11 @@ update msg model =
                                         , clientId = clientId
                                         , route = route
                                         }
-                                    , Http.get
-                                        { url =
-                                            Url.Builder.absolute [ "access_token" ]
-                                                [ Url.Builder.string "code" actualCode ]
+                                    , Http.post
+                                        { url = Url.Builder.absolute [ "access_token" ] []
+                                        , body =
+                                            Http.multipartBody
+                                                [ Http.stringPart "code" actualCode ]
                                         , expect =
                                             Http.expectJson ReceivedGithubAccessToken
                                                 (Decode.field "access_token" Decode.string)
