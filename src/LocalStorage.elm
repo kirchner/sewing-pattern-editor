@@ -1,5 +1,5 @@
 port module LocalStorage exposing
-    ( Address
+    ( Address(..), addressParser, addressToPathSegments
     , changedStore
     , updateAddresses, requestAddresses
     , updateZoom, requestZoom
@@ -8,7 +8,7 @@ port module LocalStorage exposing
 
 {-|
 
-@docs Address
+@docs Address, addressParser, addressToPathSegments
 @docs changedStore
 @docs updateAddresses, requestAddresses
 @docs updateZoom, requestZoom
@@ -18,10 +18,13 @@ port module LocalStorage exposing
 
 import Git
 import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Extra as Decode
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Json.Encode.Extra as Encode
 import Length exposing (Meters)
 import Point2d exposing (Point2d)
+import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
 port storeCache : { key : String, value : String } -> Cmd msg
@@ -36,25 +39,56 @@ port onStoreChange : ({ key : String, value : String } -> msg) -> Sub msg
 port onStoreMissing : ({ key : String } -> msg) -> Sub msg
 
 
-type alias Address =
-    { repo : Git.Repo
-    , ref : Git.Ref
-    }
+type Address
+    = GitRepo { repo : Git.Repo, ref : Git.Ref }
+    | Browser { slug : String }
+
+
+addressParser : Parser (Address -> a) a
+addressParser =
+    oneOf
+        [ map (\repo ref -> GitRepo { repo = repo, ref = ref })
+            (top </> s "github" </> Git.repoParser </> Git.refParser)
+        , map (\slug -> Browser { slug = slug })
+            (top </> s "browser" </> string)
+        ]
+
+
+addressToPathSegments : Address -> List String
+addressToPathSegments address =
+    case address of
+        GitRepo { repo, ref } ->
+            "github" :: repo.owner :: repo.name :: Git.refToPathSegments ref
+
+        Browser { slug } ->
+            "browser" :: slug :: []
 
 
 addressDecoder : Decoder Address
 addressDecoder =
-    Decode.succeed Address
-        |> Decode.required "repo" Git.repoDecoder
-        |> Decode.required "ref" Git.refDecoder
+    Decode.oneOf
+        [ Decode.succeed (\repo ref -> GitRepo { repo = repo, ref = ref })
+            |> Decode.required "repo" Git.repoDecoder
+            |> Decode.required "ref" Git.refDecoder
+            |> Decode.ensureType "gitRepo"
+        , Decode.succeed (\slug -> Browser { slug = slug })
+            |> Decode.required "slug" Decode.string
+            |> Decode.ensureType "browser"
+        ]
 
 
 encodeAddress : Address -> Value
 encodeAddress address =
-    Encode.object
-        [ ( "repo", Git.encodeRepo address.repo )
-        , ( "ref", Git.encodeRef address.ref )
-        ]
+    case address of
+        GitRepo { repo, ref } ->
+            Encode.withType "gitRepo"
+                [ ( "repo", Git.encodeRepo repo )
+                , ( "ref", Git.encodeRef ref )
+                ]
+
+        Browser { slug } ->
+            Encode.withType "browser"
+                [ ( "slug", Encode.string slug ) ]
 
 
 
@@ -64,7 +98,7 @@ encodeAddress address =
 updateAddresses : List Address -> Cmd msg
 updateAddresses addresses =
     storeCache
-        { key = key [ "addresses" ]
+        { key = "addresses"
         , value = Encode.encode 0 (Encode.list encodeAddress addresses)
         }
 
@@ -72,7 +106,7 @@ updateAddresses addresses =
 requestAddresses : Cmd msg
 requestAddresses =
     requestCache
-        { key = key [ "addresses" ] }
+        { key = "addresses" }
 
 
 
@@ -80,17 +114,17 @@ requestAddresses =
 
 
 updateZoom : Address -> Float -> Cmd msg
-updateZoom { repo, ref } zoom =
+updateZoom address zoom =
     storeCache
-        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "zoom" ]
+        { key = key address "zoom"
         , value = Encode.encode 0 (Encode.float zoom)
         }
 
 
 requestZoom : Address -> Cmd msg
-requestZoom { repo, ref } =
+requestZoom address =
     requestCache
-        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "zoom" ] }
+        { key = key address "zoom" }
 
 
 
@@ -98,17 +132,17 @@ requestZoom { repo, ref } =
 
 
 updateCenter : Address -> Point2d Meters coordinates -> Cmd msg
-updateCenter { repo, ref } center =
+updateCenter address center =
     storeCache
-        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "center" ]
+        { key = key address "center"
         , value = Encode.encode 0 (encodeCenter center)
         }
 
 
 requestCenter : Address -> Cmd msg
-requestCenter { repo, ref } =
+requestCenter address =
     requestCache
-        { key = key [ "github", repo.owner, repo.name, Git.refToString ref, "center" ] }
+        { key = key address "center" }
 
 
 encodeCenter : Point2d Meters coordinates -> Value
@@ -154,7 +188,7 @@ changedStore cfg =
         , onStoreChange
             (\data ->
                 let
-                    valueChanged repo ref value =
+                    valueChanged address value =
                         case value of
                             "zoom" ->
                                 case Decode.decodeString Decode.float data.value of
@@ -162,11 +196,7 @@ changedStore cfg =
                                         cfg.changedWhatever
 
                                     Ok zoom ->
-                                        cfg.changedZoom
-                                            { repo = repo
-                                            , ref = ref
-                                            }
-                                            zoom
+                                        cfg.changedZoom address zoom
 
                             "center" ->
                                 case Decode.decodeString centerDecoder data.value of
@@ -174,11 +204,7 @@ changedStore cfg =
                                         cfg.changedWhatever
 
                                     Ok center ->
-                                        cfg.changedCenter
-                                            { repo = repo
-                                            , ref = ref
-                                            }
-                                            center
+                                        cfg.changedCenter address center
 
                             _ ->
                                 cfg.changedWhatever
@@ -192,29 +218,37 @@ changedStore cfg =
                             Ok addresses ->
                                 cfg.changedAddresses addresses
 
-                    "github" :: owner :: repo :: "commits" :: sha :: value :: [] ->
-                        valueChanged
-                            { owner = owner
-                            , name = repo
-                            }
-                            (Git.commit sha)
-                            value
+                    "github" :: owner :: repo :: refType :: refValue :: value :: [] ->
+                        let
+                            maybeRef =
+                                case refType of
+                                    "commits" ->
+                                        Just (Git.commit refValue)
 
-                    "github" :: owner :: repo :: "branches" :: name :: value :: [] ->
-                        valueChanged
-                            { owner = owner
-                            , name = repo
-                            }
-                            (Git.branch name)
-                            value
+                                    "branches" ->
+                                        Just (Git.branch refValue)
 
-                    "github" :: owner :: repo :: "tags" :: name :: value :: [] ->
-                        valueChanged
-                            { owner = owner
-                            , name = repo
-                            }
-                            (Git.tag name)
-                            value
+                                    "tags" ->
+                                        Just (Git.tag refValue)
+
+                                    _ ->
+                                        Nothing
+                        in
+                        case maybeRef of
+                            Nothing ->
+                                cfg.changedWhatever
+
+                            Just ref ->
+                                valueChanged
+                                    (GitRepo
+                                        { repo = { owner = owner, name = repo }
+                                        , ref = ref
+                                        }
+                                    )
+                                    value
+
+                    "browser" :: slug :: value :: [] ->
+                        valueChanged (Browser { slug = slug }) value
 
                     _ ->
                         cfg.changedWhatever
@@ -222,6 +256,12 @@ changedStore cfg =
         ]
 
 
-key : List String -> String
-key =
-    String.join "/"
+key : Address -> String -> String
+key address name =
+    String.join "/" <|
+        case address of
+            GitRepo { repo, ref } ->
+                [ "github", repo.owner, repo.name, Git.refToString ref, name ]
+
+            Browser { slug } ->
+                [ "browser", slug ]

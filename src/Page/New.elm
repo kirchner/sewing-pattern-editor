@@ -578,7 +578,12 @@ updateLoaded key domain clientId identity msg model =
                                     }
 
                                 route =
-                                    Route.GitHub repo Git.defaultRef
+                                    Route.Pattern
+                                        (LocalStorage.GitRepo
+                                            { repo = repo
+                                            , ref = Git.defaultRef
+                                            }
+                                        )
                             in
                             Git.createRepository identity
                                 { repository =
@@ -649,15 +654,17 @@ updateLoaded key domain clientId identity msg model =
                     ( model, Cmd.none )
 
                 Just repo ->
+                    let
+                        address =
+                            LocalStorage.GitRepo
+                                { repo = repo
+                                , ref = Git.defaultRef
+                                }
+                    in
                     ( model
                     , Cmd.batch
-                        [ Route.pushUrl key (Route.GitHub repo Git.defaultRef)
-                        , LocalStorage.updateAddresses
-                            ({ repo = repo
-                             , ref = Git.defaultRef
-                             }
-                                :: addresses
-                            )
+                        [ Route.pushUrl key (Route.Pattern address)
+                        , LocalStorage.updateAddresses (address :: addresses)
                         ]
                     )
 

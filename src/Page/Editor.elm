@@ -111,8 +111,7 @@ type Model
 
 
 type alias LoadingData =
-    { repo : Git.Repo
-    , ref : Git.Ref
+    { address : LocalStorage.Address
     , maybePatternData : Maybe (Git.PatternData BottomLeft)
     , maybeMeta : Maybe Git.Meta
     , maybePermissions : Maybe Git.Permissions
@@ -126,8 +125,7 @@ type alias LoadedData =
     , addresses : Maybe (List LocalStorage.Address)
 
     -- PATTERN
-    , repo : Git.Repo
-    , ref : Git.Ref
+    , address : LocalStorage.Address
     , permissions : Git.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
@@ -202,48 +200,47 @@ type Dialog
 
 
 {-| -}
-init : Git.Identity -> Git.Repo -> Git.Ref -> ( Model, Cmd Msg )
-init identity repo ref =
-    initLoading identity repo ref
-
-
-initLoading : Git.Identity -> Git.Repo -> Git.Ref -> ( Model, Cmd Msg )
-initLoading identity repo ref =
+init : Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
+init identity address =
     ( Loading
-        { repo = repo
-        , ref = ref
+        { address = address
         , maybePatternData = Nothing
         , maybeMeta = Nothing
         , maybePermissions = Nothing
         }
-    , Cmd.batch
-        [ Git.getPattern identity
-            { repo = repo
-            , ref = ref
-            , onPatternData = ReceivedPatternData
-            }
-        , Git.getMeta identity
-            { repo = repo
-            , ref = ref
-            , onMeta = ReceivedMeta
-            }
-        , Git.getPermissions identity
-            { repo = repo
-            , onPermissions = ReceivedPermissions
-            }
-        ]
+    , case address of
+        LocalStorage.GitRepo { repo, ref } ->
+            Cmd.batch
+                [ Git.getPattern identity
+                    { repo = repo
+                    , ref = ref
+                    , onPatternData = ReceivedPatternData
+                    }
+                , Git.getMeta identity
+                    { repo = repo
+                    , ref = ref
+                    , onMeta = ReceivedMeta
+                    }
+                , Git.getPermissions identity
+                    { repo = repo
+                    , onPermissions = ReceivedPermissions
+                    }
+                ]
+
+        LocalStorage.Browser { slug } ->
+            -- TODO
+            Cmd.none
     )
 
 
 initLoaded :
-    Git.Repo
-    -> Git.Ref
+    LocalStorage.Address
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded repo ref sha pattern meta permissions =
+initLoaded address sha pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
@@ -251,8 +248,7 @@ initLoaded repo ref sha pattern meta permissions =
         , addresses = Nothing
 
         -- PATTERN
-        , repo = repo
-        , ref = ref
+        , address = address
         , permissions = permissions
         , sha = sha
         , pattern = pattern
@@ -275,14 +271,8 @@ initLoaded repo ref sha pattern meta permissions =
         , preventActionMenuClose = False
         }
     , Cmd.batch
-        [ LocalStorage.requestZoom
-            { repo = repo
-            , ref = ref
-            }
-        , LocalStorage.requestCenter
-            { repo = repo
-            , ref = ref
-            }
+        [ LocalStorage.requestZoom address
+        , LocalStorage.requestCenter address
         , LocalStorage.requestAddresses
         ]
     )
@@ -572,14 +562,10 @@ viewTopToolbar identity model =
             , Element.alignRight
             ]
             [ Element.row
-                [ Element.spacing Ui.Theme.Spacing.level1
-                ]
-                [ Ui.Theme.Typography.button "github"
-                , Ui.Theme.Typography.button "/"
-                , Ui.Theme.Typography.button model.repo.owner
-                , Ui.Theme.Typography.button "/"
-                , Ui.Theme.Typography.button model.repo.name
-                ]
+                [ Element.spacing Ui.Theme.Spacing.level1 ]
+                (List.map Ui.Theme.Typography.button <|
+                    List.intersperse "/" (LocalStorage.addressToPathSegments model.address)
+                )
             , Ui.Atom.Icon.fa <|
                 if model.stored then
                     "check-circle"
@@ -1108,9 +1094,7 @@ update key domain clientId identity msg model =
                                 )
                             of
                                 ( Just patternData, Just meta, Just permissions ) ->
-                                    initLoaded
-                                        newData.repo
-                                        newData.ref
+                                    initLoaded newData.address
                                         patternData.sha
                                         patternData.pattern
                                         meta
@@ -1240,8 +1224,8 @@ updateWithData key domain clientId identity msg model =
                     )
 
         -- LOCAL STORAGE
-        ChangedZoom { repo, ref } zoom ->
-            if model.repo == repo && model.ref == ref then
+        ChangedZoom address zoom ->
+            if model.address == address then
                 ( { model | zoom = zoom }
                 , Cmd.none
                 )
@@ -1249,8 +1233,8 @@ updateWithData key domain clientId identity msg model =
             else
                 ( model, Cmd.none )
 
-        ChangedCenter { repo, ref } center ->
-            if model.repo == repo && model.ref == ref then
+        ChangedCenter address center ->
+            if model.address == address then
                 ( { model
                     | center = center
                     , maybeDrag = Nothing
@@ -1264,12 +1248,15 @@ updateWithData key domain clientId identity msg model =
         ChangedAddresses addresses ->
             let
                 newAddresses =
-                    List.uniqueBy (\{ repo } -> repo.owner ++ "/" ++ repo.name)
-                        ({ repo = model.repo
-                         , ref = model.ref
-                         }
-                            :: addresses
-                        )
+                    List.uniqueBy addressToHash (model.address :: addresses)
+
+                addressToHash address =
+                    case address of
+                        LocalStorage.GitRepo { repo } ->
+                            "github/" ++ repo.owner ++ "/" ++ repo.name
+
+                        LocalStorage.Browser { slug } ->
+                            "browser/" ++ slug
             in
             ( { model | addresses = Just newAddresses }
             , if addresses /= newAddresses then
@@ -1316,9 +1303,7 @@ updateWithData key domain clientId identity msg model =
         UserPressedSignIn ->
             ( model
             , Git.requestAuthorization clientId <|
-                Route.crossOrigin domain
-                    (Route.GitHub model.repo model.ref)
-                    []
+                Route.crossOrigin domain (Route.Pattern model.address) []
             )
 
         -- LEFT TOOLBAR
@@ -1494,20 +1479,12 @@ updateWithData key domain clientId identity msg model =
 
         UserPressedZoomPlus ->
             ( model
-            , LocalStorage.updateZoom
-                { repo = model.repo
-                , ref = model.ref
-                }
-                (model.zoom * 1.1)
+            , LocalStorage.updateZoom model.address (model.zoom * 1.1)
             )
 
         UserPressedZoomMinus ->
             ( model
-            , LocalStorage.updateZoom
-                { repo = model.repo
-                , ref = model.ref
-                }
-                (model.zoom / 1.1)
+            , LocalStorage.updateZoom model.address (model.zoom / 1.1)
             )
 
         MouseDown position ->
@@ -1560,11 +1537,7 @@ updateWithData key domain clientId identity msg model =
                                             )
                     in
                     ( model
-                    , LocalStorage.updateCenter
-                        { repo = model.repo
-                        , ref = model.ref
-                        }
-                        newCenter
+                    , LocalStorage.updateCenter model.address newCenter
                     )
 
         -- RIGHT TOOLBAR
@@ -1586,13 +1559,11 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern identity
-                                { repo = model.repo
-                                , message = "create object"
-                                , pattern = newPattern
-                                , sha = model.sha
-                                , onSha = ReceivedSha
-                                }
+                            , putPattern identity
+                                model.address
+                                model.sha
+                                "create object"
+                                newPattern
                             )
 
                         Ui.Organism.Dialog.CreateCanceled ->
@@ -1630,13 +1601,11 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern identity
-                                { repo = model.repo
-                                , message = "edit object"
-                                , pattern = newPattern
-                                , sha = model.sha
-                                , onSha = ReceivedSha
-                                }
+                            , putPattern identity
+                                model.address
+                                model.sha
+                                "edit object"
+                                newPattern
                             )
 
                         Ui.Organism.Dialog.EditCanceled ->
@@ -1715,13 +1684,11 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern identity
-                                { repo = model.repo
-                                , message = "create variable"
-                                , pattern = newPattern
-                                , sha = model.sha
-                                , onSha = ReceivedSha
-                                }
+                            , putPattern identity
+                                model.address
+                                model.sha
+                                "create variable"
+                                newPattern
                             )
 
                 _ ->
@@ -1740,13 +1707,11 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , Git.putPattern identity
-                                { repo = model.repo
-                                , message = "edit variable"
-                                , pattern = newPattern
-                                , sha = model.sha
-                                , onSha = ReceivedSha
-                                }
+                            , putPattern identity
+                                model.address
+                                model.sha
+                                "edit variable"
+                                newPattern
                             )
 
                 _ ->
@@ -1774,13 +1739,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete point"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete point"
+                        newPattern
                     )
 
                 _ ->
@@ -1802,13 +1765,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete axis"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete axis"
+                        newPattern
                     )
 
                 _ ->
@@ -1830,13 +1791,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete circle"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete circle"
+                        newPattern
                     )
 
                 _ ->
@@ -1858,13 +1817,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete curve"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete curve"
+                        newPattern
                     )
 
                 _ ->
@@ -1886,13 +1843,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete detail"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete detail"
+                        newPattern
                     )
 
                 _ ->
@@ -1914,13 +1869,11 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , Git.putPattern identity
-                        { repo = model.repo
-                        , message = "delete variable"
-                        , pattern = newPattern
-                        , sha = model.sha
-                        , onSha = ReceivedSha
-                        }
+                    , putPattern identity
+                        model.address
+                        model.sha
+                        "delete variable"
+                        newPattern
                     )
 
                 _ ->
@@ -2016,3 +1969,26 @@ subscriptions model =
 objectName : A object -> String
 objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
+
+
+putPattern :
+    Git.Identity
+    -> LocalStorage.Address
+    -> String
+    -> String
+    -> Pattern BottomLeft
+    -> Cmd Msg
+putPattern identity address sha message newPattern =
+    case address of
+        LocalStorage.GitRepo { repo } ->
+            Git.putPattern identity
+                { repo = repo
+                , message = message
+                , pattern = newPattern
+                , sha = sha
+                , onSha = ReceivedSha
+                }
+
+        LocalStorage.Browser { slug } ->
+            -- TODO
+            Cmd.none

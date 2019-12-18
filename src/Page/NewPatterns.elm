@@ -213,11 +213,17 @@ updateLoading identity msg model =
                     Cmd.none
 
                 first :: rest ->
-                    Git.getMeta identity
-                        { repo = first.repo
-                        , ref = first.ref
-                        , onMeta = ReceivedMeta first rest
-                        }
+                    case first of
+                        LocalStorage.GitRepo { repo, ref } ->
+                            Git.getMeta identity
+                                { repo = repo
+                                , ref = ref
+                                , onMeta = ReceivedMeta first rest
+                                }
+
+                        LocalStorage.Browser { slug } ->
+                            -- TODO
+                            Cmd.none
             )
 
         ReceivedMeta _ addresses (Err httpError) ->
@@ -235,11 +241,17 @@ updateLoading identity msg model =
                     Cmd.none
 
                 first :: rest ->
-                    Git.getMeta identity
-                        { repo = first.repo
-                        , ref = first.ref
-                        , onMeta = ReceivedMeta first rest
-                        }
+                    case first of
+                        LocalStorage.GitRepo { repo, ref } ->
+                            Git.getMeta identity
+                                { repo = repo
+                                , ref = ref
+                                , onMeta = ReceivedMeta first rest
+                                }
+
+                        LocalStorage.Browser { slug } ->
+                            -- TODO
+                            Cmd.none
             )
 
         ReceivedMeta address addresses (Ok meta) ->
@@ -249,7 +261,12 @@ updateLoading identity msg model =
                     , name = meta.name
                     , description = meta.description
                     , storage =
-                        Ui.Molecule.PatternList.Github address.repo.owner address.repo.name
+                        case address of
+                            LocalStorage.GitRepo { repo } ->
+                                Ui.Molecule.PatternList.Github repo.owner repo.name
+
+                            LocalStorage.Browser { slug } ->
+                                Ui.Molecule.PatternList.LocalStorage slug
                     , updatedAt = Time.millisToPosix 0
                     }
                         :: model.patterns
@@ -269,11 +286,17 @@ updateLoading identity msg model =
                     Cmd.none
 
                 first :: rest ->
-                    Git.getMeta identity
-                        { repo = first.repo
-                        , ref = first.ref
-                        , onMeta = ReceivedMeta first rest
-                        }
+                    case first of
+                        LocalStorage.GitRepo { repo, ref } ->
+                            Git.getMeta identity
+                                { repo = repo
+                                , ref = ref
+                                , onMeta = ReceivedMeta first rest
+                                }
+
+                        LocalStorage.Browser { slug } ->
+                            -- TODO
+                            Cmd.none
             )
 
         ChangedWhatever ->

@@ -34,6 +34,7 @@ module Route exposing
 
 import Browser.Navigation
 import Git
+import LocalStorage
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, map, oneOf, s, string, top)
@@ -44,7 +45,7 @@ import Url.Parser.Query as Query
 type Route
     = Patterns
     | New NewParameters
-    | GitHub Git.Repo Git.Ref
+    | Pattern LocalStorage.Address
 
 
 type alias NewParameters =
@@ -119,8 +120,8 @@ pathSegments route =
         New _ ->
             [ "new" ]
 
-        GitHub repo ref ->
-            "github" :: repo.owner :: repo.name :: Git.refToPathSegments ref
+        Pattern address ->
+            LocalStorage.addressToPathSegments address
 
 
 parameters : Route -> List QueryParameter
@@ -139,7 +140,7 @@ parameters route =
                 , Maybe.map (Url.Builder.string "visibility") params.visibility
                 ]
 
-        GitHub repo ref ->
+        Pattern _ ->
             []
 
 
@@ -157,12 +158,7 @@ routeParser =
     oneOf
         [ map Patterns top
         , map New (top </> s "new" </> newParameters)
-        , map GitHub
-            (top
-                </> s "github"
-                </> Git.repoParser
-                </> Git.refParser
-            )
+        , map Pattern (top </> LocalStorage.addressParser)
         ]
 
 

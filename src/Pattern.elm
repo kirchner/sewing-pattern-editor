@@ -216,8 +216,10 @@ import Direction2d exposing (Direction2d)
 import Expr exposing (BoolExpr(..), Expr(..))
 import Intersectable2d exposing (Intersectable2d(..))
 import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Extra as Decode
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Json.Encode.Extra as Encode
 import Length exposing (Meters)
 import LineSegment2d exposing (LineSegment2d)
 import Parser exposing (DeadEnd)
@@ -3516,27 +3518,27 @@ encodePoint : Point -> Value
 encodePoint (Point_ info) =
     case info of
         Origin stuff ->
-            withType "origin"
+            Encode.withType "origin"
                 [ ( "x", Encode.float stuff.x )
                 , ( "y", Encode.float stuff.y )
                 ]
 
         FromOnePoint stuff ->
-            withType "fromOnePoint"
+            Encode.withType "fromOnePoint"
                 [ ( "basePoint", encodeAPoint stuff.basePoint )
                 , ( "direction", encodeDirection stuff.direction )
                 , ( "distance", Encode.string stuff.distance )
                 ]
 
         BetweenRatio stuff ->
-            withType "betweenRatio"
+            Encode.withType "betweenRatio"
                 [ ( "basePointA", encodeAPoint stuff.basePointA )
                 , ( "basePointB", encodeAPoint stuff.basePointB )
                 , ( "ratio", Encode.string stuff.ratio )
                 ]
 
         BetweenLength stuff ->
-            withType "betweenLength"
+            Encode.withType "betweenLength"
                 [ ( "basePointA", encodeAPoint stuff.basePointA )
                 , ( "basePointB", encodeAPoint stuff.basePointB )
                 , ( "distance", Encode.string stuff.distance )
@@ -3544,14 +3546,14 @@ encodePoint (Point_ info) =
                 ]
 
         Intersection stuff ->
-            withType "intersection"
+            Encode.withType "intersection"
                 [ ( "intersectableA", encodeIntersectable stuff.intersectableA )
                 , ( "intersectableB", encodeIntersectable stuff.intersectableB )
                 , ( "which", Encode.int stuff.which )
                 ]
 
         TransformedPoint stuff ->
-            withType "transformedPoint"
+            Encode.withType "transformedPoint"
                 [ ( "point", encodeAPoint stuff.point )
                 , ( "transformation", encodeATransformation stuff.transformation )
                 ]
@@ -3561,19 +3563,19 @@ encodeAxis : Axis -> Value
 encodeAxis (Axis_ info) =
     case info of
         ThroughOnePoint stuff ->
-            withType "throughOnePoint"
+            Encode.withType "throughOnePoint"
                 [ ( "point", encodeAPoint stuff.point )
                 , ( "orientation", encodeOrientation stuff.orientation )
                 ]
 
         ThroughTwoPoints stuff ->
-            withType "throughTwoPoints"
+            Encode.withType "throughTwoPoints"
                 [ ( "pointA", encodeAPoint stuff.pointA )
                 , ( "pointB", encodeAPoint stuff.pointB )
                 ]
 
         TransformedAxis stuff ->
-            withType "transformedAxis"
+            Encode.withType "transformedAxis"
                 [ ( "axis", encodeAAxis stuff.axis )
                 , ( "transformation", encodeATransformation stuff.transformation )
                 ]
@@ -3583,20 +3585,20 @@ encodeCircle : Circle -> Value
 encodeCircle (Circle_ info) =
     case info of
         WithRadius stuff ->
-            withType "withRadius"
+            Encode.withType "withRadius"
                 [ ( "centerPoint", encodeAPoint stuff.centerPoint )
                 , ( "radius", Encode.string stuff.radius )
                 ]
 
         ThroughThreePoints stuff ->
-            withType "throughThreePoints"
+            Encode.withType "throughThreePoints"
                 [ ( "pointA", encodeAPoint stuff.pointA )
                 , ( "pointB", encodeAPoint stuff.pointB )
                 , ( "pointC", encodeAPoint stuff.pointC )
                 ]
 
         TransformedCircle stuff ->
-            withType "transformedCircle"
+            Encode.withType "transformedCircle"
                 [ ( "circle", encodeACircle stuff.circle )
                 , ( "transformation", encodeATransformation stuff.transformation )
                 ]
@@ -3606,20 +3608,20 @@ encodeCurve : Curve -> Value
 encodeCurve (Curve_ info) =
     case info of
         Straight stuff ->
-            withType "straight"
+            Encode.withType "straight"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         Quadratic stuff ->
-            withType "quadratic"
+            Encode.withType "quadratic"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "controlPoint", encodeAPoint stuff.controlPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         Cubic stuff ->
-            withType "cubic"
+            Encode.withType "cubic"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "startControlPoint", encodeAPoint stuff.startControlPoint )
                 , ( "endControlPoint", encodeAPoint stuff.endControlPoint )
@@ -3627,7 +3629,7 @@ encodeCurve (Curve_ info) =
                 ]
 
         TransformedCurve stuff ->
-            withType "transformedCurve"
+            Encode.withType "transformedCurve"
                 [ ( "curve", encodeACurve stuff.curve )
                 , ( "transformation", encodeATransformation stuff.transformation )
                 ]
@@ -3646,20 +3648,20 @@ encodeFirstCurve : FirstCurve -> Value
 encodeFirstCurve firstCurve =
     case firstCurve of
         FirstStraight stuff ->
-            withType "firstStraight"
+            Encode.withType "firstStraight"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         FirstQuadratic stuff ->
-            withType "firstQuadratic"
+            Encode.withType "firstQuadratic"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "controlPoint", encodeAPoint stuff.controlPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         FirstCubic stuff ->
-            withType "firstCubic"
+            Encode.withType "firstCubic"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "startControlPoint", encodeAPoint stuff.startControlPoint )
                 , ( "endControlPoint", encodeAPoint stuff.endControlPoint )
@@ -3667,7 +3669,7 @@ encodeFirstCurve firstCurve =
                 ]
 
         FirstReferencedCurve stuff ->
-            withType "firstReferencedCurve"
+            Encode.withType "firstReferencedCurve"
                 [ ( "curve", encodeACurve stuff.curve )
                 , ( "reversed", Encode.bool stuff.reversed )
                 ]
@@ -3677,24 +3679,24 @@ encodeNextCurve : NextCurve -> Value
 encodeNextCurve nextCurve =
     case nextCurve of
         NextStraight stuff ->
-            withType "nextStraight"
+            Encode.withType "nextStraight"
                 [ ( "endPoint", encodeAPoint stuff.endPoint ) ]
 
         NextQuadratic stuff ->
-            withType "nextQuadratic"
+            Encode.withType "nextQuadratic"
                 [ ( "controlPoint", encodeAPoint stuff.controlPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         NextCubic stuff ->
-            withType "nextCubic"
+            Encode.withType "nextCubic"
                 [ ( "startControlPoint", encodeAPoint stuff.startControlPoint )
                 , ( "endControlPoint", encodeAPoint stuff.endControlPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         NextReferencedCurve stuff ->
-            withType "nextReferencedCurve"
+            Encode.withType "nextReferencedCurve"
                 [ ( "curve", encodeACurve stuff.curve )
                 , ( "reversed", Encode.bool stuff.reversed )
                 ]
@@ -3704,20 +3706,20 @@ encodeLastCurve : LastCurve -> Value
 encodeLastCurve lastCurve =
     case lastCurve of
         LastStraight ->
-            withType "lastStraight" []
+            Encode.withType "lastStraight" []
 
         LastQuadratic stuff ->
-            withType "lastQuadratic"
+            Encode.withType "lastQuadratic"
                 [ ( "controlPoint", encodeAPoint stuff.controlPoint ) ]
 
         LastCubic stuff ->
-            withType "lastCubic"
+            Encode.withType "lastCubic"
                 [ ( "startControlPoint", encodeAPoint stuff.startControlPoint )
                 , ( "endControlPoint", encodeAPoint stuff.endControlPoint )
                 ]
 
         LastReferencedCurve stuff ->
-            withType "lastReferencedCurve"
+            Encode.withType "lastReferencedCurve"
                 [ ( "curve", encodeACurve stuff.curve )
                 , ( "reversed", Encode.bool stuff.reversed )
                 ]
@@ -3727,19 +3729,19 @@ encodeTransformation : Transformation -> Value
 encodeTransformation (Transformation info) =
     case info of
         TranslateBy stuff ->
-            withType "translateBy"
+            Encode.withType "translateBy"
                 [ ( "direction", encodeDirection stuff.direction )
                 , ( "distance", Encode.string stuff.distance )
                 ]
 
         TranslateFromTo stuff ->
-            withType "translateFromTo"
+            Encode.withType "translateFromTo"
                 [ ( "startPoint", encodeAPoint stuff.startPoint )
                 , ( "endPoint", encodeAPoint stuff.endPoint )
                 ]
 
         RotateAround stuff ->
-            withType "rotateAround"
+            Encode.withType "rotateAround"
                 [ ( "centerPoint", encodeAPoint stuff.centerPoint )
                 , ( "angle", Encode.string stuff.angle )
                 ]
@@ -3749,15 +3751,15 @@ encodeIntersectable : Intersectable -> Value
 encodeIntersectable intersectable =
     case intersectable of
         IntersectableAxis aAxis ->
-            withType "intersectableAxis"
+            Encode.withType "intersectableAxis"
                 [ ( "axis", encodeAAxis aAxis ) ]
 
         IntersectableCircle aCircle ->
-            withType "intersectableCircle"
+            Encode.withType "intersectableCircle"
                 [ ( "circle", encodeACircle aCircle ) ]
 
         IntersectableCurve aCurve ->
-            withType "intersectableCurve"
+            Encode.withType "intersectableCurve"
                 [ ( "curve", encodeACurve aCurve ) ]
 
 
@@ -3799,11 +3801,11 @@ encodeAObject : String -> (object -> Value) -> A object -> Value
 encodeAObject objectType encodeObject aObject =
     case aObject of
         That name_ ->
-            withType "that"
+            Encode.withType "that"
                 [ ( "name", Encode.string name_ ) ]
 
         This object ->
-            withType "this"
+            Encode.withType "this"
                 [ ( objectType, encodeObject object ) ]
 
 
@@ -3815,19 +3817,19 @@ encodeDirection : Direction -> Value
 encodeDirection direction =
     case direction of
         Leftward ->
-            withType "leftward" []
+            Encode.withType "leftward" []
 
         Rightward ->
-            withType "rightward" []
+            Encode.withType "rightward" []
 
         Up ->
-            withType "up" []
+            Encode.withType "up" []
 
         Down ->
-            withType "down" []
+            Encode.withType "down" []
 
         DirectionAngle angle ->
-            withType "directionAngle"
+            Encode.withType "directionAngle"
                 [ ( "angle", Encode.string angle ) ]
 
 
@@ -3835,13 +3837,13 @@ encodeOrientation : Orientation -> Value
 encodeOrientation orientation =
     case orientation of
         Horizontal ->
-            withType "horizontal" []
+            Encode.withType "horizontal" []
 
         Vertical ->
-            withType "vertical" []
+            Encode.withType "vertical" []
 
         OrientationAngle angle ->
-            withType "orientationAngle"
+            Encode.withType "orientationAngle"
                 [ ( "angle", Encode.string angle ) ]
 
 
@@ -3849,19 +3851,10 @@ encodeOneInTwo : OneInTwo -> Value
 encodeOneInTwo oneInTwo =
     case oneInTwo of
         FirstInTwo ->
-            withType "firstInTwo" []
+            Encode.withType "firstInTwo" []
 
         SecondInTwo ->
-            withType "secondInTwo" []
-
-
-
--- HELPER
-
-
-withType : String -> List ( String, Value ) -> Value
-withType type_ fields =
-    Encode.object (( "type", Encode.string type_ ) :: fields)
+            Encode.withType "secondInTwo" []
 
 
 
@@ -3895,32 +3888,32 @@ pointDecoder =
             |> Decode.required "x" Decode.float
             |> Decode.required "y" Decode.float
             |> Decode.map Origin
-            |> ensureType "origin"
+            |> Decode.ensureType "origin"
         , Decode.succeed FromOnePointStuff
             |> Decode.required "basePoint" aPointDecoder
             |> Decode.required "direction" directionDecoder
             |> Decode.required "distance" Decode.string
             |> Decode.map FromOnePoint
-            |> ensureType "fromOnePoint"
+            |> Decode.ensureType "fromOnePoint"
         , Decode.succeed BetweenRatioStuff
             |> Decode.required "basePointA" aPointDecoder
             |> Decode.required "basePointB" aPointDecoder
             |> Decode.required "ratio" Decode.string
             |> Decode.map BetweenRatio
-            |> ensureType "betweenRatio"
+            |> Decode.ensureType "betweenRatio"
         , Decode.succeed BetweenLengthStuff
             |> Decode.required "basePointA" aPointDecoder
             |> Decode.required "basePointB" aPointDecoder
             |> Decode.required "distance" Decode.string
             |> Decode.required "from" oneInTwoDecoder
             |> Decode.map BetweenLength
-            |> ensureType "betweenLength"
+            |> Decode.ensureType "betweenLength"
         , Decode.succeed IntersectionStuff
             |> Decode.required "intersectableA" intersectableDecoder
             |> Decode.required "intersectableB" intersectableDecoder
             |> Decode.required "which" Decode.int
             |> Decode.map Intersection
-            |> ensureType "intersection"
+            |> Decode.ensureType "intersection"
         ]
         |> Decode.map Point_
 
@@ -3932,17 +3925,17 @@ axisDecoder =
             |> Decode.required "point" aPointDecoder
             |> Decode.required "orientation" orientationDecoder
             |> Decode.map ThroughOnePoint
-            |> ensureType "throughOnePoint"
+            |> Decode.ensureType "throughOnePoint"
         , Decode.succeed ThroughTwoPointsStuff
             |> Decode.required "pointA" aPointDecoder
             |> Decode.required "pointB" aPointDecoder
             |> Decode.map ThroughTwoPoints
-            |> ensureType "throughTwoPoints"
+            |> Decode.ensureType "throughTwoPoints"
         , Decode.succeed TransformedAxisStuff
             |> Decode.required "axis" aAxisDecoder
             |> Decode.required "aTransformation" aTransformationDecoder
             |> Decode.map TransformedAxis
-            |> ensureType "transformedAxis"
+            |> Decode.ensureType "transformedAxis"
         ]
         |> Decode.map Axis_
 
@@ -3954,18 +3947,18 @@ circleDecoder =
             |> Decode.required "centerPoint" aPointDecoder
             |> Decode.required "radius" Decode.string
             |> Decode.map WithRadius
-            |> ensureType "withRadius"
+            |> Decode.ensureType "withRadius"
         , Decode.succeed ThroughThreePointsStuff
             |> Decode.required "pointA" aPointDecoder
             |> Decode.required "pointB" aPointDecoder
             |> Decode.required "pointC" aPointDecoder
             |> Decode.map ThroughThreePoints
-            |> ensureType "throughThreePoints"
+            |> Decode.ensureType "throughThreePoints"
         , Decode.succeed TransformedCircleStuff
             |> Decode.required "circle" aCircleDecoder
             |> Decode.required "transformation" aTransformationDecoder
             |> Decode.map TransformedCircle
-            |> ensureType "transformedCircle"
+            |> Decode.ensureType "transformedCircle"
         ]
         |> Decode.map Circle_
 
@@ -3977,25 +3970,25 @@ curveDecoder =
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map Straight
-            |> ensureType "straight"
+            |> Decode.ensureType "straight"
         , Decode.succeed QuadraticStuff
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "controlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map Quadratic
-            |> ensureType "quadratic"
+            |> Decode.ensureType "quadratic"
         , Decode.succeed CubicStuff
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "startControlPoint" aPointDecoder
             |> Decode.required "endControlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map Cubic
-            |> ensureType "cubic"
+            |> Decode.ensureType "cubic"
         , Decode.succeed TransformedCurveStuff
             |> Decode.required "curve" aCurveDecoder
             |> Decode.required "transformation" aTransformationDecoder
             |> Decode.map TransformedCurve
-            |> ensureType "transformedCurve"
+            |> Decode.ensureType "transformedCurve"
         ]
         |> Decode.map Curve_
 
@@ -4016,25 +4009,25 @@ firstCurveDecoder =
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map FirstStraight
-            |> ensureType "firstStraight"
+            |> Decode.ensureType "firstStraight"
         , Decode.succeed FirstQuadraticStuff
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "controlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map FirstQuadratic
-            |> ensureType "firstQuadratic"
+            |> Decode.ensureType "firstQuadratic"
         , Decode.succeed FirstCubicStuff
             |> Decode.required "startPoint" aPointDecoder
             |> Decode.required "startControlPoint" aPointDecoder
             |> Decode.required "endControlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map FirstCubic
-            |> ensureType "firstCubic"
+            |> Decode.ensureType "firstCubic"
         , Decode.succeed FirstReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
             |> Decode.required "reversed" Decode.bool
             |> Decode.map FirstReferencedCurve
-            |> ensureType "firstReferencedCurve"
+            |> Decode.ensureType "firstReferencedCurve"
         ]
 
 
@@ -4044,23 +4037,23 @@ nextCurveDecoder =
         [ Decode.succeed NextStraightStuff
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map NextStraight
-            |> ensureType "nextStraight"
+            |> Decode.ensureType "nextStraight"
         , Decode.succeed NextQuadraticStuff
             |> Decode.required "controlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map NextQuadratic
-            |> ensureType "nextQuadratic"
+            |> Decode.ensureType "nextQuadratic"
         , Decode.succeed NextCubicStuff
             |> Decode.required "startControlPoint" aPointDecoder
             |> Decode.required "endControlPoint" aPointDecoder
             |> Decode.required "endPoint" aPointDecoder
             |> Decode.map NextCubic
-            |> ensureType "nextCubic"
+            |> Decode.ensureType "nextCubic"
         , Decode.succeed NextReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
             |> Decode.required "reversed" Decode.bool
             |> Decode.map NextReferencedCurve
-            |> ensureType "nextReferencedCurve"
+            |> Decode.ensureType "nextReferencedCurve"
         ]
 
 
@@ -4068,21 +4061,21 @@ lastCurveDecoder : Decoder LastCurve
 lastCurveDecoder =
     Decode.oneOf
         [ Decode.succeed LastStraight
-            |> ensureType "lastStraight"
+            |> Decode.ensureType "lastStraight"
         , Decode.succeed LastQuadraticStuff
             |> Decode.required "controlPoint" aPointDecoder
             |> Decode.map LastQuadratic
-            |> ensureType "lastQuadratic"
+            |> Decode.ensureType "lastQuadratic"
         , Decode.succeed LastCubicStuff
             |> Decode.required "startControlPoint" aPointDecoder
             |> Decode.required "endControlPoint" aPointDecoder
             |> Decode.map LastCubic
-            |> ensureType "lastCubic"
+            |> Decode.ensureType "lastCubic"
         , Decode.succeed LastReferencedCurveStuff
             |> Decode.required "curve" aCurveDecoder
             |> Decode.required "reversed" Decode.bool
             |> Decode.map LastReferencedCurve
-            |> ensureType "lastReferencedCurve"
+            |> Decode.ensureType "lastReferencedCurve"
         ]
 
 
@@ -4110,13 +4103,13 @@ intersectableDecoder =
     Decode.oneOf
         [ Decode.succeed IntersectableAxis
             |> Decode.required "axis" aAxisDecoder
-            |> ensureType "intersectableAxis"
+            |> Decode.ensureType "intersectableAxis"
         , Decode.succeed IntersectableCircle
             |> Decode.required "circle" aCircleDecoder
-            |> ensureType "intersectableCircle"
+            |> Decode.ensureType "intersectableCircle"
         , Decode.succeed IntersectableCurve
             |> Decode.required "curve" aCurveDecoder
-            |> ensureType "intersectableCurve"
+            |> Decode.ensureType "intersectableCurve"
         ]
 
 
@@ -4128,16 +4121,16 @@ directionDecoder : Decoder Direction
 directionDecoder =
     Decode.oneOf
         [ Decode.succeed Leftward
-            |> ensureType "leftward"
+            |> Decode.ensureType "leftward"
         , Decode.succeed Rightward
-            |> ensureType "rightward"
+            |> Decode.ensureType "rightward"
         , Decode.succeed Up
-            |> ensureType "up"
+            |> Decode.ensureType "up"
         , Decode.succeed Down
-            |> ensureType "down"
+            |> Decode.ensureType "down"
         , Decode.succeed DirectionAngle
             |> Decode.required "angle" Decode.string
-            |> ensureType "directionAngle"
+            |> Decode.ensureType "directionAngle"
         ]
 
 
@@ -4145,12 +4138,12 @@ orientationDecoder : Decoder Orientation
 orientationDecoder =
     Decode.oneOf
         [ Decode.succeed Horizontal
-            |> ensureType "horizontal"
+            |> Decode.ensureType "horizontal"
         , Decode.succeed Vertical
-            |> ensureType "vertical"
+            |> Decode.ensureType "vertical"
         , Decode.succeed OrientationAngle
             |> Decode.required "angle" Decode.string
-            |> ensureType "orientationAngle"
+            |> Decode.ensureType "orientationAngle"
         ]
 
 
@@ -4158,9 +4151,9 @@ oneInTwoDecoder : Decoder OneInTwo
 oneInTwoDecoder =
     Decode.oneOf
         [ Decode.succeed FirstInTwo
-            |> ensureType "firstInTwo"
+            |> Decode.ensureType "firstInTwo"
         , Decode.succeed SecondInTwo
-            |> ensureType "secondInTwo"
+            |> Decode.ensureType "secondInTwo"
         ]
 
 
@@ -4199,25 +4192,8 @@ aObjectDecoder objectType objectDecoder =
     Decode.oneOf
         [ Decode.succeed That
             |> Decode.required "name" Decode.string
-            |> ensureType "that"
+            |> Decode.ensureType "that"
         , Decode.succeed This
             |> Decode.required objectType objectDecoder
-            |> ensureType "this"
+            |> Decode.ensureType "this"
         ]
-
-
-
--- HELPER
-
-
-ensureType : String -> Decoder a -> Decoder a
-ensureType type_ dataDecoder =
-    Decode.field "type" Decode.string
-        |> Decode.andThen
-            (\rawType ->
-                if rawType == type_ then
-                    dataDecoder
-
-                else
-                    Decode.fail "not a valid type"
-            )

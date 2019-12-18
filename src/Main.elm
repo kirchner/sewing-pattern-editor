@@ -432,10 +432,10 @@ changeRouteTo route data =
             , Cmd.map NewMsg newCmd
             )
 
-        Route.GitHub repo ref ->
+        Route.Pattern address ->
             let
                 ( editor, editorCmd ) =
-                    Editor.init data.identity repo ref
+                    Editor.init data.identity address
             in
             ( Loaded { data | page = Editor editor }
             , Cmd.map EditorMsg editorCmd
