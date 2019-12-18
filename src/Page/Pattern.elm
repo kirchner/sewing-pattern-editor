@@ -1951,7 +1951,14 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
         Loading _ ->
-            Sub.none
+            LocalStorage.changedStore
+                { changedZoom = ChangedZoom
+                , changedCenter = ChangedCenter
+                , changedAddresses = ChangedAddresses
+                , changedPattern = ChangedPattern
+                , changedMeta = ChangedMeta
+                , changedWhatever = ChangedWhatever
+                }
 
         Error ->
             Sub.none
@@ -2028,6 +2035,5 @@ putPattern identity address sha message newPattern =
                 , onSha = ReceivedSha
                 }
 
-        LocalStorage.Browser { slug } ->
-            -- TODO
-            Cmd.none
+        LocalStorage.Browser _ ->
+            LocalStorage.updatePattern address newPattern
