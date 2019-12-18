@@ -8,7 +8,9 @@
             "Route"
         ],
         "Interface": [
-            "Page.Editor"
+            "Page.Pattern",
+            "Page.PatternNew",
+            "Page.Patterns"
         ],
         "Ui": [
             "Ui.Atom",

@@ -1,4 +1,4 @@
-module Page.Editor exposing
+module Page.Pattern exposing
     ( Model, init
     , view
     , Msg, update, subscriptions

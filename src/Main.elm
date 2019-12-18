@@ -31,9 +31,9 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
-import Page.Editor as Editor
-import Page.New as New
-import Page.NewPatterns as Patterns
+import Page.Pattern as Pattern
+import Page.PatternNew as PatternNew
+import Page.Patterns as Patterns
 import Pattern exposing (Pattern)
 import Ports
 import Route exposing (Route)
@@ -101,8 +101,8 @@ type Page
     | Loading
       -- PAGES
     | Patterns Patterns.Model
-    | New New.Model
-    | Editor Editor.Model
+    | PatternNew PatternNew.Model
+    | Pattern Pattern.Model
 
 
 init : {} -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -192,22 +192,22 @@ view model =
                     , body = [ viewHelp (Element.map PatternsMsg body) ]
                     }
 
-                New newModel ->
+                PatternNew newModel ->
                     let
                         { title, body, dialog } =
-                            New.view data.identity newModel
+                            PatternNew.view data.identity newModel
                     in
                     { title = title
-                    , body = [ viewHelp (Element.map NewMsg body) ]
+                    , body = [ viewHelp (Element.map PatternNewMsg body) ]
                     }
 
-                Editor editorModel ->
+                Pattern patternModel ->
                     let
                         { title, body, dialog } =
-                            Editor.view data.identity editorModel
+                            Pattern.view data.identity patternModel
                     in
                     { title = title
-                    , body = [ viewHelp (Element.map EditorMsg body) ]
+                    , body = [ viewHelp (Element.map PatternMsg body) ]
                     }
 
 
@@ -245,8 +245,8 @@ type Msg
     | ReceivedGithubAccessToken (Result Http.Error String)
       -- PAGES
     | PatternsMsg Patterns.Msg
-    | NewMsg New.Msg
-    | EditorMsg Editor.Msg
+    | PatternNewMsg PatternNew.Msg
+    | PatternMsg Pattern.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -374,10 +374,10 @@ update msg model =
                 ( PatternsMsg _, _ ) ->
                     ( model, Cmd.none )
 
-                ( NewMsg newMsg, New newModel ) ->
+                ( PatternNewMsg newMsg, PatternNew newModel ) ->
                     let
                         ( newNewModel, newCmd ) =
-                            New.update
+                            PatternNew.update
                                 data.key
                                 data.domain
                                 data.clientId
@@ -385,29 +385,29 @@ update msg model =
                                 newMsg
                                 newModel
                     in
-                    ( Loaded { data | page = New newNewModel }
-                    , Cmd.map NewMsg newCmd
+                    ( Loaded { data | page = PatternNew newNewModel }
+                    , Cmd.map PatternNewMsg newCmd
                     )
 
-                ( NewMsg _, _ ) ->
+                ( PatternNewMsg _, _ ) ->
                     ( model, Cmd.none )
 
-                ( EditorMsg patternMsg, Editor editorModel ) ->
+                ( PatternMsg patternMsg, Pattern patternModel ) ->
                     let
-                        ( newEditorModel, patternCmd ) =
-                            Editor.update
+                        ( newPatternModel, patternCmd ) =
+                            Pattern.update
                                 data.key
                                 data.domain
                                 data.clientId
                                 data.identity
                                 patternMsg
-                                editorModel
+                                patternModel
                     in
-                    ( Loaded { data | page = Editor newEditorModel }
-                    , Cmd.map EditorMsg patternCmd
+                    ( Loaded { data | page = Pattern newPatternModel }
+                    , Cmd.map PatternMsg patternCmd
                     )
 
-                ( EditorMsg _, _ ) ->
+                ( PatternMsg _, _ ) ->
                     ( model, Cmd.none )
 
 
@@ -425,20 +425,20 @@ changeRouteTo route data =
 
         Route.Pattern address ->
             let
-                ( editor, editorCmd ) =
-                    Editor.init data.identity address
+                ( pattern, patternCmd ) =
+                    Pattern.init data.identity address
             in
-            ( Loaded { data | page = Editor editor }
-            , Cmd.map EditorMsg editorCmd
+            ( Loaded { data | page = Pattern pattern }
+            , Cmd.map PatternMsg patternCmd
             )
 
         Route.PatternNew newParameters ->
             let
                 ( new, newCmd ) =
-                    New.init data.identity newParameters
+                    PatternNew.init data.identity newParameters
             in
-            ( Loaded { data | page = New new }
-            , Cmd.map NewMsg newCmd
+            ( Loaded { data | page = PatternNew new }
+            , Cmd.map PatternNewMsg newCmd
             )
 
 
@@ -463,8 +463,8 @@ subscriptions model =
                 Patterns patternsModel ->
                     Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
 
-                New newModel ->
-                    Sub.map NewMsg (New.subscriptions newModel)
+                PatternNew newModel ->
+                    Sub.map PatternNewMsg (PatternNew.subscriptions newModel)
 
-                Editor editorModel ->
-                    Sub.map EditorMsg (Editor.subscriptions editorModel)
+                Pattern patternModel ->
+                    Sub.map PatternMsg (Pattern.subscriptions patternModel)

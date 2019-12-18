@@ -1,4 +1,16 @@
-module Page.New exposing (Model, Msg, init, subscriptions, update, view)
+module Page.PatternNew exposing
+    ( Model, init
+    , view
+    , Msg, update, subscriptions
+    )
+
+{-|
+
+@docs Model, init
+@docs view
+@docs Msg, update, subscriptions
+
+-}
 
 import Browser.Navigation
 import Element exposing (Element)
@@ -24,6 +36,7 @@ import Url.Builder
 ---- MODEL
 
 
+{-| -}
 type Model
     = Loading LoadingData
     | Loaded LoadedData
@@ -93,6 +106,7 @@ visibilityToString visibility =
             "private"
 
 
+{-| -}
 init : Git.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
 init identity newParameters =
     case identity of
@@ -133,6 +147,7 @@ initLoaded newParameters owner =
 ---- VIEW
 
 
+{-| -}
 view :
     Git.Identity
     -> Model
@@ -419,6 +434,7 @@ horizontalRule =
 ---- UPDATE
 
 
+{-| -}
 type Msg
     = ReceivedAuthenticatedUser (Result Http.Error Git.User)
     | UserChangedName String
@@ -464,6 +480,7 @@ storageSolutionFromString string =
             Nothing
 
 
+{-| -}
 update :
     Browser.Navigation.Key
     -> String
@@ -672,6 +689,7 @@ updateLoaded key domain clientId identity msg model =
             ( model, Cmd.none )
 
 
+{-| -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     LocalStorage.changedStore

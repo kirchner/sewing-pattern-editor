@@ -1,12 +1,12 @@
 module Ui.Atom.Input exposing
     ( BtnConfig, btnPrimary, btnSecondary, btnDanger, btnCancel
+    , btnSecondaryBorderedLeft, btnSecondaryBorderedRight
     , btnCallToAction
     , IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
     , CheckboxConfig, checkbox
     , TextConfig, text, textAppended, formula, formulaAppended
     , RadioConfig, radioRow, radioColumn, OptionConfig, option
     , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
-    , btnSecondaryBorderedLeft, btnSecondaryBorderedRight
     )
 
 {-|
@@ -15,6 +15,7 @@ module Ui.Atom.Input exposing
 # Buttons
 
 @docs BtnConfig, btnPrimary, btnSecondary, btnDanger, btnCancel
+@docs btnSecondaryBorderedLeft, btnSecondaryBorderedRight
 @docs btnCallToAction
 @docs IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
 
@@ -658,6 +659,7 @@ radioColumn { id, onChange, options, selected, label } =
             }
 
 
+{-| -}
 type alias OptionConfig value msg =
     { value : value
     , label : String
