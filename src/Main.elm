@@ -19,6 +19,8 @@ module Main exposing (main)
 -}
 
 import Browser
+import Browser.Dom
+import Browser.Events
 import Browser.Navigation
 import Dict exposing (Dict)
 import Element exposing (Element)
@@ -36,7 +38,9 @@ import Page.PatternNew as PatternNew
 import Page.Patterns as Patterns
 import Pattern exposing (Pattern)
 import Ports
+import RemoteData exposing (WebData)
 import Route exposing (Route)
+import Task
 import Ui.Atom
 import Ui.Atom.Input
 import Ui.Molecule.Modal
@@ -64,7 +68,7 @@ main =
 
 type Model
     = RequestingClientId RequestingClientIdData
-    | RequestingToken RequestingTokenData
+    | Loading LoadingData
     | Loaded LoadedData
 
 
@@ -75,16 +79,19 @@ type alias RequestingClientIdData =
     }
 
 
-type alias RequestingTokenData =
+type alias LoadingData =
     { key : Browser.Navigation.Key
     , domain : String
     , clientId : String
-    , route : Route
+    , maybeRoute : Maybe Route
+    , githubAccessToken : WebData String
+    , maybeDevice : Maybe Element.Device
     }
 
 
 type alias LoadedData =
-    { identity : Git.Identity
+    { device : Element.Device
+    , identity : Git.Identity
     , key : Browser.Navigation.Key
     , domain : String
     , clientId : String
@@ -98,7 +105,6 @@ type alias LoadedData =
 
 type Page
     = NotFound
-    | Loading
       -- PAGES
     | Patterns Patterns.Model
     | PatternNew PatternNew.Model
@@ -154,7 +160,7 @@ view model =
                 ]
             }
 
-        RequestingToken data ->
+        Loading data ->
             { title = "Requesting GitHub API Access Token..."
             , body =
                 [ viewHelp <|
@@ -174,15 +180,6 @@ view model =
                         ]
                     }
 
-                Loading ->
-                    { title = "Sewing pattern editor"
-                    , body =
-                        [ viewHelp <|
-                            Element.el [ Element.centerX, Element.centerY ] <|
-                                Element.text "Loading..."
-                        ]
-                    }
-
                 Patterns patternsModel ->
                     let
                         { title, body, dialog } =
@@ -195,7 +192,7 @@ view model =
                 PatternNew newModel ->
                     let
                         { title, body, dialog } =
-                            PatternNew.view data.identity newModel
+                            PatternNew.view data.device data.identity newModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternNewMsg body) ]
@@ -241,8 +238,9 @@ type Msg
     | UrlChanged Url
       -- CLIENT ID
     | ReceivedClientId (Result Http.Error String)
-      -- TOKENS
-    | ReceivedGithubAccessToken (Result Http.Error String)
+      -- LOADING
+    | ReceivedGithubAccessToken (WebData String)
+    | ChangedDevice Element.Device
       -- PAGES
     | PatternsMsg Patterns.Msg
     | PatternNewMsg PatternNew.Msg
@@ -260,63 +258,98 @@ update msg model =
                 ReceivedClientId (Ok clientId) ->
                     case Route.fromUrlWithCode data.url of
                         Nothing ->
-                            ( Loaded
-                                { identity = Git.Anonymous
-                                , key = data.key
+                            ( Loading
+                                { key = data.key
                                 , domain = data.domain
                                 , clientId = clientId
-                                , page = NotFound
+                                , maybeRoute = Nothing
+                                , githubAccessToken = RemoteData.NotAsked
+                                , maybeDevice = Nothing
                                 }
-                            , Cmd.none
+                            , Browser.Dom.getViewport
+                                |> Task.perform
+                                    (\{ viewport } ->
+                                        ChangedDevice
+                                            (Element.classifyDevice
+                                                { width = floor viewport.width
+                                                , height = floor viewport.height
+                                                }
+                                            )
+                                    )
                             )
 
                         Just { route, code } ->
                             case code of
                                 Nothing ->
-                                    changeRouteTo route
-                                        { identity = Git.Anonymous
-                                        , key = data.key
-                                        , domain = data.domain
-                                        , clientId = clientId
-                                        , page = NotFound
-                                        }
-
-                                Just actualCode ->
-                                    ( RequestingToken
+                                    ( Loading
                                         { key = data.key
                                         , domain = data.domain
                                         , clientId = clientId
-                                        , route = route
+                                        , maybeRoute = Just route
+                                        , githubAccessToken = RemoteData.NotAsked
+                                        , maybeDevice = Nothing
                                         }
-                                    , Http.post
-                                        { url = Url.Builder.absolute [ "access_token" ] []
-                                        , body =
-                                            Http.multipartBody
-                                                [ Http.stringPart "code" actualCode ]
-                                        , expect =
-                                            Http.expectJson ReceivedGithubAccessToken
-                                                (Decode.field "access_token" Decode.string)
+                                    , Browser.Dom.getViewport
+                                        |> Task.perform
+                                            (\{ viewport } ->
+                                                ChangedDevice
+                                                    (Element.classifyDevice
+                                                        { width = floor viewport.width
+                                                        , height = floor viewport.height
+                                                        }
+                                                    )
+                                            )
+                                    )
+
+                                Just actualCode ->
+                                    ( Loading
+                                        { key = data.key
+                                        , domain = data.domain
+                                        , clientId = clientId
+                                        , maybeRoute = Just route
+                                        , githubAccessToken = RemoteData.Loading
+                                        , maybeDevice = Nothing
                                         }
+                                    , Cmd.batch
+                                        [ Browser.Dom.getViewport
+                                            |> Task.perform
+                                                (\{ viewport } ->
+                                                    ChangedDevice
+                                                        (Element.classifyDevice
+                                                            { width = floor viewport.width
+                                                            , height = floor viewport.height
+                                                            }
+                                                        )
+                                                )
+                                        , Http.post
+                                            { url = Url.Builder.absolute [ "access_token" ] []
+                                            , body =
+                                                Http.multipartBody
+                                                    [ Http.stringPart "code" actualCode ]
+                                            , expect =
+                                                Http.expectJson
+                                                    (RemoteData.fromResult
+                                                        >> ReceivedGithubAccessToken
+                                                    )
+                                                    (Decode.field "access_token"
+                                                        Decode.string
+                                                    )
+                                            }
+                                        ]
                                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        RequestingToken data ->
+        Loading data ->
             case msg of
-                ReceivedGithubAccessToken (Err httpError) ->
-                    ( model, Cmd.none )
+                ReceivedGithubAccessToken githubAccessToken ->
+                    { data | githubAccessToken = githubAccessToken }
+                        |> checkLoaded
 
-                ReceivedGithubAccessToken (Ok accessToken) ->
-                    ( Loaded
-                        { identity = Git.OauthToken accessToken
-                        , key = data.key
-                        , domain = data.domain
-                        , clientId = data.clientId
-                        , page = Loading
-                        }
-                    , Route.replaceUrl data.key data.route
-                    )
+                ChangedDevice device ->
+                    { data | maybeDevice = Just device }
+                        |> checkLoaded
 
                 _ ->
                     ( model, Cmd.none )
@@ -343,7 +376,13 @@ update msg model =
                             )
 
                         Just route ->
-                            changeRouteTo route data
+                            let
+                                ( page, cmd ) =
+                                    changePageTo data.identity route
+                            in
+                            ( Loaded { data | page = page }
+                            , cmd
+                            )
 
                 -- CLIENT ID
                 ( ReceivedClientId _, _ ) ->
@@ -352,6 +391,15 @@ update msg model =
                 -- TOKENS
                 ( ReceivedGithubAccessToken _, _ ) ->
                     ( model, Cmd.none )
+
+                ( ChangedDevice device, _ ) ->
+                    if data.device /= device then
+                        ( Loaded { data | device = device }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( model, Cmd.none )
 
                 -- PAGES
                 ( _, NotFound ) ->
@@ -412,33 +460,89 @@ update msg model =
                     ( model, Cmd.none )
 
 
-changeRouteTo : Route -> LoadedData -> ( Model, Cmd Msg )
-changeRouteTo route data =
+checkLoaded : LoadingData -> ( Model, Cmd Msg )
+checkLoaded data =
+    case ( data.githubAccessToken, data.maybeDevice ) of
+        ( RemoteData.Success githubAccessToken, Just device ) ->
+            initLoaded data (Just githubAccessToken) device
+
+        ( RemoteData.NotAsked, Just device ) ->
+            initLoaded data Nothing device
+
+        _ ->
+            ( Loading data
+            , Cmd.none
+            )
+
+
+initLoaded : LoadingData -> Maybe String -> Element.Device -> ( Model, Cmd Msg )
+initLoaded data maybeGithubAccessToken device =
+    let
+        ( page, cmd ) =
+            case data.maybeRoute of
+                Nothing ->
+                    ( NotFound
+                    , Cmd.none
+                    )
+
+                Just route ->
+                    changePageTo identity route
+
+        identity =
+            case maybeGithubAccessToken of
+                Nothing ->
+                    Git.Anonymous
+
+                Just githubAccessToken ->
+                    Git.OauthToken githubAccessToken
+    in
+    ( Loaded
+        { device = device
+        , identity = identity
+        , domain = data.domain
+        , key = data.key
+        , clientId = data.clientId
+        , page = page
+        }
+    , Cmd.batch
+        [ cmd
+        , case data.maybeRoute of
+            Nothing ->
+                Cmd.none
+
+            Just route ->
+                Route.replaceUrl data.key route
+        ]
+    )
+
+
+changePageTo : Git.Identity -> Route -> ( Page, Cmd Msg )
+changePageTo identity route =
     case route of
         Route.Patterns ->
             let
                 ( patterns, patternsCmd ) =
                     Patterns.init
             in
-            ( Loaded { data | page = Patterns patterns }
+            ( Patterns patterns
             , Cmd.map PatternsMsg patternsCmd
             )
 
         Route.Pattern address ->
             let
                 ( pattern, patternCmd ) =
-                    Pattern.init data.identity address
+                    Pattern.init identity address
             in
-            ( Loaded { data | page = Pattern pattern }
+            ( Pattern pattern
             , Cmd.map PatternMsg patternCmd
             )
 
         Route.PatternNew newParameters ->
             let
                 ( new, newCmd ) =
-                    PatternNew.init data.identity newParameters
+                    PatternNew.init identity newParameters
             in
-            ( Loaded { data | page = PatternNew new }
+            ( PatternNew new
             , Cmd.map PatternNewMsg newCmd
             )
 
@@ -449,23 +553,35 @@ subscriptions model =
         RequestingClientId _ ->
             Sub.none
 
-        RequestingToken _ ->
-            Sub.none
+        Loading _ ->
+            Browser.Events.onResize <|
+                \width height ->
+                    ChangedDevice <|
+                        Element.classifyDevice
+                            { width = width
+                            , height = height
+                            }
 
         Loaded data ->
-            case data.page of
-                NotFound ->
-                    Sub.none
+            Sub.batch
+                [ Browser.Events.onResize <|
+                    \width height ->
+                        ChangedDevice <|
+                            Element.classifyDevice
+                                { width = width
+                                , height = height
+                                }
+                , case data.page of
+                    NotFound ->
+                        Sub.none
 
-                Loading ->
-                    Sub.none
+                    -- PAGES
+                    Patterns patternsModel ->
+                        Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
 
-                -- PAGES
-                Patterns patternsModel ->
-                    Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
+                    PatternNew newModel ->
+                        Sub.map PatternNewMsg (PatternNew.subscriptions newModel)
 
-                PatternNew newModel ->
-                    Sub.map PatternNewMsg (PatternNew.subscriptions newModel)
-
-                Pattern patternModel ->
-                    Sub.map PatternMsg (Pattern.subscriptions patternModel)
+                    Pattern patternModel ->
+                        Sub.map PatternMsg (Pattern.subscriptions patternModel)
+                ]
