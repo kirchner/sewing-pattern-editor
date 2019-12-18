@@ -20,7 +20,7 @@ import Element.Font as Font
 import Git
 import Http
 import LocalStorage
-import Pattern
+import Pattern exposing (Pattern)
 import Route exposing (Route)
 import String.Extra as String
 import Ui.Atom.Icon
@@ -58,8 +58,8 @@ type alias LoadedData =
     , repositoryName : String
     , visibility : Visibility
 
-    -- NEW REPO
-    , newRepo : Maybe Git.Repo
+    -- NEW ADDRESS
+    , newAddress : Maybe LocalStorage.Address
     }
 
 
@@ -137,7 +137,7 @@ initLoaded newParameters owner =
             newParameters.visibility
                 |> Maybe.andThen visibilityFromString
                 |> Maybe.withDefault Public
-        , newRepo = Nothing
+        , newAddress = Nothing
         }
     , Cmd.none
     )
@@ -449,6 +449,8 @@ type Msg
     | ReceivedShaOfMeta Git.Repo (Result Http.Error String)
     | ReceivedShaOfPattern Git.Repo (Result Http.Error String)
     | ChangedWhatever
+    | ChangedPattern LocalStorage.Address (Pattern ())
+    | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedAddresses (List LocalStorage.Address)
 
 
@@ -580,7 +582,9 @@ updateLoaded key domain clientId identity msg model =
             ( model
             , case model.storageSolution of
                 BrowserTag ->
-                    Cmd.none
+                    LocalStorage.updatePattern
+                        (LocalStorage.Browser { slug = generatedToString model.slug })
+                        newPattern
 
                 GithubTag ->
                     case model.owner of
@@ -645,13 +649,7 @@ updateLoaded key domain clientId identity msg model =
             , Git.putPattern identity
                 { repo = repo
                 , message = "create pattern.json"
-                , pattern =
-                    case Pattern.insertPoint "Origin" (Pattern.origin 0 0) Pattern.empty of
-                        Err _ ->
-                            Pattern.empty
-
-                        Ok pattern ->
-                            pattern
+                , pattern = newPattern
                 , sha = ""
                 , onSha = ReceivedShaOfPattern repo
                 }
@@ -661,23 +659,36 @@ updateLoaded key domain clientId identity msg model =
             ( model, Cmd.none )
 
         ReceivedShaOfPattern repo (Ok _) ->
-            ( { model | newRepo = Just repo }
+            ( { model
+                | newAddress =
+                    Just <|
+                        LocalStorage.GitRepo
+                            { repo = repo
+                            , ref = Git.defaultRef
+                            }
+              }
+            , LocalStorage.requestAddresses
+            )
+
+        ChangedPattern address _ ->
+            ( model
+            , LocalStorage.updateMeta address
+                { name = model.name
+                , description = model.description
+                }
+            )
+
+        ChangedMeta address _ ->
+            ( { model | newAddress = Just address }
             , LocalStorage.requestAddresses
             )
 
         ChangedAddresses addresses ->
-            case model.newRepo of
+            case model.newAddress of
                 Nothing ->
                     ( model, Cmd.none )
 
-                Just repo ->
-                    let
-                        address =
-                            LocalStorage.GitRepo
-                                { repo = repo
-                                , ref = Git.defaultRef
-                                }
-                    in
+                Just address ->
                     ( model
                     , Cmd.batch
                         [ Route.pushUrl key (Route.Pattern address)
@@ -696,6 +707,8 @@ subscriptions model =
         { changedZoom = \_ _ -> ChangedWhatever
         , changedCenter = \_ _ -> ChangedWhatever
         , changedAddresses = ChangedAddresses
+        , changedPattern = ChangedPattern
+        , changedMeta = ChangedMeta
         , changedWhatever = ChangedWhatever
         }
 
@@ -707,3 +720,13 @@ subscriptions model =
 nameToSlug : String -> String
 nameToSlug =
     String.toLower >> String.dasherize
+
+
+newPattern : Pattern coordinates
+newPattern =
+    case Pattern.insertPoint "Origin" (Pattern.origin 0 0) Pattern.empty of
+        Err _ ->
+            Pattern.empty
+
+        Ok pattern ->
+            pattern

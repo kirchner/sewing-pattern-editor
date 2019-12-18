@@ -40,6 +40,7 @@ type Model
 
 type alias LoadingData =
     { addresses : List LocalStorage.Address
+    , unrequestedAddresses : List LocalStorage.Address
     , patterns : List ProcessedPattern
     }
 
@@ -65,6 +66,7 @@ init : ( Model, Cmd Msg )
 init =
     ( Loading
         { addresses = []
+        , unrequestedAddresses = []
         , patterns = []
         }
     , LocalStorage.requestAddresses
@@ -187,7 +189,8 @@ type Msg
     | UserPressedImport
     | UserPressedCreate
     | ChangedAddresses (List LocalStorage.Address)
-    | ReceivedMeta LocalStorage.Address (List LocalStorage.Address) (Result Http.Error Git.Meta)
+    | ChangedMeta LocalStorage.Address Git.Meta
+    | ReceivedMeta LocalStorage.Address (Result Http.Error Git.Meta)
     | ChangedWhatever
     | UserPressedClone LocalStorage.Address
     | UserPressedSignIn
@@ -216,105 +219,22 @@ updateLoading : Git.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
 updateLoading identity msg model =
     case msg of
         ChangedAddresses newAddresses ->
-            ( if List.isEmpty newAddresses then
-                Loaded
-                    { addresses = []
-                    , patterns = []
-                    , search = ""
-                    }
+            { model | unrequestedAddresses = newAddresses }
+                |> requestNextMeta identity
 
-              else
-                Loading { model | addresses = newAddresses }
-            , case newAddresses of
-                [] ->
-                    Cmd.none
+        ChangedMeta address meta ->
+            model
+                |> addMeta address meta
+                |> requestNextMeta identity
 
-                first :: rest ->
-                    case first of
-                        LocalStorage.GitRepo { repo, ref } ->
-                            Git.getMeta identity
-                                { repo = repo
-                                , ref = ref
-                                , onMeta = ReceivedMeta first rest
-                                }
+        ReceivedMeta _ (Err httpError) ->
+            model
+                |> requestNextMeta identity
 
-                        LocalStorage.Browser { slug } ->
-                            -- TODO
-                            Cmd.none
-            )
-
-        ReceivedMeta _ addresses (Err httpError) ->
-            ( if List.isEmpty addresses then
-                Loaded
-                    { addresses = model.addresses
-                    , patterns = model.patterns
-                    , search = ""
-                    }
-
-              else
-                Loading model
-            , case addresses of
-                [] ->
-                    Cmd.none
-
-                first :: rest ->
-                    case first of
-                        LocalStorage.GitRepo { repo, ref } ->
-                            Git.getMeta identity
-                                { repo = repo
-                                , ref = ref
-                                , onMeta = ReceivedMeta first rest
-                                }
-
-                        LocalStorage.Browser { slug } ->
-                            -- TODO
-                            Cmd.none
-            )
-
-        ReceivedMeta address addresses (Ok meta) ->
-            let
-                newPatterns =
-                    { address = address
-                    , name = meta.name
-                    , description = meta.description
-                    , storage =
-                        case address of
-                            LocalStorage.GitRepo { repo } ->
-                                Ui.Molecule.PatternList.Github repo.owner repo.name
-
-                            LocalStorage.Browser { slug } ->
-                                Ui.Molecule.PatternList.LocalStorage slug
-                    , updatedAt = Time.millisToPosix 0
-                    }
-                        :: model.patterns
-            in
-            ( if List.isEmpty addresses then
-                Loaded
-                    { addresses = model.addresses
-                    , patterns = newPatterns
-                    , search = ""
-                    }
-
-              else
-                Loading
-                    { model | patterns = newPatterns }
-            , case addresses of
-                [] ->
-                    Cmd.none
-
-                first :: rest ->
-                    case first of
-                        LocalStorage.GitRepo { repo, ref } ->
-                            Git.getMeta identity
-                                { repo = repo
-                                , ref = ref
-                                , onMeta = ReceivedMeta first rest
-                                }
-
-                        LocalStorage.Browser { slug } ->
-                            -- TODO
-                            Cmd.none
-            )
+        ReceivedMeta address (Ok meta) ->
+            model
+                |> addMeta address meta
+                |> requestNextMeta identity
 
         ChangedWhatever ->
             ( Loading model, Cmd.none )
@@ -364,5 +284,55 @@ subscriptions model =
         { changedZoom = \_ _ -> ChangedWhatever
         , changedCenter = \_ _ -> ChangedWhatever
         , changedAddresses = ChangedAddresses
+        , changedPattern = \_ _ -> ChangedWhatever
+        , changedMeta = ChangedMeta
         , changedWhatever = ChangedWhatever
         }
+
+
+addMeta : LocalStorage.Address -> Git.Meta -> LoadingData -> LoadingData
+addMeta address meta data =
+    let
+        newPatterns =
+            { address = address
+            , name = meta.name
+            , description = meta.description
+            , storage =
+                case address of
+                    LocalStorage.GitRepo { repo } ->
+                        Ui.Molecule.PatternList.Github repo.owner repo.name
+
+                    LocalStorage.Browser { slug } ->
+                        Ui.Molecule.PatternList.LocalStorage slug
+            , updatedAt = Time.millisToPosix 0
+            }
+                :: data.patterns
+    in
+    { data | patterns = newPatterns }
+
+
+requestNextMeta : Git.Identity -> LoadingData -> ( Model, Cmd Msg )
+requestNextMeta identity data =
+    case data.unrequestedAddresses of
+        [] ->
+            ( Loaded
+                { addresses = data.addresses
+                , patterns = data.patterns
+                , search = ""
+                }
+            , Cmd.none
+            )
+
+        next :: rest ->
+            ( Loading { data | unrequestedAddresses = rest }
+            , case next of
+                LocalStorage.GitRepo { repo, ref } ->
+                    Git.getMeta identity
+                        { repo = repo
+                        , ref = ref
+                        , onMeta = ReceivedMeta next
+                        }
+
+                LocalStorage.Browser _ ->
+                    LocalStorage.requestMeta next
+            )

@@ -5,7 +5,7 @@ module Git exposing
     , refToString, refToPathSegments, refFromString
     , repoParser, refParser
     , PatternData, getPattern, putPattern
-    , Meta, getMeta, putMeta
+    , Meta, getMeta, putMeta, metaDecoder, encodeMeta
     , Permissions, getPermissions
     , User, getAuthenticatedUser
     , Repository, createRepository
@@ -20,7 +20,7 @@ module Git exposing
 @docs repoParser, refParser
 
 @docs PatternData, getPattern, putPattern
-@docs Meta, getMeta, putMeta
+@docs Meta, getMeta, putMeta, metaDecoder, encodeMeta
 @docs Permissions, getPermissions
 @docs User, getAuthenticatedUser
 @docs Repository, createRepository

@@ -4,6 +4,8 @@ port module LocalStorage exposing
     , updateAddresses, requestAddresses
     , updateZoom, requestZoom
     , updateCenter, requestCenter
+    , updatePattern, requestPattern
+    , updateMeta, requestMeta
     )
 
 {-|
@@ -13,6 +15,8 @@ port module LocalStorage exposing
 @docs updateAddresses, requestAddresses
 @docs updateZoom, requestZoom
 @docs updateCenter, requestCenter
+@docs updatePattern, requestPattern
+@docs updateMeta, requestMeta
 
 -}
 
@@ -23,6 +27,7 @@ import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
 import Json.Encode.Extra as Encode
 import Length exposing (Meters)
+import Pattern exposing (Pattern)
 import Point2d exposing (Point2d)
 import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
@@ -165,6 +170,42 @@ centerDecoder =
 
 
 
+---- PATTERN
+
+
+updatePattern : Address -> Pattern coordinates -> Cmd msg
+updatePattern address pattern =
+    storeCache
+        { key = key address "pattern"
+        , value = Encode.encode 0 (Pattern.encode pattern)
+        }
+
+
+requestPattern : Address -> Cmd msg
+requestPattern address =
+    requestCache
+        { key = key address "pattern" }
+
+
+
+---- META
+
+
+updateMeta : Address -> Git.Meta -> Cmd msg
+updateMeta address meta =
+    storeCache
+        { key = key address "meta"
+        , value = Encode.encode 0 (Git.encodeMeta meta)
+        }
+
+
+requestMeta : Address -> Cmd msg
+requestMeta address =
+    requestCache
+        { key = key address "meta" }
+
+
+
 ---- CHANGED STORE
 
 
@@ -172,6 +213,8 @@ changedStore :
     { changedZoom : Address -> Float -> msg
     , changedCenter : Address -> Point2d Meters coordinates -> msg
     , changedAddresses : List Address -> msg
+    , changedPattern : Address -> Pattern coordinates -> msg
+    , changedMeta : Address -> Git.Meta -> msg
     , changedWhatever : msg
     }
     -> Sub msg
@@ -205,6 +248,22 @@ changedStore cfg =
 
                                     Ok center ->
                                         cfg.changedCenter address center
+
+                            "pattern" ->
+                                case Decode.decodeString Pattern.decoder data.value of
+                                    Err _ ->
+                                        cfg.changedWhatever
+
+                                    Ok pattern ->
+                                        cfg.changedPattern address pattern
+
+                            "meta" ->
+                                case Decode.decodeString Git.metaDecoder data.value of
+                                    Err _ ->
+                                        cfg.changedWhatever
+
+                                    Ok meta ->
+                                        cfg.changedMeta address meta
 
                             _ ->
                                 cfg.changedWhatever
@@ -264,4 +323,4 @@ key address name =
                 [ "github", repo.owner, repo.name, Git.refToString ref, name ]
 
             Browser { slug } ->
-                [ "browser", slug ]
+                [ "browser", slug, name ]

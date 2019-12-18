@@ -227,9 +227,11 @@ init identity address =
                     }
                 ]
 
-        LocalStorage.Browser { slug } ->
-            -- TODO
-            Cmd.none
+        LocalStorage.Browser _ ->
+            Cmd.batch
+                [ LocalStorage.requestPattern address
+                , LocalStorage.requestMeta address
+                ]
     )
 
 
@@ -1013,6 +1015,8 @@ type Msg
     | ChangedZoom LocalStorage.Address Float
     | ChangedCenter LocalStorage.Address (Point2d Meters BottomLeft)
     | ChangedAddresses (List LocalStorage.Address)
+    | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
+    | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1131,6 +1135,33 @@ update key domain clientId identity msg model =
 
                             Ok permissions ->
                                 Loading { data | maybePermissions = Just permissions }
+
+                    ChangedPattern address pattern ->
+                        if data.address == address then
+                            Loading
+                                { data
+                                    | maybePatternData =
+                                        Just { pattern = pattern, sha = "" }
+                                }
+
+                        else
+                            Loading data
+
+                    ChangedMeta address meta ->
+                        if data.address == address then
+                            Loading
+                                { data
+                                    | maybeMeta = Just meta
+                                    , maybePermissions =
+                                        Just
+                                            { admin = True
+                                            , push = True
+                                            , pull = True
+                                            }
+                                }
+
+                        else
+                            Loading data
 
                     _ ->
                         model
@@ -1265,6 +1296,12 @@ updateWithData key domain clientId identity msg model =
               else
                 Cmd.none
             )
+
+        ChangedPattern _ _ ->
+            ( model, Cmd.none )
+
+        ChangedMeta _ _ ->
+            ( model, Cmd.none )
 
         ChangedWhatever ->
             ( model, Cmd.none )
@@ -1957,6 +1994,8 @@ subscriptions model =
                     { changedZoom = ChangedZoom
                     , changedCenter = ChangedCenter
                     , changedAddresses = ChangedAddresses
+                    , changedPattern = ChangedPattern
+                    , changedMeta = ChangedMeta
                     , changedWhatever = ChangedWhatever
                     }
                 ]
