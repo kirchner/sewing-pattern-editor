@@ -12,19 +12,25 @@ module Page.PatternNew exposing
 
 -}
 
+import Browser.Dom
+import Browser.Events
 import Browser.Navigation
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Lazy as Element
 import Git
 import Http
 import LocalStorage
 import Pattern exposing (Pattern)
+import RemoteData exposing (WebData)
 import Route exposing (Route)
 import String.Extra as String
+import Task
 import Ui.Atom.Icon
 import Ui.Atom.Input
+import Ui.Molecule.TopBar
 import Ui.Theme.Color
 import Ui.Theme.Focus
 import Ui.Theme.Spacing
@@ -44,11 +50,14 @@ type Model
 
 type alias LoadingData =
     { parameters : Route.NewParameters
+    , user : WebData Git.User
+    , maybeDevice : Maybe Element.Device
     }
 
 
 type alias LoadedData =
-    { owner : Maybe String
+    { device : Element.Device
+    , owner : Maybe String
 
     -- FORM
     , name : String
@@ -109,22 +118,44 @@ visibilityToString visibility =
 {-| -}
 init : Git.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
 init identity newParameters =
-    case identity of
-        Git.Anonymous ->
-            initLoaded newParameters Nothing
+    ( Loading
+        { parameters = newParameters
+        , user =
+            case identity of
+                Git.Anonymous ->
+                    RemoteData.NotAsked
 
-        Git.OauthToken _ ->
-            ( Loading
-                { parameters = newParameters }
-            , Git.getAuthenticatedUser identity
-                { onUser = ReceivedAuthenticatedUser }
-            )
+                Git.OauthToken _ ->
+                    RemoteData.Loading
+        , maybeDevice = Nothing
+        }
+    , Cmd.batch
+        [ case identity of
+            Git.Anonymous ->
+                Cmd.none
+
+            Git.OauthToken _ ->
+                Git.getAuthenticatedUser identity
+                    { onUser = RemoteData.fromResult >> ReceivedAuthenticatedUser }
+        , Browser.Dom.getViewport
+            |> Task.perform
+                (\{ viewport } ->
+                    ChangedDevice
+                        (Element.classifyDevice
+                            { width = floor viewport.width
+                            , height = floor viewport.height
+                            }
+                        )
+                )
+        ]
+    )
 
 
-initLoaded : Route.NewParameters -> Maybe String -> ( Model, Cmd Msg )
-initLoaded newParameters owner =
+initLoaded : Route.NewParameters -> Element.Device -> Maybe String -> ( Model, Cmd Msg )
+initLoaded newParameters device owner =
     ( Loaded
-        { owner = owner
+        { device = device
+        , owner = owner
         , name = Maybe.withDefault "" newParameters.name
         , description = Maybe.withDefault "" newParameters.description
         , storageSolution =
@@ -171,13 +202,17 @@ viewNew identity model =
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
-        [ viewTopBar identity
+        [ Ui.Molecule.TopBar.view
+            { userPressedSignIn = UserPressedSignIn
+            , identity = identity
+            , device = model.device
+            }
         , viewContent identity model
         ]
 
 
-viewTopBar : Git.Identity -> Element Msg
-viewTopBar identity =
+viewTopBar_ : Git.Identity -> Element Msg
+viewTopBar_ identity =
     Element.row
         [ Element.width Element.fill
         , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
@@ -436,7 +471,8 @@ horizontalRule =
 
 {-| -}
 type Msg
-    = ReceivedAuthenticatedUser (Result Http.Error Git.User)
+    = ChangedDevice Element.Device
+    | ReceivedAuthenticatedUser (WebData Git.User)
     | UserChangedName String
     | UserChangedDescription String
     | UserChangedStorageSolution StorageSolutionTag
@@ -495,11 +531,13 @@ update key domain clientId identity msg model =
     case model of
         Loading data ->
             case msg of
-                ReceivedAuthenticatedUser (Err httpError) ->
-                    ( model, Cmd.none )
+                ReceivedAuthenticatedUser user ->
+                    { data | user = user }
+                        |> checkLoaded
 
-                ReceivedAuthenticatedUser (Ok user) ->
-                    initLoaded data.parameters (Just user.login)
+                ChangedDevice device ->
+                    { data | maybeDevice = Just device }
+                        |> checkLoaded
 
                 _ ->
                     ( model, Cmd.none )
@@ -507,6 +545,21 @@ update key domain clientId identity msg model =
         Loaded data ->
             updateLoaded key domain clientId identity msg data
                 |> Tuple.mapFirst Loaded
+
+
+checkLoaded : LoadingData -> ( Model, Cmd Msg )
+checkLoaded data =
+    case ( data.user, data.maybeDevice ) of
+        ( RemoteData.Success user, Just device ) ->
+            initLoaded data.parameters device (Just user.login)
+
+        ( RemoteData.NotAsked, Just device ) ->
+            initLoaded data.parameters device Nothing
+
+        _ ->
+            ( Loading data
+            , Cmd.none
+            )
 
 
 updateLoaded :
@@ -519,6 +572,15 @@ updateLoaded :
     -> ( LoadedData, Cmd Msg )
 updateLoaded key domain clientId identity msg model =
     case msg of
+        ChangedDevice device ->
+            ( if model.device /= device then
+                { model | device = Debug.log "new device" device }
+
+              else
+                model
+            , Cmd.none
+            )
+
         ReceivedAuthenticatedUser _ ->
             ( model, Cmd.none )
 
@@ -703,14 +765,24 @@ updateLoaded key domain clientId identity msg model =
 {-| -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    LocalStorage.changedStore
-        { changedZoom = \_ _ -> ChangedWhatever
-        , changedCenter = \_ _ -> ChangedWhatever
-        , changedAddresses = ChangedAddresses
-        , changedPattern = ChangedPattern
-        , changedMeta = ChangedMeta
-        , changedWhatever = ChangedWhatever
-        }
+    Sub.batch
+        [ LocalStorage.changedStore
+            { changedZoom = \_ _ -> ChangedWhatever
+            , changedCenter = \_ _ -> ChangedWhatever
+            , changedAddresses = ChangedAddresses
+            , changedPattern = ChangedPattern
+            , changedMeta = ChangedMeta
+            , changedWhatever = ChangedWhatever
+            }
+        , Browser.Events.onResize
+            (\width height ->
+                ChangedDevice <|
+                    Element.classifyDevice
+                        { width = width
+                        , height = height
+                        }
+            )
+        ]
 
 
 
