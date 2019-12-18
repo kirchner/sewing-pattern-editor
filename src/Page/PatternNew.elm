@@ -182,6 +182,8 @@ viewNew device identity model =
             { userPressedSignIn = UserPressedSignIn
             , identity = identity
             , device = device
+            , heading = "Create a new pattern"
+            , backToLabel = Just "Back to patterns"
             }
         , viewContent identity model
         ]

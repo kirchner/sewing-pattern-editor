@@ -16,6 +16,8 @@ type alias Config msg =
     { userPressedSignIn : msg
     , identity : Git.Identity
     , device : Element.Device
+    , backToLabel : Maybe String
+    , heading : String
     }
 
 
@@ -23,20 +25,25 @@ view : Config msg -> Element msg
 view cfg =
     let
         backToPatternsLink =
-            Ui.Theme.Focus.outline <|
-                Element.link
-                    [ Font.color Ui.Theme.Color.primary
-                    , Element.mouseOver
-                        [ Font.color Ui.Theme.Color.primaryDark ]
-                    ]
-                    { url = "/"
-                    , label =
-                        Element.row
-                            [ Element.spacing Ui.Theme.Spacing.level1 ]
-                            [ Ui.Atom.Icon.fa "arrow-left"
-                            , Ui.Theme.Typography.body "Back to patterns"
+            case cfg.backToLabel of
+                Nothing ->
+                    Element.none
+
+                Just backToLabel ->
+                    Ui.Theme.Focus.outline <|
+                        Element.link
+                            [ Font.color Ui.Theme.Color.primary
+                            , Element.mouseOver
+                                [ Font.color Ui.Theme.Color.primaryDark ]
                             ]
-                    }
+                            { url = "/"
+                            , label =
+                                Element.row
+                                    [ Element.spacing Ui.Theme.Spacing.level1 ]
+                                    [ Ui.Atom.Icon.fa "arrow-left"
+                                    , Ui.Theme.Typography.body backToLabel
+                                    ]
+                            }
 
         signInViaGithubBtn =
             case cfg.identity of
@@ -53,7 +60,7 @@ view cfg =
         heading =
             Element.el
                 [ Element.centerY ]
-                (Ui.Theme.Typography.headingOne "Create a new pattern")
+                (Ui.Theme.Typography.headingOne cfg.heading)
 
         -- COMPACT
         compact =

@@ -23,6 +23,7 @@ import Route
 import Time exposing (Posix)
 import Ui.Atom.Input
 import Ui.Molecule.PatternList
+import Ui.Molecule.TopBar
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
@@ -79,10 +80,11 @@ init =
 
 {-| -}
 view :
-    Git.Identity
+    Element.Device
+    -> Git.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view identity model =
+view device identity model =
     { title = "Patterns"
     , body =
         case model of
@@ -94,58 +96,25 @@ view identity model =
                     (Element.text "Loading patterns...")
 
             Loaded data ->
-                viewPatterns identity data
+                viewPatterns device identity data
     , dialog = Nothing
     }
 
 
-viewPatterns : Git.Identity -> LoadedData -> Element Msg
-viewPatterns identity model =
+viewPatterns : Element.Device -> Git.Identity -> LoadedData -> Element Msg
+viewPatterns device identity model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
-        [ viewTopBar identity
+        [ Ui.Molecule.TopBar.view
+            { userPressedSignIn = UserPressedSignIn
+            , identity = identity
+            , device = device
+            , heading = "Patterns"
+            , backToLabel = Nothing
+            }
         , viewContent model
-        ]
-
-
-viewTopBar : Git.Identity -> Element Msg
-viewTopBar identity =
-    Element.row
-        [ Element.width Element.fill
-        , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
-        , Background.color Ui.Theme.Color.secondary
-        , Element.inFront <|
-            Element.el
-                [ Element.centerX
-                , Element.width
-                    (Element.fill
-                        |> Element.maximum 780
-                    )
-                , Element.height Element.fill
-                , Element.padding (7 + Ui.Theme.Spacing.level1)
-                ]
-                (Element.el
-                    [ Element.centerY ]
-                    (Ui.Theme.Typography.headingOne "Patterns")
-                )
-        ]
-        [ case identity of
-            Git.Anonymous ->
-                Element.el
-                    [ Element.paddingXY Ui.Theme.Spacing.level1 0
-                    , Element.alignRight
-                    ]
-                    (Ui.Atom.Input.btnPrimary
-                        { id = "sign-in-btn"
-                        , onPress = Just UserPressedSignIn
-                        , label = "Sign in via GitHub"
-                        }
-                    )
-
-            Git.OauthToken _ ->
-                Element.none
         ]
 
 

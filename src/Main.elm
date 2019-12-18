@@ -183,7 +183,7 @@ view model =
                 Patterns patternsModel ->
                     let
                         { title, body, dialog } =
-                            Patterns.view data.identity patternsModel
+                            Patterns.view data.device data.identity patternsModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternsMsg body) ]
