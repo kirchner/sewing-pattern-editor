@@ -18,6 +18,7 @@ import Element.Background as Background
 import Element.Font as Font
 import Git
 import Http
+import List.Extra as List
 import LocalStorage
 import Route
 import Time exposing (Posix)
@@ -41,7 +42,7 @@ type Model
 
 type alias LoadingData =
     { addresses : List LocalStorage.Address
-    , unrequestedAddresses : List LocalStorage.Address
+    , unrequestedAddresses : Maybe (List LocalStorage.Address)
     , patterns : List ProcessedPattern
     }
 
@@ -67,7 +68,7 @@ init : ( Model, Cmd Msg )
 init =
     ( Loading
         { addresses = []
-        , unrequestedAddresses = []
+        , unrequestedAddresses = Nothing
         , patterns = []
         }
     , LocalStorage.requestAddresses
@@ -188,8 +189,13 @@ updateLoading : Git.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
 updateLoading identity msg model =
     case msg of
         ChangedAddresses newAddresses ->
-            { model | unrequestedAddresses = newAddresses }
-                |> requestNextMeta identity
+            case model.unrequestedAddresses of
+                Nothing ->
+                    { model | unrequestedAddresses = Just newAddresses }
+                        |> requestNextMeta identity
+
+                Just _ ->
+                    ( Loading model, Cmd.none )
 
         ChangedMeta address meta ->
             model
@@ -276,6 +282,15 @@ addMeta address meta data =
             , updatedAt = Time.millisToPosix 0
             }
                 :: data.patterns
+                |> List.uniqueBy (.address >> addressToHash)
+
+        addressToHash address_ =
+            case address_ of
+                LocalStorage.GitRepo { repo } ->
+                    "github/" ++ repo.owner ++ "/" ++ repo.name
+
+                LocalStorage.Browser { slug } ->
+                    "browser/" ++ slug
     in
     { data | patterns = newPatterns }
 
@@ -283,7 +298,12 @@ addMeta address meta data =
 requestNextMeta : Git.Identity -> LoadingData -> ( Model, Cmd Msg )
 requestNextMeta identity data =
     case data.unrequestedAddresses of
-        [] ->
+        Nothing ->
+            ( Loading data
+            , Cmd.none
+            )
+
+        Just [] ->
             ( Loaded
                 { addresses = data.addresses
                 , patterns = data.patterns
@@ -292,8 +312,8 @@ requestNextMeta identity data =
             , Cmd.none
             )
 
-        next :: rest ->
-            ( Loading { data | unrequestedAddresses = rest }
+        Just (next :: rest) ->
+            ( Loading { data | unrequestedAddresses = Just rest }
             , case next of
                 LocalStorage.GitRepo { repo, ref } ->
                     Git.getMeta identity
