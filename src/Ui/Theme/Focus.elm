@@ -1,12 +1,14 @@
 module Ui.Theme.Focus exposing
     ( outline
     , outlineTop, outlineBottom, outlineLeft, outlineRight
+    , outlineTopBottom
     )
 
 {-|
 
 @docs outline
 @docs outlineTop, outlineBottom, outlineLeft, outlineRight
+@docs outlineTopBottom
 
 -}
 
@@ -159,6 +161,33 @@ outlineRight element =
                 , bottom = 4
                 , left = 0
                 , right = 4
+                }
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+{-| -}
+outlineTopBottom : Element msg -> Element msg
+outlineTopBottom element =
+    Element.el
+        [ Element.width Element.fill
+        , Border.widthEach
+            { top = 3
+            , bottom = 3
+            , left = 0
+            , right = 0
+            }
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
+        ]
+        (Element.el
+            [ Element.paddingEach
+                { top = 4
+                , bottom = 4
+                , left = 0
+                , right = 0
                 }
             , Element.width Element.fill
             ]

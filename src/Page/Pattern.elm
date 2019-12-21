@@ -1027,8 +1027,7 @@ viewZoomControls =
     Element.row []
         [ Ui.Theme.Focus.outlineLeft <|
             Input.button
-                [ Element.htmlAttribute <|
-                    Html.Attributes.id "zoom-plus-btn"
+                [ Element.htmlAttribute (Html.Attributes.id "zoom-plus-btn")
                 , Element.height (Element.px 38)
                 , Element.width (Element.px 38)
                 , Element.centerX
@@ -1040,8 +1039,7 @@ viewZoomControls =
                     , bottomRight = 0
                     }
                 , Background.color Ui.Theme.Color.secondary
-                , Element.mouseOver
-                    [ Background.color Ui.Theme.Color.secondaryDark ]
+                , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
                 ]
                 { onPress = Just UserPressedZoomPlus
                 , label =
@@ -1051,10 +1049,27 @@ viewZoomControls =
                         ]
                         (Ui.Atom.Icon.fa "search-plus")
                 }
+        , Ui.Theme.Focus.outlineTopBottom <|
+            Input.button
+                [ Element.htmlAttribute (Html.Attributes.id "zoom-fit-btn")
+                , Element.height (Element.px 38)
+                , Element.width (Element.px 38)
+                , Element.centerX
+                , Element.centerY
+                , Background.color Ui.Theme.Color.secondary
+                , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
+                ]
+                { onPress = Just UserPressedZoomFit
+                , label =
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Ui.Atom.Icon.fa "search")
+                }
         , Ui.Theme.Focus.outlineRight <|
             Input.button
-                [ Element.htmlAttribute <|
-                    Html.Attributes.id "zoom-minus-btn"
+                [ Element.htmlAttribute (Html.Attributes.id "zoom-minus-btn")
                 , Element.height (Element.px 38)
                 , Element.width (Element.px 38)
                 , Element.centerX
@@ -1066,8 +1081,7 @@ viewZoomControls =
                     , bottomRight = 3
                     }
                 , Background.color Ui.Theme.Color.secondary
-                , Element.mouseOver
-                    [ Background.color Ui.Theme.Color.secondaryDark ]
+                , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
                 ]
                 { onPress = Just UserPressedZoomMinus
                 , label =
@@ -1304,6 +1318,7 @@ type Msg
     | AnimationFrameRequestedPatternContainerViewport
     | UpdateRequestedPatternContainerViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
     | UserPressedZoomPlus
+    | UserPressedZoomFit
     | UserPressedZoomMinus
     | MouseDown Position
     | MouseMove Position
@@ -1818,6 +1833,11 @@ updateLoaded key domain clientId device identity msg model =
         UserPressedZoomPlus ->
             ( model
             , LocalStorage.updateZoom model.address (model.zoom * 1.1)
+            )
+
+        UserPressedZoomFit ->
+            ( model
+            , Cmd.none
             )
 
         UserPressedZoomMinus ->
