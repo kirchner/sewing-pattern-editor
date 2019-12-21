@@ -660,8 +660,11 @@ viewToolbarBottomCompact model =
                     [ Element.width Element.fill
                     , Element.padding Ui.Theme.Spacing.level1
                     ]
-                    [ viewCreateMenuBtn True model
-                    , viewCreateVariableBtn
+                    [ if model.permissions.push then
+                        viewToolButtons True model
+
+                      else
+                        Element.none
                     , Element.el
                         [ Element.alignRight ]
                         (Element.row []
@@ -832,8 +835,11 @@ viewToolbarLeftFullscreen model =
             [ Element.width Element.fill
             , Element.padding Ui.Theme.Spacing.level1
             ]
-            [ viewCreateMenuBtn False model
-            , viewCreateVariableBtn
+            [ if model.permissions.push then
+                viewToolButtons False model
+
+              else
+                Element.none
             , Element.el [ Element.alignRight ] viewZoomControls
             ]
         , viewData model
@@ -950,44 +956,49 @@ viewPattern maybeDimensions maybeDrag model =
                 )
 
 
+viewToolButtons : Bool -> LoadedData -> Element Msg
+viewToolButtons openUpwards model =
+    Element.row
+        []
+        [ viewCreateMenuBtn True model
+        , viewCreateVariableBtn
+        ]
+
+
 
 ---- CREATE MENU BTN
 
 
 viewCreateMenuBtn : Bool -> LoadedData -> Element Msg
 viewCreateMenuBtn openUpwards model =
-    if model.permissions.push then
-        Ui.Molecule.MenuBtn.viewPrimary
-            { id = "create-object"
-            , onMsg = CreateObjectMenuBtnMsg
-            , openUpwards = openUpwards
-            , actions =
-                [ { icon = Ui.Atom.Icon.point
-                  , label = "Create a point"
-                  , action = CreatePoint
-                  }
-                , { icon = Ui.Atom.Icon.axis
-                  , label = "Create an axis"
-                  , action = CreateAxis
-                  }
-                , { icon = Ui.Atom.Icon.circle
-                  , label = "Create a circle"
-                  , action = CreateCircle
-                  }
-                , { icon = Ui.Atom.Icon.curve
-                  , label = "Create a curve"
-                  , action = CreateCurve
-                  }
-                , { icon = Ui.Atom.Icon.detail
-                  , label = "Create a detail"
-                  , action = CreateDetail
-                  }
-                ]
-            }
-            model.createObjectMenuBtn
-
-    else
-        Element.none
+    Ui.Molecule.MenuBtn.viewPrimary
+        { id = "create-object"
+        , onMsg = CreateObjectMenuBtnMsg
+        , openUpwards = openUpwards
+        , actions =
+            [ { icon = Ui.Atom.Icon.point
+              , label = "Create a point"
+              , action = CreatePoint
+              }
+            , { icon = Ui.Atom.Icon.axis
+              , label = "Create an axis"
+              , action = CreateAxis
+              }
+            , { icon = Ui.Atom.Icon.circle
+              , label = "Create a circle"
+              , action = CreateCircle
+              }
+            , { icon = Ui.Atom.Icon.curve
+              , label = "Create a curve"
+              , action = CreateCurve
+              }
+            , { icon = Ui.Atom.Icon.detail
+              , label = "Create a detail"
+              , action = CreateDetail
+              }
+            ]
+        }
+        model.createObjectMenuBtn
 
 
 
