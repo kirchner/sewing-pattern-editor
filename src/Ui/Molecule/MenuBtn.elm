@@ -65,6 +65,7 @@ init =
 type alias Config action msg =
     { id : String
     , onMsg : Msg action -> msg
+    , openUpwards : Bool
     , actions : List (Action action msg)
     }
 
@@ -106,7 +107,7 @@ type alias Colors =
 
 {-| -}
 view : Colors -> Config action msg -> State -> Element msg
-view colors ({ id, onMsg, actions } as config) ((State { last, selected, open }) as state) =
+view colors ({ id, onMsg, openUpwards, actions } as config) ((State { last, selected, open }) as state) =
     case List.getAt last actions of
         Nothing ->
             Element.none
@@ -114,12 +115,21 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
         Just { icon, label, action } ->
             Element.row
                 [ Element.spacing 0
-                , Element.below <|
-                    if open then
-                        viewMenu config state
+                , if openUpwards then
+                    Element.above <|
+                        if open then
+                            viewMenu config state
 
-                    else
-                        Element.none
+                        else
+                            Element.none
+
+                  else
+                    Element.below <|
+                        if open then
+                            viewMenu config state
+
+                        else
+                            Element.none
                 ]
                 [ Ui.Theme.Focus.outlineLeft <|
                     Input.button
@@ -158,7 +168,13 @@ view colors ({ id, onMsg, actions } as config) ((State { last, selected, open })
                         , Events.onMouseUp (onMsg MouseUpOnMenuButton)
                         ]
                         { onPress = Just (onMsg (PressedMenuButton id))
-                        , label = Ui.Atom.Icon.faSmall "chevron-down"
+                        , label =
+                            Ui.Atom.Icon.faSmall <|
+                                if openUpwards then
+                                    "chevron-up"
+
+                                else
+                                    "chevron-down"
                         }
                 ]
 
@@ -170,6 +186,11 @@ viewMenu { id, onMsg, actions } (State { selected }) =
         , htmlAttribute "tabindex" "-1"
         , htmlAttribute "aria-labelledby" (menuBtnId id)
         , htmlAttribute "aria-activedescendant" (menuItemId id selected)
+        , Element.htmlAttribute <|
+            Html.Attributes.style "position" "fixed"
+        , Element.htmlAttribute <|
+            Html.Attributes.style "transform"
+                ("translate(7px, " ++ String.fromInt (-38 * List.length actions) ++ "px)")
         , Element.htmlAttribute <|
             Html.Events.preventDefaultOn "keydown" (keyDownDecoder actions selected onMsg)
         , Events.onLoseFocus (onMsg BluredMenu)

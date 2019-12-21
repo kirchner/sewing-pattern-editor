@@ -136,9 +136,12 @@ type alias LoadedData =
     , patternState : Ui.Molecule.Pattern.State
 
     -- TOP TOOLBAR
+    , topToolbarExpanded : Bool
     , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
 
     -- LEFT TOOLBAR
+    , toolbarBottomExpanded : Bool
+    , toolbarBottomHeight : Maybe Float
     , selectedTab : Tab
     , focusedVariable : Maybe String
     , hoveredVariable : Maybe String
@@ -261,9 +264,12 @@ initLoaded address sha pattern meta permissions =
         , patternState = Ui.Molecule.Pattern.init
 
         -- TOP TOOLBAR
+        , topToolbarExpanded = False
         , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
 
         -- LEFT TOOLBAR
+        , toolbarBottomExpanded = False
+        , toolbarBottomHeight = Nothing
         , selectedTab = ObjectsTab
         , focusedVariable = Nothing
         , hoveredVariable = Nothing
@@ -286,10 +292,11 @@ initLoaded address sha pattern meta permissions =
 
 {-| -}
 view :
-    Git.Identity
+    Element.Device
+    -> Git.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view identity model =
+view device identity model =
     case model of
         Loading _ ->
             { title = "Loading pattern..."
@@ -315,7 +322,7 @@ view identity model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body = viewEditor identity data
+            , body = viewEditor device identity data
             , dialog = Maybe.map (viewModal data.pattern) data.maybeModal
             }
 
@@ -489,42 +496,207 @@ viewDeleteModal state { name, kind, onDeletePress } =
 ---- EDITOR
 
 
-viewEditor : Git.Identity -> LoadedData -> Element Msg
-viewEditor identity model =
+viewEditor : Element.Device -> Git.Identity -> LoadedData -> Element Msg
+viewEditor device identity model =
+    if isCompact device then
+        viewEditorCompact identity model
+
+    else
+        viewEditorFullScreen identity model
+
+
+viewEditorCompact : Git.Identity -> LoadedData -> Element Msg
+viewEditorCompact identity model =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.clipY
+        , Element.inFront (viewToolbarBottomCompact model)
+        ]
+        (Element.el
+            [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
+            , Element.width Element.fill
+            , Element.height Element.fill
+            , Element.inFront (viewToolbarTopCompact identity model)
+            ]
+            (Element.lazy3 viewPattern
+                model.patternContainerDimensions
+                model.maybeDrag
+                model
+            )
+        )
+
+
+viewEditorFullScreen : Git.Identity -> LoadedData -> Element Msg
+viewEditorFullScreen identity model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ viewTopToolbar identity model
+        [ viewToolbarTopFullscreen identity model
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
             , Element.clip
             , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
             ]
-            [ viewLeftToolbar model
-            , viewWorkspace model
-            , viewRightToolbar model
+            [ viewToolbarLeftFullscreen model
+            , viewWorkspaceFullscreen model
+            , viewToolbarRightFullscreen model
             ]
         ]
 
 
-horizontalRule : Element msg
-horizontalRule =
-    Element.el
+
+---- TOOLBAR TOP COMPACT
+
+
+viewToolbarTopCompact : Git.Identity -> LoadedData -> Element Msg
+viewToolbarTopCompact identity model =
+    let
+        toggleBtn =
+            Ui.Atom.Input.btnIcon
+                { id = "toggle-btn"
+                , onPress = Just UserPressedToggleBtn
+                , icon =
+                    if model.topToolbarExpanded then
+                        "chevron-up"
+
+                    else
+                        "chevron-down"
+                }
+    in
+    Element.column
         [ Element.width Element.fill
-        , Element.height (Element.px 2)
-        , Background.color Ui.Theme.Color.primary
+        , Element.padding Ui.Theme.Spacing.level1
+        , Element.spacing Ui.Theme.Spacing.level2
+        , Background.color Ui.Theme.Color.secondary
+        , Element.moveUp <|
+            if model.topToolbarExpanded then
+                0
+
+            else
+                92
+        , Element.htmlAttribute <|
+            Html.Attributes.style "transition" "transform 0.2s ease-out 0s"
         ]
-        Element.none
+        [ Element.row
+            [ Element.width Element.fill ]
+            [ Element.el [ Element.alignLeft ] patternActions
+            , Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
+            ]
+        , Element.el [ Element.centerX ] (patternAddress model.address)
+        , Element.row
+            [ Element.width Element.fill ]
+            [ Element.el [] (backToPatternsLink { showLabel = False })
+            , Element.row
+                [ Element.centerX
+                , Element.spacing Ui.Theme.Spacing.level2
+                ]
+                [ patternName model.name
+                , loadingIndicator model.stored
+                ]
+            , Element.el [ Element.alignRight ] toggleBtn
+            ]
+        ]
 
 
 
----- TOP TOOLBAR
+---- TOOLBAR BOTTOM COMPACT
 
 
-viewTopToolbar : Git.Identity -> LoadedData -> Element Msg
-viewTopToolbar identity model =
+viewToolbarBottomCompact : LoadedData -> Element Msg
+viewToolbarBottomCompact model =
+    let
+        verticalOffset =
+            if model.toolbarBottomExpanded then
+                0
+
+            else
+                case model.toolbarBottomHeight of
+                    Nothing ->
+                        0
+
+                    Just height ->
+                        height - 64
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.moveDown verticalOffset
+        , Element.htmlAttribute (Html.Attributes.style "pointer-events" "none")
+        , Element.htmlAttribute (Html.Attributes.style "transition" "transform 0.2s ease-out 0s")
+        ]
+        [ Element.el
+            [ Element.height (Element.fillPortion 1)
+            , Element.width Element.fill
+            ]
+            Element.none
+        , Element.el
+            [ Element.htmlAttribute (Html.Attributes.id "left-toolbar-container")
+            , Element.height (Element.fillPortion 1)
+            , Element.width Element.fill
+            , Border.widthEach
+                { top = 1
+                , bottom = 0
+                , left = 0
+                , right = 0
+                }
+            , Border.color Ui.Theme.Color.secondary
+            , Background.color Ui.Theme.Color.white
+            , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+            ]
+            (Element.column
+                [ Element.width Element.fill
+                , Element.height (Element.maximum 360 Element.fill)
+                , Element.clip
+                , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+                , Element.spacing Ui.Theme.Spacing.level1
+                ]
+                [ Element.row
+                    [ Element.width Element.fill
+                    , Element.padding Ui.Theme.Spacing.level1
+                    ]
+                    [ viewCreateMenuBtn True model
+                    , Element.el
+                        [ Element.alignRight ]
+                        (Element.row []
+                            [ viewZoomControls
+                            , Ui.Atom.Input.btnIcon
+                                { id = "toggle-btn"
+                                , onPress = Just UserPressedLeftToolbarToggleBtn
+                                , icon =
+                                    if model.toolbarBottomExpanded then
+                                        "chevron-down"
+
+                                    else
+                                        "chevron-up"
+                                }
+                            ]
+                        )
+                    ]
+                , case model.maybeDialog of
+                    Nothing ->
+                        viewData model
+
+                    Just dialog ->
+                        Element.el
+                            [ Element.height Element.fill
+                            , Element.width Element.fill
+                            , Element.scrollbarY
+                            ]
+                            (viewDialog model.pattern dialog)
+                ]
+            )
+        ]
+
+
+
+---- TOOLBAR TOP FULLSCREEN
+
+
+viewToolbarTopFullscreen : Git.Identity -> LoadedData -> Element Msg
+viewToolbarTopFullscreen identity model =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
@@ -533,123 +705,167 @@ viewTopToolbar identity model =
             Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Font.bold
                 ]
                 (Element.el
                     [ Element.centerX
                     , Element.centerY
                     ]
-                    (Ui.Theme.Typography.body model.name)
+                    (patternName model.name)
                 )
         ]
         [ Element.el [ Element.paddingXY Ui.Theme.Spacing.level2 0 ] <|
-            Ui.Theme.Focus.outline <|
-                Element.link
-                    [ Font.color Ui.Theme.Color.primary
-                    , Element.mouseOver
-                        [ Font.color Ui.Theme.Color.primaryDark ]
-                    ]
-                    { url = "/"
-                    , label =
-                        Element.row
-                            [ Element.spacing Ui.Theme.Spacing.level1 ]
-                            [ Ui.Atom.Icon.fa "arrow-left"
-                            , Ui.Theme.Typography.body "Back to patterns"
-                            ]
-                    }
+            backToPatternsLink { showLabel = True }
         , Element.row
             [ Element.paddingXY Ui.Theme.Spacing.level4 0
             , Element.spacing Ui.Theme.Spacing.level2
             , Font.color Ui.Theme.Color.grayDark
             , Element.alignRight
             ]
-            [ Element.row
-                [ Element.spacing Ui.Theme.Spacing.level1 ]
-                (List.map Ui.Theme.Typography.button <|
-                    List.intersperse "/" (LocalStorage.addressToPathSegments model.address)
-                )
-            , Ui.Atom.Icon.fa <|
-                if model.stored then
-                    "check-circle"
-
-                else
-                    "arrow-alt-circle-up"
-            , Element.row
-                []
-                [ Ui.Atom.Input.btnSecondaryBorderedLeft
-                    { id = "download-btn"
-                    , onPress = Nothing
-                    , label = "Download"
-                    }
-                , Ui.Atom.Input.btnSecondaryBorderedRight
-                    { id = "print-btn"
-                    , onPress = Nothing
-                    , label = "Print"
-                    }
-                ]
-            , case identity of
-                Git.Anonymous ->
-                    Element.el [] <|
-                        Ui.Atom.Input.btnPrimary
-                            { id = "sign-in-btn"
-                            , onPress = Just UserPressedSignIn
-                            , label = "Sign in via GitHub"
-                            }
-
-                Git.OauthToken _ ->
-                    Element.none
+            [ patternAddress model.address
+            , loadingIndicator model.stored
+            , patternActions
+            , signInViaGithubBtn identity
             ]
         ]
 
 
-viewCreateBtn : LoadedData -> Element Msg
-viewCreateBtn model =
-    Ui.Molecule.MenuBtn.viewPrimary
-        { id = "create-object"
-        , onMsg = CreateObjectMenuBtnMsg
-        , actions =
-            [ { icon = Ui.Atom.Icon.point
-              , label = "Create a point"
-              , action = CreatePoint
-              }
-            , { icon = Ui.Atom.Icon.axis
-              , label = "Create an axis"
-              , action = CreateAxis
-              }
-            , { icon = Ui.Atom.Icon.circle
-              , label = "Create a circle"
-              , action = CreateCircle
-              }
-            , { icon = Ui.Atom.Icon.curve
-              , label = "Create a curve"
-              , action = CreateCurve
-              }
-            , { icon = Ui.Atom.Icon.detail
-              , label = "Create a detail"
-              , action = CreateDetail
-              }
+
+---- TOOLBAR TOP PARTS
+
+
+backToPatternsLink : { showLabel : Bool } -> Element msg
+backToPatternsLink { showLabel } =
+    Ui.Theme.Focus.outline <|
+        Element.link
+            [ Font.color Ui.Theme.Color.primary
+            , Element.mouseOver
+                [ Font.color Ui.Theme.Color.primaryDark ]
             ]
-        }
-        model.createObjectMenuBtn
+            { url = "/"
+            , label =
+                Element.row
+                    [ Element.spacing Ui.Theme.Spacing.level1 ]
+                    [ Ui.Atom.Icon.fa "arrow-left"
+                    , if showLabel then
+                        Ui.Theme.Typography.body "Back to patterns"
 
-
-viewSignInBtn : Element Msg
-viewSignInBtn =
-    Element.el []
-        (Ui.Atom.Input.btnPrimary
-            { id = "sign-in-btn"
-            , onPress = Just UserPressedSignIn
-            , label = "Sign in via GitHub"
+                      else
+                        Element.none
+                    ]
             }
+
+
+patternName : String -> Element msg
+patternName name =
+    Ui.Theme.Typography.bodyBold name
+
+
+loadingIndicator : Bool -> Element msg
+loadingIndicator stored =
+    Ui.Atom.Icon.fa <|
+        if stored then
+            "check-circle"
+
+        else
+            "arrow-alt-circle-up"
+
+
+patternAddress : LocalStorage.Address -> Element msg
+patternAddress address =
+    Element.row
+        [ Element.spacing Ui.Theme.Spacing.level1 ]
+        (List.map Ui.Theme.Typography.button <|
+            List.intersperse "/" (LocalStorage.addressToPathSegments address)
+        )
+
+
+patternActions : Element Msg
+patternActions =
+    Element.row
+        []
+        [ Ui.Atom.Input.btnSecondaryBorderedLeft
+            { id = "download-btn"
+            , onPress = Nothing
+            , label = "Download"
+            }
+        , Ui.Atom.Input.btnSecondaryBorderedRight
+            { id = "print-btn"
+            , onPress = Nothing
+            , label = "Print"
+            }
+        ]
+
+
+signInViaGithubBtn : Git.Identity -> Element Msg
+signInViaGithubBtn identity =
+    case identity of
+        Git.Anonymous ->
+            Element.el [] <|
+                Ui.Atom.Input.btnPrimary
+                    { id = "sign-in-btn"
+                    , onPress = Just UserPressedSignIn
+                    , label = "Sign in via GitHub"
+                    }
+
+        Git.OauthToken _ ->
+            Element.none
+
+
+
+---- TOOLBAR LEFT FULLSCREEN
+
+
+viewToolbarLeftFullscreen : LoadedData -> Element Msg
+viewToolbarLeftFullscreen model =
+    Element.column
+        [ Element.width (Element.px 400)
+        , Element.height Element.fill
+        , Element.clip
+        , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
+        , Element.spacing Ui.Theme.Spacing.level1
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.padding Ui.Theme.Spacing.level1
+            ]
+            [ viewCreateMenuBtn False model
+            , Element.el [ Element.alignRight ] viewZoomControls
+            ]
+        , viewData model
+        ]
+
+
+
+---- TOOLBAR RIGHT FULLSCREEN
+
+
+viewToolbarRightFullscreen : LoadedData -> Element Msg
+viewToolbarRightFullscreen model =
+    Element.el
+        [ Element.width (Element.maximum 500 Element.fill)
+        , Element.height Element.fill
+        , Element.scrollbarY
+        , Background.color Ui.Theme.Color.white
+        , Border.widthEach
+            { top = 1
+            , bottom = 4
+            , left = 1
+            , right = 1
+            }
+        , Border.color Ui.Theme.Color.secondaryDark
+        ]
+        (model.maybeDialog
+            |> Maybe.map (viewDialog model.pattern)
+            |> Maybe.withDefault Element.none
         )
 
 
 
----- WORKSPACE
+---- WORKSPACE FULLSCREEN
 
 
-viewWorkspace : LoadedData -> Element Msg
-viewWorkspace model =
+viewWorkspaceFullscreen : LoadedData -> Element Msg
+viewWorkspaceFullscreen model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -730,176 +946,186 @@ viewPattern maybeDimensions maybeDrag model =
 
 
 
----- LEFT TOOLBAR
+---- CREATE MENU BTN
 
 
-viewLeftToolbar : LoadedData -> Element Msg
-viewLeftToolbar model =
-    Element.column
-        [ Element.width (Element.px 400)
-        , Element.height Element.fill
-        , Element.clip
-        , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
-        , Element.spacing Ui.Theme.Spacing.level1
-        ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.padding Ui.Theme.Spacing.level1
-            ]
-            [ if model.permissions.push then
-                viewCreateBtn model
-
-              else
-                Element.none
-            , Element.el
-                [ Element.alignRight ]
-                (Element.row []
-                    [ Ui.Theme.Focus.outlineLeft <|
-                        Input.button
-                            [ Element.htmlAttribute <|
-                                Html.Attributes.id "zoom-plus-btn"
-                            , Element.height (Element.px 38)
-                            , Element.width (Element.px 38)
-                            , Element.centerX
-                            , Element.centerY
-                            , Border.roundEach
-                                { topLeft = 3
-                                , topRight = 0
-                                , bottomLeft = 3
-                                , bottomRight = 0
-                                }
-                            , Background.color Ui.Theme.Color.secondary
-                            , Element.mouseOver
-                                [ Background.color Ui.Theme.Color.secondaryDark ]
-                            ]
-                            { onPress = Just UserPressedZoomPlus
-                            , label =
-                                Element.el
-                                    [ Element.centerX
-                                    , Element.centerY
-                                    ]
-                                    (Ui.Atom.Icon.fa "search-plus")
-                            }
-                    , Ui.Theme.Focus.outlineRight <|
-                        Input.button
-                            [ Element.htmlAttribute <|
-                                Html.Attributes.id "zoom-minus-btn"
-                            , Element.height (Element.px 38)
-                            , Element.width (Element.px 38)
-                            , Element.centerX
-                            , Element.centerY
-                            , Border.roundEach
-                                { topLeft = 0
-                                , topRight = 3
-                                , bottomLeft = 0
-                                , bottomRight = 3
-                                }
-                            , Background.color Ui.Theme.Color.secondary
-                            , Element.mouseOver
-                                [ Background.color Ui.Theme.Color.secondaryDark ]
-                            ]
-                            { onPress = Just UserPressedZoomMinus
-                            , label =
-                                Element.el
-                                    [ Element.centerX
-                                    , Element.centerY
-                                    ]
-                                    (Ui.Atom.Icon.fa "search-minus")
-                            }
-                    ]
-                )
-            ]
-        , Ui.Atom.Tabs.view
-            { label = "Data"
-            , tabs =
-                [ { tag = ObjectsTab
-                  , id = "objects"
-                  , label = "Objects"
+viewCreateMenuBtn : Bool -> LoadedData -> Element Msg
+viewCreateMenuBtn openUpwards model =
+    if model.permissions.push then
+        Ui.Molecule.MenuBtn.viewPrimary
+            { id = "create-object"
+            , onMsg = CreateObjectMenuBtnMsg
+            , openUpwards = openUpwards
+            , actions =
+                [ { icon = Ui.Atom.Icon.point
+                  , label = "Create a point"
+                  , action = CreatePoint
                   }
-                , { tag = VariablesTab
-                  , id = "variables"
-                  , label = "Variables"
+                , { icon = Ui.Atom.Icon.axis
+                  , label = "Create an axis"
+                  , action = CreateAxis
+                  }
+                , { icon = Ui.Atom.Icon.circle
+                  , label = "Create a circle"
+                  , action = CreateCircle
+                  }
+                , { icon = Ui.Atom.Icon.curve
+                  , label = "Create a curve"
+                  , action = CreateCurve
+                  }
+                , { icon = Ui.Atom.Icon.detail
+                  , label = "Create a detail"
+                  , action = CreateDetail
                   }
                 ]
-            , selected = model.selectedTab
-            , onSelect = UserSelectedTab
-            , content =
-                \tag ->
-                    case tag of
-                        ObjectsTab ->
-                            Ui.Molecule.ObjectList.view
-                                { toMsg = ObjectListMsg
-                                , hidePressed = UserPressedHideObject
-                                , editPressed = UserPressedEditObject
-                                , removePressed = UserPressedRemoveObject
-                                , editable = model.permissions.push
-                                }
-                                model.pattern
-                                model.patternState
-
-                        VariablesTab ->
-                            Ui.Molecule.VariableList.view
-                                { onHover = UserHoveredVariable
-                                , onLeave = UserLeftVariable
-                                , onFocus = UserFocusedVariable
-                                , onBlur = UserBluredVariable
-                                , editPressed = UserPressedEditVariable
-                                , removePressed = UserPressedRemoveVariable
-                                , editable = model.permissions.push
-                                }
-                                model.pattern
-                                model.focusedVariable
-                                model.hoveredVariable
             }
+            model.createObjectMenuBtn
+
+    else
+        Element.none
+
+
+
+---- ZOOM CONTROLS
+
+
+viewZoomControls : Element Msg
+viewZoomControls =
+    Element.row []
+        [ Ui.Theme.Focus.outlineLeft <|
+            Input.button
+                [ Element.htmlAttribute <|
+                    Html.Attributes.id "zoom-plus-btn"
+                , Element.height (Element.px 38)
+                , Element.width (Element.px 38)
+                , Element.centerX
+                , Element.centerY
+                , Border.roundEach
+                    { topLeft = 3
+                    , topRight = 0
+                    , bottomLeft = 3
+                    , bottomRight = 0
+                    }
+                , Background.color Ui.Theme.Color.secondary
+                , Element.mouseOver
+                    [ Background.color Ui.Theme.Color.secondaryDark ]
+                ]
+                { onPress = Just UserPressedZoomPlus
+                , label =
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Ui.Atom.Icon.fa "search-plus")
+                }
+        , Ui.Theme.Focus.outlineRight <|
+            Input.button
+                [ Element.htmlAttribute <|
+                    Html.Attributes.id "zoom-minus-btn"
+                , Element.height (Element.px 38)
+                , Element.width (Element.px 38)
+                , Element.centerX
+                , Element.centerY
+                , Border.roundEach
+                    { topLeft = 0
+                    , topRight = 3
+                    , bottomLeft = 0
+                    , bottomRight = 3
+                    }
+                , Background.color Ui.Theme.Color.secondary
+                , Element.mouseOver
+                    [ Background.color Ui.Theme.Color.secondaryDark ]
+                ]
+                { onPress = Just UserPressedZoomMinus
+                , label =
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Ui.Atom.Icon.fa "search-minus")
+                }
         ]
 
 
 
----- RIGHT TOOLBAR
+---- DATA
 
 
-viewRightToolbar : LoadedData -> Element Msg
-viewRightToolbar model =
-    Element.el
-        [ Element.width (Element.maximum 500 Element.fill)
-        , Element.height Element.fill
-        , Element.scrollbarY
-        , Background.color Ui.Theme.Color.white
-        , Border.widthEach
-            { top = 1
-            , bottom = 4
-            , left = 1
-            , right = 1
-            }
-        , Border.color Ui.Theme.Color.secondaryDark
-        ]
-        (case model.maybeDialog of
-            Nothing ->
-                Element.none
+viewData : LoadedData -> Element Msg
+viewData model =
+    Ui.Atom.Tabs.view
+        { label = "Data"
+        , tabs =
+            [ { tag = ObjectsTab
+              , id = "objects"
+              , label = "Objects"
+              }
+            , { tag = VariablesTab
+              , id = "variables"
+              , label = "Variables"
+              }
+            ]
+        , selected = model.selectedTab
+        , onSelect = UserSelectedTab
+        , content =
+            \tag ->
+                case tag of
+                    ObjectsTab ->
+                        Ui.Molecule.ObjectList.view
+                            { toMsg = ObjectListMsg
+                            , hidePressed = UserPressedHideObject
+                            , editPressed = UserPressedEditObject
+                            , removePressed = UserPressedRemoveObject
+                            , editable = model.permissions.push
+                            }
+                            model.pattern
+                            model.patternState
 
-            Just (CreateVariable stuff) ->
-                viewVariable stuff.name stuff.value
+                    VariablesTab ->
+                        Ui.Molecule.VariableList.view
+                            { onHover = UserHoveredVariable
+                            , onLeave = UserLeftVariable
+                            , onFocus = UserFocusedVariable
+                            , onBlur = UserBluredVariable
+                            , editPressed = UserPressedEditVariable
+                            , removePressed = UserPressedRemoveVariable
+                            , editable = model.permissions.push
+                            }
+                            model.pattern
+                            model.focusedVariable
+                            model.hoveredVariable
+        }
 
-            Just (EditVariable stuff) ->
-                viewEditVariable stuff.name stuff.value
 
-            Just (CreateObject dialog) ->
-                Element.map DialogCreateMsg <|
-                    Ui.Organism.Dialog.createView
-                        { pattern = model.pattern
-                        , hoveredInCanvas = Nothing
-                        }
-                        dialog
 
-            Just (EditObject name dialog) ->
-                Element.map DialogEditMsg <|
-                    Ui.Organism.Dialog.editView
-                        { pattern = model.pattern
-                        , name = name
-                        , hoveredInCanvas = Nothing
-                        }
-                        dialog
-        )
+---- DIALOG
+
+
+viewDialog : Pattern BottomLeft -> Dialog -> Element Msg
+viewDialog pattern dialog =
+    case dialog of
+        CreateVariable stuff ->
+            viewVariable stuff.name stuff.value
+
+        EditVariable stuff ->
+            viewEditVariable stuff.name stuff.value
+
+        CreateObject stuff ->
+            Element.map DialogCreateMsg <|
+                Ui.Organism.Dialog.createView
+                    { pattern = pattern
+                    , hoveredInCanvas = Nothing
+                    }
+                    stuff
+
+        EditObject name stuff ->
+            Element.map DialogEditMsg <|
+                Ui.Organism.Dialog.editView
+                    { pattern = pattern
+                    , name = name
+                    , hoveredInCanvas = Nothing
+                    }
+                    stuff
 
 
 
@@ -1019,10 +1245,14 @@ type Msg
     | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedWhatever
       -- TOP TOOLBAR
+    | UserPressedToggleBtn
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedSignIn
       -- LEFT TOOLBAR
+    | UserPressedLeftToolbarToggleBtn
     | UserSelectedTab Tab String
+    | AnimationFrameRequestedLeftToolbarViewport
+    | UpdateRequestedLeftToolbarContainerViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
       -- LEFT TOOLBAR OBJECTS
     | ObjectListMsg Ui.Molecule.ObjectList.Msg
     | UserPressedHideObject Object
@@ -1080,11 +1310,12 @@ update :
     Navigation.Key
     -> String
     -> String
+    -> Element.Device
     -> Git.Identity
     -> Msg
     -> Model
     -> ( Model, Cmd Msg )
-update key domain clientId identity msg model =
+update key domain clientId device identity msg model =
     case model of
         Loading data ->
             let
@@ -1110,79 +1341,84 @@ update key domain clientId identity msg model =
                         _ ->
                             ( newModel, Cmd.none )
             in
-            tryInitLoaded <|
-                case msg of
-                    ReceivedPatternData result ->
-                        case result of
-                            Err error ->
-                                Error
-
-                            Ok patternData ->
-                                Loading { data | maybePatternData = Just patternData }
-
-                    ReceivedMeta result ->
-                        case result of
-                            Err error ->
-                                Error
-
-                            Ok meta ->
-                                Loading { data | maybeMeta = Just meta }
-
-                    ReceivedPermissions result ->
-                        case result of
-                            Err error ->
-                                Error
-
-                            Ok permissions ->
-                                Loading { data | maybePermissions = Just permissions }
-
-                    ChangedPattern address pattern ->
-                        if data.address == address then
-                            Loading
-                                { data
-                                    | maybePatternData =
-                                        Just { pattern = pattern, sha = "" }
-                                }
-
-                        else
-                            Loading data
-
-                    ChangedMeta address meta ->
-                        if data.address == address then
-                            Loading
-                                { data
-                                    | maybeMeta = Just meta
-                                    , maybePermissions =
-                                        Just
-                                            { admin = True
-                                            , push = True
-                                            , pull = True
-                                            }
-                                }
-
-                        else
-                            Loading data
-
-                    _ ->
-                        model
+            tryInitLoaded (updateLoading msg data)
 
         Error ->
             ( model, Cmd.none )
 
         Loaded data ->
-            updateWithData key domain clientId identity msg data
+            updateLoaded key domain clientId device identity msg data
                 |> Tuple.mapFirst Loaded
 
 
-updateWithData :
+updateLoading : Msg -> LoadingData -> Model
+updateLoading msg data =
+    case msg of
+        ReceivedPatternData result ->
+            case result of
+                Err error ->
+                    Error
+
+                Ok patternData ->
+                    Loading { data | maybePatternData = Just patternData }
+
+        ReceivedMeta result ->
+            case result of
+                Err error ->
+                    Error
+
+                Ok meta ->
+                    Loading { data | maybeMeta = Just meta }
+
+        ReceivedPermissions result ->
+            case result of
+                Err error ->
+                    Error
+
+                Ok permissions ->
+                    Loading { data | maybePermissions = Just permissions }
+
+        ChangedPattern address pattern ->
+            if data.address == address then
+                Loading
+                    { data
+                        | maybePatternData =
+                            Just { pattern = pattern, sha = "" }
+                    }
+
+            else
+                Loading data
+
+        ChangedMeta address meta ->
+            if data.address == address then
+                Loading
+                    { data
+                        | maybeMeta = Just meta
+                        , maybePermissions =
+                            Just
+                                { admin = True
+                                , push = True
+                                , pull = True
+                                }
+                    }
+
+            else
+                Loading data
+
+        _ ->
+            Loading data
+
+
+updateLoaded :
     Navigation.Key
     -> String
     -> String
+    -> Element.Device
     -> Git.Identity
     -> Msg
     -> LoadedData
     -> ( LoadedData, Cmd Msg )
-updateWithData key domain clientId identity msg model =
+updateLoaded key domain clientId device identity msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -1307,6 +1543,11 @@ updateWithData key domain clientId identity msg model =
             ( model, Cmd.none )
 
         -- TOP TOOLBAR
+        UserPressedToggleBtn ->
+            ( { model | topToolbarExpanded = not model.topToolbarExpanded }
+            , Cmd.none
+            )
+
         CreateObjectMenuBtnMsg menuBtnMsg ->
             let
                 ( newMenuBtn, menuBtnCmd, maybeAction ) =
@@ -1314,6 +1555,7 @@ updateWithData key domain clientId identity msg model =
             in
             ( { model
                 | createObjectMenuBtn = newMenuBtn
+                , toolbarBottomExpanded = maybeAction /= Nothing
                 , maybeDialog =
                     case maybeAction of
                         Nothing ->
@@ -1334,7 +1576,14 @@ updateWithData key domain clientId identity msg model =
                         Just CreateDetail ->
                             Just (CreateObject Ui.Organism.Dialog.createDetail)
               }
-            , Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
+            , Cmd.batch
+                [ Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
+                , if maybeAction /= Nothing && isCompact device then
+                    requestViewportOfLeftToolbar
+
+                  else
+                    Cmd.none
+                ]
             )
 
         UserPressedSignIn ->
@@ -1344,10 +1593,34 @@ updateWithData key domain clientId identity msg model =
             )
 
         -- LEFT TOOLBAR
+        UserPressedLeftToolbarToggleBtn ->
+            ( { model | toolbarBottomExpanded = not model.toolbarBottomExpanded }
+            , Cmd.none
+            )
+
         UserSelectedTab tab id ->
             ( { model | selectedTab = tab }
             , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
             )
+
+        AnimationFrameRequestedLeftToolbarViewport ->
+            ( model
+            , if isCompact device then
+                requestViewportOfLeftToolbar
+
+              else
+                Cmd.none
+            )
+
+        UpdateRequestedLeftToolbarContainerViewport result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok viewport ->
+                    ( { model | toolbarBottomHeight = Just viewport.viewport.height }
+                    , Cmd.none
+                    )
 
         -- LEFT TOOLBAR OBJECTS
         ObjectListMsg objectListMsg ->
@@ -1390,7 +1663,11 @@ updateWithData key domain clientId identity msg model =
                                 (Pattern.name aDetail)
                                 (Ui.Organism.Dialog.editDetail model.pattern aDetail)
               }
-            , Cmd.none
+            , if isCompact device then
+                requestViewportOfLeftToolbar
+
+              else
+                Cmd.none
             )
 
         UserPressedRemoveObject object ->
@@ -1445,8 +1722,7 @@ updateWithData key domain clientId identity msg model =
                                     , value = value
                                     }
               }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
+            , focusNameInput
             )
 
         UserPressedRemoveVariable variable ->
@@ -1470,8 +1746,14 @@ updateWithData key domain clientId identity msg model =
                             , value = ""
                             }
               }
-            , Browser.Dom.focus "name-input"
-                |> Task.attempt (\_ -> NoOp)
+            , if isCompact device then
+                Cmd.batch
+                    [ requestViewportOfLeftToolbar
+                    , focusNameInput
+                    ]
+
+              else
+                focusNameInput
             )
 
         -- PATTERN
@@ -1487,15 +1769,19 @@ updateWithData key domain clientId identity msg model =
 
         UserResizedWindow ->
             ( model
-            , Browser.Dom.getViewportOf "pattern-container"
-                |> Task.attempt UpdateRequestedPatternContainerViewport
+            , if isCompact device then
+                Cmd.batch
+                    [ requestViewportOfLeftToolbar
+                    , requestViewportOfPattern 0
+                    ]
+
+              else
+                requestViewportOfPattern 0
             )
 
         AnimationFrameRequestedPatternContainerViewport ->
             ( model
-            , Process.sleep 500
-                |> Task.andThen (\_ -> Browser.Dom.getViewportOf "pattern-container")
-                |> Task.attempt UpdateRequestedPatternContainerViewport
+            , requestViewportOfPattern 500
             )
 
         UpdateRequestedPatternContainerViewport result ->
@@ -1596,16 +1882,27 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , putPattern identity
-                                model.address
-                                model.sha
-                                "create object"
-                                newPattern
+                            , if isCompact device then
+                                Cmd.batch
+                                    [ requestViewportOfLeftToolbar
+                                    , putPattern identity
+                                        model.address
+                                        model.sha
+                                        "create object"
+                                        newPattern
+                                    ]
+
+                              else
+                                putPattern identity model.address model.sha "create object" newPattern
                             )
 
                         Ui.Organism.Dialog.CreateCanceled ->
                             ( { model | maybeDialog = Nothing }
-                            , Cmd.none
+                            , if isCompact device then
+                                requestViewportOfLeftToolbar
+
+                              else
+                                Cmd.none
                             )
 
                 Just (EditObject _ _) ->
@@ -1638,16 +1935,23 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , putPattern identity
-                                model.address
-                                model.sha
-                                "edit object"
-                                newPattern
+                            , if isCompact device then
+                                Cmd.batch
+                                    [ requestViewportOfLeftToolbar
+                                    , putPattern identity model.address model.sha "edit object" newPattern
+                                    ]
+
+                              else
+                                putPattern identity model.address model.sha "edit object" newPattern
                             )
 
                         Ui.Organism.Dialog.EditCanceled ->
                             ( { model | maybeDialog = Nothing }
-                            , Cmd.none
+                            , if isCompact device then
+                                requestViewportOfLeftToolbar
+
+                              else
+                                Cmd.none
                             )
 
                 Just (CreateVariable _) ->
@@ -1660,11 +1964,7 @@ updateWithData key domain clientId identity msg model =
         UserChangedVariableName newName ->
             case model.maybeDialog of
                 Just (CreateVariable data) ->
-                    ( { model
-                        | maybeDialog =
-                            Just <|
-                                CreateVariable { data | name = newName }
-                      }
+                    ( { model | maybeDialog = Just (CreateVariable { data | name = newName }) }
                     , Cmd.none
                     )
 
@@ -1683,20 +1983,12 @@ updateWithData key domain clientId identity msg model =
                     ( model, Cmd.none )
 
                 Just (CreateVariable data) ->
-                    ( { model
-                        | maybeDialog =
-                            Just <|
-                                CreateVariable { data | value = newValue }
-                      }
+                    ( { model | maybeDialog = Just (CreateVariable { data | value = newValue }) }
                     , Cmd.none
                     )
 
                 Just (EditVariable data) ->
-                    ( { model
-                        | maybeDialog =
-                            Just <|
-                                EditVariable { data | value = newValue }
-                      }
+                    ( { model | maybeDialog = Just (EditVariable { data | value = newValue }) }
                     , Cmd.none
                     )
 
@@ -1721,11 +2013,18 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , putPattern identity
-                                model.address
-                                model.sha
-                                "create variable"
-                                newPattern
+                            , if isCompact device then
+                                Cmd.batch
+                                    [ requestViewportOfLeftToolbar
+                                    , putPattern identity
+                                        model.address
+                                        model.sha
+                                        "create variable"
+                                        newPattern
+                                    ]
+
+                              else
+                                putPattern identity model.address model.sha "create variable" newPattern
                             )
 
                 _ ->
@@ -1744,11 +2043,18 @@ updateWithData key domain clientId identity msg model =
                                 , pattern = newPattern
                                 , stored = False
                               }
-                            , putPattern identity
-                                model.address
-                                model.sha
-                                "edit variable"
-                                newPattern
+                            , if isCompact device then
+                                Cmd.batch
+                                    [ requestViewportOfLeftToolbar
+                                    , putPattern identity
+                                        model.address
+                                        model.sha
+                                        "edit variable"
+                                        newPattern
+                                    ]
+
+                              else
+                                putPattern identity model.address model.sha "edit variable" newPattern
                             )
 
                 _ ->
@@ -1776,11 +2082,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete point"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete point" newPattern
                     )
 
                 _ ->
@@ -1802,11 +2104,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete axis"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete axis" newPattern
                     )
 
                 _ ->
@@ -1828,11 +2126,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete circle"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete circle" newPattern
                     )
 
                 _ ->
@@ -1854,11 +2148,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete curve"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete curve" newPattern
                     )
 
                 _ ->
@@ -1880,11 +2170,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete detail"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete detail" newPattern
                     )
 
                 _ ->
@@ -1906,11 +2192,7 @@ updateWithData key domain clientId identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity
-                        model.address
-                        model.sha
-                        "delete variable"
-                        newPattern
+                    , putPattern identity model.address model.sha "delete variable" newPattern
                     )
 
                 _ ->
@@ -1964,48 +2246,65 @@ subscriptions model =
             Sub.none
 
         Loaded data ->
-            Sub.batch
-                [ case data.maybeModal of
-                    Nothing ->
-                        Sub.none
+            loadedSubscriptions data
 
-                    Just ( _, state ) ->
-                        Sub.map ChangedModalState (Ui.Molecule.Modal.subscriptions state)
-                , case data.patternContainerDimensions of
-                    Just _ ->
-                        Sub.none
 
-                    Nothing ->
-                        Browser.Events.onAnimationFrame
-                            (\_ -> AnimationFrameRequestedPatternContainerViewport)
-                , Browser.Events.onResize
-                    (\_ _ -> UserResizedWindow)
-                , case data.maybeDrag of
-                    Nothing ->
-                        Sub.none
+loadedSubscriptions : LoadedData -> Sub Msg
+loadedSubscriptions data =
+    Sub.batch
+        [ Browser.Events.onResize (\_ _ -> UserResizedWindow)
+        , LocalStorage.changedStore
+            { changedZoom = ChangedZoom
+            , changedCenter = ChangedCenter
+            , changedAddresses = ChangedAddresses
+            , changedPattern = ChangedPattern
+            , changedMeta = ChangedMeta
+            , changedWhatever = ChangedWhatever
+            }
 
-                    Just _ ->
-                        Sub.batch
-                            [ Browser.Events.onMouseMove <|
-                                Decode.map MouseMove <|
-                                    Decode.map2 Position
-                                        (Decode.field "screenX" Decode.float)
-                                        (Decode.field "screenY" Decode.float)
-                            , Browser.Events.onMouseUp <|
-                                Decode.map MouseUp <|
-                                    Decode.map2 Position
-                                        (Decode.field "screenX" Decode.float)
-                                        (Decode.field "screenY" Decode.float)
-                            ]
-                , LocalStorage.changedStore
-                    { changedZoom = ChangedZoom
-                    , changedCenter = ChangedCenter
-                    , changedAddresses = ChangedAddresses
-                    , changedPattern = ChangedPattern
-                    , changedMeta = ChangedMeta
-                    , changedWhatever = ChangedWhatever
-                    }
-                ]
+        -- DRAG
+        , case data.maybeDrag of
+            Nothing ->
+                Sub.none
+
+            Just _ ->
+                Sub.batch
+                    [ Browser.Events.onMouseMove <|
+                        Decode.map MouseMove <|
+                            Decode.map2 Position
+                                (Decode.field "screenX" Decode.float)
+                                (Decode.field "screenY" Decode.float)
+                    , Browser.Events.onMouseUp <|
+                        Decode.map MouseUp <|
+                            Decode.map2 Position
+                                (Decode.field "screenX" Decode.float)
+                                (Decode.field "screenY" Decode.float)
+                    ]
+
+        -- ANIMATIONS
+        , case data.maybeModal of
+            Nothing ->
+                Sub.none
+
+            Just ( _, state ) ->
+                Sub.map ChangedModalState (Ui.Molecule.Modal.subscriptions state)
+
+        -- VIEWPORT MEASURMENTS
+        , case data.patternContainerDimensions of
+            Just _ ->
+                Sub.none
+
+            Nothing ->
+                Browser.Events.onAnimationFrame
+                    (\_ -> AnimationFrameRequestedPatternContainerViewport)
+        , case data.toolbarBottomHeight of
+            Just _ ->
+                Sub.none
+
+            Nothing ->
+                Browser.Events.onAnimationFrame
+                    (\_ -> AnimationFrameRequestedLeftToolbarViewport)
+        ]
 
 
 
@@ -2017,13 +2316,7 @@ objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
 
 
-putPattern :
-    Git.Identity
-    -> LocalStorage.Address
-    -> String
-    -> String
-    -> Pattern BottomLeft
-    -> Cmd Msg
+putPattern : Git.Identity -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
 putPattern identity address sha message newPattern =
     case address of
         LocalStorage.GitRepo { repo } ->
@@ -2037,3 +2330,35 @@ putPattern identity address sha message newPattern =
 
         LocalStorage.Browser _ ->
             LocalStorage.updatePattern address newPattern
+
+
+isCompact : Element.Device -> Bool
+isCompact device =
+    case ( device.class, device.orientation ) of
+        ( Element.Phone, _ ) ->
+            True
+
+        ( Element.Tablet, Element.Portrait ) ->
+            True
+
+        _ ->
+            False
+
+
+requestViewportOfLeftToolbar : Cmd Msg
+requestViewportOfLeftToolbar =
+    Task.attempt UpdateRequestedLeftToolbarContainerViewport
+        (Browser.Dom.getViewportOf "left-toolbar-container")
+
+
+requestViewportOfPattern : Float -> Cmd Msg
+requestViewportOfPattern delay =
+    Process.sleep delay
+        |> Task.andThen (\_ -> Browser.Dom.getViewportOf "pattern-container")
+        |> Task.attempt UpdateRequestedPatternContainerViewport
+
+
+focusNameInput : Cmd Msg
+focusNameInput =
+    Browser.Dom.focus "name-input"
+        |> Task.attempt (\_ -> NoOp)

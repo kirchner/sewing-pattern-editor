@@ -201,7 +201,7 @@ view model =
                 Pattern patternModel ->
                     let
                         { title, body, dialog } =
-                            Pattern.view data.identity patternModel
+                            Pattern.view data.device data.identity patternModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternMsg body) ]
@@ -448,6 +448,7 @@ update msg model =
                                 data.key
                                 data.domain
                                 data.clientId
+                                data.device
                                 data.identity
                                 patternMsg
                                 patternModel
