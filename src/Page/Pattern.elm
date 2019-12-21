@@ -74,6 +74,7 @@ import Process
 import Quantity
 import Route
 import State
+import StateResult
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events
@@ -906,8 +907,8 @@ viewPattern maybeDimensions maybeDrag model =
         Just { width, height } ->
             let
                 resolution =
-                    Pixels.pixels (model.zoom * width / 336)
-                        |> Quantity.per (Length.millimeters 1)
+                    Pixels.pixels model.zoom
+                        |> Quantity.per (Length.meters 1)
 
                 currentCenter =
                     case maybeDrag of
@@ -1836,9 +1837,63 @@ updateLoaded key domain clientId device identity msg model =
             )
 
         UserPressedZoomFit ->
-            ( model
-            , Cmd.none
-            )
+            let
+                point2ds =
+                    Pattern.points model.pattern
+                        |> StateResult.traverse Pattern.point2d
+                        |> State.finalValue model.pattern
+            in
+            case point2ds of
+                Ok (first :: rest) ->
+                    case model.patternContainerDimensions of
+                        Nothing ->
+                            ( model
+                            , Cmd.none
+                            )
+
+                        Just dimensions ->
+                            let
+                                boundingBox =
+                                    BoundingBox2d.hull first rest
+
+                                { minX, maxX, minY, maxY } =
+                                    BoundingBox2d.extrema boundingBox
+
+                                width =
+                                    Length.inMeters maxX - Length.inMeters minX + 50
+
+                                height =
+                                    Length.inMeters maxY - Length.inMeters minY + 50
+
+                                idealHorizontalResolution =
+                                    Pixels.pixels dimensions.width
+                                        |> Quantity.per (Length.meters width)
+
+                                idealVerticalResolution =
+                                    Pixels.pixels dimensions.height
+                                        |> Quantity.per (Length.meters height)
+
+                                center =
+                                    BoundingBox2d.centerPoint boundingBox
+
+                                idealResolution =
+                                    Quantity.min idealHorizontalResolution idealVerticalResolution
+                            in
+                            ( model
+                            , Cmd.batch
+                                [ LocalStorage.updateZoom model.address
+                                    (Length.meters 1
+                                        |> Quantity.at idealResolution
+                                        |> Pixels.inPixels
+                                    )
+                                , LocalStorage.updateCenter model.address center
+                                ]
+                            )
+
+                _ ->
+                    ( model
+                    , Cmd.none
+                    )
 
         UserPressedZoomMinus ->
             ( model
@@ -1876,8 +1931,8 @@ updateLoaded key domain clientId device identity msg model =
                 Just { width } ->
                     let
                         resolution =
-                            Pixels.pixels (model.zoom * width / 336)
-                                |> Quantity.per (Length.millimeters 1)
+                            Pixels.pixels model.zoom
+                                |> Quantity.per (Length.meters 1)
 
                         newCenter =
                             case model.maybeDrag of
