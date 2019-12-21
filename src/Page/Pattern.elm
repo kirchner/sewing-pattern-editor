@@ -940,6 +940,7 @@ viewPattern maybeDimensions maybeDrag model =
                     , Element.htmlAttribute <|
                         Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
                     , Element.htmlAttribute (Html.Events.Extra.Pointer.onDown PointerDown)
+                    , Element.htmlAttribute (Html.Attributes.style "touch-action" "none")
                     ]
 
                  else
@@ -949,6 +950,7 @@ viewPattern maybeDimensions maybeDrag model =
                         Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
                     , Element.htmlAttribute (Html.Events.Extra.Pointer.onMove PointerMove)
                     , Element.htmlAttribute (Html.Events.Extra.Pointer.onUp PointerUp)
+                    , Element.htmlAttribute (Html.Attributes.style "touch-action" "none")
                     ]
                 )
                 (Element.map PatternMsg <|
