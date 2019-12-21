@@ -135,18 +135,20 @@ type alias LoadedData =
     , center : Point2d Meters BottomLeft
     , patternState : Ui.Molecule.Pattern.State
 
-    -- TOP TOOLBAR
+    -- TOOLBAR TOP
     , topToolbarExpanded : Bool
     , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
 
-    -- LEFT TOOLBAR
+    -- TOOLBAR BOTTOM
     , toolbarBottomExpanded : Bool
     , toolbarBottomHeight : Maybe Float
+
+    -- DATA
     , selectedTab : Tab
     , focusedVariable : Maybe String
     , hoveredVariable : Maybe String
 
-    -- RIGHT TOOLBAR
+    -- DIALOG
     , maybeDialog : Maybe Dialog
     , preventActionMenuClose : Bool
     }
@@ -239,13 +241,14 @@ init identity address =
 
 
 initLoaded :
-    LocalStorage.Address
+    Element.Device
+    -> LocalStorage.Address
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded address sha pattern meta permissions =
+initLoaded device address sha pattern meta permissions =
     ( Loaded
         { maybeDrag = Nothing
         , patternContainerDimensions = Nothing
@@ -263,18 +266,20 @@ initLoaded address sha pattern meta permissions =
         , center = Point2d.origin
         , patternState = Ui.Molecule.Pattern.init
 
-        -- TOP TOOLBAR
+        -- TOOLBAR TOP
         , topToolbarExpanded = False
         , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
 
-        -- LEFT TOOLBAR
+        -- TOOLBAR BOTTOM
         , toolbarBottomExpanded = False
         , toolbarBottomHeight = Nothing
+
+        -- DATA
         , selectedTab = ObjectsTab
         , focusedVariable = Nothing
         , hoveredVariable = Nothing
 
-        -- RIGHT TOOLBAR
+        -- DIALOG
         , maybeDialog = Nothing
         , preventActionMenuClose = False
         }
@@ -282,6 +287,11 @@ initLoaded address sha pattern meta permissions =
         [ LocalStorage.requestZoom address
         , LocalStorage.requestCenter address
         , LocalStorage.requestAddresses
+        , if isCompact device then
+            requestViewportOfToolbarBottom
+
+          else
+            Cmd.none
         ]
     )
 
@@ -299,32 +309,24 @@ view :
 view device identity model =
     case model of
         Loading _ ->
-            { title = "Loading pattern..."
-            , body =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (Element.text "Loading pattern...")
-            , dialog = Nothing
-            }
+            statusMsg "Loading pattern..." "Loading pattern..."
 
         Error ->
-            { title = "Something went wrong."
-            , body =
-                Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    ]
-                    (Element.text "Loading pattern..")
-            , dialog = Nothing
-            }
+            statusMsg "Something went wrong." "Loading pattern.."
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
             , body = viewEditor device identity data
             , dialog = Maybe.map (viewModal data.pattern) data.maybeModal
             }
+
+
+statusMsg : String -> String -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+statusMsg title text =
+    { title = title
+    , body = Element.el [ Element.centerX, Element.centerY ] (Element.text text)
+    , dialog = Nothing
+    }
 
 
 
@@ -633,7 +635,7 @@ viewToolbarBottomCompact model =
             ]
             Element.none
         , Element.el
-            [ Element.htmlAttribute (Html.Attributes.id "left-toolbar-container")
+            [ Element.htmlAttribute (Html.Attributes.id "toolbar-bottom")
             , Element.height (Element.fillPortion 1)
             , Element.width Element.fill
             , Border.widthEach
@@ -1282,8 +1284,7 @@ type Msg
       -- LEFT TOOLBAR
     | UserPressedLeftToolbarToggleBtn
     | UserSelectedTab Tab String
-    | AnimationFrameRequestedLeftToolbarViewport
-    | UpdateRequestedLeftToolbarContainerViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
+    | ReceivedToolbarBottomViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
       -- LEFT TOOLBAR OBJECTS
     | ObjectListMsg Ui.Molecule.ObjectList.Msg
     | UserPressedHideObject Object
@@ -1349,30 +1350,22 @@ update :
 update key domain clientId device identity msg model =
     case model of
         Loading data ->
-            let
-                tryInitLoaded newModel =
-                    case newModel of
-                        Loading newData ->
-                            case
-                                ( newData.maybePatternData
-                                , newData.maybeMeta
-                                , newData.maybePermissions
-                                )
-                            of
-                                ( Just patternData, Just meta, Just permissions ) ->
-                                    initLoaded newData.address
-                                        patternData.sha
-                                        patternData.pattern
-                                        meta
-                                        permissions
-
-                                _ ->
-                                    ( newModel, Cmd.none )
+            case updateLoading msg data of
+                (Loading newData) as newModel ->
+                    case ( newData.maybePatternData, newData.maybeMeta, newData.maybePermissions ) of
+                        ( Just patternData, Just meta, Just permissions ) ->
+                            initLoaded device
+                                newData.address
+                                patternData.sha
+                                patternData.pattern
+                                meta
+                                permissions
 
                         _ ->
                             ( newModel, Cmd.none )
-            in
-            tryInitLoaded (updateLoading msg data)
+
+                newModel ->
+                    ( newModel, Cmd.none )
 
         Error ->
             ( model, Cmd.none )
@@ -1610,7 +1603,7 @@ updateLoaded key domain clientId device identity msg model =
             , Cmd.batch
                 [ Cmd.map CreateObjectMenuBtnMsg menuBtnCmd
                 , if maybeAction /= Nothing && isCompact device then
-                    requestViewportOfLeftToolbar
+                    requestViewportOfToolbarBottom
 
                   else
                     Cmd.none
@@ -1634,16 +1627,7 @@ updateLoaded key domain clientId device identity msg model =
             , Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
             )
 
-        AnimationFrameRequestedLeftToolbarViewport ->
-            ( model
-            , if isCompact device then
-                requestViewportOfLeftToolbar
-
-              else
-                Cmd.none
-            )
-
-        UpdateRequestedLeftToolbarContainerViewport result ->
+        ReceivedToolbarBottomViewport result ->
             case result of
                 Err _ ->
                     ( model, Cmd.none )
@@ -1695,7 +1679,7 @@ updateLoaded key domain clientId device identity msg model =
                                 (Ui.Organism.Dialog.editDetail model.pattern aDetail)
               }
             , if isCompact device then
-                requestViewportOfLeftToolbar
+                requestViewportOfToolbarBottom
 
               else
                 Cmd.none
@@ -1779,7 +1763,7 @@ updateLoaded key domain clientId device identity msg model =
               }
             , if isCompact device then
                 Cmd.batch
-                    [ requestViewportOfLeftToolbar
+                    [ requestViewportOfToolbarBottom
                     , focusNameInput
                     ]
 
@@ -1802,7 +1786,7 @@ updateLoaded key domain clientId device identity msg model =
             ( model
             , if isCompact device then
                 Cmd.batch
-                    [ requestViewportOfLeftToolbar
+                    [ requestViewportOfToolbarBottom
                     , requestViewportOfPattern 0
                     ]
 
@@ -1915,7 +1899,7 @@ updateLoaded key domain clientId device identity msg model =
                               }
                             , if isCompact device then
                                 Cmd.batch
-                                    [ requestViewportOfLeftToolbar
+                                    [ requestViewportOfToolbarBottom
                                     , putPattern identity
                                         model.address
                                         model.sha
@@ -1930,7 +1914,7 @@ updateLoaded key domain clientId device identity msg model =
                         Ui.Organism.Dialog.CreateCanceled ->
                             ( { model | maybeDialog = Nothing }
                             , if isCompact device then
-                                requestViewportOfLeftToolbar
+                                requestViewportOfToolbarBottom
 
                               else
                                 Cmd.none
@@ -1968,7 +1952,7 @@ updateLoaded key domain clientId device identity msg model =
                               }
                             , if isCompact device then
                                 Cmd.batch
-                                    [ requestViewportOfLeftToolbar
+                                    [ requestViewportOfToolbarBottom
                                     , putPattern identity model.address model.sha "edit object" newPattern
                                     ]
 
@@ -1979,7 +1963,7 @@ updateLoaded key domain clientId device identity msg model =
                         Ui.Organism.Dialog.EditCanceled ->
                             ( { model | maybeDialog = Nothing }
                             , if isCompact device then
-                                requestViewportOfLeftToolbar
+                                requestViewportOfToolbarBottom
 
                               else
                                 Cmd.none
@@ -2046,7 +2030,7 @@ updateLoaded key domain clientId device identity msg model =
                               }
                             , if isCompact device then
                                 Cmd.batch
-                                    [ requestViewportOfLeftToolbar
+                                    [ requestViewportOfToolbarBottom
                                     , putPattern identity
                                         model.address
                                         model.sha
@@ -2076,7 +2060,7 @@ updateLoaded key domain clientId device identity msg model =
                               }
                             , if isCompact device then
                                 Cmd.batch
-                                    [ requestViewportOfLeftToolbar
+                                    [ requestViewportOfToolbarBottom
                                     , putPattern identity
                                         model.address
                                         model.sha
@@ -2328,13 +2312,6 @@ loadedSubscriptions data =
             Nothing ->
                 Browser.Events.onAnimationFrame
                     (\_ -> AnimationFrameRequestedPatternContainerViewport)
-        , case data.toolbarBottomHeight of
-            Just _ ->
-                Sub.none
-
-            Nothing ->
-                Browser.Events.onAnimationFrame
-                    (\_ -> AnimationFrameRequestedLeftToolbarViewport)
         ]
 
 
@@ -2376,10 +2353,10 @@ isCompact device =
             False
 
 
-requestViewportOfLeftToolbar : Cmd Msg
-requestViewportOfLeftToolbar =
-    Task.attempt UpdateRequestedLeftToolbarContainerViewport
-        (Browser.Dom.getViewportOf "left-toolbar-container")
+requestViewportOfToolbarBottom : Cmd Msg
+requestViewportOfToolbarBottom =
+    Task.attempt ReceivedToolbarBottomViewport
+        (Browser.Dom.getViewportOf "toolbar-bottom")
 
 
 requestViewportOfPattern : Float -> Cmd Msg
