@@ -658,6 +658,7 @@ viewToolbarBottomCompact model =
                     , Element.padding Ui.Theme.Spacing.level1
                     ]
                     [ viewCreateMenuBtn True model
+                    , viewCreateVariableBtn
                     , Element.el
                         [ Element.alignRight ]
                         (Element.row []
@@ -829,6 +830,7 @@ viewToolbarLeftFullscreen model =
             , Element.padding Ui.Theme.Spacing.level1
             ]
             [ viewCreateMenuBtn False model
+            , viewCreateVariableBtn
             , Element.el [ Element.alignRight ] viewZoomControls
             ]
         , viewData model
@@ -983,6 +985,35 @@ viewCreateMenuBtn openUpwards model =
 
     else
         Element.none
+
+
+
+---- VIEW CREATE VARIABLE BTN
+
+
+viewCreateVariableBtn : Element Msg
+viewCreateVariableBtn =
+    Element.el [] <|
+        Ui.Theme.Focus.outline <|
+            Input.button
+                [ Element.htmlAttribute (Html.Attributes.id "create-variable-btn")
+                , Element.height (Element.px 38)
+                , Element.width (Element.px 38)
+                , Element.centerX
+                , Element.centerY
+                , Border.rounded 3
+                , Font.color Ui.Theme.Color.white
+                , Background.color Ui.Theme.Color.primaryLight
+                , Element.mouseOver [ Background.color Ui.Theme.Color.primary ]
+                ]
+                { onPress = Just UserPressedCreateVariable
+                , label =
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        ]
+                        (Ui.Atom.Icon.fa "ruler-horizontal")
+                }
 
 
 
