@@ -34,6 +34,7 @@
             "krisajenkins/remotedata": "6.0.1",
             "mdgriffith/elm-ui": "1.1.5",
             "mgold/elm-nonempty-list": "4.0.0",
+            "mpizenberg/elm-pointer-events": "4.0.1",
             "tesk9/accessible-html": "4.0.0",
             "truqu/elm-base64": "2.0.4"
         },

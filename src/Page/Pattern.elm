@@ -40,6 +40,7 @@ import Browser.Events
 import Browser.Navigation as Navigation
 import Circle2d
 import Color
+import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -54,6 +55,7 @@ import Git
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Html.Events.Extra.Pointer
 import Html.Lazy
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -932,17 +934,23 @@ viewPattern maybeDimensions maybeDrag model =
                                     )
             in
             Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.htmlAttribute <|
-                    Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
-                , Element.htmlAttribute <|
-                    Html.Events.on "mousedown" <|
-                        Decode.map MouseDown <|
-                            Decode.map2 Position
-                                (Decode.field "screenX" Decode.float)
-                                (Decode.field "screenY" Decode.float)
-                ]
+                (if model.maybeDrag == Nothing then
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.htmlAttribute <|
+                        Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                    , Element.htmlAttribute (Html.Events.Extra.Pointer.onDown PointerDown)
+                    ]
+
+                 else
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.htmlAttribute <|
+                        Html.Events.preventDefaultOn "dragstart" (Decode.succeed ( NoOp, True ))
+                    , Element.htmlAttribute (Html.Events.Extra.Pointer.onMove PointerMove)
+                    , Element.htmlAttribute (Html.Events.Extra.Pointer.onUp PointerUp)
+                    ]
+                )
                 (Element.map PatternMsg <|
                     Ui.Molecule.Pattern.view
                         { id = "pattern" }
@@ -1332,9 +1340,10 @@ type Msg
     | UserPressedZoomPlus
     | UserPressedZoomFit
     | UserPressedZoomMinus
-    | MouseDown Position
-    | MouseMove Position
-    | MouseUp Position
+      -- DRAG
+    | PointerDown Html.Events.Extra.Pointer.Event
+    | PointerMove Html.Events.Extra.Pointer.Event
+    | PointerUp Html.Events.Extra.Pointer.Event
       -- RIGHT TOOLBAR
     | DialogCreateMsg Ui.Organism.Dialog.CreateMsg
     | DialogEditMsg Ui.Organism.Dialog.EditMsg
@@ -1864,7 +1873,11 @@ updateLoaded key domain clientId device identity msg model =
             , LocalStorage.updateZoom model.address (model.zoom / 1.1)
             )
 
-        MouseDown position ->
+        PointerDown event ->
+            let
+                position =
+                    positionFromPointerEvent event
+            in
             ( { model
                 | maybeDrag =
                     Just
@@ -1875,7 +1888,11 @@ updateLoaded key domain clientId device identity msg model =
             , Cmd.none
             )
 
-        MouseMove position ->
+        PointerMove event ->
+            let
+                position =
+                    positionFromPointerEvent event
+            in
             case model.maybeDrag of
                 Nothing ->
                     ( model, Cmd.none )
@@ -1885,7 +1902,11 @@ updateLoaded key domain clientId device identity msg model =
                     , Cmd.none
                     )
 
-        MouseUp position ->
+        PointerUp event ->
+            let
+                position =
+                    positionFromPointerEvent event
+            in
             case model.patternContainerDimensions of
                 Nothing ->
                     ( { model | maybeDrag = Nothing }
@@ -2316,25 +2337,6 @@ loadedSubscriptions data =
             , changedWhatever = ChangedWhatever
             }
 
-        -- DRAG
-        , case data.maybeDrag of
-            Nothing ->
-                Sub.none
-
-            Just _ ->
-                Sub.batch
-                    [ Browser.Events.onMouseMove <|
-                        Decode.map MouseMove <|
-                            Decode.map2 Position
-                                (Decode.field "screenX" Decode.float)
-                                (Decode.field "screenY" Decode.float)
-                    , Browser.Events.onMouseUp <|
-                        Decode.map MouseUp <|
-                            Decode.map2 Position
-                                (Decode.field "screenX" Decode.float)
-                                (Decode.field "screenY" Decode.float)
-                    ]
-
         -- ANIMATIONS
         , case data.maybeModal of
             Nothing ->
@@ -2459,3 +2461,14 @@ updateToIdealViewport address pattern dimensions =
 
         _ ->
             Cmd.none
+
+
+positionFromPointerEvent : Html.Events.Extra.Pointer.Event -> Position
+positionFromPointerEvent event =
+    let
+        ( x, y ) =
+            event.pointer.clientPos
+    in
+    { x = x
+    , y = y
+    }
