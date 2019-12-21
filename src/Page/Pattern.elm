@@ -85,6 +85,7 @@ import Task
 import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Atom.Input
+import Ui.Atom.Object exposing (Resolution)
 import Ui.Atom.Tabs
 import Ui.Molecule.MenuBtn
 import Ui.Molecule.Modal
@@ -134,7 +135,7 @@ type alias LoadedData =
     , pattern : Pattern BottomLeft
     , stored : Bool
     , name : String
-    , zoom : Float
+    , resolution : Resolution
     , center : Point2d Meters BottomLeft
     , patternState : Ui.Molecule.Pattern.State
 
@@ -265,7 +266,7 @@ initLoaded device address sha pattern meta permissions =
         , pattern = pattern
         , stored = True
         , name = meta.name
-        , zoom = 1
+        , resolution = Pixels.pixels 1 |> Quantity.per (Length.meters 1)
         , center = Point2d.origin
         , patternState = Ui.Molecule.Pattern.init
 
@@ -914,10 +915,6 @@ viewPattern maybeDimensions maybeDrag model =
 
         Just { width, height } ->
             let
-                resolution =
-                    Pixels.pixels model.zoom
-                        |> Quantity.per (Length.meters 1)
-
                 currentCenter =
                     case maybeDrag of
                         Nothing ->
@@ -926,7 +923,7 @@ viewPattern maybeDimensions maybeDrag model =
                         Just drag ->
                             model.center
                                 |> Point2d.translateBy
-                                    (Vector2d.at_ resolution <|
+                                    (Vector2d.at_ model.resolution <|
                                         Vector2d.fromPixels
                                             { x = drag.start.x - drag.current.x
                                             , y = drag.start.y - drag.current.y
@@ -958,7 +955,7 @@ viewPattern maybeDimensions maybeDrag model =
                         { id = "pattern" }
                         { width = width
                         , height = height
-                        , resolution = resolution
+                        , resolution = model.resolution
                         , center = currentCenter
                         }
                         model.pattern
@@ -1555,7 +1552,7 @@ updateLoaded key domain clientId device identity msg model =
         -- LOCAL STORAGE
         ChangedZoom address zoom ->
             if model.address == address then
-                ( { model | zoom = zoom }
+                ( { model | resolution = Pixels.pixels zoom |> Quantity.per (Length.meters 1) }
                 , Cmd.none
                 )
 
@@ -1855,7 +1852,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedZoomPlus ->
             ( model
-            , LocalStorage.updateZoom model.address (model.zoom * 1.1)
+            , updateZoom model.address (Quantity.multiplyBy 1.1 model.resolution)
             )
 
         UserPressedZoomFit ->
@@ -1872,7 +1869,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedZoomMinus ->
             ( model
-            , LocalStorage.updateZoom model.address (model.zoom / 1.1)
+            , updateZoom model.address (Quantity.divideBy 1.1 model.resolution)
             )
 
         PointerDown event ->
@@ -1917,10 +1914,6 @@ updateLoaded key domain clientId device identity msg model =
 
                 Just { width } ->
                     let
-                        resolution =
-                            Pixels.pixels model.zoom
-                                |> Quantity.per (Length.meters 1)
-
                         newCenter =
                             case model.maybeDrag of
                                 Nothing ->
@@ -1929,7 +1922,7 @@ updateLoaded key domain clientId device identity msg model =
                                 Just drag ->
                                     model.center
                                         |> Point2d.translateBy
-                                            (Vector2d.at_ resolution <|
+                                            (Vector2d.at_ model.resolution <|
                                                 Vector2d.fromPixels
                                                     { x = drag.start.x - drag.current.x
                                                     , y = drag.start.y - drag.current.y
@@ -2413,6 +2406,12 @@ focusNameInput : Cmd Msg
 focusNameInput =
     Browser.Dom.focus "name-input"
         |> Task.attempt (\_ -> NoOp)
+
+
+updateZoom : LocalStorage.Address -> Resolution -> Cmd Msg
+updateZoom address resolution =
+    LocalStorage.updateZoom address
+        (Pixels.inPixels (Quantity.at resolution (Length.meters 1)))
 
 
 updateToIdealViewport : LocalStorage.Address -> Pattern BottomLeft -> Dimensions -> Cmd Msg

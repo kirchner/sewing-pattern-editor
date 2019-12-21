@@ -29,6 +29,7 @@ import Quantity
 import State
 import Svg exposing (Svg)
 import Svg.Attributes
+import Svg.Lazy as Svg
 import Ui.Atom.Object exposing (Resolution)
 import Ui.Theme.Color
 import Vector2d
@@ -120,7 +121,7 @@ view cfg viewport pattern state =
                 ]
                 [ Svg.translateBy
                     (Vector2d.from (Point2d.at viewport.resolution viewport.center) Point2d.origin)
-                    (draw pattern viewport.resolution state)
+                    (Svg.lazy3 draw pattern viewport.resolution state)
                 ]
         )
 
