@@ -1848,62 +1848,15 @@ updateLoaded key domain clientId device identity msg model =
             )
 
         UserPressedZoomFit ->
-            let
-                point2ds =
-                    Pattern.points model.pattern
-                        |> StateResult.traverse Pattern.point2d
-                        |> State.finalValue model.pattern
-            in
-            case point2ds of
-                Ok (first :: rest) ->
-                    case model.patternContainerDimensions of
-                        Nothing ->
-                            ( model
-                            , Cmd.none
-                            )
-
-                        Just dimensions ->
-                            let
-                                boundingBox =
-                                    BoundingBox2d.hull first rest
-
-                                { minX, maxX, minY, maxY } =
-                                    BoundingBox2d.extrema boundingBox
-
-                                width =
-                                    Length.inMeters maxX - Length.inMeters minX + 50
-
-                                height =
-                                    Length.inMeters maxY - Length.inMeters minY + 50
-
-                                idealHorizontalResolution =
-                                    Pixels.pixels dimensions.width
-                                        |> Quantity.per (Length.meters width)
-
-                                idealVerticalResolution =
-                                    Pixels.pixels dimensions.height
-                                        |> Quantity.per (Length.meters height)
-
-                                center =
-                                    BoundingBox2d.centerPoint boundingBox
-
-                                idealResolution =
-                                    Quantity.min idealHorizontalResolution idealVerticalResolution
-                            in
-                            ( model
-                            , Cmd.batch
-                                [ LocalStorage.updateZoom model.address
-                                    (Length.meters 1
-                                        |> Quantity.at idealResolution
-                                        |> Pixels.inPixels
-                                    )
-                                , LocalStorage.updateCenter model.address center
-                                ]
-                            )
-
-                _ ->
+            case model.patternContainerDimensions of
+                Nothing ->
                     ( model
                     , Cmd.none
+                    )
+
+                Just dimensions ->
+                    ( model
+                    , updateToIdealViewport model.address model.pattern dimensions
                     )
 
         UserPressedZoomMinus ->
@@ -2456,3 +2409,53 @@ focusNameInput : Cmd Msg
 focusNameInput =
     Browser.Dom.focus "name-input"
         |> Task.attempt (\_ -> NoOp)
+
+
+updateToIdealViewport : LocalStorage.Address -> Pattern BottomLeft -> Dimensions -> Cmd Msg
+updateToIdealViewport address pattern dimensions =
+    let
+        point2ds =
+            Pattern.points pattern
+                |> StateResult.traverse Pattern.point2d
+                |> State.finalValue pattern
+    in
+    case point2ds of
+        Ok (first :: rest) ->
+            let
+                boundingBox =
+                    BoundingBox2d.hull first rest
+
+                { minX, maxX, minY, maxY } =
+                    BoundingBox2d.extrema boundingBox
+
+                width =
+                    Length.inMeters maxX - Length.inMeters minX + 50
+
+                height =
+                    Length.inMeters maxY - Length.inMeters minY + 50
+
+                idealHorizontalResolution =
+                    Pixels.pixels dimensions.width
+                        |> Quantity.per (Length.meters width)
+
+                idealVerticalResolution =
+                    Pixels.pixels dimensions.height
+                        |> Quantity.per (Length.meters height)
+
+                center =
+                    BoundingBox2d.centerPoint boundingBox
+
+                idealResolution =
+                    Quantity.min idealHorizontalResolution idealVerticalResolution
+            in
+            Cmd.batch
+                [ LocalStorage.updateZoom address
+                    (Length.meters 1
+                        |> Quantity.at idealResolution
+                        |> Pixels.inPixels
+                    )
+                , LocalStorage.updateCenter address center
+                ]
+
+        _ ->
+            Cmd.none
