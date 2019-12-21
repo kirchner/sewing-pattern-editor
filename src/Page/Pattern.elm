@@ -967,7 +967,7 @@ viewToolButtons : Bool -> LoadedData -> Element Msg
 viewToolButtons openUpwards model =
     Element.row
         []
-        [ viewCreateMenuBtn True model
+        [ viewCreateMenuBtn openUpwards model
         , viewCreateVariableBtn
         ]
 

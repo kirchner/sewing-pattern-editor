@@ -180,30 +180,40 @@ view colors ({ id, onMsg, openUpwards, actions } as config) ((State { last, sele
 
 
 viewMenu : Config action msg -> State -> Element msg
-viewMenu { id, onMsg, actions } (State { selected }) =
+viewMenu { id, onMsg, openUpwards, actions } (State { selected }) =
+    let
+        fixPosition attrs =
+            if openUpwards then
+                Element.htmlAttribute (Html.Attributes.style "position" "fixed")
+                    :: (Element.htmlAttribute <|
+                            Html.Attributes.style "transform"
+                                ("translate(7px, " ++ String.fromInt (-38 * List.length actions) ++ "px)")
+                       )
+                    :: attrs
+
+            else
+                attrs
+    in
     Element.column
-        [ attributeId (menuId id)
-        , htmlAttribute "tabindex" "-1"
-        , htmlAttribute "aria-labelledby" (menuBtnId id)
-        , htmlAttribute "aria-activedescendant" (menuItemId id selected)
-        , Element.htmlAttribute <|
-            Html.Attributes.style "position" "fixed"
-        , Element.htmlAttribute <|
-            Html.Attributes.style "transform"
-                ("translate(7px, " ++ String.fromInt (-38 * List.length actions) ++ "px)")
-        , Element.htmlAttribute <|
-            Html.Events.preventDefaultOn "keydown" (keyDownDecoder actions selected onMsg)
-        , Events.onLoseFocus (onMsg BluredMenu)
-        , Element.moveRight 7
-        , Border.rounded 3
-        , Border.shadow
-            { offset = ( 0, 0 )
-            , size = 0
-            , blur = 6
-            , color = Ui.Theme.Color.grayDark
-            }
-        , Background.color Ui.Theme.Color.white
-        ]
+        (fixPosition
+            [ attributeId (menuId id)
+            , htmlAttribute "tabindex" "-1"
+            , htmlAttribute "aria-labelledby" (menuBtnId id)
+            , htmlAttribute "aria-activedescendant" (menuItemId id selected)
+            , Element.htmlAttribute <|
+                Html.Events.preventDefaultOn "keydown" (keyDownDecoder actions selected onMsg)
+            , Events.onLoseFocus (onMsg BluredMenu)
+            , Element.moveRight 7
+            , Border.rounded 3
+            , Border.shadow
+                { offset = ( 0, 0 )
+                , size = 0
+                , blur = 6
+                , color = Ui.Theme.Color.grayDark
+                }
+            , Background.color Ui.Theme.Color.white
+            ]
+        )
         (List.indexedMap (viewAction onMsg selected) actions)
 
 
