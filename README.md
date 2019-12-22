@@ -29,11 +29,7 @@ sewing patterns.
 
 ## Run locally
 
-You can run the development server with
-
-```
-$ yarn
-$ yarn run dev
-```
-
-Then just visit `localhost:1234` in your browser.
+You should first install all dependencies by running `yarn`. A local
+development server for debbuging can be started with `yarn debug` and is
+available at `localhost:4321`. If you want to compile optimized assets and have
+the service worker, you have to run `yarn preview` and open `localhost:1234`.

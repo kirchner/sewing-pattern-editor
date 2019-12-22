@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "build": "./build.sh",
-    "dev": "./debug.sh"
+    "debug": "./debug.sh",
+    "preview": "./preview.sh"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.11.2",
