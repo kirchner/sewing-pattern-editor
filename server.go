@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/gorilla/mux"
@@ -27,18 +26,11 @@ func main() {
 
 	r := mux.NewRouter()
 
-	if environment() == "production" {
-		r.Methods("GET").PathPrefix("/static").
-			Handler(http.StripPrefix("/static",
-				gziphandler.GzipHandler(http.FileServer(http.Dir(distPath)))))
-	} else if environment() == "development" {
-		go execParcel()
+	r.Methods("GET").PathPrefix("/static").
+		Handler(http.StripPrefix("/static",
+			gziphandler.GzipHandler(http.FileServer(http.Dir(distPath)))))
 
-		r.Methods("GET").PathPrefix("/static").
-			Handler(http.StripPrefix("/static",
-				gziphandler.GzipHandler(serveAsset())))
-	}
-
+	r.HandleFunc("/service-worker.js", serviceWorkerHandler).Methods("GET")
 	r.HandleFunc("/client_id", clientIdHandler).Methods("GET")
 	r.HandleFunc("/access_token", accessTokenHandler).Methods("POST")
 
@@ -50,48 +42,14 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-func serveAsset() http.Handler {
+func serveIndex(distPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := http.Get("http://localhost:1234/static" + r.URL.Path)
-		defer resp.Body.Close()
-		if err != nil {
-			log.Println(err)
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
-
-		fmt.Fprint(w, string(body))
+		http.ServeFile(w, r, distPath+"/index.html")
 	})
 }
 
-func serveIndex(distPath string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if environment() == "production" {
-			http.ServeFile(w, r, distPath+"/index.html")
-		} else if environment() == "development" {
-			resp, err := http.Get("http://localhost:1234/index.html")
-			defer resp.Body.Close()
-			if err != nil {
-				log.Println(err)
-			}
-
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			w.Header().Add("Content-Type", resp.Header.Get("Content-Type"))
-
-			fmt.Fprint(w, string(body))
-		}
-	})
+func serviceWorkerHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, distPath+"/service-worker.js")
 }
 
 func clientIdHandler(w http.ResponseWriter, r *http.Request) {
@@ -144,15 +102,6 @@ func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, string(body))
-}
-
-func execParcel() {
-	cmd := exec.Command("yarn", "parcel", "serve", "index.html", "--public-url=/static", "--port=1234")
-	cmd.Stdout = os.Stdout
-	err := cmd.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 // ENV VARIABLES

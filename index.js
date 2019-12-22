@@ -1,3 +1,5 @@
+import { Elm } from '/elm.js';
+
 // Sewing pattern editor
 // Copyright (C) 2018  Fabian Kirchner <kirchner@posteo.de>
 //
@@ -14,8 +16,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Elm } from './src/Main.elm';
-import '@fortawesome/fontawesome-free/css/all.css';
+// import { Elm } from './src/Main.elm';
+// import '@fortawesome/fontawesome-free/css/all.css';
 
 const initElm = () => {
   var app = Elm.Main.init({

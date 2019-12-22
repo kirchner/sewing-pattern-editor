@@ -1,6 +1,26 @@
 // Files to cache
 var cacheName = 'sewing-pattern-editor--v1';
-var appShellFiles = [];
+var appShellFiles = [
+  '/index.html',
+  '/static/manifest.webmanifest',
+  '/static/main.css',
+  '/static/icon-32.png',
+  '/static/icon-64.png',
+  '/static/icon-128.png',
+  '/static/icon-256.png',
+  '/static/icon-512.png',
+  '/static/rubik-v9-latin-300.woff',
+  '/static/rubik-v9-latin-300.woff2',
+  '/static/mansalva-v1-latin-regular.woff',
+  '/static/mansalva-v1-latin-regular.woff2',
+  '/static/css/fontawesome.min.css',
+  '/static/css/solid.min.css',
+  '/static/webfonts/fa-solid-900.eot',
+  '/static/webfonts/fa-solid-900.svg',
+  '/static/webfonts/fa-solid-900.ttf',
+  '/static/webfonts/fa-solid-900.woff',
+  '/static/webfonts/fa-solid-900.woff2'
+];
 
 // Installing Service Worker
 self.addEventListener('install', function(e) {
