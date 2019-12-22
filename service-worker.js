@@ -1,5 +1,5 @@
 // Files to cache
-var cacheName = 'sewing-pattern-editor--v1';
+var cacheName = 'sewing-pattern-editor--v2';
 var appShellFiles = [
   '/index.html',
   '/static/manifest.webmanifest',
