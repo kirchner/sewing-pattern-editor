@@ -30,6 +30,7 @@ func main() {
 		Handler(http.StripPrefix("/static",
 			gziphandler.GzipHandler(http.FileServer(http.Dir(distPath)))))
 
+	r.HandleFunc("/index.html", indexHandler).Methods("GET")
 	r.HandleFunc("/service-worker.js", serviceWorkerHandler).Methods("GET")
 	r.HandleFunc("/client_id", clientIdHandler).Methods("GET")
 	r.HandleFunc("/access_token", accessTokenHandler).Methods("POST")
@@ -46,6 +47,10 @@ func serveIndex(distPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, distPath+"/index.html")
 	})
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, distPath+"/index.html")
 }
 
 func serviceWorkerHandler(w http.ResponseWriter, r *http.Request) {
