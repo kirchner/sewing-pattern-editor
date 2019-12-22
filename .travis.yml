@@ -3,4 +3,3 @@ language: elm
 script:
   - elm-format --validate ./src
   - elm-format --validate ./tests
-  - elm-test
