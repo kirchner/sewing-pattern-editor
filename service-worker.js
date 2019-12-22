@@ -1,5 +1,5 @@
 // Files to cache
-var cacheName = 'sewing-pattern-editor--v6';
+var cacheName = 'sewing-pattern-editor--v7';
 var appShellFiles = [
   '/app.html',
   '/static/elm.js',
