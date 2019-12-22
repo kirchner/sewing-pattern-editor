@@ -1,6 +1,7 @@
 // Files to cache
 var cacheName = 'sewing-pattern-editor--v1';
 var appShellFiles = [
+  '/static/index.html',
   '/static/sewing-pattern-editor.js',
   '/static/main.js',
   '/static/sewing-pattern-editor.css',

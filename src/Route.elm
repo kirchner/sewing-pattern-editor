@@ -158,6 +158,7 @@ routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
         [ map Patterns top
+        , map Patterns (top </> s "static" </> s "index.html")
         , map Pattern (top </> LocalStorage.addressParser)
         , map PatternNew (top </> s "new" </> newParameters)
         ]
