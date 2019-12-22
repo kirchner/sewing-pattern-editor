@@ -67,6 +67,10 @@ const initElm = () => {
   return app;
 };
 
+// Registering Service Worker
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js');
+};
 
 window.addEventListener("DOMContentLoaded", function() {
   initElm();
