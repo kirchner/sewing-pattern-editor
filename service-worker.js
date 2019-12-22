@@ -1,7 +1,8 @@
 // Files to cache
-var cacheName = 'sewing-pattern-editor--v2';
+var cacheName = 'sewing-pattern-editor--v6';
 var appShellFiles = [
-  '/index.html',
+  '/app.html',
+  '/static/elm.js',
   '/static/manifest.webmanifest',
   '/static/main.css',
   '/static/icon-32.png',
@@ -29,6 +30,26 @@ self.addEventListener('install', function(e) {
     caches.open(cacheName).then(function(cache) {
       console.log('[Service Worker] Caching all: app shell and content');
       return cache.addAll(appShellFiles);
+    })
+  );
+});
+
+// Activating Service Worker
+self.addEventListener('activate', function(event) {
+  console.log('[Service Worker] Activate');
+
+  var cacheWhitelist = [cacheName];
+
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('[Service Worker] Deleting cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
