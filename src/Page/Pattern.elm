@@ -263,7 +263,7 @@ initLoaded device address sha pattern meta permissions =
         , address = address
         , permissions = permissions
         , sha = sha
-        , pattern = pattern
+        , pattern = Pattern.regenerateCaches pattern
         , stored = True
         , name = meta.name
         , resolution = Pixels.pixels 1 |> Quantity.per (Length.meters 1)
@@ -1442,7 +1442,10 @@ updateLoading msg data =
                 Loading
                     { data
                         | maybePatternData =
-                            Just { pattern = pattern, sha = "" }
+                            Just
+                                { pattern = Pattern.regenerateCaches pattern
+                                , sha = ""
+                                }
                     }
 
             else
@@ -1495,7 +1498,7 @@ updateLoaded key domain clientId device identity msg model =
                 Ok patternData ->
                     ( { model
                         | sha = patternData.sha
-                        , pattern = patternData.pattern
+                        , pattern = Pattern.regenerateCaches patternData.pattern
                       }
                     , Cmd.none
                     )

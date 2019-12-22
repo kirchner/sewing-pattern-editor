@@ -27,6 +27,7 @@ module Pattern exposing
     , Direction(..), Orientation(..), OneInTwo(..)
     , point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
     , float
+    , regenerateCaches
     , ComputeHelp(..)
     , Objects
     , objectsDependingOnPoint, objectsNotDependingOnPoint
@@ -120,6 +121,8 @@ module Pattern exposing
 
 @docs point2d, axis2d, circle2d, curve2d, detail2d, intersectable2d
 @docs float
+
+@docs regenerateCaches
 
 @docs ComputeHelp
 
@@ -1503,10 +1506,7 @@ point2d aPoint =
                 addToCache result =
                     State.modify
                         (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | point2ds = Dict.insert name_ result data.point2ds
-                                }
+                            Pattern { data | point2ds = Dict.insert name_ result data.point2ds }
                         )
                         |> State.map (\_ -> result)
             in
@@ -1787,10 +1787,7 @@ curve2d aCurve =
                 addToCache result =
                     State.modify
                         (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | curve2ds = Dict.insert name_ result data.curve2ds
-                                }
+                            Pattern { data | curve2ds = Dict.insert name_ result data.curve2ds }
                         )
                         |> State.map (\_ -> result)
             in
@@ -1870,18 +1867,15 @@ detail2d aDetail =
                 addToCache result =
                     State.modify
                         (\(Pattern data) ->
-                            Pattern
-                                { data
-                                    | detail2ds = Dict.insert name_ result data.detail2ds
-                                }
+                            Pattern { data | detail2ds = Dict.insert name_ result data.detail2ds }
                         )
                         |> State.map (\_ -> result)
             in
             State.get
                 |> State.andThen modifyWhenNeeded
 
-        This curve ->
-            computeDetail2d curve
+        This detail_ ->
+            computeDetail2d detail_
 
 
 computeDetail2d : Detail -> State (Pattern coordinates) (Result ComputeHelp (Detail2d Meters coordinates))
@@ -2375,11 +2369,7 @@ float variable =
         addToCache result =
             State.modify
                 (\(Pattern data) ->
-                    Pattern
-                        { data
-                            | variablesCache =
-                                Dict.insert variable result data.variablesCache
-                        }
+                    Pattern { data | variablesCache = Dict.insert variable result data.variablesCache }
                 )
                 |> State.map (\_ -> result)
     in
