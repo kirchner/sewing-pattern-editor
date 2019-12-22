@@ -1,12 +1,7 @@
 // Files to cache
 var cacheName = 'sewing-pattern-editor--v1';
 var appShellFiles = [
-  '/static/index.html',
-  '/static/sewing-pattern-editor.js',
-  '/static/main.js',
-  '/static/sewing-pattern-editor.css',
-  '/static/mansalva-v1-latin-regular.woff2',
-  '/static/rubik-v9-latin-300.woff2'
+  '/static/index.html'
 ];
 
 // Installing Service Worker
