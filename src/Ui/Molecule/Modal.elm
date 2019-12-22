@@ -165,7 +165,7 @@ custom width state config =
                     [ attributeId "dialog--title"
                     , Element.centerX
                     ]
-                    ( Ui.Theme.Typography.bodyBold config.title)
+                    (Ui.Theme.Typography.bodyBold config.title)
                 , Element.el [ Element.alignRight ] <|
                     Ui.Atom.Input.btnIcon
                         { id = "modal-cancel-btn"

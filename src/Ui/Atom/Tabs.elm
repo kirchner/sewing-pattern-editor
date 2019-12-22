@@ -94,7 +94,7 @@ view { label, tabs, selected, content, onSelect } =
                             |> addTabindex tab.tag
                         )
                         { onPress = Just (onSelect tab.tag (tab.id ++ "--tab"))
-                        , label =  Ui.Theme.Typography.bodyBold tab.label
+                        , label = Ui.Theme.Typography.bodyBold tab.label
                         }
                     )
                 )

@@ -76,10 +76,10 @@ import Result.Extra as Result
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
-import Ui.Theme.Color
 import Ui.Organism.Dialog.Detail as Detail exposing (ActionMenu(..))
 import Ui.Organism.Dialog.Intersectable as Intersectable
 import Ui.Organism.Dialog.OtherPoint as OtherPoint
+import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
@@ -903,7 +903,7 @@ viewPointForm pattern objects name nameHelp form =
                 [ Element.width Element.fill
                 , Element.padding 7
                 ]
-                ( Ui.Theme.Typography.paragraphBody
+                (Ui.Theme.Typography.paragraphBody
                     [ Element.text "or use this point as a base point "
                     , Ui.Atom.link
                         { id = "point-use-in-point-link"
@@ -1490,7 +1490,7 @@ title : String -> Element msg
 title text =
     Element.el
         [ Element.padding 7 ]
-        ( Ui.Theme.Typography.bodyBold text)
+        (Ui.Theme.Typography.bodyBold text)
 
 
 viewDirection :

@@ -39,8 +39,8 @@ import Pattern
         , Point
         )
 import Ui.Atom
-import Ui.Atom.Icon
 import Ui.Atom.Dropdown exposing (Dropdown)
+import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Theme.Spacing
