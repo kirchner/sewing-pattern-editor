@@ -1,7 +1,6 @@
 language: elm
-
-install:
-  npm install -g elm-xref
+elm:
+  - 0.19.1
 
 script:
   - elm-format --validate ./src
