@@ -3,6 +3,7 @@ node_modules/
 yarn-error.log
 elm-stuff/
 .cache/
-dist/
+_build/
+_debug/
 gh-pages/
 assets/js/elm.js

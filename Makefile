@@ -1,17 +1,17 @@
 check:
 	unbuffer elm make --output=/dev/null src/Main.elm 2>&1 | less -r
 
+check-design-system:
+	unbuffer elm make --output=/dev/null src/DesignSystem.elm 2>&1 | less -r
+
+
+.PHONY: build dev prod
+
 build:
 	yarn build
 
 dev:
-	ENVIRONMENT=development PORT=2345 go run server.go
+	yarn dev
 
-run: build
-	ENVIRONMENT=production PORT=2345 go run server.go
-
-check-design-system:
-	unbuffer elm make --output=/dev/null src/DesignSystem.elm 2>&1 | less -r
-
-serve-design-system:
-	yarn parcel serve ./design-system.html
+prod: build
+	PORT=1234 go run server.go

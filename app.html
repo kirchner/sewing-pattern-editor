@@ -12,66 +12,8 @@
     <link rel="manifest" href="/static/manifest.webmanifest">
 
     <script src="/static/elm.js"></script>
-    <script>
-      const initElm = () => {
-        var app = Elm.Main.init({
-          flags: {}
-        });
-
-        if (app.ports.selectAllTextIn) {
-          app.ports.selectAllTextIn.subscribe(id => {
-            window.requestAnimationFrame(() => {
-              const input = document.getElementById(id);
-
-              if (input !== null) {
-                input.select();
-              }
-            });
-          });
-        }
-
-        if (app.ports.storeCache) {
-          app.ports.storeCache.subscribe(function(data) {
-            localStorage.setItem(data.key, data.value);
-
-            setTimeout(function() {
-              app.ports.onStoreChange.send({ key: data.key, value: data.value });
-            }, 0);
-          });
-        }
-
-        if (app.ports.requestCache) {
-          app.ports.requestCache.subscribe(function(data) {
-            var value = localStorage.getItem(data.key);
-
-            if (value !== null) {
-              app.ports.onStoreChange.send({ key: data.key, value: value });
-            } else {
-              app.ports.onStoreMissing.send({ key: data.key });
-            }
-          });
-        }
-
-        window.addEventListener("storage", function(event) {
-          if (event.storageArea === localStorage) {
-            if (app.ports.onStoreChange) {
-              app.ports.onStoreChange.send({ key: event.key, value: event.newValue });
-            }
-          }
-        });
-
-        return app;
-      };
-
-      // Registering Service Worker
-      if('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js');
-      };
-
-      window.addEventListener("DOMContentLoaded", function() {
-        initElm();
-      });
-    </script>
+    <script src="/static/app.js"></script>
+    <script src="/static/register-service-worker.js"></script>
   </head>
   <body>
   </body>

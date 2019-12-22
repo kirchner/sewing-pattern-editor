@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	distPath   = "dist"
 	herokuPort = "PORT"
 )
 
@@ -28,14 +27,14 @@ func main() {
 
 	r.Methods("GET").PathPrefix("/static").
 		Handler(http.StripPrefix("/static",
-			gziphandler.GzipHandler(http.FileServer(http.Dir(distPath)))))
+			gziphandler.GzipHandler(http.FileServer(http.Dir(distPath())))))
 
 	r.HandleFunc("/app.html", appHandler).Methods("GET")
 	r.HandleFunc("/service-worker.js", serviceWorkerHandler).Methods("GET")
 	r.HandleFunc("/client_id", clientIdHandler).Methods("GET")
 	r.HandleFunc("/access_token", accessTokenHandler).Methods("POST")
 
-	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(serveApp(distPath)))
+	r.Methods("GET").PathPrefix("/").Handler(gziphandler.GzipHandler(serveApp()))
 
 	http.Handle("/", r)
 
@@ -43,18 +42,18 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-func serveApp(distPath string) http.Handler {
+func serveApp() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, distPath+"/app.html")
+		http.ServeFile(w, r, distPath()+"/app.html")
 	})
 }
 
 func appHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, distPath+"/app.html")
+	http.ServeFile(w, r, distPath()+"/app.html")
 }
 
 func serviceWorkerHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, distPath+"/service-worker.js")
+	http.ServeFile(w, r, distPath()+"/service-worker.js")
 }
 
 func clientIdHandler(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +106,18 @@ func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, string(body))
+}
+
+func distPath() string {
+	if environment() == "production" {
+		return "_build"
+	} else if environment() == "development" {
+		return "_debug"
+	} else {
+		log.Fatal("ENVIRONMENT must be set")
+
+		return ""
+	}
 }
 
 // ENV VARIABLES

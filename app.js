@@ -1,5 +1,3 @@
-import { Elm } from '/elm.js';
-
 // Sewing pattern editor
 // Copyright (C) 2018  Fabian Kirchner <kirchner@posteo.de>
 //
@@ -67,11 +65,6 @@ const initElm = () => {
   });
 
   return app;
-};
-
-// Registering Service Worker
-if('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js');
 };
 
 window.addEventListener("DOMContentLoaded", function() {

@@ -2,9 +2,11 @@
 
 set -e
 
-ELM="src/Main.elm"
-JS="./dist/elm.js"
-JS_MIN="./dist/elm.min.js"
+OUTPUT="./_build"
+
+ELM="./src/Main.elm"
+JS="${OUTPUT}/elm.js"
+JS_MIN="${OUTPUT}/elm.min.js"
 
 yarn elm make $ELM \
   --optimize \
@@ -28,24 +30,9 @@ echo "Gzipped size:  $(cat $JS_MIN | gzip -c | wc -c) bytes"
 
 mv $JS_MIN $JS
 
-cp app.html dist/app.html
-cp manifest.webmanifest dist/manifest.webmanifest
-cp main.css dist/main.css
-cp service-worker.js dist/service-worker.js
+cp \
+  service-worker.js \
+  register-service-worker.js \
+  $OUTPUT
 
-cp assets/icon-32.png dist/icon-32.png
-cp assets/icon-64.png dist/icon-64.png
-cp assets/icon-128.png dist/icon-128.png
-cp assets/icon-256.png dist/icon-256.png
-cp assets/icon-512.png dist/icon-512.png
-
-cp assets/rubik-v9-latin-300.woff dist/rubik-v9-latin-300.woff
-cp assets/rubik-v9-latin-300.woff2 dist/rubik-v9-latin-300.woff2
-cp assets/mansalva-v1-latin-regular.woff dist/mansalva-v1-latin-regular.woff
-cp assets/mansalva-v1-latin-regular.woff2 dist/mansalva-v1-latin-regular.woff2
-
-mkdir -p dist/css
-mkdir -p dist/webfonts
-cp node_modules/@fortawesome/fontawesome-free/css/fontawesome.min.css dist/css/
-cp node_modules/@fortawesome/fontawesome-free/css/solid.min.css dist/css/
-cp node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.* dist/webfonts/
+./copy_assets.sh $OUTPUT
