@@ -896,11 +896,13 @@ viewSelection model =
             [ Element.width Element.fill
             , Element.spacing Ui.Theme.Spacing.level1
             ]
-            (List.indexedMap viewSelectedObject model.patternState.selectedObjects)
+            (List.indexedMap (viewSelectedObject (List.length model.patternState.selectedObjects))
+                model.patternState.selectedObjects
+            )
 
 
-viewSelectedObject : Int -> Object -> ( String, Element Msg )
-viewSelectedObject index object =
+viewSelectedObject : Int -> Int -> Object -> ( String, Element Msg )
+viewSelectedObject count index object =
     let
         controls =
             Element.column
@@ -908,19 +910,35 @@ viewSelectedObject index object =
                 , Background.color Ui.Theme.Color.primary
                 , Font.color Ui.Theme.Color.white
                 ]
-                [ Ui.Atom.Input.btnIcon
-                    { id = "selected-object-" ++ String.fromInt index ++ "--move-up-btn"
-                    , onPress = Just (UserPressedSelectedObjectMoveUp index)
-                    , icon = "chevron-up"
-                    }
-                , Element.el
-                    [ Element.centerX ]
-                    (Ui.Theme.Typography.button (String.fromInt (index + 1)))
-                , Ui.Atom.Input.btnIcon
-                    { id = "selected-object-" ++ String.fromInt index ++ "--move-up-down"
-                    , onPress = Just (UserPressedSelectedObjectMoveDown index)
-                    , icon = "chevron-down"
-                    }
+                [ if index == 0 then
+                    Element.el
+                        [ Element.height (Element.px 27)
+                        , Element.width (Element.px 27)
+                        ]
+                        Element.none
+
+                  else
+                    Ui.Atom.Input.btnIcon
+                        { id = "selected-object-" ++ String.fromInt index ++ "--move-up-btn"
+                        , onPress = Just (UserPressedSelectedObjectMoveUp index)
+                        , icon = "chevron-up"
+                        }
+                , Element.el [ Element.width (Element.px 27) ] <|
+                    Element.el [ Element.centerX ] <|
+                        Ui.Theme.Typography.button (String.fromInt (index + 1))
+                , if index == count - 1 then
+                    Element.el
+                        [ Element.height (Element.px 27)
+                        , Element.width (Element.px 27)
+                        ]
+                        Element.none
+
+                  else
+                    Ui.Atom.Input.btnIcon
+                        { id = "selected-object-" ++ String.fromInt index ++ "--move-up-down"
+                        , onPress = Just (UserPressedSelectedObjectMoveDown index)
+                        , icon = "chevron-down"
+                        }
                 ]
 
         content =
