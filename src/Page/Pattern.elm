@@ -47,6 +47,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Keyed
 import Element.Lazy as Element
 import Element.Region as Region
 import Frame2d exposing (Frame2d)
@@ -651,6 +652,12 @@ viewToolbarBottomCompact model =
             , Border.color Ui.Theme.Color.secondary
             , Background.color Ui.Theme.Color.white
             , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+            , Element.above <|
+                Element.el
+                    [ Element.padding Ui.Theme.Spacing.level1
+                    , Element.width Element.fill
+                    ]
+                    (viewSelection model)
             ]
             (Element.column
                 [ Element.width Element.fill
@@ -859,6 +866,7 @@ viewToolbarRightFullscreen model =
         [ Element.width (Element.maximum 500 Element.fill)
         , Element.height Element.fill
         , Element.scrollbarY
+        , Element.padding Ui.Theme.Spacing.level1
         , Background.color Ui.Theme.Color.white
         , Border.widthEach
             { top = 1
@@ -870,8 +878,120 @@ viewToolbarRightFullscreen model =
         ]
         (model.maybeDialog
             |> Maybe.map (viewDialog model.pattern)
-            |> Maybe.withDefault Element.none
+            |> Maybe.withDefault (viewSelection model)
         )
+
+
+
+---- SELECTION
+
+
+viewSelection : LoadedData -> Element Msg
+viewSelection model =
+    if List.isEmpty model.patternState.selectedObjects then
+        Element.none
+
+    else
+        Element.Keyed.column
+            [ Element.width Element.fill
+            , Element.spacing Ui.Theme.Spacing.level1
+            ]
+            (List.indexedMap viewSelectedObject model.patternState.selectedObjects)
+
+
+viewSelectedObject : Int -> Object -> ( String, Element Msg )
+viewSelectedObject index object =
+    let
+        controls =
+            Element.column
+                [ Element.height Element.fill
+                , Background.color Ui.Theme.Color.primary
+                , Font.color Ui.Theme.Color.white
+                ]
+                [ Ui.Atom.Input.btnIcon
+                    { id = "selected-object-" ++ String.fromInt index ++ "--move-up-btn"
+                    , onPress = Just (UserPressedSelectedObjectMoveUp index)
+                    , icon = "chevron-up"
+                    }
+                , Element.el
+                    [ Element.centerX ]
+                    (Ui.Theme.Typography.button (String.fromInt (index + 1)))
+                , Ui.Atom.Input.btnIcon
+                    { id = "selected-object-" ++ String.fromInt index ++ "--move-up-down"
+                    , onPress = Just (UserPressedSelectedObjectMoveDown index)
+                    , icon = "chevron-down"
+                    }
+                ]
+
+        content =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.padding Ui.Theme.Spacing.level2
+                ]
+                [ Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing Ui.Theme.Spacing.level1
+                    ]
+                    [ case object of
+                        Point aPoint ->
+                            Ui.Atom.Icon.point
+
+                        Axis aAxis ->
+                            Ui.Atom.Icon.axis
+
+                        Circle aCircle ->
+                            Ui.Atom.Icon.circle
+
+                        Curve aCurve ->
+                            Ui.Atom.Icon.curve
+
+                        Detail aDetail ->
+                            Ui.Atom.Icon.detail
+                    , Ui.Theme.Typography.bodyBold name
+                    ]
+                ]
+
+        actions =
+            Element.el
+                [ Element.alignTop ]
+                (Ui.Atom.Input.btnIcon
+                    { id = "selected-object-" ++ String.fromInt index ++ "--unselect-btn"
+                    , onPress = Just (UserPressedSelectedObjectUnselect index)
+                    , icon = "times"
+                    }
+                )
+
+        name =
+            case object of
+                Point aPoint ->
+                    objectName aPoint
+
+                Axis aAxis ->
+                    objectName aAxis
+
+                Circle aCircle ->
+                    objectName aCircle
+
+                Curve aCurve ->
+                    objectName aCurve
+
+                Detail aDetail ->
+                    objectName aDetail
+    in
+    ( name
+    , Element.row
+        [ Element.width Element.fill
+        , Background.color Ui.Theme.Color.white
+        , Border.width 1
+        , Border.rounded 3
+        , Border.color Ui.Theme.Color.primary
+        ]
+        [ controls
+        , content
+        , actions
+        ]
+    )
 
 
 
@@ -1346,6 +1466,9 @@ type Msg
       -- RIGHT TOOLBAR
     | DialogCreateMsg Ui.Organism.Dialog.CreateMsg
     | DialogEditMsg Ui.Organism.Dialog.EditMsg
+    | UserPressedSelectedObjectMoveUp Int
+    | UserPressedSelectedObjectMoveDown Int
+    | UserPressedSelectedObjectUnselect Int
       -- VARIABLE DIALOG
     | UserChangedVariableName String
     | UserChangedVariableValue String
@@ -2039,6 +2162,46 @@ updateLoaded key domain clientId device identity msg model =
 
                 Just (EditVariable _) ->
                     ( model, Cmd.none )
+
+        UserPressedSelectedObjectMoveUp index ->
+            let
+                { patternState } =
+                    model
+            in
+            ( { model
+                | patternState =
+                    { patternState | selectedObjects = List.swapAt index (index - 1) patternState.selectedObjects }
+              }
+            , ("selected-object-" ++ String.fromInt (index - 1) ++ "--move-up-btn")
+                |> Browser.Dom.focus
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        UserPressedSelectedObjectMoveDown index ->
+            let
+                { patternState } =
+                    model
+            in
+            ( { model
+                | patternState =
+                    { patternState | selectedObjects = List.swapAt index (index + 1) patternState.selectedObjects }
+              }
+            , ("selected-object-" ++ String.fromInt (index + 1) ++ "--move-down-btn")
+                |> Browser.Dom.focus
+                |> Task.attempt (\_ -> NoOp)
+            )
+
+        UserPressedSelectedObjectUnselect index ->
+            let
+                { patternState } =
+                    model
+            in
+            ( { model
+                | patternState =
+                    { patternState | selectedObjects = List.removeAt index patternState.selectedObjects }
+              }
+            , Cmd.none
+            )
 
         -- VARIABLE DIALOG
         UserChangedVariableName newName ->
