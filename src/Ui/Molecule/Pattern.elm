@@ -1,13 +1,13 @@
 module Ui.Molecule.Pattern exposing
     ( State, init
-    , Config, Viewport, view
+    , Config, Viewport, view, viewStatic
     , Msg, update
     )
 
 {-|
 
 @docs State, init
-@docs Config, Viewport, view
+@docs Config, Viewport, view, viewStatic
 @docs Msg, update
 
 -}
@@ -127,6 +127,30 @@ view cfg viewport pattern state =
         )
 
 
+{-| -}
+viewStatic : Config -> Viewport coordinates -> Pattern coordinates -> State -> Element msg
+viewStatic cfg viewport pattern state =
+    Element.el []
+        (Element.html <|
+            Svg.svg
+                [ Svg.Attributes.viewBox <|
+                    String.join " "
+                        [ String.fromFloat (viewport.width / -2)
+                        , String.fromFloat (viewport.height / -2)
+                        , String.fromFloat viewport.width
+                        , String.fromFloat viewport.height
+                        ]
+                , Html.Attributes.style "user-select" "none"
+                , Html.Attributes.style "width" (String.fromFloat viewport.width ++ "px")
+                , Html.Attributes.style "height" (String.fromFloat viewport.height ++ "px")
+                ]
+                [ Svg.translateBy
+                    (Vector2d.from (Point2d.at viewport.resolution viewport.center) Point2d.origin)
+                    (Svg.lazy3 drawStatic pattern viewport.resolution state)
+                ]
+        )
+
+
 draw : Pattern coordinates -> Resolution -> State -> Svg Msg
 draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
     case State.finalValue pattern Pattern.compute of
@@ -135,22 +159,27 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
 
         Ok objects ->
             let
-                objectLayers drawObject toObject objectFocused objectHovered objectSelected =
+                objectLayers drawObject objectEvents toObject objectFocused objectHovered objectSelected =
                     List.foldl
                         (\( aObject, object ) layers ->
                             let
-                                { background, selected, active, events } =
+                                { background, selected, active } =
                                     drawObject
-                                        { onHover = HoveredObject (toObject aObject)
-                                        , onLeave = LeftObject (toObject aObject)
-                                        , onSelect = ClickedObject (toObject aObject)
-                                        }
                                         (Maybe.withDefault "<no-name>" (Pattern.name aObject))
                                         object
                                         resolution
                                         (objectFocused aObject)
                                         (objectHovered aObject)
                                         (List.any (objectSelected aObject) selectedObjects)
+
+                                events =
+                                    objectEvents
+                                        { onHover = HoveredObject (toObject aObject)
+                                        , onLeave = LeftObject (toObject aObject)
+                                        , onSelect = ClickedObject (toObject aObject)
+                                        }
+                                        object
+                                        resolution
                             in
                             { backgroundList = background :: layers.backgroundList
                             , selectedList = selected :: layers.selectedList
@@ -189,7 +218,14 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                             False
 
                 pointLayers =
-                    objectLayers Ui.Atom.Object.drawPoint Point pointFocused pointHovered pointSelected objects.points
+                    objectLayers
+                        Ui.Atom.Object.drawPoint
+                        Ui.Atom.Object.pointEvents
+                        Point
+                        pointFocused
+                        pointHovered
+                        pointSelected
+                        objects.points
 
                 axisFocused aAxis =
                     case focusedObject of
@@ -216,7 +252,14 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                             False
 
                 axisLayers =
-                    objectLayers Ui.Atom.Object.drawAxis Axis axisFocused axisHovered axisSelected objects.axes
+                    objectLayers
+                        Ui.Atom.Object.drawAxis
+                        Ui.Atom.Object.axisEvents
+                        Axis
+                        axisFocused
+                        axisHovered
+                        axisSelected
+                        objects.axes
 
                 circleFocused aCircle =
                     case focusedObject of
@@ -243,7 +286,14 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                             False
 
                 circleLayers =
-                    objectLayers Ui.Atom.Object.drawCircle Circle circleFocused circleHovered circleSelected objects.circles
+                    objectLayers
+                        Ui.Atom.Object.drawCircle
+                        Ui.Atom.Object.circleEvents
+                        Circle
+                        circleFocused
+                        circleHovered
+                        circleSelected
+                        objects.circles
 
                 curveFocused aCurve =
                     case focusedObject of
@@ -270,7 +320,14 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                             False
 
                 curveLayers =
-                    objectLayers Ui.Atom.Object.drawCurve Curve curveFocused curveHovered curveSelected objects.curves
+                    objectLayers
+                        Ui.Atom.Object.drawCurve
+                        Ui.Atom.Object.curveEvents
+                        Curve
+                        curveFocused
+                        curveHovered
+                        curveSelected
+                        objects.curves
 
                 detailFocused aDetail =
                     case focusedObject of
@@ -297,7 +354,14 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                             False
 
                 detailLayers =
-                    objectLayers Ui.Atom.Object.drawDetail Detail detailFocused detailHovered detailSelected objects.details
+                    objectLayers
+                        Ui.Atom.Object.drawDetail
+                        Ui.Atom.Object.detailEvents
+                        Detail
+                        detailFocused
+                        detailHovered
+                        detailSelected
+                        objects.details
             in
             Svg.g [] <|
                 List.concat
@@ -328,6 +392,227 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
                     , List.reverse circleLayers.eventsList
                     , List.reverse axisLayers.eventsList
                     , List.reverse pointLayers.eventsList
+                    ]
+
+
+drawStatic : Pattern coordinates -> Resolution -> State -> Svg msg
+drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } =
+    case State.finalValue pattern Pattern.compute of
+        Err _ ->
+            Svg.text ""
+
+        Ok objects ->
+            let
+                objectLayers drawObject toObject objectFocused objectHovered objectSelected =
+                    List.foldl
+                        (\( aObject, object ) layers ->
+                            let
+                                { background, selected, active } =
+                                    drawObject
+                                        (Maybe.withDefault "<no-name>" (Pattern.name aObject))
+                                        object
+                                        resolution
+                                        (objectFocused aObject)
+                                        (objectHovered aObject)
+                                        (List.any (objectSelected aObject) selectedObjects)
+                            in
+                            { backgroundList = background :: layers.backgroundList
+                            , selectedList = selected :: layers.selectedList
+                            , activeList = active :: layers.activeList
+                            }
+                        )
+                        { backgroundList = []
+                        , selectedList = []
+                        , activeList = []
+                        }
+
+                pointFocused aPoint =
+                    case focusedObject of
+                        Just (Point otherAPoint) ->
+                            otherAPoint == aPoint
+
+                        _ ->
+                            False
+
+                pointHovered aPoint =
+                    case hoveredObject of
+                        Just (Point otherAPoint) ->
+                            otherAPoint == aPoint
+
+                        _ ->
+                            False
+
+                pointSelected aPoint selectedObject =
+                    case selectedObject of
+                        Point otherAPoint ->
+                            otherAPoint == aPoint
+
+                        _ ->
+                            False
+
+                pointLayers =
+                    objectLayers
+                        Ui.Atom.Object.drawPoint
+                        Point
+                        pointFocused
+                        pointHovered
+                        pointSelected
+                        objects.points
+
+                axisFocused aAxis =
+                    case focusedObject of
+                        Just (Axis otherAAxis) ->
+                            otherAAxis == aAxis
+
+                        _ ->
+                            False
+
+                axisHovered aAxis =
+                    case hoveredObject of
+                        Just (Axis otherAAxis) ->
+                            otherAAxis == aAxis
+
+                        _ ->
+                            False
+
+                axisSelected aAxis selectedObject =
+                    case selectedObject of
+                        Axis otherAAxis ->
+                            otherAAxis == aAxis
+
+                        _ ->
+                            False
+
+                axisLayers =
+                    objectLayers
+                        Ui.Atom.Object.drawAxis
+                        Axis
+                        axisFocused
+                        axisHovered
+                        axisSelected
+                        objects.axes
+
+                circleFocused aCircle =
+                    case focusedObject of
+                        Just (Circle otherACircle) ->
+                            otherACircle == aCircle
+
+                        _ ->
+                            False
+
+                circleHovered aCircle =
+                    case hoveredObject of
+                        Just (Circle otherACircle) ->
+                            otherACircle == aCircle
+
+                        _ ->
+                            False
+
+                circleSelected aCircle selectedObject =
+                    case selectedObject of
+                        Circle otherACircle ->
+                            otherACircle == aCircle
+
+                        _ ->
+                            False
+
+                circleLayers =
+                    objectLayers
+                        Ui.Atom.Object.drawCircle
+                        Circle
+                        circleFocused
+                        circleHovered
+                        circleSelected
+                        objects.circles
+
+                curveFocused aCurve =
+                    case focusedObject of
+                        Just (Curve otherACurve) ->
+                            otherACurve == aCurve
+
+                        _ ->
+                            False
+
+                curveHovered aCurve =
+                    case hoveredObject of
+                        Just (Curve otherACurve) ->
+                            otherACurve == aCurve
+
+                        _ ->
+                            False
+
+                curveSelected aCurve selectedObject =
+                    case selectedObject of
+                        Curve otherACurve ->
+                            otherACurve == aCurve
+
+                        _ ->
+                            False
+
+                curveLayers =
+                    objectLayers
+                        Ui.Atom.Object.drawCurve
+                        Curve
+                        curveFocused
+                        curveHovered
+                        curveSelected
+                        objects.curves
+
+                detailFocused aDetail =
+                    case focusedObject of
+                        Just (Detail otherADetail) ->
+                            otherADetail == aDetail
+
+                        _ ->
+                            False
+
+                detailHovered aDetail =
+                    case hoveredObject of
+                        Just (Detail otherADetail) ->
+                            otherADetail == aDetail
+
+                        _ ->
+                            False
+
+                detailSelected aDetail selectedObject =
+                    case selectedObject of
+                        Detail otherADetail ->
+                            otherADetail == aDetail
+
+                        _ ->
+                            False
+
+                detailLayers =
+                    objectLayers
+                        Ui.Atom.Object.drawDetail
+                        Detail
+                        detailFocused
+                        detailHovered
+                        detailSelected
+                        objects.details
+            in
+            Svg.g [] <|
+                List.concat
+                    [ -- background
+                      detailLayers.backgroundList
+                    , curveLayers.backgroundList
+                    , circleLayers.backgroundList
+                    , axisLayers.backgroundList
+                    , pointLayers.backgroundList
+
+                    -- selected
+                    , detailLayers.selectedList
+                    , curveLayers.selectedList
+                    , circleLayers.selectedList
+                    , axisLayers.selectedList
+                    , pointLayers.selectedList
+
+                    -- active
+                    , detailLayers.activeList
+                    , curveLayers.activeList
+                    , circleLayers.activeList
+                    , axisLayers.activeList
+                    , pointLayers.activeList
                     ]
 
 

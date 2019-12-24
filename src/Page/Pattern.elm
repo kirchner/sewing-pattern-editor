@@ -68,7 +68,20 @@ import List.Extra as List
 import Listbox exposing (Listbox)
 import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import LocalStorage
-import Pattern exposing (A, Axis, Circle, Curve, Detail, InsertHelp(..), Object(..), Pattern, Point)
+import Pattern
+    exposing
+        ( A
+        , Axis
+        , Circle
+        , Curve
+        , Detail
+        , InsertHelp(..)
+        , Intersectable(..)
+        , Object(..)
+        , Orientation(..)
+        , Pattern
+        , Point
+        )
 import Pattern.Store exposing (StoredPattern)
 import Pixels
 import Point2d exposing (Point2d)
@@ -81,7 +94,7 @@ import StateResult
 import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Events
-import Svg.Lazy
+import Svg.Lazy as Svg
 import Task
 import Ui.Atom
 import Ui.Atom.Icon
@@ -641,7 +654,10 @@ viewToolbarBottomCompact model =
             Element.none
         , Element.el
             [ Element.htmlAttribute (Html.Attributes.id "toolbar-bottom")
-            , Element.height (Element.fillPortion 1)
+            , Element.height
+                (Element.fillPortion 1
+                    |> Element.maximum 360
+                )
             , Element.width Element.fill
             , Border.widthEach
                 { top = 1
@@ -651,20 +667,21 @@ viewToolbarBottomCompact model =
                 }
             , Border.color Ui.Theme.Color.secondary
             , Background.color Ui.Theme.Color.white
-            , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+            , Element.htmlAttribute (Html.Attributes.style "pointer-events" "none")
             , Element.above <|
                 Element.el
-                    [ Element.padding Ui.Theme.Spacing.level1
-                    , Element.width Element.fill
+                    [ Element.width Element.fill
+                    , Element.htmlAttribute (Html.Attributes.style "pointer-events" "none")
                     ]
-                    (viewSelection model)
+                    (viewSelectionCompact model)
             ]
             (Element.column
                 [ Element.width Element.fill
-                , Element.height (Element.maximum 360 Element.fill)
+                , Element.height Element.fill
                 , Element.clip
                 , Element.htmlAttribute (Html.Attributes.style "flex-shrink" "1")
                 , Element.spacing Ui.Theme.Spacing.level1
+                , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
                 ]
                 [ Element.row
                     [ Element.width Element.fill
@@ -878,7 +895,7 @@ viewToolbarRightFullscreen model =
         ]
         (model.maybeDialog
             |> Maybe.map (viewDialog model.pattern)
-            |> Maybe.withDefault (viewSelection model)
+            |> Maybe.withDefault (viewSelectionFullscreen model)
         )
 
 
@@ -886,19 +903,47 @@ viewToolbarRightFullscreen model =
 ---- SELECTION
 
 
-viewSelection : LoadedData -> Element Msg
-viewSelection model =
+viewSelectionFullscreen : LoadedData -> Element Msg
+viewSelectionFullscreen model =
     if List.isEmpty model.patternState.selectedObjects then
         Element.none
 
     else
-        Element.Keyed.column
-            [ Element.width Element.fill
-            , Element.spacing Ui.Theme.Spacing.level1
+        Element.column
+            [ Element.width Element.fill ]
+            [ Element.Keyed.column
+                [ Element.width Element.fill
+                , Element.spacing Ui.Theme.Spacing.level1
+                , Element.padding Ui.Theme.Spacing.level1
+                ]
+                (List.indexedMap (viewSelectedObject (List.length model.patternState.selectedObjects))
+                    model.patternState.selectedObjects
+                )
+            , viewShortcutsFullscreen model
             ]
-            (List.indexedMap (viewSelectedObject (List.length model.patternState.selectedObjects))
-                model.patternState.selectedObjects
-            )
+
+
+viewSelectionCompact : LoadedData -> Element Msg
+viewSelectionCompact model =
+    if List.isEmpty model.patternState.selectedObjects then
+        Element.none
+
+    else
+        Element.column
+            [ Element.width Element.fill
+            , Element.htmlAttribute (Html.Attributes.style "pointer-events" "none")
+            ]
+            [ viewShortcutsCompact model
+            , Element.Keyed.column
+                [ Element.width Element.fill
+                , Element.spacing Ui.Theme.Spacing.level1
+                , Element.padding Ui.Theme.Spacing.level1
+                , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+                ]
+                (List.indexedMap (viewSelectedObject (List.length model.patternState.selectedObjects))
+                    model.patternState.selectedObjects
+                )
+            ]
 
 
 viewSelectedObject : Int -> Int -> Object -> ( String, Element Msg )
@@ -923,9 +968,6 @@ viewSelectedObject count index object =
                         , onPress = Just (UserPressedSelectedObjectMoveUp index)
                         , icon = "chevron-up"
                         }
-                , Element.el [ Element.width (Element.px 27) ] <|
-                    Element.el [ Element.centerX ] <|
-                        Ui.Theme.Typography.button (String.fromInt (index + 1))
                 , if index == count - 1 then
                     Element.el
                         [ Element.height (Element.px 27)
@@ -971,14 +1013,26 @@ viewSelectedObject count index object =
                 ]
 
         actions =
-            Element.el
-                [ Element.alignTop ]
-                (Ui.Atom.Input.btnIcon
-                    { id = "selected-object-" ++ String.fromInt index ++ "--unselect-btn"
-                    , onPress = Just (UserPressedSelectedObjectUnselect index)
-                    , icon = "times"
-                    }
-                )
+            Element.column
+                [ Element.height Element.fill
+                ]
+                [ Element.el
+                    [ Element.height (Element.px 27)
+                    , Element.width (Element.px 27)
+                    ]
+                    (Ui.Atom.Input.btnIcon
+                        { id = "selected-object-" ++ String.fromInt index ++ "--unselect-btn"
+                        , onPress = Just (UserPressedSelectedObjectUnselect index)
+                        , icon = "times"
+                        }
+                    )
+                , Element.el
+                    [ Element.centerX
+                    , Element.alignBottom
+                    , Element.padding Ui.Theme.Spacing.level1
+                    ]
+                    (Ui.Theme.Typography.button (String.fromInt (index + 1)))
+                ]
 
         name =
             case object of
@@ -1010,6 +1064,180 @@ viewSelectedObject count index object =
         , actions
         ]
     )
+
+
+
+---- SHORTCUTS
+
+
+viewShortcutsFullscreen : LoadedData -> Element Msg
+viewShortcutsFullscreen model =
+    case model.patternState.selectedObjects of
+        (Point aPointA) :: (Point aPointB) :: [] ->
+            Element.wrappedRow
+                [ Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+                ]
+                [ newIntersection 120 model True aPointA aPointB
+                , newIntersection 120 model False aPointA aPointB
+                ]
+
+        _ ->
+            Element.none
+
+
+viewShortcutsCompact : LoadedData -> Element Msg
+viewShortcutsCompact model =
+    case model.patternState.selectedObjects of
+        (Point aPointA) :: (Point aPointB) :: [] ->
+            Element.column
+                [ Element.alignRight
+                , Element.htmlAttribute (Html.Attributes.style "pointer-events" "auto")
+                ]
+                [ newIntersection 80 model True aPointA aPointB
+                , newIntersection 80 model False aPointA aPointB
+                ]
+
+        _ ->
+            Element.none
+
+
+newIntersection : Float -> LoadedData -> Bool -> A Point -> A Point -> Element Msg
+newIntersection pixelWidth model flipped aPointA aPointB =
+    Result.withDefault Element.none <|
+        State.finalValue model.pattern <|
+            StateResult.map2
+                (\point2dA point2dB ->
+                    let
+                        xA =
+                            Point2d.xCoordinate point2dA
+
+                        xB =
+                            Point2d.xCoordinate point2dB
+
+                        yA =
+                            Point2d.yCoordinate point2dA
+
+                        yB =
+                            Point2d.yCoordinate point2dB
+                    in
+                    if
+                        Quantity.equalWithin (Length.millimeters 1) xA xB
+                            || Quantity.equalWithin (Length.millimeters 1) yA yB
+                    then
+                        Element.none
+
+                    else
+                        Result.withDefault Element.none <|
+                            Result.map2
+                                (\axisA axisB ->
+                                    case
+                                        Pattern.intersection
+                                            (IntersectableAxis (Pattern.this axisA))
+                                            (IntersectableAxis (Pattern.this axisB))
+                                            0
+                                            model.pattern
+                                    of
+                                        Err _ ->
+                                            Element.none
+
+                                        Ok pointNew ->
+                                            viewPointShortcut pixelWidth
+                                                model
+                                                [ point2dA, point2dB ]
+                                                pointNew
+                                )
+                                (Pattern.throughOnePoint aPointA
+                                    (if flipped then
+                                        Horizontal
+
+                                     else
+                                        Vertical
+                                    )
+                                    model.pattern
+                                )
+                                (Pattern.throughOnePoint aPointB
+                                    (if flipped then
+                                        Vertical
+
+                                     else
+                                        Horizontal
+                                    )
+                                    model.pattern
+                                )
+                )
+                (Pattern.point2d aPointA)
+                (Pattern.point2d aPointB)
+
+
+viewPointShortcut : Float -> LoadedData -> List (Point2d Meters BottomLeft) -> Point -> Element Msg
+viewPointShortcut pixelWidth model point2ds pointNew =
+    case Pattern.insertAndReturnPoint "" pointNew model.pattern of
+        Err _ ->
+            Element.none
+
+        Ok ( aPoint, newPattern ) ->
+            case State.finalValue newPattern (Pattern.point2d aPoint) of
+                Err _ ->
+                    Element.none
+
+                Ok point2d ->
+                    let
+                        pixelHeight =
+                            pixelWidth
+
+                        boundingBox =
+                            BoundingBox2d.hull point2d point2ds
+
+                        { minX, maxX, minY, maxY } =
+                            BoundingBox2d.extrema boundingBox
+
+                        width =
+                            Length.inMeters maxX - Length.inMeters minX + (pixelWidth / 2)
+
+                        height =
+                            Length.inMeters maxY - Length.inMeters minY + (pixelWidth / 2)
+
+                        idealHorizontalResolution =
+                            Pixels.pixels pixelWidth
+                                |> Quantity.per (Length.meters width)
+
+                        idealVerticalResolution =
+                            Pixels.pixels pixelHeight
+                                |> Quantity.per (Length.meters height)
+
+                        center =
+                            BoundingBox2d.centerPoint boundingBox
+
+                        idealResolution =
+                            Quantity.min idealHorizontalResolution idealVerticalResolution
+                    in
+                    Ui.Theme.Focus.outline <|
+                        Input.button
+                            [ Element.htmlAttribute (Html.Attributes.id "new-point-shortcut")
+                            , Border.color Ui.Theme.Color.primaryLight
+                            , Border.width 1
+                            , Border.rounded 3
+                            , Background.color Ui.Theme.Color.white
+                            , Element.mouseOver
+                                [ Border.color Ui.Theme.Color.primary
+                                , Background.color Ui.Theme.Color.secondary
+                                ]
+                            ]
+                            { onPress = Just (UserPressedPointShortcut pointNew)
+                            , label =
+                                Ui.Molecule.Pattern.viewStatic
+                                    { id = "pattern" }
+                                    { width = pixelWidth
+                                    , height = pixelHeight
+                                    , resolution = idealResolution
+                                    , center = center
+                                    }
+                                    newPattern
+                                    { hoveredObject = Nothing
+                                    , focusedObject = Nothing
+                                    , selectedObjects = [ Point aPoint ]
+                                    }
+                            }
 
 
 
@@ -1487,6 +1715,7 @@ type Msg
     | UserPressedSelectedObjectMoveUp Int
     | UserPressedSelectedObjectMoveDown Int
     | UserPressedSelectedObjectUnselect Int
+    | UserPressedPointShortcut Point
       -- VARIABLE DIALOG
     | UserChangedVariableName String
     | UserChangedVariableValue String
@@ -2219,6 +2448,26 @@ updateLoaded key domain clientId device identity msg model =
                     { patternState | selectedObjects = List.removeAt index patternState.selectedObjects }
               }
             , Cmd.none
+            )
+
+        UserPressedPointShortcut newPoint ->
+            let
+                maybeDialog =
+                    Ui.Organism.Dialog.createPointWith model.pattern newPoint
+
+                { patternState } =
+                    model
+            in
+            ( { model
+                | toolbarBottomExpanded = maybeDialog /= Nothing
+                , maybeDialog = Maybe.map CreateObject maybeDialog
+                , patternState = { patternState | selectedObjects = [] }
+              }
+            , if maybeDialog /= Nothing && isCompact device then
+                requestViewportOfToolbarBottom
+
+              else
+                Cmd.none
             )
 
         -- VARIABLE DIALOG

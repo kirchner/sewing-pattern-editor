@@ -4,6 +4,7 @@ module Ui.Organism.Dialog exposing
     , createSelection, createPreview, createHovered, createFocused
     , editSelection, editPreview, editHovered, editFocused
     , createPoint, createAxis, createCircle, createCurve, createDetail
+    , createPointWith
     , editPoint, editAxis, editCircle, editCurve, editDetail
     , createView, editView
     , CreateMsg, CreateResult(..), createUpdate
@@ -28,6 +29,7 @@ module Ui.Organism.Dialog exposing
 # Init
 
 @docs createPoint, createAxis, createCircle, createCurve, createDetail
+@docs createPointWith
 
 @docs editPoint, editAxis, editCircle, editCurve, editDetail
 
@@ -337,6 +339,22 @@ createPoint =
         , nameHelp = Nothing
         , dialog = DialogPoint initFromOnePointForm
         }
+
+
+{-| -}
+createPointWith : Pattern coordinates -> Pattern.Point -> Maybe Create
+createPointWith pattern point =
+    case initPointFormWith pattern (Pattern.this point) of
+        Nothing ->
+            Nothing
+
+        Just pointForm ->
+            Just <|
+                Create
+                    { name = ""
+                    , nameHelp = Nothing
+                    , dialog = DialogPoint pointForm
+                    }
 
 
 {-| -}

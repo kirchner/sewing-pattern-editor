@@ -5,7 +5,7 @@ module Pattern exposing
     , Intersectable(..), IntersectableTag(..), intersectableTag, hashIntersectable, inlinedIntersectable
     , A, this, name, inlined, hash
     , whichSize
-    , insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
+    , insertPoint, insertAndReturnPoint, insertAxis, insertCircle, insertCurve, insertDetail
     , insertTransformation
     , insertVariable
     , InsertHelp(..)
@@ -74,7 +74,7 @@ module Pattern exposing
 
 # Insert
 
-@docs insertPoint, insertAxis, insertCircle, insertCurve, insertDetail
+@docs insertPoint, insertAndReturnPoint, insertAxis, insertCircle, insertCurve, insertDetail
 @docs insertTransformation
 @docs insertVariable
 @docs InsertHelp
@@ -462,6 +462,31 @@ insertPoint name_ point ((Pattern data) as pattern) =
 
             Ok _ ->
                 Ok newPattern
+
+
+{-| -}
+insertAndReturnPoint :
+    String
+    -> Point
+    -> Pattern coordinates
+    -> Result InsertHelp ( A Point, Pattern coordinates )
+insertAndReturnPoint name_ point ((Pattern data) as pattern) =
+    if nameTaken name_ data then
+        Err NameTaken
+
+    else
+        let
+            ( result, newPattern ) =
+                State.run
+                    (Pattern { data | points = Dict.insert name_ point data.points })
+                    (point2d (That name_))
+        in
+        case result of
+            Err computeHelp ->
+                Err (BadObject computeHelp)
+
+            Ok _ ->
+                Ok ( That name_, newPattern )
 
 
 {-| -}
@@ -3116,7 +3141,7 @@ intersection :
 intersection intersectableA intersectableB which pattern =
     Ok IntersectionHelp
         |> collectBool (checkIntersectablesCoincidence intersectableA intersectableB)
-        |> collectBool (checkWhichInBound intersectableA intersectableB pattern which)
+        |> collectBool (checkWhichOutOfBound intersectableA intersectableB pattern which)
         |> Result.map
             (always <|
                 Point_ <|
@@ -3128,9 +3153,9 @@ intersection intersectableA intersectableB which pattern =
             )
 
 
-checkWhichInBound : Intersectable -> Intersectable -> Pattern coordinates -> Int -> Bool
-checkWhichInBound intersectableA intersectableB pattern which =
-    0 >= which && which < whichSize (intersectableTag intersectableA) (intersectableTag intersectableB)
+checkWhichOutOfBound : Intersectable -> Intersectable -> Pattern coordinates -> Int -> Bool
+checkWhichOutOfBound intersectableA intersectableB pattern which =
+    0 < which && which >= whichSize (intersectableTag intersectableA) (intersectableTag intersectableB)
 
 
 {-| -}
