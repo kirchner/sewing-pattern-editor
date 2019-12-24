@@ -385,7 +385,10 @@ update msg pattern dragging state =
                 state
 
             else
-                { state | selectedObjects = [] }
+                { state
+                    | focusedObject = Nothing
+                    , selectedObjects = []
+                }
 
         -- OBJECTS
         HoveredObject object ->
