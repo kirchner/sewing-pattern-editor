@@ -118,6 +118,7 @@ view cfg viewport pattern state =
                 , Html.Attributes.style "user-select" "none"
                 , Html.Attributes.style "width" (String.fromFloat viewport.width ++ "px")
                 , Html.Attributes.style "height" (String.fromFloat viewport.height ++ "px")
+                , Html.Events.onClick UserPressedBackground
                 ]
                 [ Svg.translateBy
                     (Vector2d.from (Point2d.at viewport.resolution viewport.center) Point2d.origin)
@@ -338,6 +339,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
 type Msg
     = NoOp
     | FocusedPattern
+    | UserPressedBackground
       -- OBJECTS
     | HoveredObject Object
     | LeftObject Object
@@ -377,6 +379,9 @@ update msg pattern state =
                             ]
             in
             { state | focusedObject = List.head objects }
+
+        UserPressedBackground ->
+            { state | selectedObjects = [] }
 
         -- OBJECTS
         HoveredObject object ->

@@ -539,7 +539,8 @@ pointEvents cfg point2d =
         , Svg.Attributes.style "outline: none;"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.onClick cfg.onSelect
+        , Svg.Events.stopPropagationOn "click"
+            (Decode.succeed ( cfg.onSelect, True ))
         ]
         (Circle2d.withRadius (pixels 8) point2d)
 
@@ -646,7 +647,8 @@ axisEvents cfg axis2d =
         , Svg.Attributes.style "outline: none;"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.onClick cfg.onSelect
+        , Svg.Events.stopPropagationOn "click"
+            (Decode.succeed ( cfg.onSelect, True ))
         ]
         (LineSegment2d.along axis2d
             (pixels -1000)
@@ -767,7 +769,8 @@ circleEvents cfg circle2d =
         , Svg.Attributes.style "outline: none;"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.onClick cfg.onSelect
+        , Svg.Events.stopPropagationOn "click"
+            (Decode.succeed ( cfg.onSelect, True ))
         ]
         circle2d
 
@@ -862,7 +865,8 @@ curveEvents cfg curve2d =
         , Svg.Attributes.style "outline: none;"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.onClick cfg.onSelect
+        , Svg.Events.stopPropagationOn "click"
+            (Decode.succeed ( cfg.onSelect, True ))
         ]
         curve2d
 
@@ -956,7 +960,8 @@ detailEvents cfg detail2d =
         , Svg.Attributes.style "outline: none;"
         , Svg.Events.onMouseOver cfg.onHover
         , Svg.Events.onMouseOut cfg.onLeave
-        , Svg.Events.onClick cfg.onSelect
+        , Svg.Events.stopPropagationOn "click"
+            (Decode.succeed ( cfg.onSelect, True ))
         ]
         detail2d
 
