@@ -1815,6 +1815,13 @@ updateLoaded key domain clientId device identity msg model =
                 | patternState =
                     Ui.Molecule.Pattern.update patternMsg
                         model.pattern
+                        (case model.maybeDrag of
+                            Nothing ->
+                                False
+
+                            Just { start, current } ->
+                                start /= current
+                        )
                         model.patternState
               }
             , Cmd.none

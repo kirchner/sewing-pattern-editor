@@ -360,8 +360,8 @@ type alias Position =
 
 
 {-| -}
-update : Msg -> Pattern coordinates -> State -> State
-update msg pattern state =
+update : Msg -> Pattern coordinates -> Bool -> State -> State
+update msg pattern dragging state =
     case msg of
         NoOp ->
             state
@@ -381,7 +381,11 @@ update msg pattern state =
             { state | focusedObject = List.head objects }
 
         UserPressedBackground ->
-            { state | selectedObjects = [] }
+            if dragging then
+                state
+
+            else
+                { state | selectedObjects = [] }
 
         -- OBJECTS
         HoveredObject object ->
@@ -394,15 +398,19 @@ update msg pattern state =
             { state | focusedObject = Just object }
 
         ClickedObject object ->
-            { state
-                | focusedObject = Just object
-                , selectedObjects =
-                    if List.member object state.selectedObjects then
-                        List.filter (\otherObject -> otherObject /= object) state.selectedObjects
+            if dragging then
+                state
 
-                    else
-                        object :: state.selectedObjects
-            }
+            else
+                { state
+                    | focusedObject = Just object
+                    , selectedObjects =
+                        if List.member object state.selectedObjects then
+                            List.filter (\otherObject -> otherObject /= object) state.selectedObjects
+
+                        else
+                            object :: state.selectedObjects
+                }
 
         -- KEYBOARD
         PressedArrowDown ->
