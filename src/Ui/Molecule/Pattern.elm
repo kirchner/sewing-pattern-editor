@@ -138,7 +138,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                     List.foldl
                         (\( aObject, object ) layers ->
                             let
-                                { inactive, active, outline, events } =
+                                { background, selected, active, events } =
                                     drawObject
                                         { onHover = HoveredObject (toObject aObject)
                                         , onLeave = LeftObject (toObject aObject)
@@ -151,15 +151,15 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                                         (objectHovered aObject)
                                         (objectSelected aObject)
                             in
-                            { inactiveList = inactive :: layers.inactiveList
+                            { backgroundList = background :: layers.backgroundList
+                            , selectedList = selected :: layers.selectedList
                             , activeList = active :: layers.activeList
-                            , outlineList = outline :: layers.outlineList
                             , eventsList = events :: layers.eventsList
                             }
                         )
-                        { inactiveList = []
+                        { backgroundList = []
+                        , selectedList = []
                         , activeList = []
-                        , outlineList = []
                         , eventsList = []
                         }
 
@@ -300,26 +300,26 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
             in
             Svg.g [] <|
                 List.concat
-                    [ -- INACTIVE
-                      detailLayers.inactiveList
-                    , curveLayers.inactiveList
-                    , circleLayers.inactiveList
-                    , axisLayers.inactiveList
-                    , pointLayers.inactiveList
+                    [ -- background
+                      detailLayers.backgroundList
+                    , curveLayers.backgroundList
+                    , circleLayers.backgroundList
+                    , axisLayers.backgroundList
+                    , pointLayers.backgroundList
 
-                    -- ACTIVE
+                    -- selected
+                    , detailLayers.selectedList
+                    , curveLayers.selectedList
+                    , circleLayers.selectedList
+                    , axisLayers.selectedList
+                    , pointLayers.selectedList
+
+                    -- active
                     , detailLayers.activeList
                     , curveLayers.activeList
                     , circleLayers.activeList
                     , axisLayers.activeList
                     , pointLayers.activeList
-
-                    -- OUTLINE
-                    , detailLayers.outlineList
-                    , curveLayers.outlineList
-                    , circleLayers.outlineList
-                    , axisLayers.outlineList
-                    , pointLayers.outlineList
 
                     -- EVENTS
                     , List.reverse detailLayers.eventsList

@@ -64,11 +64,35 @@ type alias Resolution =
 
 
 type alias Layers msg =
-    { inactive : Svg msg
+    { background : Svg msg
+    , selected : Svg msg
     , active : Svg msg
-    , outline : Svg msg
     , events : Svg msg
     }
+
+
+inLayer : Svg msg -> Svg msg -> Bool -> Bool -> Bool -> Layers msg
+inLayer events object focused hovered selected =
+    if focused || hovered then
+        { background = Svg.text ""
+        , selected = Svg.text ""
+        , active = object
+        , events = events
+        }
+
+    else if selected then
+        { background = Svg.text ""
+        , selected = object
+        , active = Svg.text ""
+        , events = events
+        }
+
+    else
+        { background = object
+        , selected = Svg.text ""
+        , active = Svg.text ""
+        , events = events
+        }
 
 
 
@@ -204,43 +228,40 @@ drawPoint cfg name point resolution focused hovered selected =
     let
         point2d =
             Point2d.at resolution point.point2d
-
-        offsetPointFactor =
-            if focused then
-                9.5
-
-            else
-                5
     in
-    { inactive =
-        if not selected && not hovered then
-            pointInactive point2d
+    inLayer
+        (pointEvents cfg point2d)
+        (Svg.g []
+            [ if focused then
+                Svg.circle2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
+                    , Svg.Attributes.strokeWidth "1"
+                    ]
+                    (Circle2d.withRadius (pixels 9) point2d)
 
-        else
-            Svg.text ""
-    , active =
-        if selected then
-            Svg.g []
-                [ pointLabel name point2d
-                , pointSelected point2d
-                ]
+              else
+                Svg.text ""
+            , if hovered || selected then
+                Svg.circle2d
+                    [ Svg.Attributes.fill (auraColor hovered selected) ]
+                    (Circle2d.withRadius (pixels 9) point2d)
 
-        else if hovered then
-            Svg.g []
-                [ pointLabel name point2d
-                , pointHovered point2d
-                ]
+              else
+                Svg.text ""
+            , Svg.circle2d
+                [ Svg.Attributes.fill (objectColor selected) ]
+                (Circle2d.withRadius (pixels 3) point2d)
+            , if focused || hovered then
+                pointLabel name point2d
 
-        else
-            Svg.text ""
-    , outline =
-        if focused then
-            pointOutline point2d
-
-        else
-            Svg.text ""
-    , events = pointEvents cfg point2d
-    }
+              else
+                Svg.text ""
+            ]
+        )
+        focused
+        hovered
+        selected
 
 
 pointLabel : String -> Point2d Pixels coordinates -> Svg msg
@@ -495,48 +516,6 @@ lineLabel hovered basePoint2d point2d label =
         [ Svg.text label ]
 
 
-pointOutline : Point2d Pixels coordinates -> Svg msg
-pointOutline point2d =
-    Svg.circle2d
-        [ Svg.Attributes.fill "none"
-        , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-        , Svg.Attributes.strokeWidth "1"
-        ]
-        (Circle2d.withRadius (pixels 8) point2d)
-
-
-pointHovered : Point2d Pixels coordinates -> Svg msg
-pointHovered point2d =
-    Svg.g []
-        [ Svg.circle2d
-            [ Svg.Attributes.fill (toColor Ui.Theme.Color.secondary) ]
-            (Circle2d.withRadius (pixels 9) point2d)
-        , Svg.circle2d
-            [ Svg.Attributes.fill (toColor Ui.Theme.Color.black) ]
-            (Circle2d.withRadius (pixels 3) point2d)
-        ]
-
-
-pointSelected : Point2d Pixels coordinates -> Svg msg
-pointSelected point2d =
-    Svg.g []
-        [ Svg.circle2d
-            [ Svg.Attributes.fill (toColor Ui.Theme.Color.primary)
-            ]
-            (Circle2d.withRadius (pixels 9) point2d)
-        , Svg.circle2d
-            [ Svg.Attributes.fill (toColor Ui.Theme.Color.white) ]
-            (Circle2d.withRadius (pixels 3) point2d)
-        ]
-
-
-pointInactive : Point2d Pixels coordinates -> Svg msg
-pointInactive point2d =
-    Svg.circle2d
-        [ Svg.Attributes.fill (toColor Ui.Theme.Color.black) ]
-        (Circle2d.withRadius (pixels 3) point2d)
-
-
 pointReferenced : Point2d Pixels coordinates -> Bool -> Svg msg
 pointReferenced point2d hovered =
     let
@@ -575,50 +554,25 @@ drawAxis cfg name axis resolution focused hovered selected =
     let
         axis2d =
             Axis2d.at resolution axis.axis2d
+
+        lineSegment2d =
+            LineSegment2d.along axis2d
+                (pixels -1000)
+                (pixels 1000)
     in
-    case ( focused, hovered ) of
-        ( False, False ) ->
-            { inactive = axisReferenced axis2d False False
-            , active = Svg.text ""
-            , outline = Svg.text ""
-            , events = axisEvents cfg axis2d
-            }
-
-        ( True, False ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ axisInfo axis resolution focused hovered
-                    , axisLabel name axis2d
-                    , axisReferenced axis2d True False
-                    ]
-            , outline = axisOutline axis2d
-            , events = axisEvents cfg axis2d
-            }
-
-        ( False, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ axisInfo axis resolution focused hovered
-                    , axisLabel name axis2d
-                    , axisReferenced axis2d False True
-                    ]
-            , outline = Svg.text ""
-            , events = axisEvents cfg axis2d
-            }
-
-        ( True, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ axisInfo axis resolution focused hovered
-                    , axisLabel name axis2d
-                    , axisReferenced axis2d True True
-                    ]
-            , outline = axisOutline axis2d
-            , events = axisEvents cfg axis2d
-            }
+    inLayer
+        (axisEvents cfg axis2d)
+        (strokeBased
+            (\attrs -> Svg.lineSegment2d attrs lineSegment2d)
+            (\label -> axisLabel label axis2d)
+            name
+            focused
+            hovered
+            selected
+        )
+        focused
+        hovered
+        selected
 
 
 axisLabel : String -> Axis2d Pixels coordinates -> Svg msg
@@ -659,34 +613,6 @@ axisInfo axis resolution focused hovered =
                 , pointReferenced (Point2d.at resolution info.pointA.point2d) hovered
                 , pointReferenced (Point2d.at resolution info.pointB.point2d) hovered
                 ]
-
-
-axisOutline : Axis2d Pixels coordinates -> Svg msg
-axisOutline axis2d =
-    let
-        outline offset =
-            Svg.lineSegment2d
-                [ Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-                , Svg.Attributes.strokeWidth "2"
-                , Svg.Attributes.strokeDasharray "4 7"
-                , Svg.Attributes.strokeLinecap "round"
-                ]
-                (LineSegment2d.along
-                    (Axis2d.translateBy
-                        (Direction2d.perpendicularTo (Axis2d.direction axis2d)
-                            |> Direction2d.toVector
-                            |> Vector2d.at (pixels offset |> Quantity.per (Quantity.float 1))
-                        )
-                        axis2d
-                    )
-                    (pixels -1000)
-                    (pixels 1000)
-                )
-    in
-    Svg.g []
-        [ outline 8
-        , outline -8
-        ]
 
 
 axisReferenced : Axis2d Pixels coordinates -> Bool -> Bool -> Svg msg
@@ -739,49 +665,19 @@ drawCircle cfg name circle resolution focused hovered selected =
         circle2d =
             Circle2d.at resolution circle.circle2d
     in
-    case ( focused, hovered ) of
-        ( False, False ) ->
-            { inactive = circleReferenced circle2d False False
-            , active = Svg.text ""
-            , outline = Svg.text ""
-            , events = circleEvents cfg circle2d
-            }
-
-        ( True, False ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ circleInfo circle resolution focused hovered
-                    , circleLabel name circle2d
-                    , circleReferenced circle2d True False
-                    ]
-            , outline = circleOutline circle2d
-            , events = circleEvents cfg circle2d
-            }
-
-        ( False, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ circleInfo circle resolution focused hovered
-                    , circleLabel name circle2d
-                    , circleReferenced circle2d False True
-                    ]
-            , outline = Svg.text ""
-            , events = circleEvents cfg circle2d
-            }
-
-        ( True, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ circleInfo circle resolution focused hovered
-                    , circleLabel name circle2d
-                    , circleReferenced circle2d True True
-                    ]
-            , outline = circleOutline circle2d
-            , events = circleEvents cfg circle2d
-            }
+    inLayer
+        (circleEvents cfg circle2d)
+        (strokeBased
+            (\attrs -> Svg.circle2d attrs circle2d)
+            (\label -> circleLabel label circle2d)
+            name
+            focused
+            hovered
+            selected
+        )
+        focused
+        hovered
+        selected
 
 
 circleLabel : String -> Circle2d Pixels coordinates -> Svg msg
@@ -842,21 +738,6 @@ circleInfo circle resolution focused hovered =
                 ]
 
 
-circleOutline : Circle2d Pixels coordinates -> Svg msg
-circleOutline circle2d =
-    Svg.circle2d
-        [ Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-        , Svg.Attributes.strokeWidth "2"
-        , Svg.Attributes.strokeDasharray "4 7"
-        , Svg.Attributes.strokeLinecap "round"
-        , Svg.Attributes.fill "none"
-        ]
-        (Circle2d.withRadius
-            (Quantity.plus (pixels 8) (Circle2d.radius circle2d))
-            (Circle2d.centerPoint circle2d)
-        )
-
-
 circleReferenced : Circle2d Pixels coordinates -> Bool -> Bool -> Svg msg
 circleReferenced circle2d focused hovered =
     Svg.circle2d
@@ -902,46 +783,19 @@ drawCurve cfg name curve resolution focused hovered selected =
         curve2d =
             Curve2d.at resolution curve.curve2d
     in
-    case ( focused, hovered ) of
-        ( False, False ) ->
-            { inactive = curveInactive curve2d
-            , active = Svg.text ""
-            , outline = Svg.text ""
-            , events = curveEvents cfg curve2d
-            }
-
-        ( True, False ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ curveLabel name curve2d
-                    , curveFocused curve2d
-                    ]
-            , outline = Svg.text ""
-            , events = curveEvents cfg curve2d
-            }
-
-        ( False, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ curveLabel name curve2d
-                    , curveHovered curve2d
-                    ]
-            , outline = Svg.text ""
-            , events = curveEvents cfg curve2d
-            }
-
-        ( True, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ curveLabel name curve2d
-                    , curveFocused curve2d
-                    ]
-            , outline = Svg.text ""
-            , events = curveEvents cfg curve2d
-            }
+    inLayer
+        (curveEvents cfg curve2d)
+        (strokeBased
+            (\attrs -> Svg.curve2d attrs curve2d)
+            (\label -> curveLabel label curve2d)
+            name
+            focused
+            hovered
+            selected
+        )
+        focused
+        hovered
+        selected
 
 
 curveLabel : String -> Curve2d Pixels coordinates -> Svg msg
@@ -999,90 +853,6 @@ curveInfo curve resolution focused hovered =
                 ]
 
 
-curveOutline : Curve2d Pixels coordinates -> Svg msg
-curveOutline curve2d =
-    Svg.boundingBox2d
-        [ Svg.Attributes.fill "none"
-        , Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-        , Svg.Attributes.strokeWidth "2"
-        , Svg.Attributes.strokeDasharray "4 7"
-        , Svg.Attributes.strokeLinecap "round"
-        ]
-        (Curve2d.boundingBox curve2d
-            |> BoundingBox2d.expandBy (pixels 8)
-        )
-
-
-curveInactive : Curve2d Pixels coordinates -> Svg msg
-curveInactive curve2d =
-    Svg.curve2d
-        [ Svg.Attributes.fill "none"
-        , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-        , Svg.Attributes.strokeWidth "1"
-        ]
-        curve2d
-
-
-curveHovered : Curve2d Pixels coordinates -> Svg msg
-curveHovered curve2d =
-    Svg.g []
-        [ Svg.curve2d
-            [ Svg.Attributes.fill "none"
-            , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-            , Svg.Attributes.strokeWidth "8"
-            , Svg.Attributes.strokeLinecap "round"
-            ]
-            curve2d
-        , Svg.curve2d
-            [ Svg.Attributes.fill "none"
-            , Svg.Attributes.stroke (toColor Ui.Theme.Color.secondary)
-            , Svg.Attributes.strokeWidth "6"
-            , Svg.Attributes.strokeLinecap "round"
-            ]
-            curve2d
-        , Svg.curve2d
-            [ Svg.Attributes.fill "none"
-            , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-            , Svg.Attributes.strokeWidth "1"
-            ]
-            curve2d
-        ]
-
-
-curveFocused : Curve2d Pixels coordinates -> Svg msg
-curveFocused curve2d =
-    Svg.g []
-        [ Svg.curve2d
-            [ Svg.Attributes.fill "none"
-            , Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-            , Svg.Attributes.strokeWidth "8"
-            , Svg.Attributes.strokeLinecap "round"
-            ]
-            curve2d
-        , Svg.curve2d
-            [ Svg.Attributes.fill "none"
-            , Svg.Attributes.stroke (toColor Ui.Theme.Color.white)
-            , Svg.Attributes.strokeWidth "1"
-            ]
-            curve2d
-        ]
-
-
-curveReferenced : Curve2d Pixels coordinates -> Bool -> Svg msg
-curveReferenced curve2d hovered =
-    Svg.curve2d
-        [ Svg.Attributes.fill "none"
-        , Svg.Attributes.stroke <|
-            if hovered then
-                toColor Ui.Theme.Color.primary
-
-            else
-                toColor Ui.Theme.Color.black
-        , Svg.Attributes.strokeWidth "1"
-        ]
-        curve2d
-
-
 curveEvents : Config msg -> Curve2d Pixels coordinates -> Svg msg
 curveEvents cfg curve2d =
     Svg.curve2d
@@ -1108,46 +878,19 @@ drawDetail cfg name detail resolution focused hovered selected =
         detail2d =
             Detail2d.at resolution detail.detail2d
     in
-    case ( focused, hovered ) of
-        ( False, False ) ->
-            { inactive = detailInactive detail2d
-            , active = Svg.text ""
-            , outline = Svg.text ""
-            , events = detailEvents cfg detail2d
-            }
-
-        ( True, False ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ detailLabel name detail2d
-                    , detailFocused detail2d
-                    ]
-            , outline = Svg.text ""
-            , events = detailEvents cfg detail2d
-            }
-
-        ( False, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ detailLabel name detail2d
-                    , detailHovered detail2d
-                    ]
-            , outline = Svg.text ""
-            , events = detailEvents cfg detail2d
-            }
-
-        ( True, True ) ->
-            { inactive = Svg.text ""
-            , active =
-                Svg.g []
-                    [ detailLabel name detail2d
-                    , detailFocused detail2d
-                    ]
-            , outline = Svg.text ""
-            , events = detailEvents cfg detail2d
-            }
+    inLayer
+        (detailEvents cfg detail2d)
+        (strokeBased
+            (\attrs -> Svg.detail2d attrs detail2d)
+            (\label -> detailLabel label detail2d)
+            name
+            focused
+            hovered
+            selected
+        )
+        focused
+        hovered
+        selected
 
 
 detailLabel : String -> Detail2d Pixels coordinates -> Svg msg
@@ -1184,78 +927,6 @@ detailInfo detail resolution focused hovered =
         ]
 
 
-detailOutline : Detail2d Pixels coordinates -> Svg msg
-detailOutline detail2d =
-    case Detail2d.boundingBox detail2d of
-        Nothing ->
-            Svg.text ""
-
-        Just boundingBox2d ->
-            Svg.boundingBox2d
-                [ Svg.Attributes.fill "none"
-                , Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-                , Svg.Attributes.strokeWidth "2"
-                , Svg.Attributes.strokeDasharray "4 7"
-                , Svg.Attributes.strokeLinecap "round"
-                ]
-                (BoundingBox2d.expandBy (pixels 8) boundingBox2d)
-
-
-detailInactive : Detail2d Pixels coordinates -> Svg msg
-detailInactive detail2d =
-    Svg.detail2d
-        [ Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-        , Svg.Attributes.strokeWidth "1"
-        , Svg.Attributes.fill "none"
-        ]
-        detail2d
-
-
-detailHovered : Detail2d Pixels coordinates -> Svg msg
-detailHovered detail2d =
-    Svg.g []
-        [ Svg.detail2d
-            [ Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-            , Svg.Attributes.strokeWidth "8"
-            , Svg.Attributes.strokeLinecap "round"
-            , Svg.Attributes.fill "none"
-            ]
-            detail2d
-        , Svg.detail2d
-            [ Svg.Attributes.stroke (toColor Ui.Theme.Color.secondary)
-            , Svg.Attributes.strokeWidth "6"
-            , Svg.Attributes.strokeLinecap "round"
-            , Svg.Attributes.fill "none"
-            ]
-            detail2d
-        , Svg.detail2d
-            [ Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
-            , Svg.Attributes.strokeWidth "1"
-            , Svg.Attributes.fill "none"
-            ]
-            detail2d
-        ]
-
-
-detailFocused : Detail2d Pixels coordinates -> Svg msg
-detailFocused detail2d =
-    Svg.g []
-        [ Svg.detail2d
-            [ Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
-            , Svg.Attributes.strokeWidth "8"
-            , Svg.Attributes.strokeLinecap "round"
-            , Svg.Attributes.fill "none"
-            ]
-            detail2d
-        , Svg.detail2d
-            [ Svg.Attributes.stroke (toColor Ui.Theme.Color.white)
-            , Svg.Attributes.strokeWidth "1"
-            , Svg.Attributes.fill "none"
-            ]
-            detail2d
-        ]
-
-
 detailReferenced : Detail2d Pixels coordinates -> Bool -> Bool -> Svg msg
 detailReferenced detail2d focused hovered =
     Svg.detail2d
@@ -1272,19 +943,6 @@ detailReferenced detail2d focused hovered =
             else
                 "1"
         , Svg.Attributes.fill "none"
-        ]
-        detail2d
-
-
-detailBackground : Detail2d Pixels coordinates -> Bool -> Bool -> Svg msg
-detailBackground detail2d focused hovered =
-    Svg.detail2d
-        [ Svg.Attributes.fill <|
-            if hovered then
-                toColor Ui.Theme.Color.secondaryDark
-
-            else
-                toColor Ui.Theme.Color.secondary
         ]
         detail2d
 
@@ -1348,3 +1006,79 @@ font =
         "font-size: "
             ++ String.fromFloat 14
             ++ "px; font-family: \"Rubik\";"
+
+
+auraColor : Bool -> Bool -> String
+auraColor hovered selected =
+    case ( hovered, selected ) of
+        ( False, False ) ->
+            "none"
+
+        ( False, True ) ->
+            toColor Ui.Theme.Color.primary
+
+        ( True, False ) ->
+            toColor Ui.Theme.Color.secondary
+
+        ( True, True ) ->
+            toColor Ui.Theme.Color.primaryLight
+
+
+objectColor : Bool -> String
+objectColor selected =
+    if selected then
+        toColor Ui.Theme.Color.white
+
+    else
+        toColor Ui.Theme.Color.black
+
+
+strokeBased :
+    (List (Svg.Attribute msg) -> Svg msg)
+    -> (String -> Svg msg)
+    -> String
+    -> Bool
+    -> Bool
+    -> Bool
+    -> Svg msg
+strokeBased object2d label name focused hovered selected =
+    Svg.g []
+        [ if focused then
+            Svg.g []
+                [ object2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.stroke (toColor Ui.Theme.Color.black)
+                    , Svg.Attributes.strokeWidth "11"
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                , object2d
+                    [ Svg.Attributes.fill "none"
+                    , Svg.Attributes.stroke (toColor Ui.Theme.Color.white)
+                    , Svg.Attributes.strokeWidth "9"
+                    , Svg.Attributes.strokeLinecap "round"
+                    ]
+                ]
+
+          else
+            Svg.text ""
+        , if hovered || selected then
+            object2d
+                [ Svg.Attributes.fill "none"
+                , Svg.Attributes.stroke (auraColor hovered selected)
+                , Svg.Attributes.strokeWidth "9"
+                , Svg.Attributes.strokeLinecap "round"
+                ]
+
+          else
+            Svg.text ""
+        , object2d
+            [ Svg.Attributes.fill "none"
+            , Svg.Attributes.stroke (objectColor selected)
+            , Svg.Attributes.strokeWidth "1"
+            ]
+        , if focused || hovered then
+            label name
+
+          else
+            Svg.text ""
+        ]
