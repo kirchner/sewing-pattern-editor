@@ -412,7 +412,7 @@ update msg pattern dragging state =
                             List.filter (\otherObject -> otherObject /= object) state.selectedObjects
 
                         else
-                            object :: state.selectedObjects
+                            state.selectedObjects ++ [ object ]
                 }
 
         -- KEYBOARD
@@ -497,7 +497,7 @@ update msg pattern dragging state =
                                     state.selectedObjects
 
                             else
-                                object :: state.selectedObjects
+                                state.selectedObjects ++ [ object ]
                     }
 
 

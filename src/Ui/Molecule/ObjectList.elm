@@ -339,7 +339,7 @@ update msg pattern state =
                             state.selectedObjects
 
                     else
-                        object :: state.selectedObjects
+                        state.selectedObjects ++ [ object ]
             }
 
         -- KEYBOARD
@@ -392,7 +392,7 @@ update msg pattern state =
                                     state.selectedObjects
 
                             else
-                                object :: state.selectedObjects
+                                state.selectedObjects ++ [ object ]
                     }
 
 
