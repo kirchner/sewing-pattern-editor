@@ -37,7 +37,7 @@ import Ui.Theme.Typography
 type alias State =
     { hoveredObject : Maybe Object
     , focusedObject : Maybe Object
-    , selectedObject : Maybe Object
+    , selectedObjects : List Object
     }
 
 
@@ -46,7 +46,7 @@ init : State
 init =
     { hoveredObject = Nothing
     , focusedObject = Nothing
-    , selectedObject = Nothing
+    , selectedObjects = []
     }
 
 
@@ -268,7 +268,7 @@ borderColor state object =
         if state.focusedObject == Just object then
             Ui.Theme.Color.black
 
-        else if state.selectedObject == Just object then
+        else if List.member object state.selectedObjects then
             Ui.Theme.Color.primary
 
         else if state.hoveredObject == Just object then
@@ -280,7 +280,7 @@ borderColor state object =
 
 backgroundColor state object =
     Background.color <|
-        if state.selectedObject == Just object then
+        if List.member object state.selectedObjects then
             Ui.Theme.Color.primary
 
         else if state.hoveredObject == Just object then
@@ -292,7 +292,7 @@ backgroundColor state object =
 
 fontColor state object =
     Font.color <|
-        if state.selectedObject == Just object then
+        if List.member object state.selectedObjects then
             Ui.Theme.Color.white
 
         else
@@ -333,7 +333,13 @@ update msg pattern state =
         ClickedObject object ->
             { state
                 | focusedObject = Just object
-                , selectedObject = Just object
+                , selectedObjects =
+                    if List.member object state.selectedObjects then
+                        List.filter (\otherObject -> otherObject /= object)
+                            state.selectedObjects
+
+                    else
+                        object :: state.selectedObjects
             }
 
         -- KEYBOARD
@@ -374,7 +380,20 @@ update msg pattern state =
             }
 
         PressedSpace ->
-            { state | selectedObject = state.focusedObject }
+            case state.focusedObject of
+                Nothing ->
+                    state
+
+                Just object ->
+                    { state
+                        | selectedObjects =
+                            if List.member object state.selectedObjects then
+                                List.filter (\otherObject -> otherObject /= object)
+                                    state.selectedObjects
+
+                            else
+                                object :: state.selectedObjects
+                    }
 
 
 nextAfter : List a -> a -> a

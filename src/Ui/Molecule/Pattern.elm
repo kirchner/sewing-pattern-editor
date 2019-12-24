@@ -43,7 +43,7 @@ import Vector2d
 type alias State =
     { hoveredObject : Maybe Object
     , focusedObject : Maybe Object
-    , selectedObject : Maybe Object
+    , selectedObjects : List Object
     }
 
 
@@ -52,7 +52,7 @@ init : State
 init =
     { hoveredObject = Nothing
     , focusedObject = Nothing
-    , selectedObject = Nothing
+    , selectedObjects = []
     }
 
 
@@ -127,7 +127,7 @@ view cfg viewport pattern state =
 
 
 draw : Pattern coordinates -> Resolution -> State -> Svg Msg
-draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
+draw pattern resolution { hoveredObject, focusedObject, selectedObjects } =
     case State.finalValue pattern Pattern.compute of
         Err _ ->
             Svg.text ""
@@ -149,7 +149,7 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                                         resolution
                                         (objectFocused aObject)
                                         (objectHovered aObject)
-                                        (objectSelected aObject)
+                                        (List.any (objectSelected aObject) selectedObjects)
                             in
                             { backgroundList = background :: layers.backgroundList
                             , selectedList = selected :: layers.selectedList
@@ -179,9 +179,9 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                         _ ->
                             False
 
-                pointSelected aPoint =
+                pointSelected aPoint selectedObject =
                     case selectedObject of
-                        Just (Point otherAPoint) ->
+                        Point otherAPoint ->
                             otherAPoint == aPoint
 
                         _ ->
@@ -206,9 +206,9 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                         _ ->
                             False
 
-                axisSelected aAxis =
+                axisSelected aAxis selectedObject =
                     case selectedObject of
-                        Just (Axis otherAAxis) ->
+                        Axis otherAAxis ->
                             otherAAxis == aAxis
 
                         _ ->
@@ -233,9 +233,9 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                         _ ->
                             False
 
-                circleSelected aCircle =
+                circleSelected aCircle selectedObject =
                     case selectedObject of
-                        Just (Circle otherACircle) ->
+                        Circle otherACircle ->
                             otherACircle == aCircle
 
                         _ ->
@@ -260,9 +260,9 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                         _ ->
                             False
 
-                curveSelected aCurve =
+                curveSelected aCurve selectedObject =
                     case selectedObject of
-                        Just (Curve otherACurve) ->
+                        Curve otherACurve ->
                             otherACurve == aCurve
 
                         _ ->
@@ -287,9 +287,9 @@ draw pattern resolution { hoveredObject, focusedObject, selectedObject } =
                         _ ->
                             False
 
-                detailSelected aDetail =
+                detailSelected aDetail selectedObject =
                     case selectedObject of
-                        Just (Detail otherADetail) ->
+                        Detail otherADetail ->
                             otherADetail == aDetail
 
                         _ ->
@@ -391,7 +391,12 @@ update msg pattern state =
         ClickedObject object ->
             { state
                 | focusedObject = Just object
-                , selectedObject = Just object
+                , selectedObjects =
+                    if List.member object state.selectedObjects then
+                        List.filter (\otherObject -> otherObject /= object) state.selectedObjects
+
+                    else
+                        object :: state.selectedObjects
             }
 
         -- KEYBOARD
@@ -464,7 +469,20 @@ update msg pattern state =
             { state | focusedObject = Maybe.map focusNextObject state.focusedObject }
 
         PressedSpace ->
-            { state | selectedObject = state.focusedObject }
+            case state.focusedObject of
+                Nothing ->
+                    state
+
+                Just object ->
+                    { state
+                        | selectedObjects =
+                            if List.member object state.selectedObjects then
+                                List.filter (\otherObject -> otherObject /= object)
+                                    state.selectedObjects
+
+                            else
+                                object :: state.selectedObjects
+                    }
 
 
 objectName : Object -> String
