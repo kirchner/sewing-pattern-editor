@@ -56,7 +56,7 @@ import Git
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
-import Html.Events.Extra.Pointer
+import Html.Events.Extra.Mouse
 import Html.Events.Extra.Touch
 import Html.Lazy
 import Http
@@ -1355,6 +1355,18 @@ viewPattern maybeDimensions center model =
                     Html.Events.Extra.Touch.onWithOptions "touchcancel"
                         { stopPropagation = False, preventDefault = False }
                         UserCancelledTouchOnPattern
+                , Element.htmlAttribute <|
+                    Html.Events.Extra.Mouse.onWithOptions "mousedown"
+                        { stopPropagation = False, preventDefault = False }
+                        UserDownedMouseOnPattern
+                , Element.htmlAttribute <|
+                    Html.Events.Extra.Mouse.onWithOptions "mousemove"
+                        { stopPropagation = False, preventDefault = False }
+                        UserMovedMouseOnPattern
+                , Element.htmlAttribute <|
+                    Html.Events.Extra.Mouse.onWithOptions "mouseup"
+                        { stopPropagation = False, preventDefault = False }
+                        UserUppedMouseOnPattern
                 ]
                 (Element.map PatternMsg <|
                     Ui.Molecule.Pattern.view
@@ -1752,6 +1764,9 @@ type Msg
     | UserMovedTouchOnPattern Html.Events.Extra.Touch.Event
     | UserEndedTouchOnPattern Html.Events.Extra.Touch.Event
     | UserCancelledTouchOnPattern Html.Events.Extra.Touch.Event
+    | UserDownedMouseOnPattern Html.Events.Extra.Mouse.Event
+    | UserMovedMouseOnPattern Html.Events.Extra.Mouse.Event
+    | UserUppedMouseOnPattern Html.Events.Extra.Mouse.Event
       -- RIGHT TOOLBAR
     | DialogCreateMsg Ui.Organism.Dialog.CreateMsg
     | DialogEditMsg Ui.Organism.Dialog.EditMsg
@@ -2351,52 +2366,22 @@ updateLoaded key domain clientId device identity msg model =
             )
 
         UserEndedTouchOnPattern event ->
-            case model.maybeSlide of
-                Nothing ->
-                    ( model
-                    , Cmd.none
-                    )
-
-                Just slide ->
-                    let
-                        newCenter =
-                            case event.touches of
-                                touch :: [] ->
-                                    model.center
-                                        |> Point2d.translateBy
-                                            (Vector2d.at_ model.resolution <|
-                                                Vector2d.fromPixels
-                                                    { x =
-                                                        Tuple.first slide.start
-                                                            - Tuple.first touch.screenPos
-                                                    , y =
-                                                        Tuple.second slide.start
-                                                            - Tuple.second touch.screenPos
-                                                    }
-                                            )
-
-                                _ ->
-                                    model.center
-                                        |> Point2d.translateBy
-                                            (Vector2d.at_ model.resolution <|
-                                                Vector2d.fromPixels
-                                                    { x =
-                                                        Tuple.first slide.start
-                                                            - Tuple.first slide.current
-                                                    , y =
-                                                        Tuple.second slide.start
-                                                            - Tuple.second slide.current
-                                                    }
-                                            )
-                    in
-                    ( { model
-                        | center = newCenter
-                        , maybeSlide = Nothing
-                      }
-                    , LocalStorage.updateCenter model.address newCenter
-                    )
+            model.maybeSlide
+                |> Maybe.map (endSlidePattern event model)
+                |> Maybe.withDefault ( model, Cmd.none )
 
         UserCancelledTouchOnPattern event ->
+            model.maybeSlide
+                |> Maybe.map (endSlidePattern event model)
+                |> Maybe.withDefault ( model, Cmd.none )
+
+        UserDownedMouseOnPattern event ->
+            ( model, Cmd.none )
+
+        UserMovedMouseOnPattern event ->
+            ( model, Cmd.none )
+
+        UserUppedMouseOnPattern event ->
             ( model, Cmd.none )
 
         -- RIGHT TOOLBAR
@@ -2878,7 +2863,44 @@ loadedSubscriptions data =
 
 
 
----- SLIDE
+---- SLIDE PATTERN
+
+
+endSlidePattern : Html.Events.Extra.Touch.Event -> LoadedData -> Slide -> ( LoadedData, Cmd Msg )
+endSlidePattern event model slide =
+    let
+        newCenter =
+            case event.touches of
+                touch :: [] ->
+                    model.center
+                        |> Point2d.translateBy
+                            (Vector2d.at_ model.resolution <|
+                                Vector2d.fromPixels
+                                    { x = Tuple.first slide.start - Tuple.first touch.screenPos
+                                    , y = Tuple.second slide.start - Tuple.second touch.screenPos
+                                    }
+                            )
+
+                _ ->
+                    model.center
+                        |> Point2d.translateBy
+                            (Vector2d.at_ model.resolution <|
+                                Vector2d.fromPixels
+                                    { x = Tuple.first slide.start - Tuple.first slide.current
+                                    , y = Tuple.second slide.start - Tuple.second slide.current
+                                    }
+                            )
+    in
+    ( { model
+        | center = newCenter
+        , maybeSlide = Nothing
+      }
+    , LocalStorage.updateCenter model.address newCenter
+    )
+
+
+
+---- SLIDE TOOLBAR TOP
 
 
 startSlideToolbarTop : Html.Events.Extra.Touch.Event -> LoadedData -> LoadedData
@@ -3050,17 +3072,6 @@ updateToIdealViewport address pattern dimensions =
 
         _ ->
             Cmd.none
-
-
-positionFromPointerEvent : Html.Events.Extra.Pointer.Event -> Position
-positionFromPointerEvent event =
-    let
-        ( x, y ) =
-            event.pointer.clientPos
-    in
-    { x = x
-    , y = y
-    }
 
 
 toolbarTopHeight : Float
