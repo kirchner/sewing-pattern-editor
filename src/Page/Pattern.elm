@@ -2222,6 +2222,7 @@ updateLoaded key domain clientId device identity msg model =
                             , nameHelp = Nothing
                             , value = ""
                             }
+                , toolbarBottomExpanded = True
               }
             , if isCompact device then
                 Cmd.batch
