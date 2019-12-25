@@ -585,7 +585,7 @@ viewToolbarTopCompact : Git.Identity -> LoadedData -> Element Msg
 viewToolbarTopCompact identity model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing Ui.Theme.Spacing.level2
+        , Element.spacing Ui.Theme.Spacing.level1
         , Background.color Ui.Theme.Color.secondary
         , Element.htmlAttribute <|
             Html.Attributes.style "transition" "transform 0.2s ease-out 0s"
@@ -633,7 +633,8 @@ viewToolbarTopCompact identity model =
         , Element.el [ Element.centerX ] (patternAddress model.address)
         , Element.row
             [ Element.width Element.fill ]
-            [ Element.el [] (backToPatternsLink { showLabel = False })
+            [ Element.el [ Element.padding Ui.Theme.Spacing.level1 ]
+                (backToPatternsLink { showLabel = False })
             , Element.row
                 [ Element.centerX
                 , Element.spacing Ui.Theme.Spacing.level2
@@ -3032,4 +3033,4 @@ positionFromPointerEvent event =
 
 toolbarTopHeight : Float
 toolbarTopHeight =
-    130
+    124
