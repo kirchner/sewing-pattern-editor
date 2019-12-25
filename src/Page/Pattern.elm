@@ -608,10 +608,22 @@ viewToolbarTopCompact identity model =
 
                     else
                         clamp 0 toolbarTopHeight (toolbarTopHeight - deltaY)
-        , Element.htmlAttribute (Html.Events.Extra.Touch.onStart UserStartedTouchOnToolbarTop)
-        , Element.htmlAttribute (Html.Events.Extra.Touch.onMove UserMovedTouchOnToolbarTop)
-        , Element.htmlAttribute (Html.Events.Extra.Touch.onEnd UserEndedTouchOnToolbarTop)
-        , Element.htmlAttribute (Html.Events.Extra.Touch.onCancel UserCancelledTouchOnToolbarTop)
+        , Element.htmlAttribute <|
+            Html.Events.Extra.Touch.onWithOptions "touchstart"
+                { stopPropagation = False, preventDefault = False }
+                UserStartedTouchOnToolbarTop
+        , Element.htmlAttribute <|
+            Html.Events.Extra.Touch.onWithOptions "touchmove"
+                { stopPropagation = False, preventDefault = False }
+                UserMovedTouchOnToolbarTop
+        , Element.htmlAttribute <|
+            Html.Events.Extra.Touch.onWithOptions "touchend"
+                { stopPropagation = False, preventDefault = False }
+                UserEndedTouchOnToolbarTop
+        , Element.htmlAttribute <|
+            Html.Events.Extra.Touch.onWithOptions "touchcancel"
+                { stopPropagation = False, preventDefault = False }
+                UserCancelledTouchOnToolbarTop
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -2869,29 +2881,29 @@ updateSlideToolbarTop event model slide =
 
 endSlideToolbarTop : Html.Events.Extra.Touch.Event -> LoadedData -> Slide -> LoadedData
 endSlideToolbarTop event model slide =
-    case event.touches of
-        touch :: [] ->
-            let
-                deltaY =
+    let
+        deltaY =
+            case event.touches of
+                touch :: [] ->
                     Tuple.second touch.screenPos - Tuple.second slide.start
-            in
-            if deltaY >= toolbarTopHeight / 2 then
-                { model
-                    | topToolbarExpanded = True
-                    , maybeSlideToolbarTop = Nothing
-                }
 
-            else if deltaY <= toolbarTopHeight / -2 then
-                { model
-                    | topToolbarExpanded = False
-                    , maybeSlideToolbarTop = Nothing
-                }
+                _ ->
+                    Tuple.second slide.current - Tuple.second slide.start
+    in
+    if deltaY >= toolbarTopHeight / 2 then
+        { model
+            | topToolbarExpanded = True
+            , maybeSlideToolbarTop = Nothing
+        }
 
-            else
-                { model | maybeSlideToolbarTop = Nothing }
+    else if deltaY <= toolbarTopHeight / -2 then
+        { model
+            | topToolbarExpanded = False
+            , maybeSlideToolbarTop = Nothing
+        }
 
-        _ ->
-            model
+    else
+        { model | maybeSlideToolbarTop = Nothing }
 
 
 
