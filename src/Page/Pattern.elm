@@ -57,6 +57,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Html.Events.Extra.Pointer
+import Html.Events.Extra.Touch
 import Html.Lazy
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -156,6 +157,7 @@ type alias LoadedData =
     -- TOOLBAR TOP
     , topToolbarExpanded : Bool
     , createObjectMenuBtn : Ui.Molecule.MenuBtn.State
+    , maybeSlideToolbarTop : Maybe Slide
 
     -- TOOLBAR BOTTOM
     , toolbarBottomExpanded : Bool
@@ -187,6 +189,13 @@ type alias Position =
 type alias Dimensions =
     { width : Float
     , height : Float
+    }
+
+
+type alias Slide =
+    { identifier : Int
+    , start : ( Float, Float )
+    , current : ( Float, Float )
     }
 
 
@@ -287,6 +296,7 @@ initLoaded device address sha pattern meta permissions =
         -- TOOLBAR TOP
         , topToolbarExpanded = False
         , createObjectMenuBtn = Ui.Molecule.MenuBtn.init
+        , maybeSlideToolbarTop = Nothing
 
         -- TOOLBAR BOTTOM
         , toolbarBottomExpanded = False
@@ -573,32 +583,35 @@ viewEditorFullScreen identity model =
 
 viewToolbarTopCompact : Git.Identity -> LoadedData -> Element Msg
 viewToolbarTopCompact identity model =
-    let
-        toggleBtn =
-            Ui.Atom.Input.btnIcon
-                { id = "toggle-btn"
-                , onPress = Just UserPressedToggleBtn
-                , icon =
-                    if model.topToolbarExpanded then
-                        "chevron-up"
-
-                    else
-                        "chevron-down"
-                }
-    in
     Element.column
         [ Element.width Element.fill
-        , Element.padding Ui.Theme.Spacing.level1
         , Element.spacing Ui.Theme.Spacing.level2
         , Background.color Ui.Theme.Color.secondary
-        , Element.moveUp <|
-            if model.topToolbarExpanded then
-                0
-
-            else
-                92
         , Element.htmlAttribute <|
             Html.Attributes.style "transition" "transform 0.2s ease-out 0s"
+        , Element.moveUp <|
+            case model.maybeSlideToolbarTop of
+                Nothing ->
+                    if model.topToolbarExpanded then
+                        0
+
+                    else
+                        toolbarTopHeight
+
+                Just slide ->
+                    let
+                        deltaY =
+                            Tuple.second slide.current - Tuple.second slide.start
+                    in
+                    if model.topToolbarExpanded then
+                        clamp 0 toolbarTopHeight (0 - deltaY)
+
+                    else
+                        clamp 0 toolbarTopHeight (toolbarTopHeight - deltaY)
+        , Element.htmlAttribute (Html.Events.Extra.Touch.onStart UserStartedTouchOnToolbarTop)
+        , Element.htmlAttribute (Html.Events.Extra.Touch.onMove UserMovedTouchOnToolbarTop)
+        , Element.htmlAttribute (Html.Events.Extra.Touch.onEnd UserEndedTouchOnToolbarTop)
+        , Element.htmlAttribute (Html.Events.Extra.Touch.onCancel UserCancelledTouchOnToolbarTop)
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -616,7 +629,17 @@ viewToolbarTopCompact identity model =
                 [ patternName model.name
                 , loadingIndicator model.stored
                 ]
-            , Element.el [ Element.alignRight ] toggleBtn
+            ]
+        , Element.row
+            [ Element.width Element.fill ]
+            [ if model.permissions.push then
+                viewToolButtons False model
+
+              else
+                Element.none
+            , Element.el
+                [ Element.alignRight ]
+                viewZoomControls
             ]
         ]
 
@@ -638,7 +661,7 @@ viewToolbarBottomCompact model =
                         0
 
                     Just height ->
-                        height - 64
+                        height - 38
     in
     Element.column
         [ Element.width Element.fill
@@ -687,16 +710,10 @@ viewToolbarBottomCompact model =
                     [ Element.width Element.fill
                     , Element.padding Ui.Theme.Spacing.level1
                     ]
-                    [ if model.permissions.push then
-                        viewToolButtons True model
-
-                      else
-                        Element.none
-                    , Element.el
+                    [ Element.el
                         [ Element.alignRight ]
                         (Element.row []
-                            [ viewZoomControls
-                            , Ui.Atom.Input.btnIcon
+                            [ Ui.Atom.Input.btnIcon
                                 { id = "toggle-btn"
                                 , onPress = Just UserPressedLeftToolbarToggleBtn
                                 , icon =
@@ -1677,9 +1694,12 @@ type Msg
     | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedWhatever
       -- TOP TOOLBAR
-    | UserPressedToggleBtn
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedSignIn
+    | UserStartedTouchOnToolbarTop Html.Events.Extra.Touch.Event
+    | UserMovedTouchOnToolbarTop Html.Events.Extra.Touch.Event
+    | UserEndedTouchOnToolbarTop Html.Events.Extra.Touch.Event
+    | UserCancelledTouchOnToolbarTop Html.Events.Extra.Touch.Event
       -- LEFT TOOLBAR
     | UserPressedLeftToolbarToggleBtn
     | UserSelectedTab Tab String
@@ -1975,11 +1995,6 @@ updateLoaded key domain clientId device identity msg model =
             ( model, Cmd.none )
 
         -- TOP TOOLBAR
-        UserPressedToggleBtn ->
-            ( { model | topToolbarExpanded = not model.topToolbarExpanded }
-            , Cmd.none
-            )
-
         CreateObjectMenuBtnMsg menuBtnMsg ->
             let
                 ( newMenuBtn, menuBtnCmd, maybeAction ) =
@@ -2022,6 +2037,32 @@ updateLoaded key domain clientId device identity msg model =
             ( model
             , Git.requestAuthorization clientId <|
                 Route.crossOrigin domain (Route.Pattern model.address) []
+            )
+
+        UserStartedTouchOnToolbarTop event ->
+            ( startSlideToolbarTop event model
+            , Cmd.none
+            )
+
+        UserMovedTouchOnToolbarTop event ->
+            ( model.maybeSlideToolbarTop
+                |> Maybe.map (updateSlideToolbarTop event model)
+                |> Maybe.withDefault model
+            , Cmd.none
+            )
+
+        UserEndedTouchOnToolbarTop event ->
+            ( model.maybeSlideToolbarTop
+                |> Maybe.map (endSlideToolbarTop event model)
+                |> Maybe.withDefault model
+            , Cmd.none
+            )
+
+        UserCancelledTouchOnToolbarTop event ->
+            ( model.maybeSlideToolbarTop
+                |> Maybe.map (endSlideToolbarTop event model)
+                |> Maybe.withDefault model
+            , Cmd.none
             )
 
         -- LEFT TOOLBAR
@@ -2792,6 +2833,68 @@ loadedSubscriptions data =
 
 
 
+---- SLIDE
+
+
+startSlideToolbarTop : Html.Events.Extra.Touch.Event -> LoadedData -> LoadedData
+startSlideToolbarTop event model =
+    case event.touches of
+        touch :: [] ->
+            { model
+                | maybeSlideToolbarTop =
+                    Just
+                        { identifier = touch.identifier
+                        , start = touch.screenPos
+                        , current = touch.screenPos
+                        }
+            }
+
+        _ ->
+            model
+
+
+updateSlideToolbarTop : Html.Events.Extra.Touch.Event -> LoadedData -> Slide -> LoadedData
+updateSlideToolbarTop event model slide =
+    case event.touches of
+        touch :: [] ->
+            if slide.identifier == touch.identifier then
+                { model | maybeSlideToolbarTop = Just { slide | current = touch.screenPos } }
+
+            else
+                model
+
+        _ ->
+            model
+
+
+endSlideToolbarTop : Html.Events.Extra.Touch.Event -> LoadedData -> Slide -> LoadedData
+endSlideToolbarTop event model slide =
+    case event.touches of
+        touch :: [] ->
+            let
+                deltaY =
+                    Tuple.second touch.screenPos - Tuple.second slide.start
+            in
+            if deltaY >= toolbarTopHeight / 2 then
+                { model
+                    | topToolbarExpanded = True
+                    , maybeSlideToolbarTop = Nothing
+                }
+
+            else if deltaY <= toolbarTopHeight / -2 then
+                { model
+                    | topToolbarExpanded = False
+                    , maybeSlideToolbarTop = Nothing
+                }
+
+            else
+                { model | maybeSlideToolbarTop = Nothing }
+
+        _ ->
+            model
+
+
+
 ---- HELPER
 
 
@@ -2913,3 +3016,8 @@ positionFromPointerEvent event =
     { x = x
     , y = y
     }
+
+
+toolbarTopHeight : Float
+toolbarTopHeight =
+    130
