@@ -672,6 +672,7 @@ update msg pattern dragging state =
             else
                 { state
                     | focusedObject = Nothing
+                    , hoveredObject = Nothing
                     , selectedObjects = []
                 }
 
