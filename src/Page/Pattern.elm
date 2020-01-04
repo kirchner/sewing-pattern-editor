@@ -1344,6 +1344,10 @@ viewPattern maybeDimensions center model =
                     Html.Events.Extra.Mouse.onWithOptions "mouseup"
                         { stopPropagation = False, preventDefault = False }
                         UserUppedMouseOnPattern
+                , Element.htmlAttribute <|
+                    Html.Events.Extra.Mouse.onWithOptions "mouseleave"
+                        { stopPropagation = False, preventDefault = False }
+                        UserLeftMouseOnPattern
                 ]
                 (Element.map PatternMsg <|
                     Ui.Molecule.Pattern.view
@@ -1744,6 +1748,7 @@ type Msg
     | UserDownedMouseOnPattern Html.Events.Extra.Mouse.Event
     | UserMovedMouseOnPattern Html.Events.Extra.Mouse.Event
     | UserUppedMouseOnPattern Html.Events.Extra.Mouse.Event
+    | UserLeftMouseOnPattern Html.Events.Extra.Mouse.Event
       -- RIGHT TOOLBAR
     | DialogCreateMsg Ui.Organism.Dialog.CreateMsg
     | DialogEditMsg Ui.Organism.Dialog.EditMsg
@@ -2354,13 +2359,37 @@ updateLoaded key domain clientId device identity msg model =
             endSlidePattern event model
 
         UserDownedMouseOnPattern event ->
-            ( model, Cmd.none )
+            ( { model
+                | drag =
+                    DragWithMouse
+                        { start = event.screenPos
+                        , current = event.screenPos
+                        }
+              }
+            , Cmd.none
+            )
 
         UserMovedMouseOnPattern event ->
-            ( model, Cmd.none )
+            ( case model.drag of
+                NoDrag ->
+                    model
+
+                DragWithOneTouchPoint _ ->
+                    model
+
+                DragWithTwoTouchPoints _ ->
+                    model
+
+                DragWithMouse stuff ->
+                    { model | drag = DragWithMouse { stuff | current = event.screenPos } }
+            , Cmd.none
+            )
 
         UserUppedMouseOnPattern event ->
-            ( model, Cmd.none )
+            endDragWithMouse event model
+
+        UserLeftMouseOnPattern event ->
+            endDragWithMouse event model
 
         -- RIGHT TOOLBAR
         DialogCreateMsg dialogMsg ->
@@ -2887,6 +2916,38 @@ endSlidePattern event model =
 
         DragWithMouse _ ->
             ( model, Cmd.none )
+
+
+endDragWithMouse : Html.Events.Extra.Mouse.Event -> LoadedData -> ( LoadedData, Cmd Msg )
+endDragWithMouse event model =
+    case model.drag of
+        NoDrag ->
+            ( model, Cmd.none )
+
+        DragWithOneTouchPoint _ ->
+            ( model, Cmd.none )
+
+        DragWithTwoTouchPoints _ ->
+            ( model, Cmd.none )
+
+        DragWithMouse { start } ->
+            let
+                newCenter =
+                    model.center
+                        |> Point2d.translateBy
+                            (Vector2d.at_ model.resolution <|
+                                Vector2d.fromPixels
+                                    { x = Tuple.first start - Tuple.first event.screenPos
+                                    , y = Tuple.second start - Tuple.second event.screenPos
+                                    }
+                            )
+            in
+            ( { model
+                | center = newCenter
+                , drag = NoDrag
+              }
+            , LocalStorage.updateCenter model.address newCenter
+            )
 
 
 
