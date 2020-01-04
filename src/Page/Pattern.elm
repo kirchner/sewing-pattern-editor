@@ -138,12 +138,12 @@ type alias LoadingData =
 
 
 type alias LoadedData =
-    { maybeSlide : Maybe Slide
-    , patternContainerDimensions : Maybe Dimensions
+    { patternContainerDimensions : Maybe Dimensions
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
     , addresses : Maybe (List LocalStorage.Address)
 
     -- PATTERN
+    , drag : Drag
     , address : LocalStorage.Address
     , permissions : Git.Permissions
     , sha : String
@@ -174,16 +174,25 @@ type alias LoadedData =
     }
 
 
-type alias Drag =
-    { start : Position
-    , current : Position
-    }
-
-
-type alias Position =
-    { x : Float
-    , y : Float
-    }
+type Drag
+    = NoDrag
+    | DragWithOneTouchPoint
+        { identifier : Int
+        , start : ( Float, Float )
+        , current : ( Float, Float )
+        }
+    | DragWithTwoTouchPoints
+        { identifierA : Int
+        , startA : ( Float, Float )
+        , currentA : ( Float, Float )
+        , identifierB : Int
+        , startB : ( Float, Float )
+        , currentB : ( Float, Float )
+        }
+    | DragWithMouse
+        { start : ( Float, Float )
+        , current : ( Float, Float )
+        }
 
 
 type alias Dimensions =
@@ -277,12 +286,12 @@ initLoaded :
     -> ( Model, Cmd Msg )
 initLoaded device address sha pattern meta permissions =
     ( Loaded
-        { maybeSlide = Nothing
-        , patternContainerDimensions = Nothing
+        { patternContainerDimensions = Nothing
         , maybeModal = Nothing
         , addresses = Nothing
 
         -- PATTERN
+        , drag = NoDrag
         , address = address
         , permissions = permissions
         , sha = sha
@@ -537,22 +546,6 @@ viewEditor device identity model =
 
 viewEditorCompact : Git.Identity -> LoadedData -> Element Msg
 viewEditorCompact identity model =
-    let
-        center =
-            case model.maybeSlide of
-                Nothing ->
-                    model.center
-
-                Just slide ->
-                    model.center
-                        |> Point2d.translateBy
-                            (Vector2d.at_ model.resolution <|
-                                Vector2d.fromPixels
-                                    { x = Tuple.first slide.start - Tuple.first slide.current
-                                    , y = Tuple.second slide.start - Tuple.second slide.current
-                                    }
-                            )
-    in
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -565,7 +558,7 @@ viewEditorCompact identity model =
             , Element.height Element.fill
             , Element.inFront (viewToolbarTopCompact identity model)
             ]
-            (Element.lazy3 viewPattern model.patternContainerDimensions center model)
+            (Element.lazy3 viewPattern model.patternContainerDimensions (actualCenter model) model)
         )
 
 
@@ -1288,22 +1281,6 @@ viewPointShortcut pixelWidth model point2ds pointNew =
 
 viewWorkspaceFullscreen : LoadedData -> Element Msg
 viewWorkspaceFullscreen model =
-    let
-        center =
-            case model.maybeSlide of
-                Nothing ->
-                    model.center
-
-                Just slide ->
-                    model.center
-                        |> Point2d.translateBy
-                            (Vector2d.at_ model.resolution <|
-                                Vector2d.fromPixels
-                                    { x = Tuple.first slide.start - Tuple.first slide.current
-                                    , y = Tuple.second slide.start - Tuple.second slide.current
-                                    }
-                            )
-    in
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -1323,7 +1300,7 @@ viewWorkspaceFullscreen model =
             , Element.width Element.fill
             , Element.height Element.fill
             ]
-            (Element.lazy3 viewPattern model.patternContainerDimensions center model)
+            (Element.lazy3 viewPattern model.patternContainerDimensions (actualCenter model) model)
         )
 
 
@@ -2262,13 +2239,7 @@ updateLoaded key domain clientId device identity msg model =
                 | patternState =
                     Ui.Molecule.Pattern.update patternMsg
                         model.pattern
-                        (case model.maybeSlide of
-                            Nothing ->
-                                False
-
-                            Just { start, current } ->
-                                start /= current
-                        )
+                        (dragging model)
                         model.patternState
               }
             , Cmd.none
@@ -2333,8 +2304,8 @@ updateLoaded key domain clientId device identity msg model =
             ( case event.touches of
                 touch :: [] ->
                     { model
-                        | maybeSlide =
-                            Just
+                        | drag =
+                            DragWithOneTouchPoint
                                 { identifier = touch.identifier
                                 , start = touch.screenPos
                                 , current = touch.screenPos
@@ -2347,33 +2318,40 @@ updateLoaded key domain clientId device identity msg model =
             )
 
         UserMovedTouchOnPattern event ->
-            ( case model.maybeSlide of
-                Nothing ->
+            ( case model.drag of
+                NoDrag ->
                     model
 
-                Just slide ->
+                DragWithOneTouchPoint stuff ->
                     case event.touches of
                         touch :: [] ->
-                            if touch.identifier == slide.identifier then
-                                { model | maybeSlide = Just { slide | current = touch.screenPos } }
+                            if touch.identifier == stuff.identifier then
+                                { model
+                                    | drag =
+                                        DragWithOneTouchPoint
+                                            { stuff | current = touch.screenPos }
+                                }
 
                             else
                                 model
 
                         _ ->
                             model
+
+                DragWithTwoTouchPoints _ ->
+                    -- TODO implement properly
+                    model
+
+                DragWithMouse _ ->
+                    model
             , Cmd.none
             )
 
         UserEndedTouchOnPattern event ->
-            model.maybeSlide
-                |> Maybe.map (endSlidePattern event model)
-                |> Maybe.withDefault ( model, Cmd.none )
+            endSlidePattern event model
 
         UserCancelledTouchOnPattern event ->
-            model.maybeSlide
-                |> Maybe.map (endSlidePattern event model)
-                |> Maybe.withDefault ( model, Cmd.none )
+            endSlidePattern event model
 
         UserDownedMouseOnPattern event ->
             ( model, Cmd.none )
@@ -2866,18 +2844,18 @@ loadedSubscriptions data =
 ---- SLIDE PATTERN
 
 
-endSlidePattern : Html.Events.Extra.Touch.Event -> LoadedData -> Slide -> ( LoadedData, Cmd Msg )
-endSlidePattern event model slide =
+endSlidePattern : Html.Events.Extra.Touch.Event -> LoadedData -> ( LoadedData, Cmd Msg )
+endSlidePattern event model =
     let
-        newCenter =
+        newCenter start current =
             case event.touches of
                 touch :: [] ->
                     model.center
                         |> Point2d.translateBy
                             (Vector2d.at_ model.resolution <|
                                 Vector2d.fromPixels
-                                    { x = Tuple.first slide.start - Tuple.first touch.screenPos
-                                    , y = Tuple.second slide.start - Tuple.second touch.screenPos
+                                    { x = Tuple.first start - Tuple.first touch.screenPos
+                                    , y = Tuple.second start - Tuple.second touch.screenPos
                                     }
                             )
 
@@ -2886,17 +2864,29 @@ endSlidePattern event model slide =
                         |> Point2d.translateBy
                             (Vector2d.at_ model.resolution <|
                                 Vector2d.fromPixels
-                                    { x = Tuple.first slide.start - Tuple.first slide.current
-                                    , y = Tuple.second slide.start - Tuple.second slide.current
+                                    { x = Tuple.first start - Tuple.first current
+                                    , y = Tuple.second start - Tuple.second current
                                     }
                             )
     in
-    ( { model
-        | center = newCenter
-        , maybeSlide = Nothing
-      }
-    , LocalStorage.updateCenter model.address newCenter
-    )
+    case model.drag of
+        NoDrag ->
+            ( model, Cmd.none )
+
+        DragWithOneTouchPoint { start, current } ->
+            ( { model
+                | center = newCenter start current
+                , drag = NoDrag
+              }
+            , LocalStorage.updateCenter model.address (newCenter start current)
+            )
+
+        DragWithTwoTouchPoints _ ->
+            -- TODO implement properly
+            ( model, Cmd.none )
+
+        DragWithMouse _ ->
+            ( model, Cmd.none )
 
 
 
@@ -3077,3 +3067,58 @@ updateToIdealViewport address pattern dimensions =
 toolbarTopHeight : Float
 toolbarTopHeight =
     124
+
+
+actualCenter : LoadedData -> Point2d Meters BottomLeft
+actualCenter model =
+    case model.drag of
+        NoDrag ->
+            model.center
+
+        DragWithOneTouchPoint { start, current } ->
+            model.center
+                |> Point2d.translateBy
+                    (Vector2d.at_ model.resolution <|
+                        Vector2d.fromPixels
+                            { x = Tuple.first start - Tuple.first current
+                            , y = Tuple.second start - Tuple.second current
+                            }
+                    )
+
+        DragWithTwoTouchPoints { startA, currentA, startB, currentB } ->
+            -- TODO implement this properly
+            model.center
+                |> Point2d.translateBy
+                    (Vector2d.at_ model.resolution <|
+                        Vector2d.fromPixels
+                            { x = Tuple.first startA - Tuple.first currentA
+                            , y = Tuple.second startA - Tuple.second currentA
+                            }
+                    )
+
+        DragWithMouse { start, current } ->
+            model.center
+                |> Point2d.translateBy
+                    (Vector2d.at_ model.resolution <|
+                        Vector2d.fromPixels
+                            { x = Tuple.first start - Tuple.first current
+                            , y = Tuple.second start - Tuple.second current
+                            }
+                    )
+
+
+dragging : LoadedData -> Bool
+dragging model =
+    case model.drag of
+        NoDrag ->
+            False
+
+        DragWithOneTouchPoint { start, current } ->
+            start /= current
+
+        DragWithTwoTouchPoints { startA, currentA, startB, currentB } ->
+            -- TODO implement this properly
+            startA /= currentA
+
+        DragWithMouse { start, current } ->
+            start /= current
