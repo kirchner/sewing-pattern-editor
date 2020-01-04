@@ -632,8 +632,8 @@ viewToolbarTopCompact identity model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ Element.el [ Element.alignLeft ] patternActions
-            , Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
+            [ -- Element.el [ Element.alignLeft ] patternActions ,
+              Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
             ]
         , Element.el [ Element.centerX ] (patternAddress model.address)
         , Element.row
@@ -792,7 +792,8 @@ viewToolbarTopFullscreen identity model =
             ]
             [ patternAddress model.address
             , loadingIndicator model.stored
-            , patternActions
+
+            --, patternActions
             , signInViaGithubBtn identity
             ]
         ]

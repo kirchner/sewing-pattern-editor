@@ -49,12 +49,12 @@ view { search, onSearchChange, onImport, onCreate, patternInfos, now } =
                 (Ui.Theme.Typography.bodyBold "We don't know about any patterns, yet.")
             , Element.row
                 [ Element.centerX ]
-                [ Ui.Atom.Input.btnSecondary
-                    { id = "import-pattern-btn"
-                    , onPress = Just onImport
-                    , label = "Import a pattern"
-                    }
-                , Ui.Atom.Input.btnPrimary
+                [ -- Ui.Atom.Input.btnSecondary
+                  --   { id = "import-pattern-btn"
+                  --   , onPress = Just onImport
+                  --   , label = "Import a pattern"
+                  --   } ,
+                  Ui.Atom.Input.btnPrimary
                     { id = "new-pattern-btn"
                     , onPress = Just onCreate
                     , label = "Create a new pattern"
@@ -80,13 +80,13 @@ view { search, onSearchChange, onImport, onCreate, patternInfos, now } =
                         }
                 , Element.row
                     [ Element.alignBottom ]
-                    [ Element.el [] <|
-                        Ui.Atom.Input.btnSecondary
-                            { id = "import-pattern-btn"
-                            , onPress = Just onImport
-                            , label = "Import a pattern"
-                            }
-                    , Element.el
+                    [ --Element.el [] <|
+                      --  Ui.Atom.Input.btnSecondary
+                      --      { id = "import-pattern-btn"
+                      --      , onPress = Just onImport
+                      --      , label = "Import a pattern"
+                      --      } ,
+                      Element.el
                         [ Element.alignRight ]
                         (Ui.Atom.Input.btnPrimary
                             { id = "new-pattern-btn"
@@ -167,18 +167,19 @@ viewPattern now { name, description, storage, updatedAt, onClone } =
             ]
         , Element.el [ Element.padding 7 ]
             (Ui.Theme.Typography.body description)
-        , Element.row
-            [ Element.width Element.fill ]
-            [ Element.el [ Element.padding 7 ] <|
-                Ui.Theme.Typography.button ("Updated " ++ Time.Distance.inWords updatedAt now)
-            , Element.el [ Element.alignRight ]
-                (Ui.Atom.Input.btnSecondary
-                    { id = "clone-" ++ uuid ++ "-btn"
-                    , onPress = Just onClone
-                    , label = "Clone"
-                    }
-                )
-            ]
+
+        --, Element.row
+        --    [ Element.width Element.fill ]
+        --    [ Element.el [ Element.padding 7 ] <|
+        --        Ui.Theme.Typography.button ("Updated " ++ Time.Distance.inWords updatedAt now)
+        --    , Element.el [ Element.alignRight ]
+        --        (Ui.Atom.Input.btnSecondary
+        --            { id = "clone-" ++ uuid ++ "-btn"
+        --            , onPress = Just onClone
+        --            , label = "Clone"
+        --            }
+        --        )
+        --    ]
         ]
 
 
