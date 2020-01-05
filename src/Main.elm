@@ -33,6 +33,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode
 import Json.Encode as Encode exposing (Value)
+import Page.Details as Details
 import Page.Pattern as Pattern
 import Page.PatternNew as PatternNew
 import Page.Patterns as Patterns
@@ -109,6 +110,7 @@ type Page
     | Patterns Patterns.Model
     | PatternNew PatternNew.Model
     | Pattern Pattern.Model
+    | Details Details.Model
 
 
 init : {} -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -207,6 +209,15 @@ view model =
                     , body = [ viewHelp (Element.map PatternMsg body) ]
                     }
 
+                Details detailsModel ->
+                    let
+                        { title, body, dialog } =
+                            Details.view data.device data.identity detailsModel
+                    in
+                    { title = title
+                    , body = [ viewHelp (Element.map DetailsMsg body) ]
+                    }
+
 
 viewHelp : Element msg -> Html msg
 viewHelp body =
@@ -245,6 +256,7 @@ type Msg
     | PatternsMsg Patterns.Msg
     | PatternNewMsg PatternNew.Msg
     | PatternMsg Pattern.Msg
+    | DetailsMsg Details.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -460,6 +472,25 @@ update msg model =
                 ( PatternMsg _, _ ) ->
                     ( model, Cmd.none )
 
+                ( DetailsMsg detailsMsg, Details detailsModel ) ->
+                    let
+                        ( newDetailsModel, detailsCmd ) =
+                            Details.update
+                                data.key
+                                data.domain
+                                data.clientId
+                                data.device
+                                data.identity
+                                detailsMsg
+                                detailsModel
+                    in
+                    ( Loaded { data | page = Details newDetailsModel }
+                    , Cmd.map DetailsMsg detailsCmd
+                    )
+
+                ( DetailsMsg _, _ ) ->
+                    ( model, Cmd.none )
+
 
 checkLoaded : LoadingData -> ( Model, Cmd Msg )
 checkLoaded data =
@@ -547,6 +578,15 @@ changePageTo identity route =
             , Cmd.map PatternNewMsg newCmd
             )
 
+        Route.Details address ->
+            let
+                ( details, detailsCmd ) =
+                    Details.init identity address
+            in
+            ( Details details
+            , Cmd.map DetailsMsg detailsCmd
+            )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -585,4 +625,7 @@ subscriptions model =
 
                     Pattern patternModel ->
                         Sub.map PatternMsg (Pattern.subscriptions patternModel)
+
+                    Details detailsModel ->
+                        Sub.map DetailsMsg (Details.subscriptions detailsModel)
                 ]

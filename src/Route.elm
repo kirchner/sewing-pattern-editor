@@ -46,6 +46,7 @@ type Route
     = Patterns
     | Pattern LocalStorage.Address
     | PatternNew NewParameters
+    | Details LocalStorage.Address
 
 
 {-| -}
@@ -124,6 +125,9 @@ pathSegments route =
         PatternNew _ ->
             [ "new" ]
 
+        Details address ->
+            LocalStorage.addressToPathSegments address ++ [ "details" ]
+
 
 parameters : Route -> List QueryParameter
 parameters route =
@@ -144,6 +148,9 @@ parameters route =
                 , Maybe.map (Url.Builder.string "visibility") params.visibility
                 ]
 
+        Details _ ->
+            []
+
 
 
 ---- PARSER
@@ -161,6 +168,7 @@ routeParser =
         , map Patterns (top </> s "app.html")
         , map Pattern (top </> LocalStorage.addressParser)
         , map PatternNew (top </> s "new" </> newParameters)
+        , map Details (top </> LocalStorage.addressParser </> s "details")
         ]
 
 
