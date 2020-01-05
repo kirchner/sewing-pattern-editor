@@ -31,6 +31,7 @@ import Pattern
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
+import Ui.Theme.Typography
 
 
 {-| -}
@@ -314,7 +315,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
         , label = Just label
         , help = Nothing
         , onChange = OtherIntersectableTypeChanged
-        , options = tags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) tags
         , selected = selectedTag
         , child =
             case otherIntersectable of

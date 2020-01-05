@@ -44,6 +44,7 @@ import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Theme.Spacing
+import Ui.Theme.Typography
 
 
 
@@ -1238,7 +1239,7 @@ view viewPointHelp pattern objects { detail, id } =
                     , label = Just "1st curve"
                     , help = Nothing
                     , onChange = FirstCurveTypeChanged
-                    , options = firstCurveTags
+                    , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) firstCurveTags
                     , selected = tagFromFCurve (Tuple.first detail.firstCurve)
                     , child =
                         case Tuple.first detail.firstCurve of
@@ -1277,7 +1278,7 @@ view viewPointHelp pattern objects { detail, id } =
                     , label = Just "Closing curve"
                     , help = Nothing
                     , onChange = LastCurveTypeChanged
-                    , options = lastCurveTags
+                    , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) lastCurveTags
                     , selected = tagFromLCurve (Tuple.first detail.lastCurve)
                     , child =
                         case Tuple.first detail.lastCurve of
@@ -1397,7 +1398,7 @@ viewNextCurve viewPointHelp pattern objects id index ( form, actionMenu ) =
             , label = Just (ordinalFromInt (index + 2) ++ " Curve")
             , help = Nothing
             , onChange = NextCurveTypeChanged index
-            , options = nextCurveTags
+            , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) nextCurveTags
             , selected = tagFromNCurve form
             , child =
                 case form of

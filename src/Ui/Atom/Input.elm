@@ -745,7 +745,7 @@ type alias SegmentControlConfig tag msg =
     , label : Maybe String
     , help : Maybe String
     , onChange : tag -> msg
-    , options : List ( tag, String )
+    , options : List ( tag, Element Never )
     , selected : tag
     , child : Maybe (Child msg)
     }
@@ -993,7 +993,7 @@ type Position
     | Last
 
 
-segments : List ( tag, String ) -> tag -> List (Element tag)
+segments : List ( tag, Element Never ) -> tag -> List (Element tag)
 segments tags selectedTag =
     tags
         |> List.indexedMap
@@ -1017,7 +1017,7 @@ segments tags selectedTag =
             )
 
 
-segment : tag -> tag -> Position -> String -> Element tag
+segment : tag -> tag -> Position -> Element Never -> Element tag
 segment selectedTag thisTag position label =
     let
         selected =
@@ -1084,7 +1084,7 @@ segment selectedTag thisTag position label =
         ]
         (Element.el
             ([ Element.centerX ] ++ userSelectNone)
-            (Ui.Theme.Typography.body label)
+            (Element.map never label)
         )
 
 

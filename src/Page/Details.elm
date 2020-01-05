@@ -30,12 +30,36 @@ module Page.Details exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import BoundingBox2d
 import Browser.Navigation
+import Detail2d exposing (Detail2d)
 import Element exposing (Element)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Element.Input as Input
+import Geometry.Svg as Svg
+import Geometry.Svg.Extra as Svg
 import Git
+import Html.Attributes
 import Http
+import Length
 import LocalStorage
 import Pattern exposing (Pattern)
+import Pixels
+import Point2d
+import Quantity
+import Route
+import State
+import Svg
+import Svg.Attributes
+import Ui.Atom.Icon
+import Ui.Atom.Input
+import Ui.Theme.Color
+import Ui.Theme.Focus
+import Ui.Theme.Spacing
+import Ui.Theme.Typography
+import Vector2d
 
 
 
@@ -67,6 +91,9 @@ type alias LoadedData =
     , sha : String
     , pattern : Pattern BottomLeft
     , name : String
+
+    -- DETAIL
+    , selectedDetail : Int
     }
 
 
@@ -121,6 +148,9 @@ initLoaded device address sha pattern meta permissions =
         , sha = sha
         , pattern = Pattern.regenerateCaches pattern
         , name = meta.name
+
+        -- DETAIL
+        , selectedDetail = 0
         }
     , Cmd.none
     )
@@ -165,7 +195,153 @@ statusMsg title text =
 
 viewDetails : Element.Device -> Git.Identity -> LoadedData -> Element Msg
 viewDetails device identity model =
-    Element.none
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Background.color Ui.Theme.Color.secondary
+            ]
+            [ Element.el [ Element.padding Ui.Theme.Spacing.level1 ]
+                (backToPatternLink model.address)
+            ]
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            ]
+            Element.none
+        , Element.el
+            [ Element.width Element.fill
+            , Border.widthEach
+                { top = 1
+                , bottom = 0
+                , left = 0
+                , right = 0
+                }
+            , Border.color Ui.Theme.Color.secondary
+            ]
+            (viewDetailSegmentControl model)
+        ]
+
+
+backToPatternLink : LocalStorage.Address -> Element msg
+backToPatternLink address =
+    Ui.Theme.Focus.outline <|
+        Element.link
+            [ Font.color Ui.Theme.Color.primary
+            , Element.mouseOver
+                [ Font.color Ui.Theme.Color.primaryDark ]
+            ]
+            { url = Route.absolute (Route.Pattern address) []
+            , label =
+                Element.row
+                    [ Element.spacing Ui.Theme.Spacing.level1 ]
+                    [ Ui.Atom.Icon.fa "arrow-left"
+                    , Ui.Theme.Typography.body "Back to pattern"
+                    ]
+            }
+
+
+viewDetailSegmentControl : LoadedData -> Element Msg
+viewDetailSegmentControl model =
+    let
+        viewDetail index aDetail =
+            case State.finalValue model.pattern (Pattern.detail2d aDetail) of
+                Err _ ->
+                    Nothing
+
+                Ok detail2d ->
+                    Just <|
+                        ( index
+                        , viewDetailLabel detail2d
+                        )
+    in
+    Ui.Atom.Input.segmentControl
+        { id = "details"
+        , label = Nothing
+        , help = Nothing
+        , onChange = UserSelectedDetail
+        , options =
+            Pattern.details model.pattern
+                |> List.indexedMap viewDetail
+                |> List.filterMap identity
+        , selected = model.selectedDetail
+        , child = Nothing
+        }
+
+
+viewDetailLabel : Detail2d Length.Meters BottomLeft -> Element msg
+viewDetailLabel detail2d =
+    case Detail2d.boundingBox detail2d of
+        Nothing ->
+            Element.none
+
+        Just boundingBox ->
+            let
+                { minX, maxX, minY, maxY } =
+                    BoundingBox2d.extrema boundingBox
+
+                viewportWidth =
+                    pixelWidth
+
+                viewportHeight =
+                    pixelWidth
+
+                pixelWidth =
+                    64
+
+                pixelHeight =
+                    pixelWidth
+
+                width =
+                    Length.inMeters maxX - Length.inMeters minX + pixelWidth
+
+                height =
+                    Length.inMeters maxY - Length.inMeters minY + pixelWidth
+
+                idealHorizontalResolution =
+                    Pixels.pixels pixelWidth
+                        |> Quantity.per (Length.meters width)
+
+                idealVerticalResolution =
+                    Pixels.pixels pixelHeight
+                        |> Quantity.per (Length.meters height)
+
+                center =
+                    BoundingBox2d.centerPoint boundingBox
+
+                idealResolution =
+                    Quantity.min idealHorizontalResolution idealVerticalResolution
+            in
+            Element.html <|
+                Svg.svg
+                    [ Svg.Attributes.viewBox <|
+                        String.join " "
+                            [ String.fromFloat (viewportWidth / -2)
+                            , String.fromFloat (viewportHeight / -2)
+                            , String.fromFloat viewportWidth
+                            , String.fromFloat viewportHeight
+                            ]
+                    , Html.Attributes.style "user-select" "none"
+                    , Html.Attributes.style "width"
+                        (String.fromFloat viewportWidth ++ "px")
+                    , Html.Attributes.style "height"
+                        (String.fromFloat viewportHeight ++ "px")
+                    ]
+                    [ Svg.translateBy
+                        (Vector2d.from
+                            (Point2d.at idealResolution center)
+                            Point2d.origin
+                        )
+                        (Svg.detail2d
+                            [ Svg.Attributes.fill "none"
+                            , Svg.Attributes.stroke "currentColor"
+                            , Svg.Attributes.strokeWidth "1"
+                            ]
+                            (Detail2d.at idealResolution detail2d)
+                        )
+                    ]
 
 
 
@@ -181,6 +357,8 @@ type Msg
     | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
     | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedWhatever
+      -- DETAIL
+    | UserSelectedDetail Int
 
 
 {-| -}
@@ -351,6 +529,12 @@ updateLoaded key domain clientId device identity msg model =
 
         ChangedWhatever ->
             ( model, Cmd.none )
+
+        -- DETAIL
+        UserSelectedDetail selectedDetail ->
+            ( { model | selectedDetail = selectedDetail }
+            , Cmd.none
+            )
 
 
 

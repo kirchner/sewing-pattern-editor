@@ -963,7 +963,7 @@ viewPointFormHelp pattern objects { point, id } =
                 IntersectionForm _ ->
                     Nothing
         , onChange = PointTypeChanged
-        , options = pointTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) pointTags
         , selected = tagFromPointForm point
         , child =
             nested <|
@@ -1050,6 +1050,7 @@ viewPointFormHelp pattern objects { point, id } =
                                             (\index ->
                                                 ( index, "Intersection #" ++ String.fromInt index )
                                             )
+                                        |> List.map (Tuple.mapSecond Ui.Theme.Typography.body)
                                 , selected = stuff.which
                                 , child = Nothing
                                 }
@@ -1101,7 +1102,7 @@ viewAxisFormHelp pattern objects { axis, id } =
         , label = Nothing
         , help = Nothing
         , onChange = AxisTypeChanged
-        , options = axisTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) axisTags
         , selected = tagFromAxisForm axis
         , child =
             nested <|
@@ -1181,7 +1182,7 @@ viewCircleFormHelp pattern objects { circle, id } =
         , label = Nothing
         , help = Nothing
         , onChange = CircleTypeChanged
-        , options = circleTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) circleTags
         , selected = tagFromCircleForm circle
         , child =
             nested <|
@@ -1267,7 +1268,7 @@ viewCurveFormHelp pattern objects { curve, id } =
         , label = Nothing
         , help = Nothing
         , onChange = CurveTypeChanged
-        , options = curveTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) curveTags
         , selected = tagFromCurveForm curve
         , child =
             nested <|
@@ -1523,7 +1524,7 @@ viewDirection { direction, id, help } =
         , label = Just "Direction"
         , help = help
         , onChange = DirectionTypeChanged
-        , options = directionTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) directionTags
         , selected = tagFromDirection direction
         , child =
             case direction of
@@ -1552,7 +1553,7 @@ viewOrientation { orientation, id } =
         , label = Just "Orientation"
         , help = Nothing
         , onChange = OrientationTypeChanged
-        , options = orientationTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) orientationTags
         , selected = tagFromOrientation orientation
         , child =
             case orientation of
@@ -1590,7 +1591,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
                 TwoPointsPositionFromB { distanceHelp } ->
                     distanceHelp
         , onChange = TwoPointsPosition_TypeChanged
-        , options = twoPointsPositionTags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) twoPointsPositionTags
         , selected = tagFromTwoPointsPosition twoPointsPosition
         , child =
             Just <|

@@ -21,6 +21,7 @@ import Pattern exposing (A, Objects, Pattern, Point)
 import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
+import Ui.Theme.Typography
 
 
 
@@ -239,7 +240,7 @@ view viewPointFormHelp pattern objects { otherPoint, id, label } =
                 _ ->
                     Nothing
         , onChange = OtherPointTypeChanged
-        , options = tags
+        , options = List.map (Tuple.mapSecond Ui.Theme.Typography.body) tags
         , selected = tagFromForm otherPoint
         , child =
             case otherPoint of
