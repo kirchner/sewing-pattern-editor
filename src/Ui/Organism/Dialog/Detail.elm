@@ -1715,11 +1715,11 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 updateEndPoint toForm stuff =
                     let
                         ( newPoint, subCmd ) =
-                            pointUpdate pattern objects pointMsg stuff.startPoint
+                            pointUpdate pattern objects pointMsg stuff.endPoint
                     in
                     ( { detail
                         | firstCurve =
-                            ( toForm { stuff | startPoint = newPoint }
+                            ( toForm { stuff | endPoint = newPoint }
                             , Tuple.second detail.firstCurve
                             )
                       }

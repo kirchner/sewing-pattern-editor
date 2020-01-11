@@ -1,7 +1,11 @@
-module Maybe.Extra exposing (andThen2, andThen3)
+module Maybe.Extra exposing
+    ( combine
+    , andThen2, andThen3
+    )
 
 {-|
 
+@docs combine
 @docs andThen2, andThen3
 
 -}
@@ -42,3 +46,9 @@ andThen3 func maybeA maybeB maybeC =
             maybeA
             maybeB
             maybeC
+
+
+{-| -}
+combine : List (Maybe a) -> Maybe (List a)
+combine =
+    List.foldr (Maybe.map2 (::)) (Just [])

@@ -30,10 +30,17 @@ module Page.Details exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Angle
+import Axis3d
 import BoundingBox2d
+import Browser.Dom
+import Browser.Events
 import Browser.Navigation
+import Camera3d
 import Detail2d exposing (Detail2d)
-import Element exposing (Element)
+import Detail3d
+import Direction3d
+import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -41,18 +48,29 @@ import Element.Input as Input
 import Geometry.Svg as Svg
 import Geometry.Svg.Extra as Svg
 import Git
+import Html exposing (Html)
 import Html.Attributes
 import Http
 import Length
+import LineSegment2d
+import LineSegment3d
+import LineSegment3d.Projection
+import List.Extra as List
 import LocalStorage
 import Pattern exposing (Pattern)
 import Pixels
 import Point2d
+import Point3d
+import Polygon2d
+import Ports
 import Quantity
+import Rectangle2d
 import Route
+import SketchPlane3d
 import State
 import Svg
 import Svg.Attributes
+import Task
 import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Theme.Color
@@ -60,6 +78,8 @@ import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Vector2d
+import Vector3d
+import Viewpoint3d
 
 
 
@@ -93,7 +113,22 @@ type alias LoadedData =
     , name : String
 
     -- DETAIL
+    , width : Float
+    , height : Float
+    , cameraWidth : Int
+    , cameraHeight : Int
+    , pose : Maybe Pose
     , selectedDetail : Int
+    }
+
+
+type alias Pose =
+    { rotation : List Float
+    , translation :
+        { x : Float
+        , y : Float
+        , z : Float
+        }
     }
 
 
@@ -150,9 +185,14 @@ initLoaded device address sha pattern meta permissions =
         , name = meta.name
 
         -- DETAIL
+        , width = 0
+        , height = 0
+        , cameraWidth = 0
+        , cameraHeight = 0
+        , pose = Nothing
         , selectedDetail = 0
         }
-    , Cmd.none
+    , Task.attempt ReceivedViewport Browser.Dom.getViewport
     )
 
 
@@ -195,34 +235,234 @@ statusMsg title text =
 
 viewDetails : Element.Device -> Git.Identity -> LoadedData -> Element Msg
 viewDetails device identity model =
-    Element.column
+    Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
+        , Element.inFront <|
+            Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.inFront <|
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        ]
+                        [ Element.row
+                            [ Element.width Element.fill
+                            , Background.color Ui.Theme.Color.secondary
+                            ]
+                            [ Element.el [ Element.padding Ui.Theme.Spacing.level1 ]
+                                (backToPatternLink model.address)
+                            ]
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Element.height Element.fill
+                            ]
+                            Element.none
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Border.widthEach
+                                { top = 1
+                                , bottom = 0
+                                , left = 0
+                                , right = 0
+                                }
+                            , Border.color Ui.Theme.Color.secondary
+                            , Background.color Ui.Theme.Color.white
+                            ]
+                            (viewDetailSegmentControl model)
+                        ]
+                ]
+                (viewMarker model)
         ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Background.color Ui.Theme.Color.secondary
-            ]
-            [ Element.el [ Element.padding Ui.Theme.Spacing.level1 ]
-                (backToPatternLink model.address)
-            ]
-        , Element.el
-            [ Element.width Element.fill
-            , Element.height Element.fill
-            ]
+        (Element.html <|
+            Html.div
+                [ Html.Attributes.style "overflow" "hidden" ]
+                [ Html.video
+                    [ Html.Attributes.style "display" "none" ]
+                    []
+                , Html.canvas
+                    [ Html.Attributes.id "for-computation"
+                    , Html.Attributes.style "display" "none"
+                    ]
+                    []
+                , Html.canvas
+                    [ Html.Attributes.id "for-display" ]
+                    []
+                ]
+        )
+
+
+viewMarker : LoadedData -> Element msg
+viewMarker model =
+    let
+        maybeDetail2d =
+            Pattern.details model.pattern
+                |> List.getAt model.selectedDetail
+                |> Maybe.andThen (Result.toMaybe << State.finalValue model.pattern << Pattern.detail2d)
+    in
+    case ( maybeDetail2d, model.pose ) of
+        ( Just detail2d, Just pose ) ->
+            let
+                camera =
+                    Camera3d.perspective
+                        { viewpoint =
+                            Viewpoint3d.lookAt
+                                { focalPoint = Point3d.pixels 0 0 1000
+                                , eyePoint = Point3d.origin
+                                , upDirection = Direction3d.positiveY
+                                }
+                        , verticalFieldOfView = Angle.degrees 40
+                        , clipDepth = Pixels.pixels 10
+                        }
+
+                window =
+                    Rectangle2d.from Point2d.origin
+                        (Point2d.pixels
+                            (toFloat model.cameraWidth)
+                            (toFloat model.cameraHeight)
+                        )
+
+                rotate rotateAround =
+                    case pose.rotation of
+                        _ :: _ :: a13 :: a21 :: a22 :: a23 :: _ :: _ :: a33 :: [] ->
+                            let
+                                xRotation =
+                                    asin a23
+
+                                yRotation =
+                                    -1 * atan2 a13 a33
+
+                                zRotation =
+                                    atan2 a21 a22
+                            in
+                            rotateAround Axis3d.x (Angle.radians xRotation)
+                                >> rotateAround Axis3d.y (Angle.radians yRotation)
+                                >> rotateAround Axis3d.z (Angle.radians zRotation)
+
+                        _ ->
+                            identity
+
+                translation =
+                    Vector3d.pixels
+                        (-1 * pose.translation.x)
+                        (-1 * pose.translation.y)
+                        pose.translation.z
+
+                scaledDetail2d =
+                    detail2d
+                        |> Detail2d.at
+                            (Pixels.pixels 1
+                                |> Quantity.per (Length.millimeters 1)
+                            )
+
+                { viewBoxMinX, viewBoxMinY, viewBoxWidth, viewBoxHeight } =
+                    if
+                        (toFloat model.cameraHeight / toFloat model.cameraWidth)
+                            < (model.height / model.height)
+                    then
+                        { viewBoxMinX =
+                            (toFloat model.cameraWidth
+                                * model.height
+                                / toFloat model.cameraHeight
+                                - model.width
+                            )
+                                / 2
+                        , viewBoxMinY = 0
+                        , viewBoxWidth = model.width * toFloat model.cameraHeight / model.height
+                        , viewBoxHeight = toFloat model.cameraHeight
+                        }
+
+                    else
+                        { viewBoxMinX = 0
+                        , viewBoxMinY =
+                            (toFloat model.cameraHeight
+                                * model.width
+                                / toFloat model.cameraWidth
+                                - model.height
+                            )
+                                / 2
+                        , viewBoxWidth = toFloat model.cameraWidth
+                        , viewBoxHeight = model.height * toFloat model.cameraWidth / model.width
+                        }
+            in
+            Element.html <|
+                Svg.svg
+                    [ Svg.Attributes.viewBox <|
+                        String.join " "
+                            [ String.fromFloat viewBoxMinX
+                            , String.fromFloat viewBoxMinY
+                            , String.fromFloat viewBoxWidth
+                            , String.fromFloat viewBoxHeight
+                            ]
+                    , Html.Attributes.style "user-select" "none"
+                    , Html.Attributes.style "width" (String.fromFloat model.width ++ "px")
+                    , Html.Attributes.style "height" (String.fromFloat model.height ++ "px")
+                    ]
+                    [ scaledDetail2d
+                        |> Detail2d.translateBy
+                            (case Detail2d.centerPoint scaledDetail2d of
+                                Nothing ->
+                                    Vector2d.zero
+
+                                Just centerPoint2d ->
+                                    Vector2d.from centerPoint2d Point2d.origin
+                            )
+                        |> Detail3d.on SketchPlane3d.xy
+                        |> rotate Detail3d.rotateAround
+                        |> Detail3d.translateBy translation
+                        |> Detail3d.toScreenSpace camera window
+                        |> Maybe.map
+                            (Svg.detail2d
+                                [ Svg.Attributes.fill "none"
+                                , Svg.Attributes.strokeDasharray "20 20"
+                                , Svg.Attributes.stroke (toColor Ui.Theme.Color.primary)
+                                , Svg.Attributes.strokeWidth "3"
+                                , Svg.Attributes.strokeLinecap "round"
+                                ]
+                            )
+                        |> Maybe.withDefault (Svg.text "")
+
+                    --, LineSegment3d.from Point3d.origin (Point3d.pixels 81 0 0)
+                    --    |> rotate LineSegment3d.rotateAround
+                    --    |> LineSegment3d.translateBy translation
+                    --    |> LineSegment3d.Projection.toScreenSpace camera window
+                    --    |> Maybe.map
+                    --        (Svg.lineSegment2d
+                    --            [ Svg.Attributes.fill "none"
+                    --            , Svg.Attributes.stroke "red"
+                    --            , Svg.Attributes.strokeWidth "4"
+                    --            ]
+                    --        )
+                    --    |> Maybe.withDefault (Svg.text "")
+                    --, LineSegment3d.from Point3d.origin (Point3d.pixels 0 81 0)
+                    --    |> rotate LineSegment3d.rotateAround
+                    --    |> LineSegment3d.translateBy translation
+                    --    |> LineSegment3d.Projection.toScreenSpace camera window
+                    --    |> Maybe.map
+                    --        (Svg.lineSegment2d
+                    --            [ Svg.Attributes.fill "none"
+                    --            , Svg.Attributes.stroke "green"
+                    --            , Svg.Attributes.strokeWidth "4"
+                    --            ]
+                    --        )
+                    --    |> Maybe.withDefault (Svg.text "")
+                    --, LineSegment3d.from Point3d.origin (Point3d.pixels 0 0 81)
+                    --    |> rotate LineSegment3d.rotateAround
+                    --    |> LineSegment3d.translateBy translation
+                    --    |> LineSegment3d.Projection.toScreenSpace camera window
+                    --    |> Maybe.map
+                    --        (Svg.lineSegment2d
+                    --            [ Svg.Attributes.fill "none"
+                    --            , Svg.Attributes.stroke "blue"
+                    --            , Svg.Attributes.strokeWidth "4"
+                    --            ]
+                    --        )
+                    --    |> Maybe.withDefault (Svg.text "")
+                    ]
+
+        _ ->
             Element.none
-        , Element.el
-            [ Element.width Element.fill
-            , Border.widthEach
-                { top = 1
-                , bottom = 0
-                , left = 0
-                , right = 0
-                }
-            , Border.color Ui.Theme.Color.secondary
-            ]
-            (viewDetailSegmentControl model)
-        ]
 
 
 backToPatternLink : LocalStorage.Address -> Element msg
@@ -295,10 +535,10 @@ viewDetailLabel detail2d =
                     pixelWidth
 
                 width =
-                    Length.inMeters maxX - Length.inMeters minX + pixelWidth
+                    Length.inMeters maxX - Length.inMeters minX
 
                 height =
-                    Length.inMeters maxY - Length.inMeters minY + pixelWidth
+                    Length.inMeters maxY - Length.inMeters minY
 
                 idealHorizontalResolution =
                     Pixels.pixels pixelWidth
@@ -357,7 +597,12 @@ type Msg
     | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
     | ChangedMeta LocalStorage.Address Git.Meta
     | ChangedWhatever
+      -- VIDEO
+    | ReceivedViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
+    | ResizedBrowser Int Int
       -- DETAIL
+    | ChangedCamera Int Int
+    | ChangedPose Pose
     | UserSelectedDetail Int
 
 
@@ -530,7 +775,48 @@ updateLoaded key domain clientId device identity msg model =
         ChangedWhatever ->
             ( model, Cmd.none )
 
+        -- VIDEO
+        ReceivedViewport result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok { scene } ->
+                    ( { model
+                        | width = scene.width
+                        , height = scene.height
+                      }
+                    , Ports.startVideo
+                        { width = toFloat (floor scene.width)
+                        , height = toFloat (floor scene.height)
+                        }
+                    )
+
+        ResizedBrowser width height ->
+            ( { model
+                | width = toFloat width
+                , height = toFloat height
+              }
+            , Ports.resizeVideo
+                { width = toFloat width
+                , height = toFloat height
+                }
+            )
+
         -- DETAIL
+        ChangedCamera width height ->
+            ( { model
+                | cameraWidth = width
+                , cameraHeight = height
+              }
+            , Cmd.none
+            )
+
+        ChangedPose pose ->
+            ( { model | pose = Just pose }
+            , Cmd.none
+            )
+
         UserSelectedDetail selectedDetail ->
             ( { model | selectedDetail = selectedDetail }
             , Cmd.none
@@ -559,11 +845,35 @@ subscriptions model =
             Sub.none
 
         Loaded _ ->
-            LocalStorage.changedStore
-                { changedZoom = \_ _ -> ChangedWhatever
-                , changedCenter = \_ _ -> ChangedWhatever
-                , changedAddresses = \_ -> ChangedWhatever
-                , changedPattern = ChangedPattern
-                , changedMeta = ChangedMeta
-                , changedWhatever = ChangedWhatever
-                }
+            Sub.batch
+                [ LocalStorage.changedStore
+                    { changedZoom = \_ _ -> ChangedWhatever
+                    , changedCenter = \_ _ -> ChangedWhatever
+                    , changedAddresses = \_ -> ChangedWhatever
+                    , changedPattern = ChangedPattern
+                    , changedMeta = ChangedMeta
+                    , changedWhatever = ChangedWhatever
+                    }
+                , Ports.changedPose (.pose >> ChangedPose)
+                , Ports.changedCamera (\{ camera } -> ChangedCamera camera.width camera.height)
+                , Browser.Events.onResize ResizedBrowser
+                ]
+
+
+toColor : Color -> String
+toColor color =
+    let
+        { red, green, blue, alpha } =
+            Element.toRgb color
+    in
+    String.concat
+        [ "rgba("
+        , String.fromInt (floor (255 * red))
+        , ","
+        , String.fromInt (floor (255 * green))
+        , ","
+        , String.fromInt (floor (255 * blue))
+        , ","
+        , String.fromFloat alpha
+        , ")"
+        ]

@@ -1,21 +1,26 @@
 module Detail2d exposing
     ( Detail2d, NextCurve2d(..), LastCurve2d(..)
     , at
-    , boundingBox
+    , translateBy
+    , boundingBox, centerPoint
     )
 
 {-|
 
 @docs Detail2d, NextCurve2d, LastCurve2d
 @docs at
-@docs boundingBox
+@docs translateBy
+@docs boundingBox, centerPoint
 
 -}
 
 import BoundingBox2d exposing (BoundingBox2d)
+import Camera3d exposing (Camera3d)
 import List.Extra as List
 import Point2d exposing (Point2d)
+import Point3d exposing (Point3d)
 import Quantity exposing (Quantity, Rate)
+import Vector2d exposing (Vector2d)
 
 
 {-| -}
@@ -52,6 +57,60 @@ type LastCurve2d u c
         { secondControlPoint : Point2d u c
         , thirdControlPoint : Point2d u c
         }
+
+
+{-| -}
+translateBy : Vector2d units coordinates -> Detail2d units coordinates -> Detail2d units coordinates
+translateBy vector2d detail2d =
+    { firstPoint = Point2d.translateBy vector2d detail2d.firstPoint
+    , nextCurves = List.map (nextCurveTranslateBy vector2d) detail2d.nextCurves
+    , lastCurve = lastCurveTranslateBy vector2d detail2d.lastCurve
+    }
+
+
+nextCurveTranslateBy :
+    Vector2d units coordinates
+    -> NextCurve2d units coordinates
+    -> NextCurve2d units coordinates
+nextCurveTranslateBy vector2d nextCurve2d =
+    case nextCurve2d of
+        NextLineSegment2d { endPoint } ->
+            NextLineSegment2d
+                { endPoint = Point2d.translateBy vector2d endPoint }
+
+        NextQuadraticSpline2d { secondControlPoint, thirdControlPoint } ->
+            NextQuadraticSpline2d
+                { secondControlPoint = Point2d.translateBy vector2d secondControlPoint
+                , thirdControlPoint = Point2d.translateBy vector2d thirdControlPoint
+                }
+
+        NextCubicSpline2d { secondControlPoint, thirdControlPoint, fourthControlPoint } ->
+            NextCubicSpline2d
+                { secondControlPoint = Point2d.translateBy vector2d secondControlPoint
+                , thirdControlPoint = Point2d.translateBy vector2d thirdControlPoint
+                , fourthControlPoint = Point2d.translateBy vector2d fourthControlPoint
+                }
+
+
+lastCurveTranslateBy :
+    Vector2d units coordinates
+    -> LastCurve2d units coordinates
+    -> LastCurve2d units coordinates
+lastCurveTranslateBy vector2d lastCurve2d =
+    case lastCurve2d of
+        LastLineSegment2d ->
+            LastLineSegment2d
+
+        LastQuadraticSpline2d { secondControlPoint } ->
+            LastQuadraticSpline2d
+                { secondControlPoint = Point2d.translateBy vector2d secondControlPoint
+                }
+
+        LastCubicSpline2d { secondControlPoint, thirdControlPoint } ->
+            LastCubicSpline2d
+                { secondControlPoint = Point2d.translateBy vector2d secondControlPoint
+                , thirdControlPoint = Point2d.translateBy vector2d thirdControlPoint
+                }
 
 
 {-| -}
@@ -165,3 +224,10 @@ boundingBox { firstPoint, nextCurves, lastCurve } =
         (List.maximumWith Quantity.compare xCoordinates)
         (List.minimumWith Quantity.compare yCoordinates)
         (List.maximumWith Quantity.compare yCoordinates)
+
+
+{-| -}
+centerPoint : Detail2d units coordinates -> Maybe (Point2d units coordinates)
+centerPoint detail2d =
+    boundingBox detail2d
+        |> Maybe.map BoundingBox2d.centerPoint

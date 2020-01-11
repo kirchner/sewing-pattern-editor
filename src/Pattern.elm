@@ -1547,13 +1547,13 @@ computePoint2d (Point_ info) =
     case info of
         Origin stuff ->
             StateResult.ok <|
-                Point2d.meters stuff.x stuff.y
+                Point2d.millimeters stuff.x stuff.y
 
         FromOnePoint stuff ->
             let
                 toPoint2d basePoint direction distance =
                     Point2d.translateBy
-                        (Vector2d.rTheta (Length.meters distance) direction)
+                        (Vector2d.rTheta (Length.millimeters distance) direction)
                         basePoint
             in
             StateResult.ok toPoint2d
@@ -1570,7 +1570,7 @@ computePoint2d (Point_ info) =
         BetweenLength stuff ->
             let
                 toPoint2d basePointA basePointB distance =
-                    Point2d.betweenLength basePointA basePointB (Length.meters distance)
+                    Point2d.betweenLength basePointA basePointB (Length.millimeters distance)
                         |> Result.fromMaybe PointsCoincide
             in
             StateResult.ok toPoint2d
@@ -1767,7 +1767,7 @@ computeCircle2d (Circle_ info) =
         WithRadius stuff ->
             let
                 toCircle2d radius center =
-                    Circle2d.withRadius (Length.meters radius) center
+                    Circle2d.withRadius (Length.millimeters radius) center
             in
             StateResult.ok toCircle2d
                 |> StateResult.with (computeExpr stuff.radius)
@@ -2470,7 +2470,7 @@ evaluateExpr expr =
                             StateResult.ok Point2d.distanceFrom
                                 |> StateResult.with (point2d (That nameA))
                                 |> StateResult.with (point2d (That nameB))
-                                |> StateResult.map Length.inMeters
+                                |> StateResult.map Length.inMillimeters
 
                         _ ->
                             StateResult.err <|

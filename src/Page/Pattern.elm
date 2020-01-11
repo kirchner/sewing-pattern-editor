@@ -3094,10 +3094,10 @@ updateToIdealViewport address pattern dimensions =
                     BoundingBox2d.extrema boundingBox
 
                 width =
-                    Length.inMeters maxX - Length.inMeters minX + 50
+                    Length.inMeters maxX - Length.inMeters minX + 0.005
 
                 height =
-                    Length.inMeters maxY - Length.inMeters minY + 50
+                    Length.inMeters maxY - Length.inMeters minY + 0.005
 
                 idealHorizontalResolution =
                     Pixels.pixels dimensions.width

@@ -12,6 +12,13 @@ cp \
   $OUTPUT
 
 cp \
+  js-aruco/cv.js \
+  js-aruco/aruco.js \
+  js-aruco/posit1.js \
+  js-aruco/svd.js \
+  $OUTPUT
+
+cp \
   assets/icon-32.png \
   assets/icon-64.png \
   assets/icon-128.png \
