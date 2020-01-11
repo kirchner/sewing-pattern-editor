@@ -37,7 +37,7 @@ import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
-import Browser.Navigation as Navigation
+import Browser.Navigation
 import Circle2d
 import Color
 import Dict exposing (Dict)
@@ -632,8 +632,8 @@ viewToolbarTopCompact identity model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ -- Element.el [ Element.alignLeft ] patternActions ,
-              Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
+            [ Element.el [ Element.alignLeft ] patternActions
+            , Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
             ]
         , Element.el [ Element.centerX ] (patternAddress model.address)
         , Element.row
@@ -792,8 +792,7 @@ viewToolbarTopFullscreen identity model =
             ]
             [ patternAddress model.address
             , loadingIndicator model.stored
-
-            --, patternActions
+            , patternActions
             , signInViaGithubBtn identity
             ]
         ]
@@ -859,9 +858,9 @@ patternActions =
             , label = "Download"
             }
         , Ui.Atom.Input.btnSecondaryBorderedRight
-            { id = "print-btn"
-            , onPress = Nothing
-            , label = "Print"
+            { id = "project-btn"
+            , onPress = Just UserPressedProject
+            , label = "Project"
             }
         ]
 
@@ -1712,6 +1711,7 @@ type Msg
     | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
+    | UserPressedProject
     | UserPressedSignIn
     | UserStartedTouchOnToolbarTop Html.Events.Extra.Touch.Event
     | UserMovedTouchOnToolbarTop Html.Events.Extra.Touch.Event
@@ -1785,7 +1785,7 @@ type CreateAction
 
 {-| -}
 update :
-    Navigation.Key
+    Browser.Navigation.Key
     -> String
     -> String
     -> Element.Device
@@ -1883,7 +1883,7 @@ updateLoading msg data =
 
 
 updateLoaded :
-    Navigation.Key
+    Browser.Navigation.Key
     -> String
     -> String
     -> Element.Device
@@ -2049,6 +2049,11 @@ updateLoaded key domain clientId device identity msg model =
                   else
                     Cmd.none
                 ]
+            )
+
+        UserPressedProject ->
+            ( model
+            , Browser.Navigation.load (Route.absolute (Route.Details model.address) [])
             )
 
         UserPressedSignIn ->
