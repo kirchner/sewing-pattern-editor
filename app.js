@@ -91,7 +91,9 @@ const initElm = () => {
       if (video) {
         navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: true
+          video: {
+            facingMode: "environment"
+          }
         })
           .then(function(mediaStream) {
             video.srcObject = mediaStream;
