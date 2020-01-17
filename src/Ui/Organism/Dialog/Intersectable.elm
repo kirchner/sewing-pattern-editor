@@ -25,10 +25,8 @@ import Pattern
         , Curve
         , Intersectable(..)
         , IntersectableTag(..)
-        , Objects
         , Pattern
         )
-import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Theme.Typography
@@ -319,7 +317,7 @@ view viewIntersectable pattern objects { otherIntersectable, id, label } =
         , selected = selectedTag
         , child =
             case otherIntersectable of
-                Referenced { dropdown, maybeIntersectable, help } ->
+                Referenced { dropdown, maybeIntersectable } ->
                     Just <|
                         Ui.Atom.Dropdown.viewAppended
                             { entryToString = intersectableName

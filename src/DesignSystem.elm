@@ -1,36 +1,23 @@
 module DesignSystem exposing (main)
 
-import Axis2d
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation exposing (Key)
-import Circle2d
-import CubicSpline2d
 import Curve2d exposing (Curve2d(..))
 import Detail2d exposing (LastCurve2d(..), NextCurve2d(..))
-import Direction2d
 import Element exposing (DeviceClass(..), Element, Orientation(..))
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy as Element
-import Geometry.Svg as Svg
-import Html exposing (Html)
 import Html.Attributes
-import Html.Events
 import Json.Decode as Decode
-import Length exposing (Meters, millimeters)
-import LineSegment2d
-import List.Extra as List
 import Pattern.Store exposing (StoredPattern)
 import Pixels exposing (pixels)
 import Point2d
-import QuadraticSpline2d
 import Quantity exposing (per)
-import Svg exposing (Svg)
-import Svg.Attributes
 import Task
 import Time
 import Ui.Atom
@@ -50,7 +37,6 @@ import Ui.Theme.Spacing
 import Ui.Theme.Typography
 import Url exposing (Url)
 import Url.Parser exposing (Parser)
-import Vector2d
 
 
 main : Program Flags Model Msg
@@ -593,7 +579,7 @@ content model =
 
 
 viewTypography : Model -> Element Msg
-viewTypography model =
+viewTypography _ =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
@@ -629,7 +615,7 @@ viewTypography model =
 
 
 viewColor : Model -> Element Msg
-viewColor model =
+viewColor _ =
     let
         colorBox backgroundColor fontColor name =
             Element.el
@@ -672,7 +658,7 @@ viewColor model =
 
 
 viewSpace : Model -> Element Msg
-viewSpace model =
+viewSpace _ =
     let
         spaceBox space name =
             Element.el
@@ -732,7 +718,7 @@ viewSpace model =
 
 
 viewButtons : Model -> Element Msg
-viewButtons model =
+viewButtons _ =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
@@ -944,7 +930,7 @@ viewFormElements model =
 
 
 viewIcons : Model -> Element Msg
-viewIcons model =
+viewIcons _ =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.width Element.fill
@@ -1915,7 +1901,7 @@ update msg model =
                 Cmd.none
             )
 
-        GotViewportOfObjectsContainer (Err error) ->
+        GotViewportOfObjectsContainer (Err _) ->
             ( model, Cmd.none )
 
         GotViewportOfObjectsContainer (Ok { viewport }) ->
@@ -1947,7 +1933,7 @@ update msg model =
         -- MENU BUTTON
         MenuBtnPrimaryMsg menuBtnMsg ->
             let
-                ( newMenuBtn, menuBtnCmd, maybeCreateAction ) =
+                ( newMenuBtn, menuBtnCmd, _ ) =
                     Ui.Molecule.MenuBtn.update menuBtnMsg model.menuBtnPrimary
             in
             ( { model | menuBtnPrimary = newMenuBtn }
@@ -1956,7 +1942,7 @@ update msg model =
 
         MenuBtnSecondaryMsg menuBtnMsg ->
             let
-                ( newMenuBtn, menuBtnCmd, maybeCreateAction ) =
+                ( newMenuBtn, menuBtnCmd, _ ) =
                     Ui.Molecule.MenuBtn.update menuBtnMsg model.menuBtnSecondary
             in
             ( { model | menuBtnSecondary = newMenuBtn }

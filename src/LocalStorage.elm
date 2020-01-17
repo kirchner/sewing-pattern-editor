@@ -66,7 +66,7 @@ addressToPathSegments address =
             "github" :: repo.owner :: repo.name :: Git.refToPathSegments ref
 
         Browser { slug } ->
-            "browser" :: slug :: []
+            [ "browser", slug ]
 
 
 addressDecoder : Decoder Address

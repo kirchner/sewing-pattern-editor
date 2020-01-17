@@ -80,7 +80,7 @@ point topLevel aPoint =
 pointInfo : Pattern.PointInfo -> Result coordinates (Maybe (Ui.Atom.Object.PointInfo coordinates))
 pointInfo info =
     case info of
-        Pattern.Origin stuff ->
+        Pattern.Origin _ ->
             ok (Just Ui.Atom.Object.Origin)
 
         Pattern.FromOnePoint stuff ->
@@ -134,7 +134,7 @@ pointInfo info =
             in
             get
                 |> andThen
-                    (\pattern ->
+                    (\_ ->
                         case ( stuff.intersectableA, stuff.intersectableB ) of
                             ( IntersectableAxis aAxisA, IntersectableAxis aAxisB ) ->
                                 map2 toPointInfo
@@ -145,7 +145,7 @@ pointInfo info =
                                 ok Nothing
                     )
 
-        Pattern.TransformedPoint stuff ->
+        Pattern.TransformedPoint _ ->
             ok Nothing
 
 
@@ -203,7 +203,7 @@ axisInfo info =
                 (point False stuff.pointA)
                 (point False stuff.pointB)
 
-        Pattern.TransformedAxis stuff ->
+        Pattern.TransformedAxis _ ->
             ok Nothing
 
 
@@ -265,7 +265,7 @@ circleInfo info =
                 (point False stuff.pointB)
                 (point False stuff.pointC)
 
-        Pattern.TransformedCircle stuff ->
+        Pattern.TransformedCircle _ ->
             ok Nothing
 
 
@@ -345,7 +345,7 @@ curveInfo info =
                 (point False stuff.endControlPoint)
                 (point False stuff.endPoint)
 
-        Pattern.TransformedCurve stuff ->
+        Pattern.TransformedCurve _ ->
             ok Nothing
 
 

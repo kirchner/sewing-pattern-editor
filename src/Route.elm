@@ -33,7 +33,6 @@ module Route exposing
 -}
 
 import Browser.Navigation
-import Git
 import LocalStorage
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)

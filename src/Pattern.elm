@@ -445,7 +445,7 @@ intersectableTag intersectable =
 
 {-| -}
 insertPoint : String -> Point -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertPoint name_ point ((Pattern data) as pattern) =
+insertPoint name_ point (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -470,7 +470,7 @@ insertAndReturnPoint :
     -> Point
     -> Pattern coordinates
     -> Result InsertHelp ( A Point, Pattern coordinates )
-insertAndReturnPoint name_ point ((Pattern data) as pattern) =
+insertAndReturnPoint name_ point (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -491,7 +491,7 @@ insertAndReturnPoint name_ point ((Pattern data) as pattern) =
 
 {-| -}
 insertAxis : String -> Axis -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertAxis name_ axis ((Pattern data) as pattern) =
+insertAxis name_ axis (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -512,7 +512,7 @@ insertAxis name_ axis ((Pattern data) as pattern) =
 
 {-| -}
 insertCircle : String -> Circle -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertCircle name_ circle ((Pattern data) as pattern) =
+insertCircle name_ circle (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -533,7 +533,7 @@ insertCircle name_ circle ((Pattern data) as pattern) =
 
 {-| -}
 insertCurve : String -> Curve -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertCurve name_ curve ((Pattern data) as pattern) =
+insertCurve name_ curve (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -554,7 +554,7 @@ insertCurve name_ curve ((Pattern data) as pattern) =
 
 {-| -}
 insertDetail : String -> Detail -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertDetail name_ detail_ ((Pattern data) as pattern) =
+insertDetail name_ detail_ (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -575,13 +575,13 @@ insertDetail name_ detail_ ((Pattern data) as pattern) =
 
 {-| -}
 insertTransformation : String -> Transformation -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertTransformation n transformation pattern =
+insertTransformation _ _ _ =
     Err NotImplementedYet
 
 
 {-| -}
 insertVariable : String -> String -> Pattern coordinates -> Result InsertHelp (Pattern coordinates)
-insertVariable name_ expr ((Pattern data) as pattern) =
+insertVariable name_ expr (Pattern data) =
     if nameTaken name_ data then
         Err NameTaken
 
@@ -1053,7 +1053,7 @@ curvesWith :
         , endPoint : Maybe (A Point)
         }
     -> List (A Curve)
-curvesWith (Pattern data) constraints =
+curvesWith _ _ =
     []
 
 
@@ -1459,7 +1459,7 @@ type alias RotateAroundStuff =
 
 {-| -}
 transformedObjects : A Transformation -> Pattern coordinates -> Maybe TransformedObjects
-transformedObjects aTransformation pattern =
+transformedObjects _ _ =
     Nothing
 
 
@@ -1600,7 +1600,7 @@ computePoint2d (Point_ info) =
                                 _ ->
                                     Err (WhichMustBeBetween 1 2)
 
-                        ( Axis2d axis, Curve2d curve ) ->
+                        ( Axis2d _, Curve2d _ ) ->
                             Err NotComputableYet
 
                         ( Circle2d circle, Axis2d axis ) ->
@@ -1629,16 +1629,16 @@ computePoint2d (Point_ info) =
                                 _ ->
                                     Err (WhichMustBeBetween 1 2)
 
-                        ( Circle2d circle, Curve2d curve ) ->
+                        ( Circle2d _, Curve2d _ ) ->
                             Err NotComputableYet
 
-                        ( Curve2d curve, Axis2d axis ) ->
+                        ( Curve2d _, Axis2d _ ) ->
                             Err NotComputableYet
 
-                        ( Curve2d curve, Circle2d circle ) ->
+                        ( Curve2d _, Circle2d _ ) ->
                             Err NotComputableYet
 
-                        ( Curve2d curveA, Curve2d curveB ) ->
+                        ( Curve2d _, Curve2d _ ) ->
                             Err NotComputableYet
             in
             StateResult.ok toPoint2d
@@ -1646,7 +1646,7 @@ computePoint2d (Point_ info) =
                 |> StateResult.with (intersectable2d stuff.intersectableB)
                 |> StateResult.join
 
-        TransformedPoint stuff ->
+        TransformedPoint _ ->
             StateResult.err NotComputableYet
 
 
@@ -1720,7 +1720,7 @@ computeAxis2d (Axis_ info) =
                 |> StateResult.with (point2d stuff.pointB)
                 |> StateResult.join
 
-        TransformedAxis stuff ->
+        TransformedAxis _ ->
             StateResult.err NotComputableYet
 
 
@@ -1785,7 +1785,7 @@ computeCircle2d (Circle_ info) =
                 |> StateResult.with (point2d stuff.pointC)
                 |> StateResult.join
 
-        TransformedCircle stuff ->
+        TransformedCircle _ ->
             StateResult.err NotComputableYet
 
 
@@ -1865,7 +1865,7 @@ computeCurve2d (Curve_ info) =
                 |> StateResult.with (point2d stuff.endControlPoint)
                 |> StateResult.with (point2d stuff.endPoint)
 
-        TransformedCurve stuff ->
+        TransformedCurve _ ->
             StateResult.err NotComputableYet
 
 
@@ -2487,9 +2487,6 @@ evaluateExpr expr =
                                 toAngle point2dA point2dB =
                                     Direction2d.from point2dA point2dB
                                         |> Maybe.map (Direction2d.toAngle >> Angle.inDegrees)
-
-                                toDegree radian =
-                                    180 * radian / pi
                             in
                             StateResult.ok toAngle
                                 |> StateResult.with (point2d (That nameA))
@@ -2948,7 +2945,7 @@ collectObjectsDependingOnAxis :
     -> Chains
     -> A Axis
     -> State Collection ()
-collectObjectsDependingOnAxis data pointName chains aAxis =
+collectObjectsDependingOnAxis _ _ _ _ =
     State.state ()
 
 
@@ -2958,7 +2955,7 @@ collectObjectsDependingOnCircle :
     -> Chains
     -> A Circle
     -> State Collection ()
-collectObjectsDependingOnCircle data pointName chains aCircle =
+collectObjectsDependingOnCircle _ _ _ _ =
     State.state ()
 
 
@@ -2968,7 +2965,7 @@ collectObjectsDependingOnCurve :
     -> Chains
     -> A Curve
     -> State Collection ()
-collectObjectsDependingOnCurve data pointName chains aCurve =
+collectObjectsDependingOnCurve _ _ _ _ =
     State.state ()
 
 
@@ -2978,7 +2975,7 @@ collectObjectsDependingOnDetail :
     -> Chains
     -> A Detail
     -> State Collection ()
-collectObjectsDependingOnDetail data pointName chains aDetail =
+collectObjectsDependingOnDetail _ _ _ _ =
     State.state ()
 
 
@@ -2988,7 +2985,7 @@ collectObjectsDependingOnVariable :
     -> Chains
     -> String
     -> State Collection ()
-collectObjectsDependingOnVariable data pointName chains variable =
+collectObjectsDependingOnVariable _ _ _ _ =
     State.state ()
 
 
@@ -3021,15 +3018,15 @@ collectObjectsDependingOnPointInfo data pointName chains info =
                 |> and (collectObjectsDependingOnPoint data pointName chains stuff.basePointB)
                 |> and (collectObjectsDependingOnExpr data pointName chains stuff.distance)
 
-        Intersection stuff ->
+        Intersection _ ->
             State.state ()
 
-        TransformedPoint stuff ->
+        TransformedPoint _ ->
             State.state ()
 
 
 collectObjectsDependingOnExpr : PatternData coordinates -> String -> Chains -> String -> State Collection ()
-collectObjectsDependingOnExpr data pointName chains expr =
+collectObjectsDependingOnExpr _ _ _ _ =
     State.state ()
 
 
@@ -3154,7 +3151,7 @@ intersection intersectableA intersectableB which pattern =
 
 
 checkWhichOutOfBound : Intersectable -> Intersectable -> Pattern coordinates -> Int -> Bool
-checkWhichOutOfBound intersectableA intersectableB pattern which =
+checkWhichOutOfBound intersectableA intersectableB _ which =
     0 < which && which >= whichSize (intersectableTag intersectableA) (intersectableTag intersectableB)
 
 
@@ -3187,7 +3184,7 @@ type alias IntersectionHelp =
 
 {-| -}
 transformedPoint : A Point -> A Transformation -> Pattern coordinates -> Result () Point
-transformedPoint aPoint aTransformation pattern =
+transformedPoint _ _ _ =
     Err ()
 
 
@@ -3214,7 +3211,7 @@ type alias ThroughOnePointHelp =
 
 {-| -}
 throughTwoPoints : A Point -> A Point -> Pattern coordinates -> Result ThroughTwoPointsHelp Axis
-throughTwoPoints aPointA aPointB pattern =
+throughTwoPoints aPointA aPointB _ =
     Ok ThroughTwoPointsHelp
         |> collectBool (checkObjectsCoincidence aPointA aPointB)
         |> Result.map
@@ -3235,7 +3232,7 @@ type alias ThroughTwoPointsHelp =
 
 {-| -}
 transformedAxis : A Axis -> A Transformation -> Pattern coordinates -> Result () Axis
-transformedAxis aAxis aTransformation pattern =
+transformedAxis _ _ _ =
     Err ()
 
 
@@ -3267,7 +3264,7 @@ throughThreePoints :
     -> A Point
     -> Pattern coordinates
     -> Result ThroughThreePointsHelp Circle
-throughThreePoints aPointA aPointB aPointC pattern =
+throughThreePoints aPointA aPointB aPointC _ =
     Ok ThroughThreePointsHelp
         |> collectBool
             (checkObjectsCoincidence aPointA aPointB
@@ -3293,13 +3290,13 @@ type alias ThroughThreePointsHelp =
 
 {-| -}
 transformedCircle : A Circle -> A Transformation -> Pattern coordinates -> Result () Circle
-transformedCircle aCircle aTransformation pattern =
+transformedCircle _ _ _ =
     Err ()
 
 
 {-| -}
 straight : A Point -> A Point -> Pattern coordinates -> Result StraightHelp Curve
-straight aStartPoint aEndPoint pattern =
+straight aStartPoint aEndPoint _ =
     Ok StraightHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
@@ -3320,7 +3317,7 @@ type alias StraightHelp =
 
 {-| -}
 quadratic : A Point -> A Point -> A Point -> Pattern coordinates -> Result QuadraticHelp Curve
-quadratic aStartPoint aControlPoint aEndPoint pattern =
+quadratic aStartPoint aControlPoint aEndPoint _ =
     Ok QuadraticHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
@@ -3342,7 +3339,7 @@ type alias QuadraticHelp =
 
 {-| -}
 cubic : A Point -> A Point -> A Point -> A Point -> Pattern coordinates -> Result CubicHelp Curve
-cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint pattern =
+cubic aStartPoint aStartControlPoint aEndControlPoint aEndPoint _ =
     Ok CubicHelp
         |> collectBool (checkObjectsCoincidence aStartPoint aEndPoint)
         |> Result.map
@@ -3365,13 +3362,13 @@ type alias CubicHelp =
 
 {-| -}
 transformedCurve : A Curve -> A Transformation -> Pattern coordinates -> Result () Curve
-transformedCurve aCurve aTransformation pattern =
+transformedCurve _ _ _ =
     Err ()
 
 
 {-| -}
 detail : FirstCurve -> List NextCurve -> LastCurve -> Pattern coordinates -> Result DetailHelp Detail
-detail firstCurve nextCurves lastCurve pattern =
+detail firstCurve nextCurves lastCurve _ =
     Ok <|
         Detail_
             { firstCurve = firstCurve

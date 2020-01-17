@@ -22,7 +22,6 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import Pattern exposing (Object(..), Pattern)
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
@@ -134,6 +133,14 @@ view cfg pattern state =
         )
 
 
+icon :
+    Config msg
+    -> State
+    ->
+        { header : Element msg
+        , view : Object -> Element msg
+        , width : Element.Length
+        }
 icon cfg state =
     { header = Element.none
     , width = Element.shrink
@@ -180,6 +187,14 @@ icon cfg state =
     }
 
 
+name :
+    Config msg
+    -> State
+    ->
+        { header : Element msg
+        , view : Object -> Element msg
+        , width : Element.Length
+        }
 name cfg state =
     { header = Element.none
     , width = Element.fill
@@ -204,6 +219,14 @@ name cfg state =
     }
 
 
+actions :
+    Config msg
+    -> State
+    ->
+        { header : Element msg
+        , view : Object -> Element msg
+        , width : Element.Length
+        }
 actions cfg state =
     { header = Element.none
     , width = Element.shrink
@@ -263,6 +286,7 @@ actions cfg state =
     }
 
 
+borderColor : State -> Object -> Element.Attribute msg
 borderColor state object =
     Border.color <|
         if state.focusedObject == Just object then
@@ -278,6 +302,7 @@ borderColor state object =
             Ui.Theme.Color.white
 
 
+backgroundColor : State -> Object -> Element.Attribute msg
 backgroundColor state object =
     Background.color <|
         if List.member object state.selectedObjects then
@@ -290,6 +315,7 @@ backgroundColor state object =
             Ui.Theme.Color.white
 
 
+fontColor : State -> Object -> Element.Attribute msg
 fontColor state object =
     Font.color <|
         if List.member object state.selectedObjects then

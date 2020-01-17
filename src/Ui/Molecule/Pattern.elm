@@ -15,7 +15,6 @@ module Ui.Molecule.Pattern exposing
 import Angle exposing (Angle)
 import Direction2d
 import Element exposing (Element)
-import Element.Border as Border
 import Geometry.Svg as Svg
 import Html.Attributes
 import Html.Events
@@ -31,7 +30,6 @@ import Svg exposing (Svg)
 import Svg.Attributes
 import Svg.Lazy as Svg
 import Ui.Atom.Object exposing (Resolution)
-import Ui.Theme.Color
 import Vector2d
 
 
@@ -77,7 +75,7 @@ type alias Viewport coordinates =
 
 {-| -}
 view : Config -> Viewport coordinates -> Pattern coordinates -> State -> Element Msg
-view cfg viewport pattern state =
+view _ viewport pattern state =
     Element.el
         [ Element.htmlAttribute (Html.Attributes.tabindex 0)
         , Element.htmlAttribute <|
@@ -129,7 +127,7 @@ view cfg viewport pattern state =
 
 {-| -}
 viewStatic : Config -> Viewport coordinates -> Pattern coordinates -> State -> Element msg
-viewStatic cfg viewport pattern state =
+viewStatic _ viewport pattern state =
     Element.el []
         (Element.html <|
             Svg.svg
@@ -403,7 +401,7 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
 
         Ok objects ->
             let
-                objectLayers drawObject toObject objectFocused objectHovered objectSelected =
+                objectLayers drawObject objectFocused objectHovered objectSelected =
                     List.foldl
                         (\( aObject, object ) layers ->
                             let
@@ -453,7 +451,6 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
                 pointLayers =
                     objectLayers
                         Ui.Atom.Object.drawPoint
-                        Point
                         pointFocused
                         pointHovered
                         pointSelected
@@ -486,7 +483,6 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
                 axisLayers =
                     objectLayers
                         Ui.Atom.Object.drawAxis
-                        Axis
                         axisFocused
                         axisHovered
                         axisSelected
@@ -519,7 +515,6 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
                 circleLayers =
                     objectLayers
                         Ui.Atom.Object.drawCircle
-                        Circle
                         circleFocused
                         circleHovered
                         circleSelected
@@ -552,7 +547,6 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
                 curveLayers =
                     objectLayers
                         Ui.Atom.Object.drawCurve
-                        Curve
                         curveFocused
                         curveHovered
                         curveSelected
@@ -585,7 +579,6 @@ drawStatic pattern resolution { hoveredObject, focusedObject, selectedObjects } 
                 detailLayers =
                     objectLayers
                         Ui.Atom.Object.drawDetail
-                        Detail
                         detailFocused
                         detailHovered
                         detailSelected
@@ -636,12 +629,6 @@ type Msg
     | PressedArrowLeft
     | PressedArrowRight
     | PressedSpace
-
-
-type alias Position =
-    { x : Float
-    , y : Float
-    }
 
 
 {-| -}
@@ -907,31 +894,3 @@ nearestPointOutOf pattern { lowerBound, upperBound } aPoint =
                 |> List.minimumBy (Tuple.first >> Length.inMillimeters)
                 |> Maybe.map Tuple.second
                 |> Maybe.withDefault aPoint
-
-
-nextAfter : a -> List a -> a
-nextAfter a listA =
-    case listA of
-        [] ->
-            a
-
-        first :: rest ->
-            if first == a then
-                Maybe.withDefault first (List.head rest)
-
-            else
-                nextAfterHelp a first rest
-
-
-nextAfterHelp : a -> a -> List a -> a
-nextAfterHelp a first listA =
-    case listA of
-        [] ->
-            first
-
-        next :: rest ->
-            if next == a then
-                Maybe.withDefault first (List.head rest)
-
-            else
-                nextAfterHelp a first rest

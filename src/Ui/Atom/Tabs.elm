@@ -8,14 +8,12 @@ module Ui.Atom.Tabs exposing (Config, view)
 
 import Element exposing (Element)
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
-import Ui.Atom
 import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography

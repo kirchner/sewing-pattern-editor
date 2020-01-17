@@ -30,12 +30,10 @@ module Axis2d.Extra exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import Angle
 import Axis2d exposing (Axis2d)
 import Direction2d
 import Length exposing (Meters)
 import Point2d exposing (Point2d)
-import Vector2d
 
 
 {-| -}

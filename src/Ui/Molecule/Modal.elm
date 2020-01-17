@@ -35,7 +35,6 @@ import Element.Border as Border
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
-import Ui.Atom
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Theme.Spacing

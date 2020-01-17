@@ -30,44 +30,27 @@ module Page.Pattern exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import Accessibility.Widget as Widget
-import Api
-import Array
 import BoundingBox2d
-import Browser exposing (Document)
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
-import Circle2d
-import Color
-import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
 import Element.Lazy as Element
-import Element.Region as Region
-import Frame2d exposing (Frame2d)
-import Geometry.Svg as Svg
 import Git
-import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Html.Events.Extra.Mouse
 import Html.Events.Extra.Touch
-import Html.Lazy
 import Http
-import Json.Decode as Decode exposing (Decoder)
+import Json.Decode as Decode
 import Json.Decode.Pipeline as Decode
-import Json.Encode as Encode exposing (Value)
 import Length exposing (Meters)
-import LineSegment2d
 import List.Extra as List
-import Listbox exposing (Listbox)
-import Listbox.Dropdown as Dropdown exposing (Dropdown)
 import LocalStorage
 import Pattern
     exposing
@@ -83,21 +66,14 @@ import Pattern
         , Pattern
         , Point
         )
-import Pattern.Store exposing (StoredPattern)
 import Pixels
 import Point2d exposing (Point2d)
-import Polygon2d exposing (Polygon2d)
 import Process
 import Quantity
 import Route
 import State
 import StateResult
-import Svg exposing (Svg)
-import Svg.Attributes
-import Svg.Events
-import Svg.Lazy as Svg
 import Task
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Atom.Object exposing (Resolution)
@@ -112,10 +88,7 @@ import Ui.Theme.Color
 import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
-import Url exposing (Url)
-import Url.Builder
 import Vector2d
-import VoronoiDiagram2d
 
 
 
@@ -1029,19 +1002,19 @@ viewSelectedObject count index object =
                     , Element.spacing Ui.Theme.Spacing.level1
                     ]
                     [ case object of
-                        Point aPoint ->
+                        Point _ ->
                             Ui.Atom.Icon.point
 
-                        Axis aAxis ->
+                        Axis _ ->
                             Ui.Atom.Icon.axis
 
-                        Circle aCircle ->
+                        Circle _ ->
                             Ui.Atom.Icon.circle
 
-                        Curve aCurve ->
+                        Curve _ ->
                             Ui.Atom.Icon.curve
 
-                        Detail aDetail ->
+                        Detail _ ->
                             Ui.Atom.Icon.detail
                     , Ui.Theme.Typography.bodyBold name
                     ]
@@ -1826,7 +1799,7 @@ updateLoading msg data =
     case msg of
         ReceivedPatternData result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok patternData ->
@@ -1834,7 +1807,7 @@ updateLoading msg data =
 
         ReceivedMeta result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok meta ->
@@ -1842,7 +1815,7 @@ updateLoading msg data =
 
         ReceivedPermissions result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok permissions ->
@@ -1891,7 +1864,7 @@ updateLoaded :
     -> Msg
     -> LoadedData
     -> ( LoadedData, Cmd Msg )
-updateLoaded key domain clientId device identity msg model =
+updateLoaded _ domain clientId device identity msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -1901,7 +1874,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedPatternData result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )
@@ -1916,7 +1889,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedSha result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model, Cmd.none )
 
                 Ok newSha ->
@@ -1927,21 +1900,14 @@ updateLoaded key domain clientId device identity msg model =
                     , Cmd.none
                     )
 
-        ReceivedPatternUpdate result ->
-            case result of
-                Err error ->
-                    ( model
-                    , Cmd.none
-                    )
-
-                Ok _ ->
-                    ( model
-                    , Cmd.none
-                    )
+        ReceivedPatternUpdate _ ->
+            ( model
+            , Cmd.none
+            )
 
         ReceivedMeta result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )
@@ -1953,7 +1919,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedPermissions result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )
@@ -2118,7 +2084,7 @@ updateLoaded key domain clientId device identity msg model =
             , Cmd.none
             )
 
-        UserPressedHideObject object ->
+        UserPressedHideObject _ ->
             ( model, Cmd.none )
 
         UserPressedEditObject object ->
@@ -2453,7 +2419,7 @@ updateLoaded key domain clientId device identity msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-                Just (CreateObject dialog) ->
+                Just (CreateObject _) ->
                     ( model, Cmd.none )
 
                 Just (EditObject name dialog) ->
@@ -2662,7 +2628,7 @@ updateLoaded key domain clientId device identity msg model =
         -- MODALS
         UserPressedPointDeleteModalDelete ->
             case model.maybeModal of
-                Just ( PointDeleteConfirm aPoint, state ) ->
+                Just ( PointDeleteConfirm aPoint, _ ) ->
                     let
                         newPattern =
                             Pattern.removePoint aPoint model.pattern
@@ -2684,7 +2650,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedAxisDeleteModalDelete ->
             case model.maybeModal of
-                Just ( AxisDeleteConfirm aAxis, state ) ->
+                Just ( AxisDeleteConfirm aAxis, _ ) ->
                     let
                         newPattern =
                             Pattern.removeAxis aAxis model.pattern
@@ -2706,7 +2672,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedCircleDeleteModalDelete ->
             case model.maybeModal of
-                Just ( CircleDeleteConfirm aCircle, state ) ->
+                Just ( CircleDeleteConfirm aCircle, _ ) ->
                     let
                         newPattern =
                             Pattern.removeCircle aCircle model.pattern
@@ -2728,7 +2694,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedCurveDeleteModalDelete ->
             case model.maybeModal of
-                Just ( CurveDeleteConfirm aCurve, state ) ->
+                Just ( CurveDeleteConfirm aCurve, _ ) ->
                     let
                         newPattern =
                             Pattern.removeCurve aCurve model.pattern
@@ -2750,7 +2716,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedDetailDeleteModalDelete ->
             case model.maybeModal of
-                Just ( DetailDeleteConfirm aDetail, state ) ->
+                Just ( DetailDeleteConfirm aDetail, _ ) ->
                     let
                         newPattern =
                             Pattern.removeDetail aDetail model.pattern
@@ -2772,7 +2738,7 @@ updateLoaded key domain clientId device identity msg model =
 
         UserPressedVariableDeleteModalDelete ->
             case model.maybeModal of
-                Just ( VariableDeleteConfirm variable, state ) ->
+                Just ( VariableDeleteConfirm variable, _ ) ->
                     let
                         newPattern =
                             Pattern.removeVariable variable model.pattern
@@ -2807,7 +2773,7 @@ updateLoaded key domain clientId device identity msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-                Just ( modal, state ) ->
+                Just ( modal, _ ) ->
                     ( { model | maybeModal = Just ( modal, Ui.Molecule.Modal.Closing ) }
                     , Cmd.none
                     )
@@ -3152,7 +3118,7 @@ actualCenter model =
                             }
                     )
 
-        DragWithTwoTouchPoints { startA, currentA, startB, currentB } ->
+        DragWithTwoTouchPoints { startA, currentA } ->
             -- TODO implement this properly
             model.center
                 |> Point2d.translateBy
@@ -3183,7 +3149,7 @@ dragging model =
         DragWithOneTouchPoint { start, current } ->
             start /= current
 
-        DragWithTwoTouchPoints { startA, currentA, startB, currentB } ->
+        DragWithTwoTouchPoints { startA, currentA } ->
             -- TODO implement this properly
             startA /= currentA
 

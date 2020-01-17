@@ -15,10 +15,8 @@ module Detail2d exposing
 -}
 
 import BoundingBox2d exposing (BoundingBox2d)
-import Camera3d exposing (Camera3d)
 import List.Extra as List
 import Point2d exposing (Point2d)
-import Point3d exposing (Point3d)
 import Quantity exposing (Quantity, Rate)
 import Vector2d exposing (Vector2d)
 

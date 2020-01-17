@@ -76,12 +76,10 @@ import Pattern
         )
 import Result.Extra as Result
 import Ui.Atom
-import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Organism.Dialog.Detail as Detail exposing (ActionMenu(..))
 import Ui.Organism.Dialog.Intersectable as Intersectable
 import Ui.Organism.Dialog.OtherPoint as OtherPoint
-import Ui.Theme.Color
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
@@ -167,7 +165,7 @@ type alias Objects =
 
 {-| -}
 createSelection : Create -> ObjectReferences
-createSelection model =
+createSelection _ =
     { points = []
     , axes = []
     , circles = []
@@ -178,7 +176,7 @@ createSelection model =
 
 {-| -}
 createPreview : Create -> Objects
-createPreview model =
+createPreview _ =
     { points = []
     , axes = []
     , circles = []
@@ -189,19 +187,19 @@ createPreview model =
 
 {-| -}
 createHovered : Create -> Maybe ThatObject
-createHovered model =
+createHovered _ =
     Nothing
 
 
 {-| -}
 createFocused : Create -> Maybe ThatObject
-createFocused model =
+createFocused _ =
     Nothing
 
 
 {-| -}
 editSelection : Edit -> ObjectReferences
-editSelection model =
+editSelection _ =
     { points = []
     , axes = []
     , circles = []
@@ -212,7 +210,7 @@ editSelection model =
 
 {-| -}
 editPreview : Edit -> Objects
-editPreview model =
+editPreview _ =
     { points = []
     , axes = []
     , circles = []
@@ -223,13 +221,13 @@ editPreview model =
 
 {-| -}
 editHovered : Edit -> Maybe ThatObject
-editHovered model =
+editHovered _ =
     Nothing
 
 
 {-| -}
 editFocused : Edit -> Maybe ThatObject
-editFocused model =
+editFocused _ =
     Nothing
 
 
@@ -344,17 +342,16 @@ createPoint =
 {-| -}
 createPointWith : Pattern coordinates -> Pattern.Point -> Maybe Create
 createPointWith pattern point =
-    case initPointFormWith pattern (Pattern.this point) of
-        Nothing ->
-            Nothing
-
-        Just pointForm ->
-            Just <|
-                Create
-                    { name = ""
-                    , nameHelp = Nothing
-                    , dialog = DialogPoint pointForm
-                    }
+    let
+        toCreate pointForm =
+            Create
+                { name = ""
+                , nameHelp = Nothing
+                , dialog = DialogPoint pointForm
+                }
+    in
+    initPointFormWith pattern (Pattern.this point)
+        |> Maybe.map toCreate
 
 
 {-| -}
@@ -423,7 +420,7 @@ initPointFormWith pattern aPoint =
 
         Just info ->
             case info of
-                Origin stuff ->
+                Origin _ ->
                     Nothing
 
                 FromOnePoint stuff ->
@@ -498,10 +495,15 @@ initPointFormWith pattern aPoint =
                         (Intersectable.initWith initIntersectable pattern stuff.intersectableA)
                         (Intersectable.initWith initIntersectable pattern stuff.intersectableB)
 
-                TransformedPoint stuff ->
+                TransformedPoint _ ->
                     Nothing
 
 
+initIntersectable :
+    { axis : Pattern coordinates2 -> A Axis -> Maybe AxisForm
+    , circle : Pattern coordinates1 -> A Circle -> Maybe CircleForm
+    , curve : Pattern coordinates -> A Curve -> Maybe CurveForm
+    }
 initIntersectable =
     { axis = initAxisFormWith
     , circle = initCircleFormWith
@@ -557,7 +559,7 @@ initAxisFormWith pattern aAxis =
                 (OtherPoint.initWith initPointFormWith pattern stuff.pointA)
                 (OtherPoint.initWith initPointFormWith pattern stuff.pointB)
 
-        Just (TransformedAxis stuff) ->
+        Just (TransformedAxis _) ->
             Nothing
 
 
@@ -611,7 +613,7 @@ initCircleFormWith pattern aCircle =
                 (OtherPoint.initWith initPointFormWith pattern stuff.pointB)
                 (OtherPoint.initWith initPointFormWith pattern stuff.pointC)
 
-        Just (TransformedCircle stuff) ->
+        Just (TransformedCircle _) ->
             Nothing
 
 
@@ -686,24 +688,23 @@ initCurveFormWith pattern aCurve =
                         (OtherPoint.initWith initPointFormWith pattern stuff.endControlPoint)
                         (OtherPoint.initWith initPointFormWith pattern stuff.endPoint)
 
-                TransformedCurve stuff ->
+                TransformedCurve _ ->
                     Nothing
 
 
 {-| -}
 editDetail : Pattern coordinates -> A Pattern.Detail -> Maybe Edit
 editDetail pattern aDetail =
-    case Detail.initWith (OtherPoint.initWith initPointFormWith) pattern aDetail of
-        Nothing ->
-            Nothing
-
-        Just form ->
-            Just <|
-                EditDetail
-                    { aDetail = aDetail
-                    , form = form
-                    , objects = Pattern.objectsNotDependingOnDetail pattern aDetail
-                    }
+    let
+        toDetail form =
+            EditDetail
+                { aDetail = aDetail
+                , form = form
+                , objects = Pattern.objectsNotDependingOnDetail pattern aDetail
+                }
+    in
+    Detail.initWith (OtherPoint.initWith initPointFormWith) pattern aDetail
+        |> Maybe.map toDetail
 
 
 
@@ -1061,6 +1062,23 @@ viewPointFormHelp pattern objects { point, id } =
         }
 
 
+viewIntersectable :
+    { axis :
+        Pattern coordinates2
+        -> Pattern.Objects
+        -> { axis : AxisForm, id : String }
+        -> Element AxisMsg
+    , circle :
+        Pattern coordinates1
+        -> Pattern.Objects
+        -> { circle : CircleForm, id : String }
+        -> Element CircleMsg
+    , curve :
+        Pattern coordinates
+        -> Pattern.Objects
+        -> { curve : CurveForm, id : String }
+        -> Element CurveMsg
+    }
 viewIntersectable =
     { axis = viewAxisFormHelp
     , circle = viewCircleFormHelp
@@ -1622,6 +1640,7 @@ viewTwoPointsPosition { twoPointsPosition, id } =
         }
 
 
+nested : List (Element msg) -> Maybe (Ui.Atom.Input.Child msg)
 nested =
     Just
         << Ui.Atom.Input.nested
@@ -2171,6 +2190,29 @@ updatePointForm pattern objects pointMsg form =
             ( form, Cmd.none )
 
 
+intersectableUpdateConfig :
+    { initAxis : AxisForm
+    , initCircle : CircleForm
+    , initCurve : CurveForm
+    , updateAxis :
+        Pattern coordinates2
+        -> Pattern.Objects
+        -> AxisMsg
+        -> AxisForm
+        -> ( AxisForm, Cmd AxisMsg )
+    , updateCircle :
+        Pattern coordinates1
+        -> Pattern.Objects
+        -> CircleMsg
+        -> CircleForm
+        -> ( CircleForm, Cmd CircleMsg )
+    , updateCurve :
+        Pattern coordinates
+        -> Pattern.Objects
+        -> CurveMsg
+        -> CurveForm
+        -> ( CurveForm, Cmd CurveMsg )
+    }
 intersectableUpdateConfig =
     { updateAxis = updateAxisForm
     , updateCircle = updateCircleForm
@@ -2622,6 +2664,11 @@ newPointFrom form pattern =
                 |> Result.mapError IntersectionForm
 
 
+newIntersectable :
+    { axis : AxisForm -> Pattern coordinates2 -> Result AxisForm Axis
+    , circle : CircleForm -> Pattern coordinates1 -> Result CircleForm Circle
+    , curve : CurveForm -> Pattern coordinates -> Result CurveForm Curve
+    }
 newIntersectable =
     { axis = newAxisFrom
     , circle = newCircleFrom
@@ -3029,7 +3076,7 @@ printComputeHelp computeHelp =
         AxisAndCircleDoNotIntersect ->
             "An axis and a circle do not intersect."
 
-        WhichMustBeBetween from to ->
+        WhichMustBeBetween _ _ ->
             "The intersection does not exist."
 
         ExprHelp exprHelp ->
@@ -3045,19 +3092,23 @@ printComputeHelp computeHelp =
 printExprHelp : ExprHelp -> String
 printExprHelp exprHelp =
     case exprHelp of
-        SyntaxHelp deadEnds ->
+        SyntaxHelp _ ->
             "There is a syntactical error."
 
         UnknownFunction function ->
             "I do not know the function ‘" ++ function ++ "’."
 
-        WrongArguments { function, args } ->
+        WrongArguments { function } ->
             "The function ‘" ++ function ++ "’ cannot handle one of its arguments."
 
         CannotComputeFunction function ->
             "I could not compute the value of the function ‘" ++ function ++ "’."
 
 
+addTwoPointsPositionRatioHelp :
+    Pattern.BetweenRatioHelp
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
 addTwoPointsPositionRatioHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionRatio stuff_ ->
@@ -3076,6 +3127,10 @@ addTwoPointsPositionRatioHelp help stuff =
             stuff
 
 
+addTwoPointsPositionFromAHelp :
+    Pattern.BetweenLengthHelp
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
 addTwoPointsPositionFromAHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionFromA stuff_ ->
@@ -3094,6 +3149,10 @@ addTwoPointsPositionFromAHelp help stuff =
             stuff
 
 
+addTwoPointsPositionFromBHelp :
+    Pattern.BetweenLengthHelp
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
+    -> { stuff | twoPointsPosition : TwoPointsPosition }
 addTwoPointsPositionFromBHelp help stuff =
     case stuff.twoPointsPosition of
         TwoPointsPositionFromB stuff_ ->
@@ -3112,6 +3171,10 @@ addTwoPointsPositionFromBHelp help stuff =
             stuff
 
 
+addBasePointsCoincideHelp :
+    { help | basePointsCoincide : Bool }
+    -> { stuff | pointsHelp : Maybe String }
+    -> { stuff | pointsHelp : Maybe String }
 addBasePointsCoincideHelp help stuff =
     if help.basePointsCoincide then
         { stuff | pointsHelp = Just "You must pick two different points" }
@@ -3120,6 +3183,10 @@ addBasePointsCoincideHelp help stuff =
         stuff
 
 
+addPointsCoincideHelp :
+    Pattern.ThroughThreePointsHelp
+    -> { stuff | pointsHelp : Maybe String }
+    -> { stuff | pointsHelp : Maybe String }
 addPointsCoincideHelp help stuff =
     if help.pointsCoincide then
         { stuff | pointsHelp = Just "These points must not lie on an axis" }
@@ -3128,6 +3195,18 @@ addPointsCoincideHelp help stuff =
         stuff
 
 
+addRadiusHelp :
+    Pattern.WithRadiusHelp
+    ->
+        { centerPoint : OtherPoint.Form PointForm
+        , radius : String
+        , radiusHelp : Maybe String
+        }
+    ->
+        { centerPoint : OtherPoint.Form PointForm
+        , radius : String
+        , radiusHelp : Maybe String
+        }
 addRadiusHelp help stuff =
     case help.computeRadius of
         Nothing ->
@@ -3189,6 +3268,11 @@ clearPointForm form =
                 }
 
 
+clearIntersectable :
+    { axis : AxisForm -> AxisForm
+    , circle : CircleForm -> CircleForm
+    , curve : CurveForm -> CurveForm
+    }
 clearIntersectable =
     { axis = clearAxisForm
     , circle = clearCircleForm
@@ -3461,13 +3545,13 @@ editUpdate pattern msg edit =
 
 {-| -}
 createSubscriptions : Create -> Sub CreateMsg
-createSubscriptions model =
+createSubscriptions _ =
     Sub.none
 
 
 {-| -}
 editSubscriptions : Edit -> Sub EditMsg
-editSubscriptions model =
+editSubscriptions _ =
     Sub.none
 
 

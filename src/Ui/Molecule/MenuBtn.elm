@@ -24,7 +24,6 @@ import Html.Events
 import Json.Decode as Decode exposing (Decoder)
 import List.Extra as List
 import Task
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Focus
@@ -107,12 +106,12 @@ type alias Colors =
 
 {-| -}
 view : Colors -> Config action msg -> State -> Element msg
-view colors ({ id, onMsg, openUpwards, actions } as config) ((State { last, selected, open }) as state) =
+view colors ({ id, onMsg, openUpwards, actions } as config) ((State { last, open }) as state) =
     case List.getAt last actions of
         Nothing ->
             Element.none
 
-        Just { icon, label, action } ->
+        Just { icon, action } ->
             Element.row
                 [ Element.spacing 0
                 , if openUpwards then

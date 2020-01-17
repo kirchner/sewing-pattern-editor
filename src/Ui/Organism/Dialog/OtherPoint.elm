@@ -18,7 +18,6 @@ module Ui.Organism.Dialog.OtherPoint exposing
 
 import Element exposing (Element)
 import Pattern exposing (A, Objects, Pattern, Point)
-import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Input
 import Ui.Theme.Typography
@@ -244,7 +243,7 @@ view viewPointFormHelp pattern objects { otherPoint, id, label } =
         , selected = tagFromForm otherPoint
         , child =
             case otherPoint of
-                Referenced { dropdown, maybeAPoint, help } ->
+                Referenced { dropdown, maybeAPoint } ->
                     Just <|
                         Ui.Atom.Dropdown.viewAppended
                             { entryToString = objectName

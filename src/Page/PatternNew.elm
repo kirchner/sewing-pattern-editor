@@ -23,16 +23,13 @@ import Http
 import LocalStorage
 import Pattern exposing (Pattern)
 import RemoteData exposing (WebData)
-import Route exposing (Route)
+import Route
 import String.Extra as String
-import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Molecule.TopBar
 import Ui.Theme.Color
-import Ui.Theme.Focus
 import Ui.Theme.Spacing
 import Ui.Theme.Typography
-import Url.Builder
 
 
 
@@ -186,60 +183,6 @@ viewNew device identity model =
             , backToLabel = Just "Back to patterns"
             }
         , viewContent identity model
-        ]
-
-
-viewTopBar_ : Git.Identity -> Element Msg
-viewTopBar_ identity =
-    Element.row
-        [ Element.width Element.fill
-        , Element.height (Element.px (2 * Ui.Theme.Spacing.level7))
-        , Background.color Ui.Theme.Color.secondary
-        , Element.inFront <|
-            Element.el
-                [ Element.centerX
-                , Element.width
-                    (Element.fill
-                        |> Element.maximum 780
-                    )
-                , Element.height Element.fill
-                , Element.padding (7 + Ui.Theme.Spacing.level1)
-                ]
-                (Element.el
-                    [ Element.centerY ]
-                    (Ui.Theme.Typography.headingOne "Create a new pattern")
-                )
-        ]
-        [ Element.el [ Element.padding Ui.Theme.Spacing.level4 ] <|
-            Ui.Theme.Focus.outline <|
-                Element.link
-                    [ Font.color Ui.Theme.Color.primary
-                    , Element.mouseOver
-                        [ Font.color Ui.Theme.Color.primaryDark ]
-                    ]
-                    { url = "/"
-                    , label =
-                        Element.row
-                            [ Element.spacing Ui.Theme.Spacing.level1 ]
-                            [ Ui.Atom.Icon.fa "arrow-left"
-                            , Ui.Theme.Typography.body "Back to patterns"
-                            ]
-                    }
-        , case identity of
-            Git.Anonymous ->
-                Element.el
-                    [ Element.paddingXY Ui.Theme.Spacing.level1 0
-                    , Element.alignRight
-                    ]
-                    (Ui.Atom.Input.btnPrimary
-                        { id = "sign-in-btn"
-                        , onPress = Just UserPressedSignIn
-                        , label = "Sign in via GitHub"
-                        }
-                    )
-
-            Git.OauthToken _ ->
-                Element.none
         ]
 
 
@@ -650,10 +593,10 @@ updateLoaded key domain clientId identity msg model =
                                 }
             )
 
-        ReceivedRepository _ _ _ (Err httpError) ->
+        ReceivedRepository _ _ _ (Err _) ->
             ( model, Cmd.none )
 
-        ReceivedRepository name description repo (Ok repository) ->
+        ReceivedRepository name description repo (Ok _) ->
             ( model
             , Git.putMeta identity
                 { repo = repo
@@ -667,7 +610,7 @@ updateLoaded key domain clientId identity msg model =
                 }
             )
 
-        ReceivedShaOfMeta _ (Err httpError) ->
+        ReceivedShaOfMeta _ (Err _) ->
             ( model, Cmd.none )
 
         ReceivedShaOfMeta repo (Ok _) ->
@@ -681,7 +624,7 @@ updateLoaded key domain clientId identity msg model =
                 }
             )
 
-        ReceivedShaOfPattern _ (Err httpError) ->
+        ReceivedShaOfPattern _ (Err _) ->
             ( model, Cmd.none )
 
         ReceivedShaOfPattern repo (Ok _) ->
@@ -728,7 +671,7 @@ updateLoaded key domain clientId identity msg model =
 
 {-| -}
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     LocalStorage.changedStore
         { changedZoom = \_ _ -> ChangedWhatever
         , changedCenter = \_ _ -> ChangedWhatever

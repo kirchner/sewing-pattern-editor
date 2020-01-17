@@ -14,20 +14,15 @@ module Page.Patterns exposing
 
 import Browser.Navigation
 import Element exposing (Element)
-import Element.Background as Background
-import Element.Font as Font
 import Git
 import Http
 import List.Extra as List
 import LocalStorage
 import Route
 import Time exposing (Posix)
-import Ui.Atom.Input
 import Ui.Molecule.PatternList
 import Ui.Molecule.TopBar
-import Ui.Theme.Color
 import Ui.Theme.Spacing
-import Ui.Theme.Typography
 
 
 
@@ -202,7 +197,7 @@ updateLoading identity msg model =
                 |> addMeta address meta
                 |> requestNextMeta identity
 
-        ReceivedMeta _ (Err httpError) ->
+        ReceivedMeta _ (Err _) ->
             model
                 |> requestNextMeta identity
 
@@ -240,7 +235,7 @@ updateLoaded key domain clientId msg model =
             , Browser.Navigation.pushUrl key "/new"
             )
 
-        UserPressedClone address ->
+        UserPressedClone _ ->
             ( model, Cmd.none )
 
         UserPressedSignIn ->
@@ -254,7 +249,7 @@ updateLoaded key domain clientId msg model =
 
 {-| -}
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     LocalStorage.changedStore
         { changedZoom = \_ _ -> ChangedWhatever
         , changedCenter = \_ _ -> ChangedWhatever

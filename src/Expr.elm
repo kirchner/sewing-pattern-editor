@@ -29,8 +29,24 @@ module Expr exposing
 -}
 
 import Char
-import Dict exposing (Dict)
-import Parser exposing (..)
+import Parser
+    exposing
+        ( (|.)
+        , (|=)
+        , DeadEnd
+        , Parser
+        , andThen
+        , backtrackable
+        , keyword
+        , lazy
+        , map
+        , number
+        , oneOf
+        , spaces
+        , succeed
+        , symbol
+        , variable
+        )
 import Set
 
 
@@ -65,6 +81,7 @@ parse reservedWords string =
     Parser.run (expr (keyWords ++ reservedWords)) string
 
 
+keyWords : List String
 keyWords =
     [ "max"
     , "if"

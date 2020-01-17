@@ -14,7 +14,6 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes
 import Pattern exposing (Pattern)
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing
@@ -68,6 +67,15 @@ view cfg pattern focusedVariable hoveredVariable =
         )
 
 
+name :
+    Config msg
+    -> Maybe String
+    -> Maybe String
+    ->
+        { header : Element msg
+        , view : String -> Element msg
+        , width : Element.Length
+        }
 name cfg focusedVariable hoveredVariable =
     { header = Element.none
     , width = Element.fill
@@ -90,6 +98,15 @@ name cfg focusedVariable hoveredVariable =
     }
 
 
+actions :
+    Config msg
+    -> Maybe String
+    -> Maybe String
+    ->
+        { header : Element msg
+        , view : String -> Element msg
+        , width : Element.Length
+        }
 actions cfg focusedVariable hoveredVariable =
     { header = Element.none
     , width = Element.shrink
@@ -141,6 +158,7 @@ actions cfg focusedVariable hoveredVariable =
     }
 
 
+backgroundColor : Maybe String -> Maybe String -> String -> Element.Attribute msg
 backgroundColor focusedVariable hoveredVariable variable =
     Background.color <|
         if focusedVariable == Just variable then
@@ -153,7 +171,8 @@ backgroundColor focusedVariable hoveredVariable variable =
             Ui.Theme.Color.white
 
 
-fontColor focusedVariable hoveredVariable variable =
+fontColor : Maybe String -> Maybe String -> String -> Element.Attribute msg
+fontColor focusedVariable _ variable =
     Font.color <|
         if focusedVariable == Just variable then
             Ui.Theme.Color.white

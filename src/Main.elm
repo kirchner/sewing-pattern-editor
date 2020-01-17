@@ -22,31 +22,20 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
-import Dict exposing (Dict)
 import Element exposing (Element)
-import Element.Background as Background
 import Element.Font as Font
 import Git
 import Html exposing (Html)
-import Html.Attributes
 import Http
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline as Decode
-import Json.Encode as Encode exposing (Value)
+import Json.Decode as Decode
 import Page.Details as Details
 import Page.Pattern as Pattern
 import Page.PatternNew as PatternNew
 import Page.Patterns as Patterns
 import Pattern exposing (Pattern)
-import Ports
 import RemoteData exposing (WebData)
 import Route exposing (Route)
 import Task
-import Ui.Atom
-import Ui.Atom.Input
-import Ui.Molecule.Modal
-import Ui.Theme.Color
-import Ui.Theme.Spacing
 import Url exposing (Url)
 import Url.Builder
 
@@ -162,7 +151,7 @@ view model =
                 ]
             }
 
-        Loading data ->
+        Loading _ ->
             { title = "Requesting GitHub API Access Token..."
             , body =
                 [ viewHelp <|
@@ -184,7 +173,7 @@ view model =
 
                 Patterns patternsModel ->
                     let
-                        { title, body, dialog } =
+                        { title, body } =
                             Patterns.view data.device data.identity patternsModel
                     in
                     { title = title
@@ -193,7 +182,7 @@ view model =
 
                 PatternNew newModel ->
                     let
-                        { title, body, dialog } =
+                        { title, body } =
                             PatternNew.view data.device data.identity newModel
                     in
                     { title = title
@@ -202,7 +191,7 @@ view model =
 
                 Pattern patternModel ->
                     let
-                        { title, body, dialog } =
+                        { title, body } =
                             Pattern.view data.device data.identity patternModel
                     in
                     { title = title
@@ -211,7 +200,7 @@ view model =
 
                 Details detailsModel ->
                     let
-                        { title, body, dialog } =
+                        { title, body } =
                             Details.view data.device data.identity detailsModel
                     in
                     { title = title
@@ -264,7 +253,7 @@ update msg model =
     case model of
         RequestingClientId data ->
             case msg of
-                ReceivedClientId (Err httpError) ->
+                ReceivedClientId (Err _) ->
                     ( model, Cmd.none )
 
                 ReceivedClientId (Ok clientId) ->

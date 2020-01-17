@@ -14,7 +14,7 @@ module Ui.Theme.Typography exposing
 
 -}
 
-import Element exposing (Attribute, Element)
+import Element exposing (Element)
 import Element.Font as Font
 import Element.Region as Region
 

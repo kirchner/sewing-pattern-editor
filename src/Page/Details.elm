@@ -44,24 +44,19 @@ import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Input as Input
 import Geometry.Svg as Svg
 import Geometry.Svg.Extra as Svg
 import Git
-import Html exposing (Html)
+import Html
 import Html.Attributes
 import Http
 import Length
-import LineSegment2d
-import LineSegment3d
-import LineSegment3d.Projection
 import List.Extra as List
 import LocalStorage
 import Pattern exposing (Pattern)
 import Pixels
 import Point2d
 import Point3d
-import Polygon2d
 import Ports
 import Quantity
 import Rectangle2d
@@ -176,7 +171,7 @@ initLoaded :
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded device address sha pattern meta permissions =
+initLoaded _ address sha pattern meta permissions =
     ( Loaded
         { address = address
         , permissions = permissions
@@ -206,7 +201,7 @@ view :
     -> Git.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view device identity model =
+view _ _ model =
     case model of
         Loading _ ->
             statusMsg "Loading pattern..." "Loading pattern..."
@@ -216,7 +211,7 @@ view device identity model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor - Details"
-            , body = viewDetails device identity data
+            , body = viewDetails data
             , dialog = Nothing
             }
 
@@ -233,8 +228,8 @@ statusMsg title text =
 ---- EDITOR
 
 
-viewDetails : Element.Device -> Git.Identity -> LoadedData -> Element Msg
-viewDetails device identity model =
+viewDetails : LoadedData -> Element Msg
+viewDetails model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -616,7 +611,7 @@ update :
     -> Msg
     -> Model
     -> ( Model, Cmd Msg )
-update key domain clientId device identity msg model =
+update _ _ _ device _ msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
@@ -640,7 +635,7 @@ update key domain clientId device identity msg model =
             ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded key domain clientId device identity msg data
+            updateLoaded msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -649,7 +644,7 @@ updateLoading msg data =
     case msg of
         ReceivedPatternData result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok patternData ->
@@ -657,7 +652,7 @@ updateLoading msg data =
 
         ReceivedMeta result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok meta ->
@@ -665,7 +660,7 @@ updateLoading msg data =
 
         ReceivedPermissions result ->
             case result of
-                Err error ->
+                Err _ ->
                     Error
 
                 Ok permissions ->
@@ -705,20 +700,12 @@ updateLoading msg data =
             Loading data
 
 
-updateLoaded :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Element.Device
-    -> Git.Identity
-    -> Msg
-    -> LoadedData
-    -> ( LoadedData, Cmd Msg )
-updateLoaded key domain clientId device identity msg model =
+updateLoaded : Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded msg model =
     case msg of
         ReceivedPatternData result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )
@@ -733,7 +720,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedSha result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model, Cmd.none )
 
                 Ok newSha ->
@@ -743,7 +730,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedMeta result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )
@@ -755,7 +742,7 @@ updateLoaded key domain clientId device identity msg model =
 
         ReceivedPermissions result ->
             case result of
-                Err error ->
+                Err _ ->
                     ( model
                     , Cmd.none
                     )

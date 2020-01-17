@@ -38,7 +38,6 @@ import Pattern
         , Pattern
         , Point
         )
-import Ui.Atom
 import Ui.Atom.Dropdown exposing (Dropdown)
 import Ui.Atom.Icon
 import Ui.Atom.Input
@@ -602,7 +601,7 @@ new newPoint checkPoint form pattern =
 
         toDetail firstCurve nextCurves lastCurve =
             Pattern.detail firstCurve nextCurves lastCurve pattern
-                |> Result.mapError (\detailHelp -> form)
+                |> Result.mapError (\_ -> form)
     in
     getFirstCurve
 
@@ -895,7 +894,7 @@ checkNextCurve checkPoint pattern form =
                     , endPoint = check stuff.endPoint
                 }
 
-        NReferenced stuff ->
+        NReferenced _ ->
             form
 
 
@@ -988,7 +987,7 @@ checkLastCurve checkPoint pattern form =
                     , endControlPoint = checkPoint pattern stuff.endControlPoint
                 }
 
-        LReferenced stuff ->
+        LReferenced _ ->
             form
 
 
@@ -1318,7 +1317,7 @@ viewNextCurve :
     -> Int
     -> ( NCurve point, ActionMenu )
     -> Element (Msg pointMsg)
-viewNextCurve viewPointHelp pattern objects id index ( form, actionMenu ) =
+viewNextCurve viewPointHelp pattern objects id index ( form, _ ) =
     let
         viewNStraight stuff =
             [ Element.map (NextCurveEndPointMsg index) <|
@@ -1632,15 +1631,15 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 FCubic stuff ->
                     updateStartPoint FCubic stuff
 
-                FReferenced stuff ->
+                FReferenced _ ->
                     ( detail, Cmd.none )
 
         FirstCurveStartControlPointMsg pointMsg ->
             case Tuple.first detail.firstCurve of
-                FStraight stuff ->
+                FStraight _ ->
                     ( detail, Cmd.none )
 
-                FQuadratic stuff ->
+                FQuadratic _ ->
                     ( detail, Cmd.none )
 
                 FCubic stuff ->
@@ -1657,12 +1656,12 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map FirstCurveStartControlPointMsg subCmd
                     )
 
-                FReferenced stuff ->
+                FReferenced _ ->
                     ( detail, Cmd.none )
 
         FirstCurveControlPointMsg pointMsg ->
             case Tuple.first detail.firstCurve of
-                FStraight stuff ->
+                FStraight _ ->
                     ( detail, Cmd.none )
 
                 FQuadratic stuff ->
@@ -1679,18 +1678,18 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map FirstCurveControlPointMsg subCmd
                     )
 
-                FCubic stuff ->
+                FCubic _ ->
                     ( detail, Cmd.none )
 
-                FReferenced stuff ->
+                FReferenced _ ->
                     ( detail, Cmd.none )
 
         FirstCurveEndControlPointMsg pointMsg ->
             case Tuple.first detail.firstCurve of
-                FStraight stuff ->
+                FStraight _ ->
                     ( detail, Cmd.none )
 
-                FQuadratic stuff ->
+                FQuadratic _ ->
                     ( detail, Cmd.none )
 
                 FCubic stuff ->
@@ -1707,7 +1706,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map FirstCurveEndControlPointMsg subCmd
                     )
 
-                FReferenced stuff ->
+                FReferenced _ ->
                     ( detail, Cmd.none )
 
         FirstCurveEndPointMsg pointMsg ->
@@ -1736,7 +1735,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 FCubic stuff ->
                     updateEndPoint FCubic stuff
 
-                FReferenced stuff ->
+                FReferenced _ ->
                     ( detail, Cmd.none )
 
         FirstCurveDropdownMsg dropdownMsg ->
@@ -1784,7 +1783,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 _ ->
                     ( detail, Cmd.none )
 
-        FirstCurveActionMenuMsg actionMenuMsg ->
+        FirstCurveActionMenuMsg _ ->
             ( detail, Cmd.none )
 
         -- NEXT CURVE
@@ -1793,7 +1792,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 Nothing ->
                     ( detail, Cmd.none )
 
-                Just ( nextCurve, actionMenu ) ->
+                Just ( nextCurve, _ ) ->
                     ( if tagFromNCurve nextCurve == nextCurveTag then
                         detail
 
@@ -1841,7 +1840,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 Just ( NStraight _, _ ) ->
                     ( detail, Cmd.none )
 
-                Just ( NQuadratic stuff, _ ) ->
+                Just ( NQuadratic _, _ ) ->
                     ( detail, Cmd.none )
 
                 Just ( NCubic stuff, actionMenu ) ->
@@ -2044,7 +2043,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 _ ->
                     ( detail, Cmd.none )
 
-        NextCurveActionMenuMsg index actionMenuMsg ->
+        NextCurveActionMenuMsg _ _ ->
             ( detail, Cmd.none )
 
         -- LAST CURVE
@@ -2076,7 +2075,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 LStraight ->
                     ( detail, Cmd.none )
 
-                LQuadratic stuff ->
+                LQuadratic _ ->
                     ( detail, Cmd.none )
 
                 LCubic stuff ->
@@ -2093,7 +2092,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map LastCurveStartControlPointMsg subCmd
                     )
 
-                LReferenced stuff ->
+                LReferenced _ ->
                     ( detail, Cmd.none )
 
         LastCurveControlPointMsg pointMsg ->
@@ -2115,10 +2114,10 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map LastCurveControlPointMsg subCmd
                     )
 
-                LCubic stuff ->
+                LCubic _ ->
                     ( detail, Cmd.none )
 
-                LReferenced stuff ->
+                LReferenced _ ->
                     ( detail, Cmd.none )
 
         LastCurveEndControlPointMsg pointMsg ->
@@ -2126,7 +2125,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 LStraight ->
                     ( detail, Cmd.none )
 
-                LQuadratic stuff ->
+                LQuadratic _ ->
                     ( detail, Cmd.none )
 
                 LCubic stuff ->
@@ -2143,7 +2142,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                     , Cmd.map LastCurveEndControlPointMsg subCmd
                     )
 
-                LReferenced stuff ->
+                LReferenced _ ->
                     ( detail, Cmd.none )
 
         LastCurveDropdownMsg dropdownMsg ->
@@ -2191,7 +2190,7 @@ update pointUpdate initPoint pattern objects detailMsg detail =
                 _ ->
                     ( detail, Cmd.none )
 
-        LastCurveActionMenuMsg actionMenuMsg ->
+        LastCurveActionMenuMsg _ ->
             ( detail, Cmd.none )
 
 

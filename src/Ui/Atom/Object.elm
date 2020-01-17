@@ -29,7 +29,6 @@ import Angle
 import Axis2d exposing (Axis2d)
 import BoundingBox2d
 import Circle2d exposing (Circle2d)
-import CubicSpline2d exposing (CubicSpline2d)
 import Curve2d exposing (Curve2d)
 import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Direction2d
@@ -38,18 +37,15 @@ import Geometry.Svg as Svg
 import Geometry.Svg.Extra as Svg
 import Json.Decode as Decode
 import Length exposing (Meters)
-import LineSegment2d exposing (LineSegment2d)
+import LineSegment2d
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
-import QuadraticSpline2d exposing (QuadraticSpline2d)
 import Quantity exposing (Quantity, Rate)
-import Rectangle2d
 import Svg exposing (Attribute, Svg)
 import Svg.Attributes
 import Svg.Events
 import Ui.Theme.Color
 import Vector2d
-import VirtualDom
 
 
 {-| -}
@@ -731,60 +727,6 @@ circleLabel label circle2d =
         [ Svg.text label ]
 
 
-circleInfo : Circle coordinates -> Resolution -> Bool -> Bool -> Svg msg
-circleInfo circle resolution focused hovered =
-    case circle.info of
-        Nothing ->
-            Svg.text ""
-
-        Just (WithRadius info) ->
-            let
-                centerPoint2d =
-                    Point2d.at resolution info.centerPoint.point2d
-            in
-            pointReferenced centerPoint2d hovered
-
-        Just (ThroughThreePoints info) ->
-            let
-                pointA2d =
-                    Point2d.at resolution info.pointA.point2d
-
-                pointB2d =
-                    Point2d.at resolution info.pointB.point2d
-
-                pointC2d =
-                    Point2d.at resolution info.pointC.point2d
-            in
-            Svg.g []
-                [ pointInfo 3 info.pointA resolution focused hovered
-                , pointInfo 3 info.pointB resolution focused hovered
-                , pointInfo 3 info.pointC resolution focused hovered
-                , pointReferenced pointA2d hovered
-                , pointReferenced pointB2d hovered
-                , pointReferenced pointC2d hovered
-                ]
-
-
-circleReferenced : Circle2d Pixels coordinates -> Bool -> Bool -> Svg msg
-circleReferenced circle2d focused hovered =
-    Svg.circle2d
-        [ Svg.Attributes.stroke <|
-            if hovered then
-                toColor Ui.Theme.Color.primary
-
-            else
-                toColor Ui.Theme.Color.black
-        , Svg.Attributes.strokeWidth <|
-            if focused then
-                "1.5"
-
-            else
-                "1"
-        , Svg.Attributes.fill "none"
-        ]
-        circle2d
-
-
 
 ---- CURVE
 
@@ -848,43 +790,6 @@ curveLabel label curve2d =
         [ Svg.text label ]
 
 
-curveInfo : Curve coordinates -> Resolution -> Bool -> Bool -> Svg msg
-curveInfo curve resolution focused hovered =
-    case curve.info of
-        Nothing ->
-            Svg.text ""
-
-        Just (LineSegment info) ->
-            Svg.g []
-                [ pointInfo 3 info.startPoint resolution focused hovered
-                , pointInfo 3 info.endPoint resolution focused hovered
-                , pointReferenced (Point2d.at resolution info.startPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.endPoint.point2d) hovered
-                ]
-
-        Just (QuadraticSpline info) ->
-            Svg.g []
-                [ pointInfo 3 info.firstControlPoint resolution focused hovered
-                , pointInfo 3 info.secondControlPoint resolution focused hovered
-                , pointInfo 3 info.thirdControlPoint resolution focused hovered
-                , pointReferenced (Point2d.at resolution info.firstControlPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.secondControlPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.thirdControlPoint.point2d) hovered
-                ]
-
-        Just (CubicSpline info) ->
-            Svg.g []
-                [ pointInfo 3 info.firstControlPoint resolution focused hovered
-                , pointInfo 3 info.secondControlPoint resolution focused hovered
-                , pointInfo 3 info.thirdControlPoint resolution focused hovered
-                , pointInfo 3 info.fourthControlPoint resolution focused hovered
-                , pointReferenced (Point2d.at resolution info.firstControlPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.secondControlPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.thirdControlPoint.point2d) hovered
-                , pointReferenced (Point2d.at resolution info.fourthControlPoint.point2d) hovered
-                ]
-
-
 
 ---- DETAIL
 
@@ -931,7 +836,7 @@ drawDetail name detail resolution focused hovered selected =
 
 
 detailLabel : String -> Detail2d Pixels coordinates -> Svg msg
-detailLabel label detail2d =
+detailLabel label _ =
     let
         labelPosition =
             Point2d.origin
@@ -945,43 +850,6 @@ detailLabel label detail2d =
         , Svg.Attributes.fill (toColor Ui.Theme.Color.primary)
         ]
         [ Svg.text label ]
-
-
-detailInfo : Detail coordinates -> Resolution -> Bool -> Bool -> Svg msg
-detailInfo detail resolution focused hovered =
-    let
-        detailPointInfo point =
-            [ pointInfo 3 point resolution focused hovered
-            , pointReferenced (Point2d.at resolution point.point2d) hovered
-            ]
-
-        detailCurveInfo curve =
-            [ Svg.text "TODO" ]
-    in
-    Svg.g []
-        [ Svg.g [] (List.concatMap detailPointInfo detail.points)
-        , Svg.g [] (List.concatMap detailCurveInfo detail.curves)
-        ]
-
-
-detailReferenced : Detail2d Pixels coordinates -> Bool -> Bool -> Svg msg
-detailReferenced detail2d focused hovered =
-    Svg.detail2d
-        [ Svg.Attributes.stroke <|
-            if hovered then
-                toColor Ui.Theme.Color.primary
-
-            else
-                toColor Ui.Theme.Color.black
-        , Svg.Attributes.strokeWidth <|
-            if focused then
-                "1.5"
-
-            else
-                "1"
-        , Svg.Attributes.fill "none"
-        ]
-        detail2d
 
 
 

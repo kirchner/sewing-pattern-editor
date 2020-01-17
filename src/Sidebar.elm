@@ -25,7 +25,6 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
 import Route
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Spacing

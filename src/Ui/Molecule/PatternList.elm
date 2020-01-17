@@ -4,7 +4,6 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
 import Time exposing (Posix)
-import Time.Distance
 import Ui.Atom.Input
 import Ui.Theme.Color
 import Ui.Theme.Focus
@@ -37,7 +36,7 @@ type alias Config msg =
 
 
 view : Config msg -> Element msg
-view { search, onSearchChange, onImport, onCreate, patternInfos, now } =
+view { search, onSearchChange, onCreate, patternInfos, now } =
     if List.isEmpty patternInfos then
         Element.column
             [ Element.spacing Ui.Theme.Spacing.level4
@@ -122,16 +121,14 @@ horizontalRule =
 
 
 viewPattern : Posix -> PatternInfo msg -> Element msg
-viewPattern now { name, description, storage, updatedAt, onClone } =
+viewPattern _ { name, description, storage } =
     let
-        uuid =
-            case storage of
-                LocalStorage slug ->
-                    "local-storage-" ++ slug
-
-                Github owner repo ->
-                    "github-" ++ owner ++ "-" ++ repo
-
+        --uuid =
+        --    case storage of
+        --        LocalStorage slug ->
+        --            "local-storage-" ++ slug
+        --        Github owner repo ->
+        --            "github-" ++ owner ++ "-" ++ repo
         url =
             case storage of
                 LocalStorage slug ->

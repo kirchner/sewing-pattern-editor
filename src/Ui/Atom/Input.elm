@@ -38,18 +38,16 @@ module Ui.Atom.Input exposing
 
 -}
 
-import Element exposing (Attr, Attribute, Decoration, Element)
+import Element exposing (Attr, Attribute, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input exposing (Label)
-import Html
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import List.Extra as List
-import Ui.Atom
 import Ui.Atom.Icon
 import Ui.Theme.Color
 import Ui.Theme.Focus
@@ -1083,7 +1081,7 @@ segment selectedTag thisTag position label =
         , Element.focused [ Border.color Ui.Theme.Color.primary ]
         ]
         (Element.el
-            ([ Element.centerX ] ++ userSelectNone)
+            (Element.centerX :: userSelectNone)
             (Element.map never label)
         )
 

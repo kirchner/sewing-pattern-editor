@@ -139,11 +139,6 @@ intersectionCircle circle1 circle2 =
             Circle2d.radius circle2
                 |> Length.inMeters
 
-        distance =
-            Point2d.distanceFrom
-                (Circle2d.centerPoint circle1)
-                (Circle2d.centerPoint circle2)
-
         a =
             2 * (x2 - x1)
 

@@ -17,7 +17,6 @@ import Axis3d exposing (Axis3d)
 import Camera3d exposing (Camera3d)
 import Detail2d exposing (Detail2d, LastCurve2d(..), NextCurve2d(..))
 import Maybe.Extra as Maybe
-import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3d.Projection
 import Rectangle2d exposing (Rectangle2d)

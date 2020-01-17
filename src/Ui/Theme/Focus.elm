@@ -12,10 +12,9 @@ module Ui.Theme.Focus exposing
 
 -}
 
-import Element exposing (Attr, Attribute, Decoration, Element)
+import Element exposing (Element)
 import Element.Border as Border
 import Ui.Theme.Color
-import Ui.Theme.Spacing
 
 
 {-| -}
