@@ -110,6 +110,10 @@ visibilityToString visibility =
             "private"
 
 
+
+---- INIT
+
+
 {-| -}
 init : Session -> Route.NewParameters -> ( Model, Cmd Msg )
 init session newParameters =
@@ -117,24 +121,20 @@ init session newParameters =
         cred =
             Session.githubCred session
     in
-    case cred of
+    ( initLoaded session newParameters Nothing
+    , case cred of
         Github.Anonymous ->
-            initLoaded session newParameters Nothing
+            Cmd.none
 
         Github.OauthToken _ ->
-            ( Loading
-                { session = session
-                , parameters = newParameters
-                , user = RemoteData.Loading
-                }
-            , Github.getAuthenticatedUser cred
+            Github.getAuthenticatedUser cred
                 { onUser = RemoteData.fromResult >> ReceivedAuthenticatedUser }
-            )
+    )
 
 
-initLoaded : Session -> Route.NewParameters -> Maybe String -> ( Model, Cmd Msg )
+initLoaded : Session -> Route.NewParameters -> Maybe String -> Model
 initLoaded session newParameters owner =
-    ( Loaded
+    Loaded
         { session = session
         , owner = owner
         , name = Maybe.withDefault "" newParameters.name
@@ -151,8 +151,6 @@ initLoaded session newParameters owner =
                 |> Maybe.withDefault Public
         , newAddress = Nothing
         }
-    , Cmd.none
-    )
 
 
 {-| -}
@@ -476,10 +474,14 @@ checkLoaded : LoadingData -> ( Model, Cmd Msg )
 checkLoaded data =
     case data.user of
         RemoteData.Success user ->
-            initLoaded data.session data.parameters (Just user.login)
+            ( initLoaded data.session data.parameters (Just user.login)
+            , Cmd.none
+            )
 
         RemoteData.NotAsked ->
-            initLoaded data.session data.parameters Nothing
+            ( initLoaded data.session data.parameters Nothing
+            , Cmd.none
+            )
 
         _ ->
             ( Loading data
