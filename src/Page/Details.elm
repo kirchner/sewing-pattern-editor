@@ -54,6 +54,7 @@ import Length
 import List.Extra as List
 import LocalStorage
 import Pattern exposing (Pattern)
+import Pattern.Viewport
 import Pixels
 import Point2d
 import Point3d
@@ -514,59 +515,36 @@ viewDetailLabel detail2d =
 
         Just boundingBox ->
             let
-                { minX, maxX, minY, maxY } =
-                    BoundingBox2d.extrema boundingBox
+                { resolution, center } =
+                    Pattern.Viewport.idealForBoundingBox dimensions boundingBox
 
-                viewportWidth =
-                    pixelWidth
+                dimensions =
+                    { width = Pixels.pixels pixelWidth
+                    , height = Pixels.pixels pixelHeight
+                    }
 
-                viewportHeight =
-                    pixelWidth
+                pixelHeight =
+                    64
 
                 pixelWidth =
                     64
-
-                pixelHeight =
-                    pixelWidth
-
-                width =
-                    Length.inMeters maxX - Length.inMeters minX
-
-                height =
-                    Length.inMeters maxY - Length.inMeters minY
-
-                idealHorizontalResolution =
-                    Pixels.pixels pixelWidth
-                        |> Quantity.per (Length.meters width)
-
-                idealVerticalResolution =
-                    Pixels.pixels pixelHeight
-                        |> Quantity.per (Length.meters height)
-
-                center =
-                    BoundingBox2d.centerPoint boundingBox
-
-                idealResolution =
-                    Quantity.min idealHorizontalResolution idealVerticalResolution
             in
             Element.html <|
                 Svg.svg
                     [ Svg.Attributes.viewBox <|
                         String.join " "
-                            [ String.fromFloat (viewportWidth / -2)
-                            , String.fromFloat (viewportHeight / -2)
-                            , String.fromFloat viewportWidth
-                            , String.fromFloat viewportHeight
+                            [ String.fromFloat (pixelHeight / -2)
+                            , String.fromFloat (pixelHeight / -2)
+                            , String.fromFloat pixelWidth
+                            , String.fromFloat pixelHeight
                             ]
                     , Html.Attributes.style "user-select" "none"
-                    , Html.Attributes.style "width"
-                        (String.fromFloat viewportWidth ++ "px")
-                    , Html.Attributes.style "height"
-                        (String.fromFloat viewportHeight ++ "px")
+                    , Html.Attributes.style "width" (String.fromFloat pixelWidth ++ "px")
+                    , Html.Attributes.style "height" (String.fromFloat pixelHeight ++ "px")
                     ]
                     [ Svg.translateBy
                         (Vector2d.from
-                            (Point2d.at idealResolution center)
+                            (Point2d.at resolution center)
                             Point2d.origin
                         )
                         (Svg.detail2d
@@ -574,7 +552,7 @@ viewDetailLabel detail2d =
                             , Svg.Attributes.stroke "currentColor"
                             , Svg.Attributes.strokeWidth "1"
                             ]
-                            (Detail2d.at idealResolution detail2d)
+                            (Detail2d.at resolution detail2d)
                         )
                     ]
 

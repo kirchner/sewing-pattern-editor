@@ -66,6 +66,7 @@ import Pattern
         , Pattern
         , Point
         )
+import Pattern.Viewport
 import Pixels
 import Point2d exposing (Point2d)
 import Process
@@ -111,7 +112,7 @@ type alias LoadingData =
 
 
 type alias LoadedData =
-    { patternContainerDimensions : Maybe Dimensions
+    { patternContainerDimensions : Maybe Pattern.Viewport.Dimensions
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
     , addresses : Maybe (List LocalStorage.Address)
 
@@ -166,12 +167,6 @@ type Drag
         { start : ( Float, Float )
         , current : ( Float, Float )
         }
-
-
-type alias Dimensions =
-    { width : Float
-    , height : Float
-    }
 
 
 type alias Slide =
@@ -1190,34 +1185,16 @@ viewPointShortcut pixelWidth model point2ds pointNew =
 
                 Ok point2d ->
                     let
+                        { resolution, center } =
+                            Pattern.Viewport.idealForPoints dimensions point2d point2ds
+
+                        dimensions =
+                            { width = Pixels.pixels (pixelWidth - 20)
+                            , height = Pixels.pixels (pixelHeight - 20)
+                            }
+
                         pixelHeight =
                             pixelWidth
-
-                        boundingBox =
-                            BoundingBox2d.hull point2d point2ds
-
-                        { minX, maxX, minY, maxY } =
-                            BoundingBox2d.extrema boundingBox
-
-                        width =
-                            Length.inMeters maxX - Length.inMeters minX
-
-                        height =
-                            Length.inMeters maxY - Length.inMeters minY
-
-                        idealHorizontalResolution =
-                            Pixels.pixels (pixelWidth - 20)
-                                |> Quantity.per (Length.meters width)
-
-                        idealVerticalResolution =
-                            Pixels.pixels (pixelHeight - 20)
-                                |> Quantity.per (Length.meters height)
-
-                        center =
-                            BoundingBox2d.centerPoint boundingBox
-
-                        idealResolution =
-                            Quantity.min idealHorizontalResolution idealVerticalResolution
                     in
                     Ui.Theme.Focus.outline <|
                         Input.button
@@ -1237,7 +1214,7 @@ viewPointShortcut pixelWidth model point2ds pointNew =
                                     { id = "pattern" }
                                     { width = pixelWidth
                                     , height = pixelHeight
-                                    , resolution = idealResolution
+                                    , resolution = resolution
                                     , center = center
                                     }
                                     newPattern
@@ -1277,7 +1254,7 @@ viewWorkspaceFullscreen model =
         )
 
 
-viewPattern : Maybe Dimensions -> Point2d Meters BottomLeft -> LoadedData -> Element Msg
+viewPattern : Maybe Pattern.Viewport.Dimensions -> Point2d Meters BottomLeft -> LoadedData -> Element Msg
 viewPattern maybeDimensions center model =
     case maybeDimensions of
         Nothing ->
@@ -1325,8 +1302,8 @@ viewPattern maybeDimensions center model =
                 (Element.map PatternMsg <|
                     Ui.Molecule.Pattern.view
                         { id = "pattern" }
-                        { width = width
-                        , height = height
+                        { width = Pixels.inPixels width
+                        , height = Pixels.inPixels height
                         , resolution = model.resolution
                         , center = center
                         }
@@ -2248,8 +2225,8 @@ updateLoaded _ domain clientId device identity msg model =
                     ( { model
                         | patternContainerDimensions =
                             Just
-                                { width = viewport.viewport.width
-                                , height = viewport.viewport.height
+                                { width = Pixels.pixels viewport.viewport.width
+                                , height = Pixels.pixels viewport.viewport.height
                                 }
                       }
                     , Cmd.none
@@ -3047,54 +3024,25 @@ updateZoom address resolution =
         (Pixels.inPixels (Quantity.at resolution (Length.meters 1)))
 
 
-updateToIdealViewport : LocalStorage.Address -> Pattern BottomLeft -> Dimensions -> Cmd Msg
+updateToIdealViewport :
+    LocalStorage.Address
+    -> Pattern BottomLeft
+    -> Pattern.Viewport.Dimensions
+    -> Cmd Msg
 updateToIdealViewport address pattern dimensions =
-    let
-        point2ds =
-            Pattern.points pattern
-                |> StateResult.traverse Pattern.point2d
-                |> State.finalValue pattern
-    in
-    case point2ds of
-        Ok (first :: rest) ->
-            let
-                boundingBox =
-                    BoundingBox2d.hull first rest
+    case Pattern.Viewport.idealForPattern dimensions pattern of
+        Nothing ->
+            Cmd.none
 
-                { minX, maxX, minY, maxY } =
-                    BoundingBox2d.extrema boundingBox
-
-                width =
-                    Length.inMeters maxX - Length.inMeters minX + 0.005
-
-                height =
-                    Length.inMeters maxY - Length.inMeters minY + 0.005
-
-                idealHorizontalResolution =
-                    Pixels.pixels dimensions.width
-                        |> Quantity.per (Length.meters width)
-
-                idealVerticalResolution =
-                    Pixels.pixels dimensions.height
-                        |> Quantity.per (Length.meters height)
-
-                center =
-                    BoundingBox2d.centerPoint boundingBox
-
-                idealResolution =
-                    Quantity.min idealHorizontalResolution idealVerticalResolution
-            in
+        Just { resolution, center } ->
             Cmd.batch
                 [ LocalStorage.updateZoom address
                     (Length.meters 1
-                        |> Quantity.at idealResolution
+                        |> Quantity.at resolution
                         |> Pixels.inPixels
                     )
                 , LocalStorage.updateCenter address center
                 ]
-
-        _ ->
-            Cmd.none
 
 
 toolbarTopHeight : Float
