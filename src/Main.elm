@@ -80,7 +80,6 @@ type alias LoadingData =
 
 type alias LoadedData =
     { device : Element.Device
-    , cred : Github.Cred
     , clientId : String
     , page : Page
     }
@@ -190,7 +189,7 @@ view model =
                 Patterns patternsModel ->
                     let
                         { title, body } =
-                            Patterns.view data.device data.cred patternsModel
+                            Patterns.view data.device patternsModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternsMsg body) ]
@@ -199,7 +198,7 @@ view model =
                 PatternNew newModel ->
                     let
                         { title, body } =
-                            PatternNew.view data.device data.cred newModel
+                            PatternNew.view data.device newModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternNewMsg body) ]
@@ -208,7 +207,7 @@ view model =
                 Pattern patternModel ->
                     let
                         { title, body } =
-                            Pattern.view data.device data.cred patternModel
+                            Pattern.view data.device patternModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map PatternMsg body) ]
@@ -217,7 +216,7 @@ view model =
                 Details detailsModel ->
                     let
                         { title, body } =
-                            Details.view data.device data.cred detailsModel
+                            Details.view data.device detailsModel
                     in
                     { title = title
                     , body = [ viewHelp (Element.map DetailsMsg body) ]
@@ -401,7 +400,7 @@ initLoaded data maybeGithubAccessToken device =
                     )
 
                 Just route ->
-                    changePageTo session cred route
+                    changePageTo session route
 
         session =
             case maybeGithubAccessToken of
@@ -410,18 +409,9 @@ initLoaded data maybeGithubAccessToken device =
 
                 Just githubAccessToken ->
                     Session.toGithubUser githubAccessToken data.session
-
-        cred =
-            case maybeGithubAccessToken of
-                Nothing ->
-                    Github.Anonymous
-
-                Just githubAccessToken ->
-                    Github.OauthToken githubAccessToken
     in
     ( Loaded
         { device = device
-        , cred = cred
         , clientId = data.clientId
         , page = page
         }
@@ -474,7 +464,7 @@ updateLoaded msg data =
                 Just route ->
                     let
                         ( page, cmd ) =
-                            changePageTo session data.cred route
+                            changePageTo session route
                     in
                     ( Loaded { data | page = page }
                     , cmd
@@ -504,7 +494,7 @@ updateLoaded msg data =
         ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
             let
                 ( newPatternsModel, patternsCmd ) =
-                    Patterns.update data.clientId data.cred patternsMsg patternsModel
+                    Patterns.update data.clientId patternsMsg patternsModel
             in
             ( Loaded { data | page = Patterns newPatternsModel }
             , Cmd.map PatternsMsg patternsCmd
@@ -516,7 +506,7 @@ updateLoaded msg data =
         ( PatternNewMsg newMsg, PatternNew newModel ) ->
             let
                 ( newNewModel, newCmd ) =
-                    PatternNew.update data.clientId data.cred newMsg newModel
+                    PatternNew.update data.clientId newMsg newModel
             in
             ( Loaded { data | page = PatternNew newNewModel }
             , Cmd.map PatternNewMsg newCmd
@@ -528,7 +518,7 @@ updateLoaded msg data =
         ( PatternMsg patternMsg, Pattern patternModel ) ->
             let
                 ( newPatternModel, patternCmd ) =
-                    Pattern.update data.clientId data.device data.cred patternMsg patternModel
+                    Pattern.update data.clientId data.device patternMsg patternModel
             in
             ( Loaded { data | page = Pattern newPatternModel }
             , Cmd.map PatternMsg patternCmd
@@ -540,7 +530,7 @@ updateLoaded msg data =
         ( DetailsMsg detailsMsg, Details detailsModel ) ->
             let
                 ( newDetailsModel, detailsCmd ) =
-                    Details.update data.clientId data.device data.cred detailsMsg detailsModel
+                    Details.update data.clientId data.device detailsMsg detailsModel
             in
             ( Loaded { data | page = Details newDetailsModel }
             , Cmd.map DetailsMsg detailsCmd
@@ -554,8 +544,8 @@ updateLoaded msg data =
 ---- CHANGE PAGE TO
 
 
-changePageTo : Session -> Github.Cred -> Route -> ( Page, Cmd Msg )
-changePageTo session cred route =
+changePageTo : Session -> Route -> ( Page, Cmd Msg )
+changePageTo session route =
     case route of
         Route.Patterns ->
             let
@@ -569,7 +559,7 @@ changePageTo session cred route =
         Route.Pattern address ->
             let
                 ( pattern, patternCmd ) =
-                    Pattern.init session cred address
+                    Pattern.init session address
             in
             ( Pattern pattern
             , Cmd.map PatternMsg patternCmd
@@ -578,7 +568,7 @@ changePageTo session cred route =
         Route.PatternNew newParameters ->
             let
                 ( new, newCmd ) =
-                    PatternNew.init session cred newParameters
+                    PatternNew.init session newParameters
             in
             ( PatternNew new
             , Cmd.map PatternNewMsg newCmd
@@ -587,7 +577,7 @@ changePageTo session cred route =
         Route.Details address ->
             let
                 ( details, detailsCmd ) =
-                    Details.init session cred address
+                    Details.init session address
             in
             ( Details details
             , Cmd.map DetailsMsg detailsCmd

@@ -1,6 +1,7 @@
 module Session exposing
     ( Session
     , navKey, domain
+    , githubCred
     , anonymous, githubUser, toGithubUser
     )
 
@@ -8,11 +9,13 @@ module Session exposing
 
 @docs Session
 @docs navKey, domain
+@docs githubCred
 @docs anonymous, githubUser, toGithubUser
 
 -}
 
 import Browser.Navigation
+import Github
 
 
 {-| -}
@@ -47,6 +50,17 @@ domain session =
 
         GithubUser _ stuff ->
             stuff.domain
+
+
+{-| -}
+githubCred : Session -> Github.Cred
+githubCred session =
+    case session of
+        Anonymous _ ->
+            Github.noCred
+
+        GithubUser accessToken _ ->
+            Github.oauthCred accessToken
 
 
 {-| -}

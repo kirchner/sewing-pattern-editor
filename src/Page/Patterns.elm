@@ -90,12 +90,8 @@ toSession model =
 
 
 {-| -}
-view :
-    Element.Device
-    -> Github.Cred
-    -> Model
-    -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view device cred model =
+view : Element.Device -> Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view device model =
     { title = "Patterns"
     , body =
         case model of
@@ -107,20 +103,20 @@ view device cred model =
                     (Element.text "Loading patterns...")
 
             Loaded data ->
-                viewPatterns device cred data
+                viewPatterns device data
     , dialog = Nothing
     }
 
 
-viewPatterns : Element.Device -> Github.Cred -> LoadedData -> Element Msg
-viewPatterns device cred model =
+viewPatterns : Element.Device -> LoadedData -> Element Msg
+viewPatterns device model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
             { userPressedSignIn = UserPressedSignIn
-            , cred = cred
+            , cred = Session.githubCred model.session
             , device = device
             , heading = "Patterns"
             , backToLabel = Nothing
@@ -177,25 +173,25 @@ type Msg
 
 
 {-| -}
-update : String -> Github.Cred -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId cred msg model =
+update : String -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId msg model =
     case model of
         Loading data ->
-            updateLoading cred msg data
+            updateLoading msg data
 
         Loaded data ->
             updateLoaded clientId msg data
                 |> Tuple.mapFirst Loaded
 
 
-updateLoading : Github.Cred -> Msg -> LoadingData -> ( Model, Cmd Msg )
-updateLoading cred msg model =
+updateLoading : Msg -> LoadingData -> ( Model, Cmd Msg )
+updateLoading msg model =
     case msg of
         ChangedAddresses newAddresses ->
             case model.unrequestedAddresses of
                 Nothing ->
                     { model | unrequestedAddresses = Just newAddresses }
-                        |> requestNextMeta cred
+                        |> requestNextMeta
 
                 Just _ ->
                     ( Loading model, Cmd.none )
@@ -203,16 +199,16 @@ updateLoading cred msg model =
         ChangedMeta address meta ->
             model
                 |> addMeta address meta
-                |> requestNextMeta cred
+                |> requestNextMeta
 
         ReceivedMeta _ (Err _) ->
             model
-                |> requestNextMeta cred
+                |> requestNextMeta
 
         ReceivedMeta address (Ok meta) ->
             model
                 |> addMeta address meta
-                |> requestNextMeta cred
+                |> requestNextMeta
 
         ChangedWhatever ->
             ( Loading model, Cmd.none )
@@ -293,8 +289,8 @@ addMeta address meta data =
     { data | patterns = newPatterns }
 
 
-requestNextMeta : Github.Cred -> LoadingData -> ( Model, Cmd Msg )
-requestNextMeta cred data =
+requestNextMeta : LoadingData -> ( Model, Cmd Msg )
+requestNextMeta data =
     case data.unrequestedAddresses of
         Nothing ->
             ( Loading data
@@ -315,7 +311,7 @@ requestNextMeta cred data =
             ( Loading { data | unrequestedAddresses = Just rest }
             , case next of
                 LocalStorage.GithubRepo { repo, ref } ->
-                    Github.getMeta cred
+                    Github.getMeta (Session.githubCred data.session)
                         { repo = repo
                         , ref = ref
                         , onMeta = ReceivedMeta next

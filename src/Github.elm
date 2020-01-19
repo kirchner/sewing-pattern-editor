@@ -1,5 +1,7 @@
 module Github exposing
-    ( Cred(..), requestAuthorization
+    ( Cred(..)
+    , noCred, oauthCred
+    , requestAuthorization
     , Repo, Ref, defaultRef, commit, branch, tag
     , repoDecoder, encodeRepo, refDecoder, encodeRef
     , refToString, refToPathSegments, refFromString
@@ -13,7 +15,9 @@ module Github exposing
 
 {-|
 
-@docs Cred, requestAuthorization
+@docs Cred
+@docs noCred, oauthCred
+@docs requestAuthorization
 @docs Repo, Ref, defaultRef, commit, branch, tag
 @docs repoDecoder, encodeRepo, refDecoder, encodeRef
 @docs refToString, refToPathSegments, refFromString
@@ -42,6 +46,16 @@ import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 type Cred
     = Anonymous
     | OauthToken String
+
+
+noCred : Cred
+noCred =
+    Anonymous
+
+
+oauthCred : String -> Cred
+oauthCred token =
+    OauthToken token
 
 
 requestAuthorization : String -> String -> Cmd msg

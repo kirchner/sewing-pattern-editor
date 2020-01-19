@@ -111,8 +111,12 @@ visibilityToString visibility =
 
 
 {-| -}
-init : Session -> Github.Cred -> Route.NewParameters -> ( Model, Cmd Msg )
-init session cred newParameters =
+init : Session -> Route.NewParameters -> ( Model, Cmd Msg )
+init session newParameters =
+    let
+        cred =
+            Session.githubCred session
+    in
     case cred of
         Github.Anonymous ->
             initLoaded session newParameters Nothing
@@ -167,12 +171,8 @@ toSession model =
 
 
 {-| -}
-view :
-    Element.Device
-    -> Github.Cred
-    -> Model
-    -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view device cred model =
+view : Element.Device -> Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view device model =
     { title = "Create a new pattern"
     , body =
         case model of
@@ -180,30 +180,30 @@ view device cred model =
                 Element.none
 
             Loaded data ->
-                viewNew device cred data
+                viewNew device data
     , dialog = Nothing
     }
 
 
-viewNew : Element.Device -> Github.Cred -> LoadedData -> Element Msg
-viewNew device cred model =
+viewNew : Element.Device -> LoadedData -> Element Msg
+viewNew device model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
             { userPressedSignIn = UserPressedSignIn
-            , cred = cred
+            , cred = Session.githubCred model.session
             , device = device
             , heading = "Create a new pattern"
             , backToLabel = Just "Back to patterns"
             }
-        , viewContent cred model
+        , viewContent model
         ]
 
 
-viewContent : Github.Cred -> LoadedData -> Element Msg
-viewContent cred model =
+viewContent : LoadedData -> Element Msg
+viewContent model =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
         , Element.centerX
@@ -318,7 +318,7 @@ viewContent cred model =
                     }
 
             GithubTag ->
-                case cred of
+                case Session.githubCred model.session of
                     Github.Anonymous ->
                         Element.el [] <|
                             Ui.Atom.Input.btnPrimary
@@ -455,8 +455,8 @@ storageSolutionFromString string =
 
 
 {-| -}
-update : String -> Github.Cred -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId cred msg model =
+update : String -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId msg model =
     case model of
         Loading data ->
             case msg of
@@ -468,7 +468,7 @@ update clientId cred msg model =
                     ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded clientId cred msg data
+            updateLoaded clientId msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -487,8 +487,8 @@ checkLoaded data =
             )
 
 
-updateLoaded : String -> Github.Cred -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded clientId cred msg model =
+updateLoaded : String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded clientId msg model =
     case msg of
         ReceivedAuthenticatedUser _ ->
             ( model, Cmd.none )
@@ -577,7 +577,7 @@ updateLoaded clientId cred msg model =
                                             }
                                         )
                             in
-                            Github.createRepository cred
+                            Github.createRepository (Session.githubCred model.session)
                                 { repository =
                                     { name = model.repositoryName
                                     , description = model.description
@@ -600,7 +600,7 @@ updateLoaded clientId cred msg model =
 
         ReceivedRepository name description repo (Ok _) ->
             ( model
-            , Github.putMeta cred
+            , Github.putMeta (Session.githubCred model.session)
                 { repo = repo
                 , message = "create meta.json"
                 , meta =
@@ -617,7 +617,7 @@ updateLoaded clientId cred msg model =
 
         ReceivedShaOfMeta repo (Ok _) ->
             ( model
-            , Github.putPattern cred
+            , Github.putPattern (Session.githubCred model.session)
                 { repo = repo
                 , message = "create pattern.json"
                 , pattern = newPattern

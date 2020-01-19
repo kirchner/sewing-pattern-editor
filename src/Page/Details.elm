@@ -132,8 +132,8 @@ type alias Pose =
 
 
 {-| -}
-init : Session -> Github.Cred -> LocalStorage.Address -> ( Model, Cmd Msg )
-init session cred address =
+init : Session -> LocalStorage.Address -> ( Model, Cmd Msg )
+init session address =
     ( Loading
         { session = session
         , address = address
@@ -143,6 +143,10 @@ init session cred address =
         }
     , case address of
         LocalStorage.GithubRepo { repo, ref } ->
+            let
+                cred =
+                    Session.githubCred session
+            in
             Cmd.batch
                 [ Github.getPattern cred
                     { repo = repo
@@ -216,12 +220,8 @@ toSession model =
 
 
 {-| -}
-view :
-    Element.Device
-    -> Github.Cred
-    -> Model
-    -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view _ _ model =
+view : Element.Device -> Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
+view _ model =
     case model of
         Loading _ ->
             statusMsg "Loading pattern..." "Loading pattern..."
@@ -599,14 +599,8 @@ type Msg
 
 
 {-| -}
-update :
-    String
-    -> Element.Device
-    -> Github.Cred
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg )
-update _ device _ msg model =
+update : String -> Element.Device -> Msg -> Model -> ( Model, Cmd Msg )
+update _ device msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
