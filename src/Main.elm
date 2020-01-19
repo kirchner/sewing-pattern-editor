@@ -35,6 +35,7 @@ import Page.Patterns as Patterns
 import Pattern exposing (Pattern)
 import RemoteData exposing (WebData)
 import Route exposing (Route)
+import Session exposing (Session)
 import Task
 import Url exposing (Url)
 import Url.Builder
@@ -82,11 +83,29 @@ type alias LoadingData =
 type alias LoadedData =
     { device : Element.Device
     , identity : Git.Identity
-    , key : Browser.Navigation.Key
-    , domain : String
     , clientId : String
     , page : Page
     }
+
+
+toSession : Page -> Session
+toSession page =
+    case page of
+        NotFound session ->
+            session
+
+        -- PAGES
+        Patterns patterns ->
+            Patterns.toSession patterns
+
+        PatternNew patternNew ->
+            PatternNew.toSession patternNew
+
+        Pattern pattern ->
+            Pattern.toSession pattern
+
+        Details details ->
+            Details.toSession details
 
 
 
@@ -94,7 +113,7 @@ type alias LoadedData =
 
 
 type Page
-    = NotFound
+    = NotFound Session
       -- PAGES
     | Patterns Patterns.Model
     | PatternNew PatternNew.Model
@@ -162,7 +181,7 @@ view model =
 
         Loaded data ->
             case data.page of
-                NotFound ->
+                NotFound _ ->
                     { title = "Sewing pattern editor"
                     , body =
                         [ viewHelp <|
@@ -360,8 +379,12 @@ update msg model =
                 ( UrlRequested urlRequest, _ ) ->
                     case urlRequest of
                         Browser.Internal url ->
+                            let
+                                key =
+                                    Session.navKey (toSession data.page)
+                            in
                             ( model
-                            , Browser.Navigation.pushUrl data.key url.path
+                            , Browser.Navigation.pushUrl key url.path
                             )
 
                         Browser.External externalUrl ->
@@ -370,16 +393,20 @@ update msg model =
                             )
 
                 ( UrlChanged url, _ ) ->
+                    let
+                        session =
+                            toSession data.page
+                    in
                     case Route.fromUrl url of
                         Nothing ->
-                            ( Loaded { data | page = NotFound }
+                            ( Loaded { data | page = NotFound session }
                             , Cmd.none
                             )
 
                         Just route ->
                             let
                                 ( page, cmd ) =
-                                    changePageTo data.identity route
+                                    changePageTo session data.identity route
                             in
                             ( Loaded { data | page = page }
                             , cmd
@@ -403,19 +430,13 @@ update msg model =
                         ( model, Cmd.none )
 
                 -- PAGES
-                ( _, NotFound ) ->
+                ( _, NotFound _ ) ->
                     ( model, Cmd.none )
 
                 ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
                     let
                         ( newPatternsModel, patternsCmd ) =
-                            Patterns.update
-                                data.key
-                                data.domain
-                                data.clientId
-                                data.identity
-                                patternsMsg
-                                patternsModel
+                            Patterns.update data.clientId data.identity patternsMsg patternsModel
                     in
                     ( Loaded { data | page = Patterns newPatternsModel }
                     , Cmd.map PatternsMsg patternsCmd
@@ -427,13 +448,7 @@ update msg model =
                 ( PatternNewMsg newMsg, PatternNew newModel ) ->
                     let
                         ( newNewModel, newCmd ) =
-                            PatternNew.update
-                                data.key
-                                data.domain
-                                data.clientId
-                                data.identity
-                                newMsg
-                                newModel
+                            PatternNew.update data.clientId data.identity newMsg newModel
                     in
                     ( Loaded { data | page = PatternNew newNewModel }
                     , Cmd.map PatternNewMsg newCmd
@@ -445,14 +460,7 @@ update msg model =
                 ( PatternMsg patternMsg, Pattern patternModel ) ->
                     let
                         ( newPatternModel, patternCmd ) =
-                            Pattern.update
-                                data.key
-                                data.domain
-                                data.clientId
-                                data.device
-                                data.identity
-                                patternMsg
-                                patternModel
+                            Pattern.update data.clientId data.device data.identity patternMsg patternModel
                     in
                     ( Loaded { data | page = Pattern newPatternModel }
                     , Cmd.map PatternMsg patternCmd
@@ -464,14 +472,7 @@ update msg model =
                 ( DetailsMsg detailsMsg, Details detailsModel ) ->
                     let
                         ( newDetailsModel, detailsCmd ) =
-                            Details.update
-                                data.key
-                                data.domain
-                                data.clientId
-                                data.device
-                                data.identity
-                                detailsMsg
-                                detailsModel
+                            Details.update data.clientId data.device data.identity detailsMsg detailsModel
                     in
                     ( Loaded { data | page = Details newDetailsModel }
                     , Cmd.map DetailsMsg detailsCmd
@@ -502,12 +503,20 @@ initLoaded data maybeGithubAccessToken device =
         ( page, cmd ) =
             case data.maybeRoute of
                 Nothing ->
-                    ( NotFound
+                    ( NotFound session
                     , Cmd.none
                     )
 
                 Just route ->
-                    changePageTo identity route
+                    changePageTo session identity route
+
+        session =
+            case maybeGithubAccessToken of
+                Nothing ->
+                    Session.anonymous data.key data.domain
+
+                Just githubAccessToken ->
+                    Session.githubUser githubAccessToken data.key data.domain
 
         identity =
             case maybeGithubAccessToken of
@@ -520,8 +529,6 @@ initLoaded data maybeGithubAccessToken device =
     ( Loaded
         { device = device
         , identity = identity
-        , domain = data.domain
-        , key = data.key
         , clientId = data.clientId
         , page = page
         }
@@ -537,13 +544,13 @@ initLoaded data maybeGithubAccessToken device =
     )
 
 
-changePageTo : Git.Identity -> Route -> ( Page, Cmd Msg )
-changePageTo identity route =
+changePageTo : Session -> Git.Identity -> Route -> ( Page, Cmd Msg )
+changePageTo session identity route =
     case route of
         Route.Patterns ->
             let
                 ( patterns, patternsCmd ) =
-                    Patterns.init
+                    Patterns.init session
             in
             ( Patterns patterns
             , Cmd.map PatternsMsg patternsCmd
@@ -552,7 +559,7 @@ changePageTo identity route =
         Route.Pattern address ->
             let
                 ( pattern, patternCmd ) =
-                    Pattern.init identity address
+                    Pattern.init session identity address
             in
             ( Pattern pattern
             , Cmd.map PatternMsg patternCmd
@@ -561,7 +568,7 @@ changePageTo identity route =
         Route.PatternNew newParameters ->
             let
                 ( new, newCmd ) =
-                    PatternNew.init identity newParameters
+                    PatternNew.init session identity newParameters
             in
             ( PatternNew new
             , Cmd.map PatternNewMsg newCmd
@@ -570,7 +577,7 @@ changePageTo identity route =
         Route.Details address ->
             let
                 ( details, detailsCmd ) =
-                    Details.init identity address
+                    Details.init session identity address
             in
             ( Details details
             , Cmd.map DetailsMsg detailsCmd
@@ -602,7 +609,7 @@ subscriptions model =
                                 , height = height
                                 }
                 , case data.page of
-                    NotFound ->
+                    NotFound _ ->
                         Sub.none
 
                     -- PAGES

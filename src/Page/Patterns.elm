@@ -1,12 +1,12 @@
 module Page.Patterns exposing
-    ( Model, init
+    ( Model, init, toSession
     , view
     , Msg, update, subscriptions
     )
 
 {-|
 
-@docs Model, init
+@docs Model, init, toSession
 @docs view
 @docs Msg, update, subscriptions
 
@@ -19,6 +19,7 @@ import Http
 import List.Extra as List
 import LocalStorage
 import Route
+import Session exposing (Session)
 import Time exposing (Posix)
 import Ui.Molecule.PatternList
 import Ui.Molecule.TopBar
@@ -36,14 +37,16 @@ type Model
 
 
 type alias LoadingData =
-    { addresses : List LocalStorage.Address
+    { session : Session
+    , addresses : List LocalStorage.Address
     , unrequestedAddresses : Maybe (List LocalStorage.Address)
     , patterns : List ProcessedPattern
     }
 
 
 type alias LoadedData =
-    { addresses : List LocalStorage.Address
+    { session : Session
+    , addresses : List LocalStorage.Address
     , patterns : List ProcessedPattern
     , search : String
     }
@@ -59,15 +62,27 @@ type alias ProcessedPattern =
 
 
 {-| -}
-init : ( Model, Cmd Msg )
-init =
+init : Session -> ( Model, Cmd Msg )
+init session =
     ( Loading
-        { addresses = []
+        { session = session
+        , addresses = []
         , unrequestedAddresses = Nothing
         , patterns = []
         }
     , LocalStorage.requestAddresses
     )
+
+
+{-| -}
+toSession : Model -> Session
+toSession model =
+    case model of
+        Loading { session } ->
+            session
+
+        Loaded { session } ->
+            session
 
 
 
@@ -162,21 +177,14 @@ type Msg
 
 
 {-| -}
-update :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Git.Identity
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg )
-update key domain clientId identity msg model =
+update : String -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId identity msg model =
     case model of
         Loading data ->
             updateLoading identity msg data
 
         Loaded data ->
-            updateLoaded key domain clientId msg data
+            updateLoaded clientId msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -213,14 +221,8 @@ updateLoading identity msg model =
             ( Loading model, Cmd.none )
 
 
-updateLoaded :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Msg
-    -> LoadedData
-    -> ( LoadedData, Cmd Msg )
-updateLoaded key domain clientId msg model =
+updateLoaded : String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded clientId msg model =
     case msg of
         UserChangedSearch newSearch ->
             ( { model | search = newSearch }
@@ -232,7 +234,7 @@ updateLoaded key domain clientId msg model =
 
         UserPressedCreate ->
             ( model
-            , Browser.Navigation.pushUrl key "/new"
+            , Browser.Navigation.pushUrl (Session.navKey model.session) "/new"
             )
 
         UserPressedClone _ ->
@@ -240,7 +242,8 @@ updateLoaded key domain clientId msg model =
 
         UserPressedSignIn ->
             ( model
-            , Git.requestAuthorization clientId (Route.crossOrigin domain Route.Patterns [])
+            , Git.requestAuthorization clientId <|
+                Route.crossOrigin (Session.domain model.session) Route.Patterns []
             )
 
         _ ->
@@ -300,7 +303,8 @@ requestNextMeta identity data =
 
         Just [] ->
             ( Loaded
-                { addresses = data.addresses
+                { session = data.session
+                , addresses = data.addresses
                 , patterns = data.patterns
                 , search = ""
                 }

@@ -1,12 +1,12 @@
 module Page.PatternNew exposing
-    ( Model, init
+    ( Model, init, toSession
     , view
     , Msg, update, subscriptions
     )
 
 {-|
 
-@docs Model, init
+@docs Model, init, toSession
 @docs view
 @docs Msg, update, subscriptions
 
@@ -24,6 +24,7 @@ import LocalStorage
 import Pattern exposing (Pattern)
 import RemoteData exposing (WebData)
 import Route
+import Session exposing (Session)
 import String.Extra as String
 import Ui.Atom.Input
 import Ui.Molecule.TopBar
@@ -43,13 +44,15 @@ type Model
 
 
 type alias LoadingData =
-    { parameters : Route.NewParameters
+    { session : Session
+    , parameters : Route.NewParameters
     , user : WebData Git.User
     }
 
 
 type alias LoadedData =
-    { owner : Maybe String
+    { session : Session
+    , owner : Maybe String
 
     -- FORM
     , name : String
@@ -108,15 +111,16 @@ visibilityToString visibility =
 
 
 {-| -}
-init : Git.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
-init identity newParameters =
+init : Session -> Git.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
+init session identity newParameters =
     case identity of
         Git.Anonymous ->
-            initLoaded newParameters Nothing
+            initLoaded session newParameters Nothing
 
         Git.OauthToken _ ->
             ( Loading
-                { parameters = newParameters
+                { session = session
+                , parameters = newParameters
                 , user = RemoteData.Loading
                 }
             , Git.getAuthenticatedUser identity
@@ -124,10 +128,11 @@ init identity newParameters =
             )
 
 
-initLoaded : Route.NewParameters -> Maybe String -> ( Model, Cmd Msg )
-initLoaded newParameters owner =
+initLoaded : Session -> Route.NewParameters -> Maybe String -> ( Model, Cmd Msg )
+initLoaded session newParameters owner =
     ( Loaded
-        { owner = owner
+        { session = session
+        , owner = owner
         , name = Maybe.withDefault "" newParameters.name
         , description = Maybe.withDefault "" newParameters.description
         , storageSolution =
@@ -144,6 +149,17 @@ initLoaded newParameters owner =
         }
     , Cmd.none
     )
+
+
+{-| -}
+toSession : Model -> Session
+toSession model =
+    case model of
+        Loading { session } ->
+            session
+
+        Loaded { session } ->
+            session
 
 
 
@@ -439,15 +455,8 @@ storageSolutionFromString string =
 
 
 {-| -}
-update :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Git.Identity
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg )
-update key domain clientId identity msg model =
+update : String -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId identity msg model =
     case model of
         Loading data ->
             case msg of
@@ -459,7 +468,7 @@ update key domain clientId identity msg model =
                     ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded key domain clientId identity msg data
+            updateLoaded clientId identity msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -467,10 +476,10 @@ checkLoaded : LoadingData -> ( Model, Cmd Msg )
 checkLoaded data =
     case data.user of
         RemoteData.Success user ->
-            initLoaded data.parameters (Just user.login)
+            initLoaded data.session data.parameters (Just user.login)
 
         RemoteData.NotAsked ->
-            initLoaded data.parameters Nothing
+            initLoaded data.session data.parameters Nothing
 
         _ ->
             ( Loading data
@@ -478,15 +487,8 @@ checkLoaded data =
             )
 
 
-updateLoaded :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Git.Identity
-    -> Msg
-    -> LoadedData
-    -> ( LoadedData, Cmd Msg )
-updateLoaded key domain clientId identity msg model =
+updateLoaded : String -> Git.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded clientId identity msg model =
     case msg of
         ReceivedAuthenticatedUser _ ->
             ( model, Cmd.none )
@@ -518,7 +520,7 @@ updateLoaded key domain clientId identity msg model =
         UserPressedSignIn ->
             ( model
             , Git.requestAuthorization clientId <|
-                Route.crossOrigin domain
+                Route.crossOrigin (Session.domain model.session)
                     (Route.PatternNew
                         { name = Just model.name
                         , description = Just model.description
@@ -579,7 +581,7 @@ updateLoaded key domain clientId identity msg model =
                                 { repository =
                                     { name = model.repositoryName
                                     , description = model.description
-                                    , homepage = Route.crossOrigin domain route []
+                                    , homepage = Route.crossOrigin (Session.domain model.session) route []
                                     , private =
                                         case model.visibility of
                                             Public ->
@@ -660,7 +662,7 @@ updateLoaded key domain clientId identity msg model =
                 Just address ->
                     ( model
                     , Cmd.batch
-                        [ Route.pushUrl key (Route.Pattern address)
+                        [ Route.pushUrl (Session.navKey model.session) (Route.Pattern address)
                         , LocalStorage.updateAddresses (address :: addresses)
                         ]
                     )

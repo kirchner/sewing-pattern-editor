@@ -1,12 +1,12 @@
 module Page.Pattern exposing
-    ( Model, init
+    ( Model, init, toSession
     , view
     , Msg, update, subscriptions
     )
 
 {-|
 
-@docs Model, init
+@docs Model, init, toSession
 @docs view
 @docs Msg, update, subscriptions
 
@@ -72,6 +72,7 @@ import Point2d exposing (Point2d)
 import Process
 import Quantity
 import Route
+import Session exposing (Session)
 import State
 import StateResult
 import Task
@@ -99,12 +100,13 @@ import Vector2d
 {-| -}
 type Model
     = Loading LoadingData
-    | Error
+    | Error Session
     | Loaded LoadedData
 
 
 type alias LoadingData =
-    { address : LocalStorage.Address
+    { session : Session
+    , address : LocalStorage.Address
     , maybePatternData : Maybe (Git.PatternData BottomLeft)
     , maybeMeta : Maybe Git.Meta
     , maybePermissions : Maybe Git.Permissions
@@ -112,7 +114,8 @@ type alias LoadingData =
 
 
 type alias LoadedData =
-    { patternContainerDimensions : Maybe Pattern.Viewport.Dimensions
+    { session : Session
+    , patternContainerDimensions : Maybe Pattern.Viewport.Dimensions
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
     , addresses : Maybe (List LocalStorage.Address)
 
@@ -209,10 +212,11 @@ type Dialog
 
 
 {-| -}
-init : Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
-init identity address =
+init : Session -> Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
+init session identity address =
     ( Loading
-        { address = address
+        { session = session
+        , address = address
         , maybePatternData = Nothing
         , maybeMeta = Nothing
         , maybePermissions = Nothing
@@ -245,16 +249,18 @@ init identity address =
 
 
 initLoaded :
-    Element.Device
+    Session
+    -> Element.Device
     -> LocalStorage.Address
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded device address sha pattern meta permissions =
+initLoaded session device address sha pattern meta permissions =
     ( Loaded
-        { patternContainerDimensions = Nothing
+        { session = session
+        , patternContainerDimensions = Nothing
         , maybeModal = Nothing
         , addresses = Nothing
 
@@ -301,6 +307,20 @@ initLoaded device address sha pattern meta permissions =
     )
 
 
+{-| -}
+toSession : Model -> Session
+toSession model =
+    case model of
+        Loading { session } ->
+            session
+
+        Error session ->
+            session
+
+        Loaded { session } ->
+            session
+
+
 
 ---- VIEW
 
@@ -316,7 +336,7 @@ view device identity model =
         Loading _ ->
             statusMsg "Loading pattern..." "Loading pattern..."
 
-        Error ->
+        Error _ ->
             statusMsg "Something went wrong." "Loading pattern.."
 
         Loaded data ->
@@ -1734,23 +1754,16 @@ type CreateAction
 
 
 {-| -}
-update :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Element.Device
-    -> Git.Identity
-    -> Msg
-    -> Model
-    -> ( Model, Cmd Msg )
-update key domain clientId device identity msg model =
+update : String -> Element.Device -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId device identity msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
                 (Loading newData) as newModel ->
                     case ( newData.maybePatternData, newData.maybeMeta, newData.maybePermissions ) of
                         ( Just patternData, Just meta, Just permissions ) ->
-                            initLoaded device
+                            initLoaded newData.session
+                                device
                                 newData.address
                                 patternData.sha
                                 patternData.pattern
@@ -1763,11 +1776,11 @@ update key domain clientId device identity msg model =
                 newModel ->
                     ( newModel, Cmd.none )
 
-        Error ->
+        Error _ ->
             ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded key domain clientId device identity msg data
+            updateLoaded clientId device identity msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -1777,7 +1790,7 @@ updateLoading msg data =
         ReceivedPatternData result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok patternData ->
                     Loading { data | maybePatternData = Just patternData }
@@ -1785,7 +1798,7 @@ updateLoading msg data =
         ReceivedMeta result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok meta ->
                     Loading { data | maybeMeta = Just meta }
@@ -1793,7 +1806,7 @@ updateLoading msg data =
         ReceivedPermissions result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok permissions ->
                     Loading { data | maybePermissions = Just permissions }
@@ -1832,16 +1845,8 @@ updateLoading msg data =
             Loading data
 
 
-updateLoaded :
-    Browser.Navigation.Key
-    -> String
-    -> String
-    -> Element.Device
-    -> Git.Identity
-    -> Msg
-    -> LoadedData
-    -> ( LoadedData, Cmd Msg )
-updateLoaded _ domain clientId device identity msg model =
+updateLoaded : String -> Element.Device -> Git.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded clientId device identity msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -2002,7 +2007,7 @@ updateLoaded _ domain clientId device identity msg model =
         UserPressedSignIn ->
             ( model
             , Git.requestAuthorization clientId <|
-                Route.crossOrigin domain (Route.Pattern model.address) []
+                Route.crossOrigin (Session.domain model.session) (Route.Pattern model.address) []
             )
 
         UserStartedTouchOnToolbarTop event ->
@@ -2779,7 +2784,7 @@ subscriptions model =
                 , changedWhatever = ChangedWhatever
                 }
 
-        Error ->
+        Error _ ->
             Sub.none
 
         Loaded data ->

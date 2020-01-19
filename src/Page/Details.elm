@@ -1,12 +1,12 @@
 module Page.Details exposing
-    ( Model, init
+    ( Model, init, toSession
     , view
     , Msg, update, subscriptions
     )
 
 {-|
 
-@docs Model, init
+@docs Model, init, toSession
 @docs view
 @docs Msg, update, subscriptions
 
@@ -62,6 +62,7 @@ import Ports
 import Quantity
 import Rectangle2d
 import Route
+import Session exposing (Session)
 import SketchPlane3d
 import State
 import Svg
@@ -85,12 +86,13 @@ import Viewpoint3d
 {-| -}
 type Model
     = Loading LoadingData
-    | Error
+    | Error Session
     | Loaded LoadedData
 
 
 type alias LoadingData =
-    { address : LocalStorage.Address
+    { session : Session
+    , address : LocalStorage.Address
     , maybePatternData : Maybe (Git.PatternData BottomLeft)
     , maybeMeta : Maybe Git.Meta
     , maybePermissions : Maybe Git.Permissions
@@ -102,7 +104,8 @@ type BottomLeft
 
 
 type alias LoadedData =
-    { address : LocalStorage.Address
+    { session : Session
+    , address : LocalStorage.Address
     , permissions : Git.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
@@ -129,10 +132,11 @@ type alias Pose =
 
 
 {-| -}
-init : Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
-init identity address =
+init : Session -> Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
+init session identity address =
     ( Loading
-        { address = address
+        { session = session
+        , address = address
         , maybePatternData = Nothing
         , maybeMeta = Nothing
         , maybePermissions = Nothing
@@ -165,16 +169,17 @@ init identity address =
 
 
 initLoaded :
-    Element.Device
+    Session
     -> LocalStorage.Address
     -> String
     -> Pattern BottomLeft
     -> Git.Meta
     -> Git.Permissions
     -> ( Model, Cmd Msg )
-initLoaded _ address sha pattern meta permissions =
+initLoaded session address sha pattern meta permissions =
     ( Loaded
-        { address = address
+        { session = session
+        , address = address
         , permissions = permissions
         , sha = sha
         , pattern = Pattern.regenerateCaches pattern
@@ -192,6 +197,20 @@ initLoaded _ address sha pattern meta permissions =
     )
 
 
+{-| -}
+toSession : Model -> Session
+toSession model =
+    case model of
+        Loading { session } ->
+            session
+
+        Error session ->
+            session
+
+        Loaded { session } ->
+            session
+
+
 
 ---- VIEW
 
@@ -207,7 +226,7 @@ view _ _ model =
         Loading _ ->
             statusMsg "Loading pattern..." "Loading pattern..."
 
-        Error ->
+        Error _ ->
             statusMsg "Something went wrong." "Loading pattern.."
 
         Loaded data ->
@@ -581,22 +600,20 @@ type Msg
 
 {-| -}
 update :
-    Browser.Navigation.Key
-    -> String
-    -> String
+    String
     -> Element.Device
     -> Git.Identity
     -> Msg
     -> Model
     -> ( Model, Cmd Msg )
-update _ _ _ device _ msg model =
+update _ device _ msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
                 (Loading newData) as newModel ->
                     case ( newData.maybePatternData, newData.maybeMeta, newData.maybePermissions ) of
                         ( Just patternData, Just meta, Just permissions ) ->
-                            initLoaded device
+                            initLoaded newData.session
                                 newData.address
                                 patternData.sha
                                 patternData.pattern
@@ -609,7 +626,7 @@ update _ _ _ device _ msg model =
                 newModel ->
                     ( newModel, Cmd.none )
 
-        Error ->
+        Error _ ->
             ( model, Cmd.none )
 
         Loaded data ->
@@ -623,7 +640,7 @@ updateLoading msg data =
         ReceivedPatternData result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok patternData ->
                     Loading { data | maybePatternData = Just patternData }
@@ -631,7 +648,7 @@ updateLoading msg data =
         ReceivedMeta result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok meta ->
                     Loading { data | maybeMeta = Just meta }
@@ -639,7 +656,7 @@ updateLoading msg data =
         ReceivedPermissions result ->
             case result of
                 Err _ ->
-                    Error
+                    Error data.session
 
                 Ok permissions ->
                     Loading { data | maybePermissions = Just permissions }
@@ -806,7 +823,7 @@ subscriptions model =
                 , changedWhatever = ChangedWhatever
                 }
 
-        Error ->
+        Error _ ->
             Sub.none
 
         Loaded _ ->
