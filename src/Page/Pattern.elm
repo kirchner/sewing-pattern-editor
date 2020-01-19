@@ -1754,8 +1754,8 @@ type CreateAction
 
 
 {-| -}
-update : String -> Element.Device -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId device msg model =
+update : Element.Device -> Msg -> Model -> ( Model, Cmd Msg )
+update device msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
@@ -1780,7 +1780,7 @@ update clientId device msg model =
             ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded clientId device msg data
+            updateLoaded device msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -1845,8 +1845,8 @@ updateLoading msg data =
             Loading data
 
 
-updateLoaded : String -> Element.Device -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded clientId device msg model =
+updateLoaded : Element.Device -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded device msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -2006,8 +2006,7 @@ updateLoaded clientId device msg model =
 
         UserPressedSignIn ->
             ( model
-            , Github.requestAuthorization clientId <|
-                Route.crossOrigin (Session.domain model.session) (Route.Pattern model.address) []
+            , Session.requestGithubCred model.session (Route.Pattern model.address) []
             )
 
         UserStartedTouchOnToolbarTop event ->

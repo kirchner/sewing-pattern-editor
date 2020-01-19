@@ -64,14 +64,14 @@ type Model
 
 
 type alias RequestingClientIdData =
-    { session : Session
+    { key : Browser.Navigation.Key
+    , domain : String
     , url : Url
     }
 
 
 type alias LoadingData =
     { session : Session
-    , clientId : String
     , maybeRoute : Maybe Route
     , githubAccessToken : WebData String
     , maybeDevice : Maybe Element.Device
@@ -80,7 +80,6 @@ type alias LoadingData =
 
 type alias LoadedData =
     { device : Element.Device
-    , clientId : String
     , page : Page
     }
 
@@ -140,7 +139,8 @@ init _ url key =
                 ]
     in
     ( RequestingClientId
-        { session = Session.anonymous key domain
+        { key = key
+        , domain = domain
         , url = url
         }
     , Http.get
@@ -287,11 +287,14 @@ updateRequestingClientId msg data =
             ( RequestingClientId data, Cmd.none )
 
         ReceivedClientId (Ok clientId) ->
+            let
+                session =
+                    Session.anonymous clientId data.key data.domain
+            in
             case Route.fromUrlWithCode data.url of
                 Nothing ->
                     ( Loading
-                        { session = data.session
-                        , clientId = clientId
+                        { session = session
                         , maybeRoute = Nothing
                         , githubAccessToken = RemoteData.NotAsked
                         , maybeDevice = Nothing
@@ -303,8 +306,7 @@ updateRequestingClientId msg data =
                     case code of
                         Nothing ->
                             ( Loading
-                                { session = data.session
-                                , clientId = clientId
+                                { session = session
                                 , maybeRoute = Just route
                                 , githubAccessToken = RemoteData.NotAsked
                                 , maybeDevice = Nothing
@@ -314,8 +316,7 @@ updateRequestingClientId msg data =
 
                         Just actualCode ->
                             ( Loading
-                                { session = data.session
-                                , clientId = clientId
+                                { session = session
                                 , maybeRoute = Just route
                                 , githubAccessToken = RemoteData.Loading
                                 , maybeDevice = Nothing
@@ -412,7 +413,6 @@ initLoaded data maybeGithubAccessToken device =
     in
     ( Loaded
         { device = device
-        , clientId = data.clientId
         , page = page
         }
     , Cmd.batch
@@ -494,7 +494,7 @@ updateLoaded msg data =
         ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
             let
                 ( newPatternsModel, patternsCmd ) =
-                    Patterns.update data.clientId patternsMsg patternsModel
+                    Patterns.update patternsMsg patternsModel
             in
             ( Loaded { data | page = Patterns newPatternsModel }
             , Cmd.map PatternsMsg patternsCmd
@@ -506,7 +506,7 @@ updateLoaded msg data =
         ( PatternNewMsg newMsg, PatternNew newModel ) ->
             let
                 ( newNewModel, newCmd ) =
-                    PatternNew.update data.clientId newMsg newModel
+                    PatternNew.update newMsg newModel
             in
             ( Loaded { data | page = PatternNew newNewModel }
             , Cmd.map PatternNewMsg newCmd
@@ -518,7 +518,7 @@ updateLoaded msg data =
         ( PatternMsg patternMsg, Pattern patternModel ) ->
             let
                 ( newPatternModel, patternCmd ) =
-                    Pattern.update data.clientId data.device patternMsg patternModel
+                    Pattern.update data.device patternMsg patternModel
             in
             ( Loaded { data | page = Pattern newPatternModel }
             , Cmd.map PatternMsg patternCmd
@@ -530,7 +530,7 @@ updateLoaded msg data =
         ( DetailsMsg detailsMsg, Details detailsModel ) ->
             let
                 ( newDetailsModel, detailsCmd ) =
-                    Details.update data.clientId data.device detailsMsg detailsModel
+                    Details.update data.device detailsMsg detailsModel
             in
             ( Loaded { data | page = Details newDetailsModel }
             , Cmd.map DetailsMsg detailsCmd

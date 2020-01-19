@@ -455,8 +455,8 @@ storageSolutionFromString string =
 
 
 {-| -}
-update : String -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId msg model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case model of
         Loading data ->
             case msg of
@@ -468,7 +468,7 @@ update clientId msg model =
                     ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded clientId msg data
+            updateLoaded msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -487,8 +487,8 @@ checkLoaded data =
             )
 
 
-updateLoaded : String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded clientId msg model =
+updateLoaded : Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded msg model =
     case msg of
         ReceivedAuthenticatedUser _ ->
             ( model, Cmd.none )
@@ -519,19 +519,18 @@ updateLoaded clientId msg model =
 
         UserPressedSignIn ->
             ( model
-            , Github.requestAuthorization clientId <|
-                Route.crossOrigin (Session.domain model.session)
-                    (Route.PatternNew
-                        { name = Just model.name
-                        , description = Just model.description
-                        , storageSolution =
-                            Just (storageSolutionToString model.storageSolution)
-                        , slug = Just (generatedToString model.slug)
-                        , repositoryName = Just model.repositoryName
-                        , visibility = Just (visibilityToString model.visibility)
-                        }
-                    )
-                    []
+            , Session.requestGithubCred model.session
+                (Route.PatternNew
+                    { name = Just model.name
+                    , description = Just model.description
+                    , storageSolution =
+                        Just (storageSolutionToString model.storageSolution)
+                    , slug = Just (generatedToString model.slug)
+                    , repositoryName = Just model.repositoryName
+                    , visibility = Just (visibilityToString model.visibility)
+                    }
+                )
+                []
             )
 
         UserChangedSlug newSlug ->

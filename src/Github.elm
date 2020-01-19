@@ -1,7 +1,6 @@
 module Github exposing
     ( Cred(..)
     , noCred, oauthCred
-    , requestAuthorization
     , Repo, Ref, defaultRef, commit, branch, tag
     , repoDecoder, encodeRepo, refDecoder, encodeRef
     , refToString, refToPathSegments, refFromString
@@ -17,7 +16,6 @@ module Github exposing
 
 @docs Cred
 @docs noCred, oauthCred
-@docs requestAuthorization
 @docs Repo, Ref, defaultRef, commit, branch, tag
 @docs repoDecoder, encodeRepo, refDecoder, encodeRef
 @docs refToString, refToPathSegments, refFromString
@@ -56,17 +54,6 @@ noCred =
 oauthCred : String -> Cred
 oauthCred token =
     OauthToken token
-
-
-requestAuthorization : String -> String -> Cmd msg
-requestAuthorization clientId redirectUri =
-    Browser.Navigation.load <|
-        Url.Builder.crossOrigin "https://github.com"
-            [ "login", "oauth", "authorize" ]
-            [ Url.Builder.string "client_id" clientId
-            , Url.Builder.string "redirect_uri" redirectUri
-            , Url.Builder.string "scope" "repo"
-            ]
 
 
 type alias Repo =

@@ -173,14 +173,14 @@ type Msg
 
 
 {-| -}
-update : String -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId msg model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case model of
         Loading data ->
             updateLoading msg data
 
         Loaded data ->
-            updateLoaded clientId msg data
+            updateLoaded msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -217,8 +217,8 @@ updateLoading msg model =
             ( Loading model, Cmd.none )
 
 
-updateLoaded : String -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded clientId msg model =
+updateLoaded : Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded msg model =
     case msg of
         UserChangedSearch newSearch ->
             ( { model | search = newSearch }
@@ -238,8 +238,7 @@ updateLoaded clientId msg model =
 
         UserPressedSignIn ->
             ( model
-            , Github.requestAuthorization clientId <|
-                Route.crossOrigin (Session.domain model.session) Route.Patterns []
+            , Session.requestGithubCred model.session Route.Patterns []
             )
 
         _ ->

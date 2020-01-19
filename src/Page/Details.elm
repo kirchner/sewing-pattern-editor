@@ -599,8 +599,8 @@ type Msg
 
 
 {-| -}
-update : String -> Element.Device -> Msg -> Model -> ( Model, Cmd Msg )
-update _ device msg model =
+update : Element.Device -> Msg -> Model -> ( Model, Cmd Msg )
+update device msg model =
     case model of
         Loading data ->
             case updateLoading msg data of

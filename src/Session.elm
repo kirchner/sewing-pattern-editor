@@ -2,6 +2,7 @@ module Session exposing
     ( Session
     , navKey, domain
     , githubCred
+    , requestGithubCred
     , anonymous, githubUser, toGithubUser
     )
 
@@ -10,17 +11,20 @@ module Session exposing
 @docs Session
 @docs navKey, domain
 @docs githubCred
+@docs requestGithubCred
 @docs anonymous, githubUser, toGithubUser
 
 -}
 
 import Browser.Navigation
 import Github
+import Route exposing (Route)
+import Url.Builder exposing (QueryParameter)
 
 
 {-| -}
 type Session
-    = Anonymous SessionData
+    = Anonymous String SessionData
     | GithubUser String SessionData
 
 
@@ -34,7 +38,7 @@ type alias SessionData =
 navKey : Session -> Browser.Navigation.Key
 navKey session =
     case session of
-        Anonymous { key } ->
+        Anonymous _ { key } ->
             key
 
         GithubUser _ { key } ->
@@ -45,7 +49,7 @@ navKey session =
 domain : Session -> String
 domain session =
     case session of
-        Anonymous stuff ->
+        Anonymous _ stuff ->
             stuff.domain
 
         GithubUser _ stuff ->
@@ -56,7 +60,7 @@ domain session =
 githubCred : Session -> Github.Cred
 githubCred session =
     case session of
-        Anonymous _ ->
+        Anonymous _ _ ->
             Github.noCred
 
         GithubUser accessToken _ ->
@@ -64,9 +68,27 @@ githubCred session =
 
 
 {-| -}
-anonymous : Browser.Navigation.Key -> String -> Session
-anonymous key domain_ =
-    Anonymous
+requestGithubCred : Session -> Route -> List QueryParameter -> Cmd msg
+requestGithubCred session route params =
+    case session of
+        Anonymous clientId _ ->
+            Browser.Navigation.load <|
+                Url.Builder.crossOrigin "https://github.com"
+                    [ "login", "oauth", "authorize" ]
+                    [ Url.Builder.string "client_id" clientId
+                    , Url.Builder.string "redirect_uri" <|
+                        Route.crossOrigin (domain session) route params
+                    , Url.Builder.string "scope" "repo"
+                    ]
+
+        GithubUser _ _ ->
+            Cmd.none
+
+
+{-| -}
+anonymous : String -> Browser.Navigation.Key -> String -> Session
+anonymous clientId key domain_ =
+    Anonymous clientId
         { key = key
         , domain = domain_
         }
@@ -85,7 +107,7 @@ githubUser accessToken key domain_ =
 toGithubUser : String -> Session -> Session
 toGithubUser accessToken session =
     case session of
-        Anonymous data ->
+        Anonymous _ data ->
             GithubUser accessToken data
 
         GithubUser _ data ->
