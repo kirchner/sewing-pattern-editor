@@ -64,15 +64,13 @@ type Model
 
 
 type alias RequestingClientIdData =
-    { key : Browser.Navigation.Key
-    , domain : String
+    { session : Session
     , url : Url
     }
 
 
 type alias LoadingData =
-    { key : Browser.Navigation.Key
-    , domain : String
+    { session : Session
     , clientId : String
     , maybeRoute : Maybe Route
     , githubAccessToken : WebData String
@@ -143,8 +141,7 @@ init _ url key =
                 ]
     in
     ( RequestingClientId
-        { key = key
-        , domain = domain
+        { session = Session.anonymous key domain
         , url = url
         }
     , Http.get
@@ -294,8 +291,7 @@ updateRequestingClientId msg data =
             case Route.fromUrlWithCode data.url of
                 Nothing ->
                     ( Loading
-                        { key = data.key
-                        , domain = data.domain
+                        { session = data.session
                         , clientId = clientId
                         , maybeRoute = Nothing
                         , githubAccessToken = RemoteData.NotAsked
@@ -308,8 +304,7 @@ updateRequestingClientId msg data =
                     case code of
                         Nothing ->
                             ( Loading
-                                { key = data.key
-                                , domain = data.domain
+                                { session = data.session
                                 , clientId = clientId
                                 , maybeRoute = Just route
                                 , githubAccessToken = RemoteData.NotAsked
@@ -320,8 +315,7 @@ updateRequestingClientId msg data =
 
                         Just actualCode ->
                             ( Loading
-                                { key = data.key
-                                , domain = data.domain
+                                { session = data.session
                                 , clientId = clientId
                                 , maybeRoute = Just route
                                 , githubAccessToken = RemoteData.Loading
@@ -412,10 +406,10 @@ initLoaded data maybeGithubAccessToken device =
         session =
             case maybeGithubAccessToken of
                 Nothing ->
-                    Session.anonymous data.key data.domain
+                    data.session
 
                 Just githubAccessToken ->
-                    Session.githubUser githubAccessToken data.key data.domain
+                    Session.toGithubUser githubAccessToken data.session
 
         identity =
             case maybeGithubAccessToken of
@@ -438,7 +432,7 @@ initLoaded data maybeGithubAccessToken device =
                 Cmd.none
 
             Just route ->
-                Route.replaceUrl data.key route
+                Route.replaceUrl (Session.navKey data.session) route
         ]
     )
 

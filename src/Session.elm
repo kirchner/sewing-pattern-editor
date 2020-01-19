@@ -1,14 +1,14 @@
 module Session exposing
     ( Session
     , navKey, domain
-    , anonymous, githubUser
+    , anonymous, githubUser, toGithubUser
     )
 
 {-|
 
 @docs Session
 @docs navKey, domain
-@docs anonymous, githubUser
+@docs anonymous, githubUser, toGithubUser
 
 -}
 
@@ -65,3 +65,14 @@ githubUser accessToken key domain_ =
         { key = key
         , domain = domain_
         }
+
+
+{-| -}
+toGithubUser : String -> Session -> Session
+toGithubUser accessToken session =
+    case session of
+        Anonymous data ->
+            GithubUser accessToken data
+
+        GithubUser _ data ->
+            GithubUser accessToken data
