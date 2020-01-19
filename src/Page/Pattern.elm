@@ -1200,17 +1200,17 @@ viewPointShortcut pixelWidth model point2ds pointNew =
                             BoundingBox2d.extrema boundingBox
 
                         width =
-                            Length.inMeters maxX - Length.inMeters minX + (pixelWidth / 2)
+                            Length.inMeters maxX - Length.inMeters minX
 
                         height =
-                            Length.inMeters maxY - Length.inMeters minY + (pixelWidth / 2)
+                            Length.inMeters maxY - Length.inMeters minY
 
                         idealHorizontalResolution =
-                            Pixels.pixels pixelWidth
+                            Pixels.pixels (pixelWidth - 20)
                                 |> Quantity.per (Length.meters width)
 
                         idealVerticalResolution =
-                            Pixels.pixels pixelHeight
+                            Pixels.pixels (pixelHeight - 20)
                                 |> Quantity.per (Length.meters height)
 
                         center =
