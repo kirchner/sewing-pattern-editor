@@ -41,7 +41,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
 import Element.Lazy as Element
-import Git
+import Github
 import Html.Attributes
 import Html.Events
 import Html.Events.Extra.Mouse
@@ -107,9 +107,9 @@ type Model
 type alias LoadingData =
     { session : Session
     , address : LocalStorage.Address
-    , maybePatternData : Maybe (Git.PatternData BottomLeft)
-    , maybeMeta : Maybe Git.Meta
-    , maybePermissions : Maybe Git.Permissions
+    , maybePatternData : Maybe (Github.PatternData BottomLeft)
+    , maybeMeta : Maybe Github.Meta
+    , maybePermissions : Maybe Github.Permissions
     }
 
 
@@ -122,7 +122,7 @@ type alias LoadedData =
     -- PATTERN
     , drag : Drag
     , address : LocalStorage.Address
-    , permissions : Git.Permissions
+    , permissions : Github.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
     , stored : Bool
@@ -212,7 +212,7 @@ type Dialog
 
 
 {-| -}
-init : Session -> Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
+init : Session -> Github.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
 init session identity address =
     ( Loading
         { session = session
@@ -222,19 +222,19 @@ init session identity address =
         , maybePermissions = Nothing
         }
     , case address of
-        LocalStorage.GitRepo { repo, ref } ->
+        LocalStorage.GithubRepo { repo, ref } ->
             Cmd.batch
-                [ Git.getPattern identity
+                [ Github.getPattern identity
                     { repo = repo
                     , ref = ref
                     , onPatternData = ReceivedPatternData
                     }
-                , Git.getMeta identity
+                , Github.getMeta identity
                     { repo = repo
                     , ref = ref
                     , onMeta = ReceivedMeta
                     }
-                , Git.getPermissions identity
+                , Github.getPermissions identity
                     { repo = repo
                     , onPermissions = ReceivedPermissions
                     }
@@ -254,8 +254,8 @@ initLoaded :
     -> LocalStorage.Address
     -> String
     -> Pattern BottomLeft
-    -> Git.Meta
-    -> Git.Permissions
+    -> Github.Meta
+    -> Github.Permissions
     -> ( Model, Cmd Msg )
 initLoaded session device address sha pattern meta permissions =
     ( Loaded
@@ -328,7 +328,7 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Git.Identity
+    -> Github.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view device identity model =
@@ -523,7 +523,7 @@ viewDeleteModal state { name, kind, onDeletePress } =
 ---- EDITOR
 
 
-viewEditor : Element.Device -> Git.Identity -> LoadedData -> Element Msg
+viewEditor : Element.Device -> Github.Identity -> LoadedData -> Element Msg
 viewEditor device identity model =
     if isCompact device then
         viewEditorCompact identity model
@@ -532,7 +532,7 @@ viewEditor device identity model =
         viewEditorFullScreen identity model
 
 
-viewEditorCompact : Git.Identity -> LoadedData -> Element Msg
+viewEditorCompact : Github.Identity -> LoadedData -> Element Msg
 viewEditorCompact identity model =
     Element.el
         [ Element.width Element.fill
@@ -550,7 +550,7 @@ viewEditorCompact identity model =
         )
 
 
-viewEditorFullScreen : Git.Identity -> LoadedData -> Element Msg
+viewEditorFullScreen : Github.Identity -> LoadedData -> Element Msg
 viewEditorFullScreen identity model =
     Element.column
         [ Element.width Element.fill
@@ -574,7 +574,7 @@ viewEditorFullScreen identity model =
 ---- TOOLBAR TOP COMPACT
 
 
-viewToolbarTopCompact : Git.Identity -> LoadedData -> Element Msg
+viewToolbarTopCompact : Github.Identity -> LoadedData -> Element Msg
 viewToolbarTopCompact identity model =
     Element.column
         [ Element.width Element.fill
@@ -752,7 +752,7 @@ viewToolbarBottomCompact model =
 ---- TOOLBAR TOP FULLSCREEN
 
 
-viewToolbarTopFullscreen : Git.Identity -> LoadedData -> Element Msg
+viewToolbarTopFullscreen : Github.Identity -> LoadedData -> Element Msg
 viewToolbarTopFullscreen identity model =
     Element.row
         [ Element.width Element.fill
@@ -853,10 +853,10 @@ patternActions =
         ]
 
 
-signInViaGithubBtn : Git.Identity -> Element Msg
+signInViaGithubBtn : Github.Identity -> Element Msg
 signInViaGithubBtn identity =
     case identity of
-        Git.Anonymous ->
+        Github.Anonymous ->
             Element.el [] <|
                 Ui.Atom.Input.btnPrimary
                     { id = "sign-in-btn"
@@ -864,7 +864,7 @@ signInViaGithubBtn identity =
                     , label = "Sign in via GitHub"
                     }
 
-        Git.OauthToken _ ->
+        Github.OauthToken _ ->
             Element.none
 
 
@@ -1667,17 +1667,17 @@ viewEditVariable name value =
 type Msg
     = NoOp
     | ReceivedGithubAccessToken (Result Http.Error String)
-    | ReceivedPatternData (Result Http.Error (Git.PatternData BottomLeft))
+    | ReceivedPatternData (Result Http.Error (Github.PatternData BottomLeft))
     | ReceivedSha (Result Http.Error String)
-    | ReceivedMeta (Result Http.Error Git.Meta)
-    | ReceivedPermissions (Result Http.Error Git.Permissions)
+    | ReceivedMeta (Result Http.Error Github.Meta)
+    | ReceivedPermissions (Result Http.Error Github.Permissions)
     | ReceivedPatternUpdate (Result Http.Error ())
       -- LOCAL STORAGE
     | ChangedZoom LocalStorage.Address Float
     | ChangedCenter LocalStorage.Address (Point2d Meters BottomLeft)
     | ChangedAddresses (List LocalStorage.Address)
     | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
-    | ChangedMeta LocalStorage.Address Git.Meta
+    | ChangedMeta LocalStorage.Address Github.Meta
     | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1754,7 +1754,7 @@ type CreateAction
 
 
 {-| -}
-update : String -> Element.Device -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update : String -> Element.Device -> Github.Identity -> Msg -> Model -> ( Model, Cmd Msg )
 update clientId device identity msg model =
     case model of
         Loading data ->
@@ -1845,7 +1845,7 @@ updateLoading msg data =
             Loading data
 
 
-updateLoaded : String -> Element.Device -> Git.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded : String -> Element.Device -> Github.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
 updateLoaded clientId device identity msg model =
     case msg of
         NoOp ->
@@ -1937,7 +1937,7 @@ updateLoaded clientId device identity msg model =
 
                 addressToHash address =
                     case address of
-                        LocalStorage.GitRepo { repo } ->
+                        LocalStorage.GithubRepo { repo } ->
                             "github/" ++ repo.owner ++ "/" ++ repo.name
 
                         LocalStorage.Browser { slug } ->
@@ -2006,7 +2006,7 @@ updateLoaded clientId device identity msg model =
 
         UserPressedSignIn ->
             ( model
-            , Git.requestAuthorization clientId <|
+            , Github.requestAuthorization clientId <|
                 Route.crossOrigin (Session.domain model.session) (Route.Pattern model.address) []
             )
 
@@ -2975,11 +2975,11 @@ objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
 
 
-putPattern : Git.Identity -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
+putPattern : Github.Identity -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
 putPattern identity address sha message newPattern =
     case address of
-        LocalStorage.GitRepo { repo } ->
-            Git.putPattern identity
+        LocalStorage.GithubRepo { repo } ->
+            Github.putPattern identity
                 { repo = repo
                 , message = message
                 , pattern = newPattern

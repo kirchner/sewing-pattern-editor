@@ -24,7 +24,7 @@ import Browser.Events
 import Browser.Navigation
 import Element exposing (Element)
 import Element.Font as Font
-import Git
+import Github
 import Html exposing (Html)
 import Http
 import Json.Decode as Decode
@@ -80,7 +80,7 @@ type alias LoadingData =
 
 type alias LoadedData =
     { device : Element.Device
-    , identity : Git.Identity
+    , identity : Github.Identity
     , clientId : String
     , page : Page
     }
@@ -414,10 +414,10 @@ initLoaded data maybeGithubAccessToken device =
         identity =
             case maybeGithubAccessToken of
                 Nothing ->
-                    Git.Anonymous
+                    Github.Anonymous
 
                 Just githubAccessToken ->
-                    Git.OauthToken githubAccessToken
+                    Github.OauthToken githubAccessToken
     in
     ( Loaded
         { device = device
@@ -554,7 +554,7 @@ updateLoaded msg data =
 ---- CHANGE PAGE TO
 
 
-changePageTo : Session -> Git.Identity -> Route -> ( Page, Cmd Msg )
+changePageTo : Session -> Github.Identity -> Route -> ( Page, Cmd Msg )
 changePageTo session identity route =
     case route of
         Route.Patterns ->

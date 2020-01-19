@@ -18,7 +18,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Lazy as Element
-import Git
+import Github
 import Http
 import LocalStorage
 import Pattern exposing (Pattern)
@@ -46,7 +46,7 @@ type Model
 type alias LoadingData =
     { session : Session
     , parameters : Route.NewParameters
-    , user : WebData Git.User
+    , user : WebData Github.User
     }
 
 
@@ -111,19 +111,19 @@ visibilityToString visibility =
 
 
 {-| -}
-init : Session -> Git.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
+init : Session -> Github.Identity -> Route.NewParameters -> ( Model, Cmd Msg )
 init session identity newParameters =
     case identity of
-        Git.Anonymous ->
+        Github.Anonymous ->
             initLoaded session newParameters Nothing
 
-        Git.OauthToken _ ->
+        Github.OauthToken _ ->
             ( Loading
                 { session = session
                 , parameters = newParameters
                 , user = RemoteData.Loading
                 }
-            , Git.getAuthenticatedUser identity
+            , Github.getAuthenticatedUser identity
                 { onUser = RemoteData.fromResult >> ReceivedAuthenticatedUser }
             )
 
@@ -169,7 +169,7 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Git.Identity
+    -> Github.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view device identity model =
@@ -185,7 +185,7 @@ view device identity model =
     }
 
 
-viewNew : Element.Device -> Git.Identity -> LoadedData -> Element Msg
+viewNew : Element.Device -> Github.Identity -> LoadedData -> Element Msg
 viewNew device identity model =
     Element.column
         [ Element.width Element.fill
@@ -202,7 +202,7 @@ viewNew device identity model =
         ]
 
 
-viewContent : Git.Identity -> LoadedData -> Element Msg
+viewContent : Github.Identity -> LoadedData -> Element Msg
 viewContent identity model =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
@@ -319,7 +319,7 @@ viewContent identity model =
 
             GithubTag ->
                 case identity of
-                    Git.Anonymous ->
+                    Github.Anonymous ->
                         Element.el [] <|
                             Ui.Atom.Input.btnPrimary
                                 { id = "log-in-btn"
@@ -327,7 +327,7 @@ viewContent identity model =
                                 , label = "Sign in via GitHub"
                                 }
 
-                    Git.OauthToken _ ->
+                    Github.OauthToken _ ->
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -408,7 +408,7 @@ horizontalRule =
 
 {-| -}
 type Msg
-    = ReceivedAuthenticatedUser (WebData Git.User)
+    = ReceivedAuthenticatedUser (WebData Github.User)
     | UserChangedName String
     | UserChangedDescription String
     | UserChangedStorageSolution StorageSolutionTag
@@ -417,12 +417,12 @@ type Msg
     | UserChangedRepositoryName String
     | UserChangedVisibility Visibility
     | UserPressedCreate
-    | ReceivedRepository String String Git.Repo (Result Http.Error Git.Repository)
-    | ReceivedShaOfMeta Git.Repo (Result Http.Error String)
-    | ReceivedShaOfPattern Git.Repo (Result Http.Error String)
+    | ReceivedRepository String String Github.Repo (Result Http.Error Github.Repository)
+    | ReceivedShaOfMeta Github.Repo (Result Http.Error String)
+    | ReceivedShaOfPattern Github.Repo (Result Http.Error String)
     | ChangedWhatever
     | ChangedPattern LocalStorage.Address (Pattern ())
-    | ChangedMeta LocalStorage.Address Git.Meta
+    | ChangedMeta LocalStorage.Address Github.Meta
     | ChangedAddresses (List LocalStorage.Address)
 
 
@@ -455,7 +455,7 @@ storageSolutionFromString string =
 
 
 {-| -}
-update : String -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update : String -> Github.Identity -> Msg -> Model -> ( Model, Cmd Msg )
 update clientId identity msg model =
     case model of
         Loading data ->
@@ -487,7 +487,7 @@ checkLoaded data =
             )
 
 
-updateLoaded : String -> Git.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded : String -> Github.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
 updateLoaded clientId identity msg model =
     case msg of
         ReceivedAuthenticatedUser _ ->
@@ -519,7 +519,7 @@ updateLoaded clientId identity msg model =
 
         UserPressedSignIn ->
             ( model
-            , Git.requestAuthorization clientId <|
+            , Github.requestAuthorization clientId <|
                 Route.crossOrigin (Session.domain model.session)
                     (Route.PatternNew
                         { name = Just model.name
@@ -571,13 +571,13 @@ updateLoaded clientId identity msg model =
 
                                 route =
                                     Route.Pattern
-                                        (LocalStorage.GitRepo
+                                        (LocalStorage.GithubRepo
                                             { repo = repo
-                                            , ref = Git.defaultRef
+                                            , ref = Github.defaultRef
                                             }
                                         )
                             in
-                            Git.createRepository identity
+                            Github.createRepository identity
                                 { repository =
                                     { name = model.repositoryName
                                     , description = model.description
@@ -600,7 +600,7 @@ updateLoaded clientId identity msg model =
 
         ReceivedRepository name description repo (Ok _) ->
             ( model
-            , Git.putMeta identity
+            , Github.putMeta identity
                 { repo = repo
                 , message = "create meta.json"
                 , meta =
@@ -617,7 +617,7 @@ updateLoaded clientId identity msg model =
 
         ReceivedShaOfMeta repo (Ok _) ->
             ( model
-            , Git.putPattern identity
+            , Github.putPattern identity
                 { repo = repo
                 , message = "create pattern.json"
                 , pattern = newPattern
@@ -633,9 +633,9 @@ updateLoaded clientId identity msg model =
             ( { model
                 | newAddress =
                     Just <|
-                        LocalStorage.GitRepo
+                        LocalStorage.GithubRepo
                             { repo = repo
-                            , ref = Git.defaultRef
+                            , ref = Github.defaultRef
                             }
               }
             , LocalStorage.requestAddresses

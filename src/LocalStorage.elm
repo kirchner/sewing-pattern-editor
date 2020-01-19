@@ -20,7 +20,7 @@ port module LocalStorage exposing
 
 -}
 
-import Git
+import Github
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
 import Json.Decode.Pipeline as Decode
@@ -45,15 +45,15 @@ port onStoreMissing : ({ key : String } -> msg) -> Sub msg
 
 
 type Address
-    = GitRepo { repo : Git.Repo, ref : Git.Ref }
+    = GithubRepo { repo : Github.Repo, ref : Github.Ref }
     | Browser { slug : String }
 
 
 addressParser : Parser (Address -> a) a
 addressParser =
     oneOf
-        [ map (\repo ref -> GitRepo { repo = repo, ref = ref })
-            (top </> s "github" </> Git.repoParser </> Git.refParser)
+        [ map (\repo ref -> GithubRepo { repo = repo, ref = ref })
+            (top </> s "github" </> Github.repoParser </> Github.refParser)
         , map (\slug -> Browser { slug = slug })
             (top </> s "browser" </> string)
         ]
@@ -62,8 +62,8 @@ addressParser =
 addressToPathSegments : Address -> List String
 addressToPathSegments address =
     case address of
-        GitRepo { repo, ref } ->
-            "github" :: repo.owner :: repo.name :: Git.refToPathSegments ref
+        GithubRepo { repo, ref } ->
+            "github" :: repo.owner :: repo.name :: Github.refToPathSegments ref
 
         Browser { slug } ->
             [ "browser", slug ]
@@ -72,9 +72,9 @@ addressToPathSegments address =
 addressDecoder : Decoder Address
 addressDecoder =
     Decode.oneOf
-        [ Decode.succeed (\repo ref -> GitRepo { repo = repo, ref = ref })
-            |> Decode.required "repo" Git.repoDecoder
-            |> Decode.required "ref" Git.refDecoder
+        [ Decode.succeed (\repo ref -> GithubRepo { repo = repo, ref = ref })
+            |> Decode.required "repo" Github.repoDecoder
+            |> Decode.required "ref" Github.refDecoder
             |> Decode.ensureType "gitRepo"
         , Decode.succeed (\slug -> Browser { slug = slug })
             |> Decode.required "slug" Decode.string
@@ -85,10 +85,10 @@ addressDecoder =
 encodeAddress : Address -> Value
 encodeAddress address =
     case address of
-        GitRepo { repo, ref } ->
+        GithubRepo { repo, ref } ->
             Encode.withType "gitRepo"
-                [ ( "repo", Git.encodeRepo repo )
-                , ( "ref", Git.encodeRef ref )
+                [ ( "repo", Github.encodeRepo repo )
+                , ( "ref", Github.encodeRef ref )
                 ]
 
         Browser { slug } ->
@@ -191,11 +191,11 @@ requestPattern address =
 ---- META
 
 
-updateMeta : Address -> Git.Meta -> Cmd msg
+updateMeta : Address -> Github.Meta -> Cmd msg
 updateMeta address meta =
     storeCache
         { key = key address "meta"
-        , value = Encode.encode 0 (Git.encodeMeta meta)
+        , value = Encode.encode 0 (Github.encodeMeta meta)
         }
 
 
@@ -214,7 +214,7 @@ changedStore :
     , changedCenter : Address -> Point2d Meters coordinates -> msg
     , changedAddresses : List Address -> msg
     , changedPattern : Address -> Pattern coordinates -> msg
-    , changedMeta : Address -> Git.Meta -> msg
+    , changedMeta : Address -> Github.Meta -> msg
     , changedWhatever : msg
     }
     -> Sub msg
@@ -258,7 +258,7 @@ changedStore cfg =
                                         cfg.changedPattern address pattern
 
                             "meta" ->
-                                case Decode.decodeString Git.metaDecoder data.value of
+                                case Decode.decodeString Github.metaDecoder data.value of
                                     Err _ ->
                                         cfg.changedWhatever
 
@@ -282,13 +282,13 @@ changedStore cfg =
                             maybeRef =
                                 case refType of
                                     "commits" ->
-                                        Just (Git.commit refValue)
+                                        Just (Github.commit refValue)
 
                                     "branches" ->
-                                        Just (Git.branch refValue)
+                                        Just (Github.branch refValue)
 
                                     "tags" ->
-                                        Just (Git.tag refValue)
+                                        Just (Github.tag refValue)
 
                                     _ ->
                                         Nothing
@@ -299,7 +299,7 @@ changedStore cfg =
 
                             Just ref ->
                                 valueChanged
-                                    (GitRepo
+                                    (GithubRepo
                                         { repo = { owner = owner, name = repo }
                                         , ref = ref
                                         }
@@ -319,8 +319,8 @@ key : Address -> String -> String
 key address name =
     String.join "/" <|
         case address of
-            GitRepo { repo, ref } ->
-                [ "github", repo.owner, repo.name, Git.refToString ref, name ]
+            GithubRepo { repo, ref } ->
+                [ "github", repo.owner, repo.name, Github.refToString ref, name ]
 
             Browser { slug } ->
                 [ "browser", slug, name ]

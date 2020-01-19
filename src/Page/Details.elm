@@ -46,7 +46,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Geometry.Svg as Svg
 import Geometry.Svg.Extra as Svg
-import Git
+import Github
 import Html
 import Html.Attributes
 import Http
@@ -93,9 +93,9 @@ type Model
 type alias LoadingData =
     { session : Session
     , address : LocalStorage.Address
-    , maybePatternData : Maybe (Git.PatternData BottomLeft)
-    , maybeMeta : Maybe Git.Meta
-    , maybePermissions : Maybe Git.Permissions
+    , maybePatternData : Maybe (Github.PatternData BottomLeft)
+    , maybeMeta : Maybe Github.Meta
+    , maybePermissions : Maybe Github.Permissions
     }
 
 
@@ -106,7 +106,7 @@ type BottomLeft
 type alias LoadedData =
     { session : Session
     , address : LocalStorage.Address
-    , permissions : Git.Permissions
+    , permissions : Github.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
     , name : String
@@ -132,7 +132,7 @@ type alias Pose =
 
 
 {-| -}
-init : Session -> Git.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
+init : Session -> Github.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
 init session identity address =
     ( Loading
         { session = session
@@ -142,19 +142,19 @@ init session identity address =
         , maybePermissions = Nothing
         }
     , case address of
-        LocalStorage.GitRepo { repo, ref } ->
+        LocalStorage.GithubRepo { repo, ref } ->
             Cmd.batch
-                [ Git.getPattern identity
+                [ Github.getPattern identity
                     { repo = repo
                     , ref = ref
                     , onPatternData = ReceivedPatternData
                     }
-                , Git.getMeta identity
+                , Github.getMeta identity
                     { repo = repo
                     , ref = ref
                     , onMeta = ReceivedMeta
                     }
-                , Git.getPermissions identity
+                , Github.getPermissions identity
                     { repo = repo
                     , onPermissions = ReceivedPermissions
                     }
@@ -173,8 +173,8 @@ initLoaded :
     -> LocalStorage.Address
     -> String
     -> Pattern BottomLeft
-    -> Git.Meta
-    -> Git.Permissions
+    -> Github.Meta
+    -> Github.Permissions
     -> ( Model, Cmd Msg )
 initLoaded session address sha pattern meta permissions =
     ( Loaded
@@ -218,7 +218,7 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Git.Identity
+    -> Github.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view _ _ model =
@@ -581,13 +581,13 @@ viewDetailLabel detail2d =
 
 
 type Msg
-    = ReceivedPatternData (Result Http.Error (Git.PatternData BottomLeft))
+    = ReceivedPatternData (Result Http.Error (Github.PatternData BottomLeft))
     | ReceivedSha (Result Http.Error String)
-    | ReceivedMeta (Result Http.Error Git.Meta)
-    | ReceivedPermissions (Result Http.Error Git.Permissions)
+    | ReceivedMeta (Result Http.Error Github.Meta)
+    | ReceivedPermissions (Result Http.Error Github.Permissions)
       -- LOCAL STORAGE
     | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
-    | ChangedMeta LocalStorage.Address Git.Meta
+    | ChangedMeta LocalStorage.Address Github.Meta
     | ChangedWhatever
       -- VIDEO
     | ReceivedViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
@@ -602,7 +602,7 @@ type Msg
 update :
     String
     -> Element.Device
-    -> Git.Identity
+    -> Github.Identity
     -> Msg
     -> Model
     -> ( Model, Cmd Msg )

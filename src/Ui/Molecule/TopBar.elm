@@ -3,7 +3,7 @@ module Ui.Molecule.TopBar exposing (view)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
-import Git
+import Github
 import Ui.Atom.Icon
 import Ui.Atom.Input
 import Ui.Theme.Color
@@ -14,7 +14,7 @@ import Ui.Theme.Typography
 
 type alias Config msg =
     { userPressedSignIn : msg
-    , identity : Git.Identity
+    , identity : Github.Identity
     , device : Element.Device
     , backToLabel : Maybe String
     , heading : String
@@ -47,14 +47,14 @@ view cfg =
 
         signInViaGithubBtn =
             case cfg.identity of
-                Git.Anonymous ->
+                Github.Anonymous ->
                     Ui.Atom.Input.btnPrimary
                         { id = "sign-in-btn"
                         , onPress = Just cfg.userPressedSignIn
                         , label = "Sign in via GitHub"
                         }
 
-                Git.OauthToken _ ->
+                Github.OauthToken _ ->
                     Element.none
 
         heading =

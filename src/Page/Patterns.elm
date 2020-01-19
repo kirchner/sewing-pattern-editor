@@ -14,7 +14,7 @@ module Page.Patterns exposing
 
 import Browser.Navigation
 import Element exposing (Element)
-import Git
+import Github
 import Http
 import List.Extra as List
 import LocalStorage
@@ -92,7 +92,7 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Git.Identity
+    -> Github.Identity
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view device identity model =
@@ -112,7 +112,7 @@ view device identity model =
     }
 
 
-viewPatterns : Element.Device -> Git.Identity -> LoadedData -> Element Msg
+viewPatterns : Element.Device -> Github.Identity -> LoadedData -> Element Msg
 viewPatterns device identity model =
     Element.column
         [ Element.width Element.fill
@@ -169,15 +169,15 @@ type Msg
     | UserPressedImport
     | UserPressedCreate
     | ChangedAddresses (List LocalStorage.Address)
-    | ChangedMeta LocalStorage.Address Git.Meta
-    | ReceivedMeta LocalStorage.Address (Result Http.Error Git.Meta)
+    | ChangedMeta LocalStorage.Address Github.Meta
+    | ReceivedMeta LocalStorage.Address (Result Http.Error Github.Meta)
     | ChangedWhatever
     | UserPressedClone LocalStorage.Address
     | UserPressedSignIn
 
 
 {-| -}
-update : String -> Git.Identity -> Msg -> Model -> ( Model, Cmd Msg )
+update : String -> Github.Identity -> Msg -> Model -> ( Model, Cmd Msg )
 update clientId identity msg model =
     case model of
         Loading data ->
@@ -188,7 +188,7 @@ update clientId identity msg model =
                 |> Tuple.mapFirst Loaded
 
 
-updateLoading : Git.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
+updateLoading : Github.Identity -> Msg -> LoadingData -> ( Model, Cmd Msg )
 updateLoading identity msg model =
     case msg of
         ChangedAddresses newAddresses ->
@@ -242,7 +242,7 @@ updateLoaded clientId msg model =
 
         UserPressedSignIn ->
             ( model
-            , Git.requestAuthorization clientId <|
+            , Github.requestAuthorization clientId <|
                 Route.crossOrigin (Session.domain model.session) Route.Patterns []
             )
 
@@ -263,7 +263,7 @@ subscriptions _ =
         }
 
 
-addMeta : LocalStorage.Address -> Git.Meta -> LoadingData -> LoadingData
+addMeta : LocalStorage.Address -> Github.Meta -> LoadingData -> LoadingData
 addMeta address meta data =
     let
         newPatterns =
@@ -272,7 +272,7 @@ addMeta address meta data =
             , description = meta.description
             , storage =
                 case address of
-                    LocalStorage.GitRepo { repo } ->
+                    LocalStorage.GithubRepo { repo } ->
                         Ui.Molecule.PatternList.Github repo.owner repo.name
 
                     LocalStorage.Browser { slug } ->
@@ -284,7 +284,7 @@ addMeta address meta data =
 
         addressToHash address_ =
             case address_ of
-                LocalStorage.GitRepo { repo } ->
+                LocalStorage.GithubRepo { repo } ->
                     "github/" ++ repo.owner ++ "/" ++ repo.name
 
                 LocalStorage.Browser { slug } ->
@@ -293,7 +293,7 @@ addMeta address meta data =
     { data | patterns = newPatterns }
 
 
-requestNextMeta : Git.Identity -> LoadingData -> ( Model, Cmd Msg )
+requestNextMeta : Github.Identity -> LoadingData -> ( Model, Cmd Msg )
 requestNextMeta identity data =
     case data.unrequestedAddresses of
         Nothing ->
@@ -314,8 +314,8 @@ requestNextMeta identity data =
         Just (next :: rest) ->
             ( Loading { data | unrequestedAddresses = Just rest }
             , case next of
-                LocalStorage.GitRepo { repo, ref } ->
-                    Git.getMeta identity
+                LocalStorage.GithubRepo { repo, ref } ->
+                    Github.getMeta identity
                         { repo = repo
                         , ref = ref
                         , onMeta = ReceivedMeta next

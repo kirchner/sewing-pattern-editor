@@ -1,4 +1,4 @@
-module Git exposing
+module Github exposing
     ( Identity(..), requestAuthorization
     , Repo, Ref, defaultRef, commit, branch, tag
     , repoDecoder, encodeRepo, refDecoder, encodeRef
