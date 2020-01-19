@@ -212,8 +212,8 @@ type Dialog
 
 
 {-| -}
-init : Session -> Github.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
-init session identity address =
+init : Session -> Github.Cred -> LocalStorage.Address -> ( Model, Cmd Msg )
+init session cred address =
     ( Loading
         { session = session
         , address = address
@@ -224,17 +224,17 @@ init session identity address =
     , case address of
         LocalStorage.GithubRepo { repo, ref } ->
             Cmd.batch
-                [ Github.getPattern identity
+                [ Github.getPattern cred
                     { repo = repo
                     , ref = ref
                     , onPatternData = ReceivedPatternData
                     }
-                , Github.getMeta identity
+                , Github.getMeta cred
                     { repo = repo
                     , ref = ref
                     , onMeta = ReceivedMeta
                     }
-                , Github.getPermissions identity
+                , Github.getPermissions cred
                     { repo = repo
                     , onPermissions = ReceivedPermissions
                     }
@@ -328,10 +328,10 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Github.Identity
+    -> Github.Cred
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
-view device identity model =
+view device cred model =
     case model of
         Loading _ ->
             statusMsg "Loading pattern..." "Loading pattern..."
@@ -341,7 +341,7 @@ view device identity model =
 
         Loaded data ->
             { title = "Sewing Pattern Editor"
-            , body = viewEditor device identity data
+            , body = viewEditor device cred data
             , dialog = Maybe.map (viewModal data.pattern) data.maybeModal
             }
 
@@ -523,17 +523,17 @@ viewDeleteModal state { name, kind, onDeletePress } =
 ---- EDITOR
 
 
-viewEditor : Element.Device -> Github.Identity -> LoadedData -> Element Msg
-viewEditor device identity model =
+viewEditor : Element.Device -> Github.Cred -> LoadedData -> Element Msg
+viewEditor device cred model =
     if isCompact device then
-        viewEditorCompact identity model
+        viewEditorCompact cred model
 
     else
-        viewEditorFullScreen identity model
+        viewEditorFullScreen cred model
 
 
-viewEditorCompact : Github.Identity -> LoadedData -> Element Msg
-viewEditorCompact identity model =
+viewEditorCompact : Github.Cred -> LoadedData -> Element Msg
+viewEditorCompact cred model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -544,19 +544,19 @@ viewEditorCompact identity model =
             [ Element.htmlAttribute (Html.Attributes.id "pattern-container")
             , Element.width Element.fill
             , Element.height Element.fill
-            , Element.inFront (viewToolbarTopCompact identity model)
+            , Element.inFront (viewToolbarTopCompact cred model)
             ]
             (Element.lazy3 viewPattern model.patternContainerDimensions (actualCenter model) model)
         )
 
 
-viewEditorFullScreen : Github.Identity -> LoadedData -> Element Msg
-viewEditorFullScreen identity model =
+viewEditorFullScreen : Github.Cred -> LoadedData -> Element Msg
+viewEditorFullScreen cred model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ viewToolbarTopFullscreen identity model
+        [ viewToolbarTopFullscreen cred model
         , Element.row
             [ Element.height Element.fill
             , Element.width Element.fill
@@ -574,8 +574,8 @@ viewEditorFullScreen identity model =
 ---- TOOLBAR TOP COMPACT
 
 
-viewToolbarTopCompact : Github.Identity -> LoadedData -> Element Msg
-viewToolbarTopCompact identity model =
+viewToolbarTopCompact : Github.Cred -> LoadedData -> Element Msg
+viewToolbarTopCompact cred model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level1
@@ -621,7 +621,7 @@ viewToolbarTopCompact identity model =
         [ Element.row
             [ Element.width Element.fill ]
             [ Element.el [ Element.alignLeft ] patternActions
-            , Element.el [ Element.alignRight ] (signInViaGithubBtn identity)
+            , Element.el [ Element.alignRight ] (signInViaGithubBtn cred)
             ]
         , Element.el [ Element.centerX ] (patternAddress model.address)
         , Element.row
@@ -752,8 +752,8 @@ viewToolbarBottomCompact model =
 ---- TOOLBAR TOP FULLSCREEN
 
 
-viewToolbarTopFullscreen : Github.Identity -> LoadedData -> Element Msg
-viewToolbarTopFullscreen identity model =
+viewToolbarTopFullscreen : Github.Cred -> LoadedData -> Element Msg
+viewToolbarTopFullscreen cred model =
     Element.row
         [ Element.width Element.fill
         , Element.padding (Ui.Theme.Spacing.level1 // 2)
@@ -781,7 +781,7 @@ viewToolbarTopFullscreen identity model =
             [ patternAddress model.address
             , loadingIndicator model.stored
             , patternActions
-            , signInViaGithubBtn identity
+            , signInViaGithubBtn cred
             ]
         ]
 
@@ -853,9 +853,9 @@ patternActions =
         ]
 
 
-signInViaGithubBtn : Github.Identity -> Element Msg
-signInViaGithubBtn identity =
-    case identity of
+signInViaGithubBtn : Github.Cred -> Element Msg
+signInViaGithubBtn cred =
+    case cred of
         Github.Anonymous ->
             Element.el [] <|
                 Ui.Atom.Input.btnPrimary
@@ -1754,8 +1754,8 @@ type CreateAction
 
 
 {-| -}
-update : String -> Element.Device -> Github.Identity -> Msg -> Model -> ( Model, Cmd Msg )
-update clientId device identity msg model =
+update : String -> Element.Device -> Github.Cred -> Msg -> Model -> ( Model, Cmd Msg )
+update clientId device cred msg model =
     case model of
         Loading data ->
             case updateLoading msg data of
@@ -1780,7 +1780,7 @@ update clientId device identity msg model =
             ( model, Cmd.none )
 
         Loaded data ->
-            updateLoaded clientId device identity msg data
+            updateLoaded clientId device cred msg data
                 |> Tuple.mapFirst Loaded
 
 
@@ -1845,8 +1845,8 @@ updateLoading msg data =
             Loading data
 
 
-updateLoaded : String -> Element.Device -> Github.Identity -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded clientId device identity msg model =
+updateLoaded : String -> Element.Device -> Github.Cred -> Msg -> LoadedData -> ( LoadedData, Cmd Msg )
+updateLoaded clientId device cred msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -2367,7 +2367,7 @@ updateLoaded clientId device identity msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern identity
+                                    , putPattern cred
                                         model.address
                                         model.sha
                                         "create object"
@@ -2375,7 +2375,7 @@ updateLoaded clientId device identity msg model =
                                     ]
 
                               else
-                                putPattern identity model.address model.sha "create object" newPattern
+                                putPattern cred model.address model.sha "create object" newPattern
                             )
 
                         Ui.Organism.Dialog.CreateCanceled ->
@@ -2420,11 +2420,11 @@ updateLoaded clientId device identity msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern identity model.address model.sha "edit object" newPattern
+                                    , putPattern cred model.address model.sha "edit object" newPattern
                                     ]
 
                               else
-                                putPattern identity model.address model.sha "edit object" newPattern
+                                putPattern cred model.address model.sha "edit object" newPattern
                             )
 
                         Ui.Organism.Dialog.EditCanceled ->
@@ -2558,7 +2558,7 @@ updateLoaded clientId device identity msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern identity
+                                    , putPattern cred
                                         model.address
                                         model.sha
                                         "create variable"
@@ -2566,7 +2566,7 @@ updateLoaded clientId device identity msg model =
                                     ]
 
                               else
-                                putPattern identity model.address model.sha "create variable" newPattern
+                                putPattern cred model.address model.sha "create variable" newPattern
                             )
 
                 _ ->
@@ -2588,7 +2588,7 @@ updateLoaded clientId device identity msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern identity
+                                    , putPattern cred
                                         model.address
                                         model.sha
                                         "edit variable"
@@ -2596,7 +2596,7 @@ updateLoaded clientId device identity msg model =
                                     ]
 
                               else
-                                putPattern identity model.address model.sha "edit variable" newPattern
+                                putPattern cred model.address model.sha "edit variable" newPattern
                             )
 
                 _ ->
@@ -2624,7 +2624,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete point" newPattern
+                    , putPattern cred model.address model.sha "delete point" newPattern
                     )
 
                 _ ->
@@ -2646,7 +2646,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete axis" newPattern
+                    , putPattern cred model.address model.sha "delete axis" newPattern
                     )
 
                 _ ->
@@ -2668,7 +2668,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete circle" newPattern
+                    , putPattern cred model.address model.sha "delete circle" newPattern
                     )
 
                 _ ->
@@ -2690,7 +2690,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete curve" newPattern
+                    , putPattern cred model.address model.sha "delete curve" newPattern
                     )
 
                 _ ->
@@ -2712,7 +2712,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete detail" newPattern
+                    , putPattern cred model.address model.sha "delete detail" newPattern
                     )
 
                 _ ->
@@ -2734,7 +2734,7 @@ updateLoaded clientId device identity msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern identity model.address model.sha "delete variable" newPattern
+                    , putPattern cred model.address model.sha "delete variable" newPattern
                     )
 
                 _ ->
@@ -2975,11 +2975,11 @@ objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
 
 
-putPattern : Github.Identity -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
-putPattern identity address sha message newPattern =
+putPattern : Github.Cred -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
+putPattern cred address sha message newPattern =
     case address of
         LocalStorage.GithubRepo { repo } ->
-            Github.putPattern identity
+            Github.putPattern cred
                 { repo = repo
                 , message = message
                 , pattern = newPattern

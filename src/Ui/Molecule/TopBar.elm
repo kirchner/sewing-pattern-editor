@@ -14,7 +14,7 @@ import Ui.Theme.Typography
 
 type alias Config msg =
     { userPressedSignIn : msg
-    , identity : Github.Identity
+    , cred : Github.Cred
     , device : Element.Device
     , backToLabel : Maybe String
     , heading : String
@@ -46,7 +46,7 @@ view cfg =
                             }
 
         signInViaGithubBtn =
-            case cfg.identity of
+            case cfg.cred of
                 Github.Anonymous ->
                     Ui.Atom.Input.btnPrimary
                         { id = "sign-in-btn"

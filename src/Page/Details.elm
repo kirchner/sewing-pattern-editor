@@ -132,8 +132,8 @@ type alias Pose =
 
 
 {-| -}
-init : Session -> Github.Identity -> LocalStorage.Address -> ( Model, Cmd Msg )
-init session identity address =
+init : Session -> Github.Cred -> LocalStorage.Address -> ( Model, Cmd Msg )
+init session cred address =
     ( Loading
         { session = session
         , address = address
@@ -144,17 +144,17 @@ init session identity address =
     , case address of
         LocalStorage.GithubRepo { repo, ref } ->
             Cmd.batch
-                [ Github.getPattern identity
+                [ Github.getPattern cred
                     { repo = repo
                     , ref = ref
                     , onPatternData = ReceivedPatternData
                     }
-                , Github.getMeta identity
+                , Github.getMeta cred
                     { repo = repo
                     , ref = ref
                     , onMeta = ReceivedMeta
                     }
-                , Github.getPermissions identity
+                , Github.getPermissions cred
                     { repo = repo
                     , onPermissions = ReceivedPermissions
                     }
@@ -218,7 +218,7 @@ toSession model =
 {-| -}
 view :
     Element.Device
-    -> Github.Identity
+    -> Github.Cred
     -> Model
     -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view _ _ model =
@@ -602,7 +602,7 @@ type Msg
 update :
     String
     -> Element.Device
-    -> Github.Identity
+    -> Github.Cred
     -> Msg
     -> Model
     -> ( Model, Cmd Msg )

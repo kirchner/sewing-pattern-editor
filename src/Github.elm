@@ -1,5 +1,5 @@
 module Github exposing
-    ( Identity(..), requestAuthorization
+    ( Cred(..), requestAuthorization
     , Repo, Ref, defaultRef, commit, branch, tag
     , repoDecoder, encodeRepo, refDecoder, encodeRef
     , refToString, refToPathSegments, refFromString
@@ -13,7 +13,7 @@ module Github exposing
 
 {-|
 
-@docs Identity, requestAuthorization
+@docs Cred, requestAuthorization
 @docs Repo, Ref, defaultRef, commit, branch, tag
 @docs repoDecoder, encodeRepo, refDecoder, encodeRef
 @docs refToString, refToPathSegments, refFromString
@@ -39,7 +39,7 @@ import Url.Builder exposing (QueryParameter)
 import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
-type Identity
+type Cred
     = Anonymous
     | OauthToken String
 
@@ -192,15 +192,15 @@ type alias PatternData coordinates =
 
 
 getPattern :
-    Identity
+    Cred
     ->
         { repo : Repo
         , ref : Ref
         , onPatternData : Result Http.Error (PatternData coordinates) -> msg
         }
     -> Cmd msg
-getPattern identity { repo, ref, onPatternData } =
-    get identity
+getPattern cred { repo, ref, onPatternData } =
+    get cred
         { repo = repo
         , endpoint = [ "contents", "pattern.json" ]
         , params = [ refParam ref ]
@@ -223,7 +223,7 @@ getPattern identity { repo, ref, onPatternData } =
 
 
 putPattern :
-    Identity
+    Cred
     ->
         { repo : Repo
         , message : String
@@ -232,7 +232,7 @@ putPattern :
         , onSha : Result Http.Error String -> msg
         }
     -> Cmd msg
-putPattern identity { repo, message, pattern, sha, onSha } =
+putPattern cred { repo, message, pattern, sha, onSha } =
     let
         content =
             pattern
@@ -240,7 +240,7 @@ putPattern identity { repo, message, pattern, sha, onSha } =
                 |> Encode.encode 2
                 |> Base64.encode
     in
-    put identity
+    put cred
         { repo = repo
         , endpoint = [ "contents", "pattern.json" ]
         , body =
@@ -280,15 +280,15 @@ encodeMeta meta =
 
 
 getMeta :
-    Identity
+    Cred
     ->
         { repo : Repo
         , ref : Ref
         , onMeta : Result Http.Error Meta -> msg
         }
     -> Cmd msg
-getMeta identity { repo, ref, onMeta } =
-    get identity
+getMeta cred { repo, ref, onMeta } =
+    get cred
         { repo = repo
         , endpoint = [ "contents", "meta.json" ]
         , params = [ refParam ref ]
@@ -308,7 +308,7 @@ getMeta identity { repo, ref, onMeta } =
 
 
 putMeta :
-    Identity
+    Cred
     ->
         { repo : Repo
         , message : String
@@ -317,7 +317,7 @@ putMeta :
         , onSha : Result Http.Error String -> msg
         }
     -> Cmd msg
-putMeta identity { repo, message, meta, sha, onSha } =
+putMeta cred { repo, message, meta, sha, onSha } =
     let
         content =
             meta
@@ -325,7 +325,7 @@ putMeta identity { repo, message, meta, sha, onSha } =
                 |> Encode.encode 2
                 |> Base64.encode
     in
-    put identity
+    put cred
         { repo = repo
         , endpoint = [ "contents", "meta.json" ]
         , body =
@@ -392,14 +392,14 @@ noPermissions =
 
 
 getPermissions :
-    Identity
+    Cred
     ->
         { repo : Repo
         , onPermissions : Result Http.Error Permissions -> msg
         }
     -> Cmd msg
-getPermissions identity { repo, onPermissions } =
-    get identity
+getPermissions cred { repo, onPermissions } =
+    get cred
         { repo = repo
         , endpoint = []
         , params = []
@@ -436,13 +436,13 @@ userDecoder =
 
 
 getAuthenticatedUser :
-    Identity
+    Cred
     -> { onUser : Result Http.Error User -> msg }
     -> Cmd msg
-getAuthenticatedUser identity { onUser } =
+getAuthenticatedUser cred { onUser } =
     Http.request
         { method = "GET"
-        , headers = headers identity
+        , headers = headers cred
         , url = Url.Builder.crossOrigin "https://api.github.com" [ "user" ] []
         , body = Http.emptyBody
         , expect = Http.expectJson onUser userDecoder
@@ -464,16 +464,16 @@ type alias Repository =
 
 
 createRepository :
-    Identity
+    Cred
     ->
         { repository : Repository
         , onRepository : Result Http.Error Repository -> msg
         }
     -> Cmd msg
-createRepository identity { repository, onRepository } =
+createRepository cred { repository, onRepository } =
     Http.request
         { method = "POST"
-        , headers = headers identity
+        , headers = headers cred
         , url = Url.Builder.crossOrigin "https://api.github.com" [ "user", "repos" ] []
         , body =
             Http.jsonBody <|
@@ -503,7 +503,7 @@ repositoryDecoder =
 
 
 get :
-    Identity
+    Cred
     ->
         { repo : Repo
         , endpoint : List String
@@ -512,10 +512,10 @@ get :
         , decoder : Decoder a
         }
     -> Cmd msg
-get identity { repo, endpoint, params, onData, decoder } =
+get cred { repo, endpoint, params, onData, decoder } =
     Http.request
         { method = "GET"
-        , headers = headers identity
+        , headers = headers cred
         , url = url repo endpoint params
         , body = Http.emptyBody
         , expect = Http.expectJson onData decoder
@@ -525,7 +525,7 @@ get identity { repo, endpoint, params, onData, decoder } =
 
 
 put :
-    Identity
+    Cred
     ->
         { repo : Repo
         , endpoint : List String
@@ -534,10 +534,10 @@ put :
         , decoder : Decoder a
         }
     -> Cmd msg
-put identity { repo, endpoint, body, onData, decoder } =
+put cred { repo, endpoint, body, onData, decoder } =
     Http.request
         { method = "PUT"
-        , headers = headers identity
+        , headers = headers cred
         , url = url repo endpoint []
         , body = Http.jsonBody body
         , expect = Http.expectJson onData decoder
@@ -546,9 +546,9 @@ put identity { repo, endpoint, body, onData, decoder } =
         }
 
 
-headers : Identity -> List Http.Header
-headers identity =
-    case identity of
+headers : Cred -> List Http.Header
+headers cred =
+    case cred of
         Anonymous ->
             [ Http.header "Accept" "application/vnd.github.v3+json"
             ]
