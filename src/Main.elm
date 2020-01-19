@@ -301,16 +301,7 @@ updateRequestingClientId msg data =
                         , githubAccessToken = RemoteData.NotAsked
                         , maybeDevice = Nothing
                         }
-                    , Browser.Dom.getViewport
-                        |> Task.perform
-                            (\{ viewport } ->
-                                ChangedDevice
-                                    (Element.classifyDevice
-                                        { width = floor viewport.width
-                                        , height = floor viewport.height
-                                        }
-                                    )
-                            )
+                    , getViewport
                     )
 
                 Just { route, code } ->
@@ -324,16 +315,7 @@ updateRequestingClientId msg data =
                                 , githubAccessToken = RemoteData.NotAsked
                                 , maybeDevice = Nothing
                                 }
-                            , Browser.Dom.getViewport
-                                |> Task.perform
-                                    (\{ viewport } ->
-                                        ChangedDevice
-                                            (Element.classifyDevice
-                                                { width = floor viewport.width
-                                                , height = floor viewport.height
-                                                }
-                                            )
-                                    )
+                            , getViewport
                             )
 
                         Just actualCode ->
@@ -346,35 +328,38 @@ updateRequestingClientId msg data =
                                 , maybeDevice = Nothing
                                 }
                             , Cmd.batch
-                                [ Browser.Dom.getViewport
-                                    |> Task.perform
-                                        (\{ viewport } ->
-                                            ChangedDevice
-                                                (Element.classifyDevice
-                                                    { width = floor viewport.width
-                                                    , height = floor viewport.height
-                                                    }
-                                                )
-                                        )
-                                , Http.post
-                                    { url = Url.Builder.absolute [ "access_token" ] []
-                                    , body =
-                                        Http.multipartBody
-                                            [ Http.stringPart "code" actualCode ]
-                                    , expect =
-                                        Http.expectJson
-                                            (RemoteData.fromResult
-                                                >> ReceivedGithubAccessToken
-                                            )
-                                            (Decode.field "access_token"
-                                                Decode.string
-                                            )
-                                    }
+                                [ getViewport
+                                , requestGithubAccessToken actualCode
                                 ]
                             )
 
         _ ->
             ( RequestingClientId data, Cmd.none )
+
+
+getViewport : Cmd Msg
+getViewport =
+    let
+        toMsg { viewport } =
+            ChangedDevice <|
+                Element.classifyDevice
+                    { width = floor viewport.width
+                    , height = floor viewport.height
+                    }
+    in
+    Task.perform toMsg Browser.Dom.getViewport
+
+
+requestGithubAccessToken : String -> Cmd Msg
+requestGithubAccessToken code =
+    Http.post
+        { url = Url.Builder.absolute [ "access_token" ] []
+        , body = Http.multipartBody [ Http.stringPart "code" code ]
+        , expect =
+            Http.expectJson
+                (ReceivedGithubAccessToken << RemoteData.fromResult)
+                (Decode.field "access_token" Decode.string)
+        }
 
 
 
