@@ -271,18 +271,56 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
         RequestingClientId data ->
-            case msg of
-                ReceivedClientId (Err _) ->
-                    ( model, Cmd.none )
+            updateRequestingClientId msg data
 
-                ReceivedClientId (Ok clientId) ->
-                    case Route.fromUrlWithCode data.url of
+        Loading data ->
+            updateLoading msg data
+
+        Loaded data ->
+            updateLoaded msg data
+
+
+
+---- UPDATE REQUESTING CLIENT ID
+
+
+updateRequestingClientId : Msg -> RequestingClientIdData -> ( Model, Cmd Msg )
+updateRequestingClientId msg data =
+    case msg of
+        ReceivedClientId (Err _) ->
+            ( RequestingClientId data, Cmd.none )
+
+        ReceivedClientId (Ok clientId) ->
+            case Route.fromUrlWithCode data.url of
+                Nothing ->
+                    ( Loading
+                        { key = data.key
+                        , domain = data.domain
+                        , clientId = clientId
+                        , maybeRoute = Nothing
+                        , githubAccessToken = RemoteData.NotAsked
+                        , maybeDevice = Nothing
+                        }
+                    , Browser.Dom.getViewport
+                        |> Task.perform
+                            (\{ viewport } ->
+                                ChangedDevice
+                                    (Element.classifyDevice
+                                        { width = floor viewport.width
+                                        , height = floor viewport.height
+                                        }
+                                    )
+                            )
+                    )
+
+                Just { route, code } ->
+                    case code of
                         Nothing ->
                             ( Loading
                                 { key = data.key
                                 , domain = data.domain
                                 , clientId = clientId
-                                , maybeRoute = Nothing
+                                , maybeRoute = Just route
                                 , githubAccessToken = RemoteData.NotAsked
                                 , maybeDevice = Nothing
                                 }
@@ -298,188 +336,64 @@ update msg model =
                                     )
                             )
 
-                        Just { route, code } ->
-                            case code of
-                                Nothing ->
-                                    ( Loading
-                                        { key = data.key
-                                        , domain = data.domain
-                                        , clientId = clientId
-                                        , maybeRoute = Just route
-                                        , githubAccessToken = RemoteData.NotAsked
-                                        , maybeDevice = Nothing
-                                        }
-                                    , Browser.Dom.getViewport
-                                        |> Task.perform
-                                            (\{ viewport } ->
-                                                ChangedDevice
-                                                    (Element.classifyDevice
-                                                        { width = floor viewport.width
-                                                        , height = floor viewport.height
-                                                        }
-                                                    )
-                                            )
-                                    )
-
-                                Just actualCode ->
-                                    ( Loading
-                                        { key = data.key
-                                        , domain = data.domain
-                                        , clientId = clientId
-                                        , maybeRoute = Just route
-                                        , githubAccessToken = RemoteData.Loading
-                                        , maybeDevice = Nothing
-                                        }
-                                    , Cmd.batch
-                                        [ Browser.Dom.getViewport
-                                            |> Task.perform
-                                                (\{ viewport } ->
-                                                    ChangedDevice
-                                                        (Element.classifyDevice
-                                                            { width = floor viewport.width
-                                                            , height = floor viewport.height
-                                                            }
-                                                        )
+                        Just actualCode ->
+                            ( Loading
+                                { key = data.key
+                                , domain = data.domain
+                                , clientId = clientId
+                                , maybeRoute = Just route
+                                , githubAccessToken = RemoteData.Loading
+                                , maybeDevice = Nothing
+                                }
+                            , Cmd.batch
+                                [ Browser.Dom.getViewport
+                                    |> Task.perform
+                                        (\{ viewport } ->
+                                            ChangedDevice
+                                                (Element.classifyDevice
+                                                    { width = floor viewport.width
+                                                    , height = floor viewport.height
+                                                    }
                                                 )
-                                        , Http.post
-                                            { url = Url.Builder.absolute [ "access_token" ] []
-                                            , body =
-                                                Http.multipartBody
-                                                    [ Http.stringPart "code" actualCode ]
-                                            , expect =
-                                                Http.expectJson
-                                                    (RemoteData.fromResult
-                                                        >> ReceivedGithubAccessToken
-                                                    )
-                                                    (Decode.field "access_token"
-                                                        Decode.string
-                                                    )
-                                            }
-                                        ]
-                                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        Loading data ->
-            case msg of
-                ReceivedGithubAccessToken githubAccessToken ->
-                    { data | githubAccessToken = githubAccessToken }
-                        |> checkLoaded
-
-                ChangedDevice device ->
-                    { data | maybeDevice = Just device }
-                        |> checkLoaded
-
-                _ ->
-                    ( model, Cmd.none )
-
-        Loaded data ->
-            case ( msg, data.page ) of
-                ( UrlRequested urlRequest, _ ) ->
-                    case urlRequest of
-                        Browser.Internal url ->
-                            let
-                                key =
-                                    Session.navKey (toSession data.page)
-                            in
-                            ( model
-                            , Browser.Navigation.pushUrl key url.path
+                                        )
+                                , Http.post
+                                    { url = Url.Builder.absolute [ "access_token" ] []
+                                    , body =
+                                        Http.multipartBody
+                                            [ Http.stringPart "code" actualCode ]
+                                    , expect =
+                                        Http.expectJson
+                                            (RemoteData.fromResult
+                                                >> ReceivedGithubAccessToken
+                                            )
+                                            (Decode.field "access_token"
+                                                Decode.string
+                                            )
+                                    }
+                                ]
                             )
 
-                        Browser.External externalUrl ->
-                            ( model
-                            , Browser.Navigation.load externalUrl
-                            )
+        _ ->
+            ( RequestingClientId data, Cmd.none )
 
-                ( UrlChanged url, _ ) ->
-                    let
-                        session =
-                            toSession data.page
-                    in
-                    case Route.fromUrl url of
-                        Nothing ->
-                            ( Loaded { data | page = NotFound session }
-                            , Cmd.none
-                            )
 
-                        Just route ->
-                            let
-                                ( page, cmd ) =
-                                    changePageTo session data.identity route
-                            in
-                            ( Loaded { data | page = page }
-                            , cmd
-                            )
 
-                -- CLIENT ID
-                ( ReceivedClientId _, _ ) ->
-                    ( model, Cmd.none )
+---- UPDATE LOADING
 
-                -- TOKENS
-                ( ReceivedGithubAccessToken _, _ ) ->
-                    ( model, Cmd.none )
 
-                ( ChangedDevice device, _ ) ->
-                    if data.device /= device then
-                        ( Loaded { data | device = device }
-                        , Cmd.none
-                        )
+updateLoading : Msg -> LoadingData -> ( Model, Cmd Msg )
+updateLoading msg data =
+    case msg of
+        ReceivedGithubAccessToken githubAccessToken ->
+            { data | githubAccessToken = githubAccessToken }
+                |> checkLoaded
 
-                    else
-                        ( model, Cmd.none )
+        ChangedDevice device ->
+            { data | maybeDevice = Just device }
+                |> checkLoaded
 
-                -- PAGES
-                ( _, NotFound _ ) ->
-                    ( model, Cmd.none )
-
-                ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
-                    let
-                        ( newPatternsModel, patternsCmd ) =
-                            Patterns.update data.clientId data.identity patternsMsg patternsModel
-                    in
-                    ( Loaded { data | page = Patterns newPatternsModel }
-                    , Cmd.map PatternsMsg patternsCmd
-                    )
-
-                ( PatternsMsg _, _ ) ->
-                    ( model, Cmd.none )
-
-                ( PatternNewMsg newMsg, PatternNew newModel ) ->
-                    let
-                        ( newNewModel, newCmd ) =
-                            PatternNew.update data.clientId data.identity newMsg newModel
-                    in
-                    ( Loaded { data | page = PatternNew newNewModel }
-                    , Cmd.map PatternNewMsg newCmd
-                    )
-
-                ( PatternNewMsg _, _ ) ->
-                    ( model, Cmd.none )
-
-                ( PatternMsg patternMsg, Pattern patternModel ) ->
-                    let
-                        ( newPatternModel, patternCmd ) =
-                            Pattern.update data.clientId data.device data.identity patternMsg patternModel
-                    in
-                    ( Loaded { data | page = Pattern newPatternModel }
-                    , Cmd.map PatternMsg patternCmd
-                    )
-
-                ( PatternMsg _, _ ) ->
-                    ( model, Cmd.none )
-
-                ( DetailsMsg detailsMsg, Details detailsModel ) ->
-                    let
-                        ( newDetailsModel, detailsCmd ) =
-                            Details.update data.clientId data.device data.identity detailsMsg detailsModel
-                    in
-                    ( Loaded { data | page = Details newDetailsModel }
-                    , Cmd.map DetailsMsg detailsCmd
-                    )
-
-                ( DetailsMsg _, _ ) ->
-                    ( model, Cmd.none )
+        _ ->
+            ( Loading data, Cmd.none )
 
 
 checkLoaded : LoadingData -> ( Model, Cmd Msg )
@@ -544,6 +458,123 @@ initLoaded data maybeGithubAccessToken device =
     )
 
 
+
+---- UPDATE LOADED
+
+
+updateLoaded : Msg -> LoadedData -> ( Model, Cmd Msg )
+updateLoaded msg data =
+    case ( msg, data.page ) of
+        ( UrlRequested urlRequest, _ ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    let
+                        key =
+                            Session.navKey (toSession data.page)
+                    in
+                    ( Loaded data
+                    , Browser.Navigation.pushUrl key url.path
+                    )
+
+                Browser.External externalUrl ->
+                    ( Loaded data
+                    , Browser.Navigation.load externalUrl
+                    )
+
+        ( UrlChanged url, _ ) ->
+            let
+                session =
+                    toSession data.page
+            in
+            case Route.fromUrl url of
+                Nothing ->
+                    ( Loaded { data | page = NotFound session }
+                    , Cmd.none
+                    )
+
+                Just route ->
+                    let
+                        ( page, cmd ) =
+                            changePageTo session data.identity route
+                    in
+                    ( Loaded { data | page = page }
+                    , cmd
+                    )
+
+        -- CLIENT ID
+        ( ReceivedClientId _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+        -- TOKENS
+        ( ReceivedGithubAccessToken _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( ChangedDevice device, _ ) ->
+            if data.device /= device then
+                ( Loaded { data | device = device }
+                , Cmd.none
+                )
+
+            else
+                ( Loaded data, Cmd.none )
+
+        -- PAGES
+        ( _, NotFound _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
+            let
+                ( newPatternsModel, patternsCmd ) =
+                    Patterns.update data.clientId data.identity patternsMsg patternsModel
+            in
+            ( Loaded { data | page = Patterns newPatternsModel }
+            , Cmd.map PatternsMsg patternsCmd
+            )
+
+        ( PatternsMsg _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( PatternNewMsg newMsg, PatternNew newModel ) ->
+            let
+                ( newNewModel, newCmd ) =
+                    PatternNew.update data.clientId data.identity newMsg newModel
+            in
+            ( Loaded { data | page = PatternNew newNewModel }
+            , Cmd.map PatternNewMsg newCmd
+            )
+
+        ( PatternNewMsg _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( PatternMsg patternMsg, Pattern patternModel ) ->
+            let
+                ( newPatternModel, patternCmd ) =
+                    Pattern.update data.clientId data.device data.identity patternMsg patternModel
+            in
+            ( Loaded { data | page = Pattern newPatternModel }
+            , Cmd.map PatternMsg patternCmd
+            )
+
+        ( PatternMsg _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( DetailsMsg detailsMsg, Details detailsModel ) ->
+            let
+                ( newDetailsModel, detailsCmd ) =
+                    Details.update data.clientId data.device data.identity detailsMsg detailsModel
+            in
+            ( Loaded { data | page = Details newDetailsModel }
+            , Cmd.map DetailsMsg detailsCmd
+            )
+
+        ( DetailsMsg _, _ ) ->
+            ( Loaded data, Cmd.none )
+
+
+
+---- CHANGE PAGE TO
+
+
 changePageTo : Session -> Git.Identity -> Route -> ( Page, Cmd Msg )
 changePageTo session identity route =
     case route of
@@ -582,6 +613,10 @@ changePageTo session identity route =
             ( Details details
             , Cmd.map DetailsMsg detailsCmd
             )
+
+
+
+---- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
