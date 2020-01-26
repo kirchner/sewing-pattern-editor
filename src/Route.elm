@@ -33,7 +33,7 @@ module Route exposing
 -}
 
 import Browser.Navigation
-import LocalStorage
+import Storage.Address as Address exposing (Address)
 import Url exposing (Url)
 import Url.Builder exposing (QueryParameter)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, map, oneOf, s, string, top)
@@ -43,9 +43,9 @@ import Url.Parser.Query as Query
 {-| -}
 type Route
     = Patterns
-    | Pattern LocalStorage.Address
+    | Pattern Address
     | PatternNew NewParameters
-    | Details LocalStorage.Address
+    | Details Address
 
 
 {-| -}
@@ -119,13 +119,13 @@ pathSegments route =
             []
 
         Pattern address ->
-            LocalStorage.addressToPathSegments address
+            Address.toPathSegments address
 
         PatternNew _ ->
             [ "new" ]
 
         Details address ->
-            LocalStorage.addressToPathSegments address ++ [ "details" ]
+            Address.toPathSegments address ++ [ "details" ]
 
 
 parameters : Route -> List QueryParameter
@@ -165,9 +165,9 @@ routeParser =
     oneOf
         [ map Patterns top
         , map Patterns (top </> s "app.html")
-        , map Pattern (top </> LocalStorage.addressParser)
+        , map Pattern (top </> Address.parser)
         , map PatternNew (top </> s "new" </> newParameters)
-        , map Details (top </> LocalStorage.addressParser </> s "details")
+        , map Details (top </> Address.parser </> s "details")
         ]
 
 

@@ -983,6 +983,7 @@ removeObjects objects_ (Pattern data) =
         }
 
 
+{-| -}
 regenerateCaches : Pattern coordinates -> Pattern coordinates
 regenerateCaches ((Pattern data) as pattern) =
     State.finalState

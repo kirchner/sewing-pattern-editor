@@ -4,7 +4,6 @@
     "version": "1.0.0",
     "exposed-modules": {
         "Application": [
-            "Ports",
             "Route"
         ],
         "Interface": [

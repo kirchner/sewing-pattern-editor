@@ -1,6 +1,5 @@
 port module LocalStorage exposing
-    ( Address(..), addressParser, addressToPathSegments
-    , changedStore
+    ( changedStore
     , updateAddresses, requestAddresses
     , updateZoom, requestZoom
     , updateCenter, requestCenter
@@ -10,7 +9,6 @@ port module LocalStorage exposing
 
 {-|
 
-@docs Address, addressParser, addressToPathSegments
 @docs changedStore
 @docs updateAddresses, requestAddresses
 @docs updateZoom, requestZoom
@@ -29,6 +27,7 @@ import Json.Encode.Extra as Encode
 import Length exposing (Meters)
 import Pattern exposing (Pattern)
 import Point2d exposing (Point2d)
+import Storage.Address as Address exposing (Address)
 import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
@@ -44,58 +43,6 @@ port onStoreChange : ({ key : String, value : String } -> msg) -> Sub msg
 port onStoreMissing : ({ key : String } -> msg) -> Sub msg
 
 
-type Address
-    = GithubRepo { repo : Github.Repo, ref : Github.Ref }
-    | Browser { slug : String }
-
-
-addressParser : Parser (Address -> a) a
-addressParser =
-    oneOf
-        [ map (\repo ref -> GithubRepo { repo = repo, ref = ref })
-            (top </> s "github" </> Github.repoParser </> Github.refParser)
-        , map (\slug -> Browser { slug = slug })
-            (top </> s "browser" </> string)
-        ]
-
-
-addressToPathSegments : Address -> List String
-addressToPathSegments address =
-    case address of
-        GithubRepo { repo, ref } ->
-            "github" :: repo.owner :: repo.name :: Github.refToPathSegments ref
-
-        Browser { slug } ->
-            [ "browser", slug ]
-
-
-addressDecoder : Decoder Address
-addressDecoder =
-    Decode.oneOf
-        [ Decode.succeed (\repo ref -> GithubRepo { repo = repo, ref = ref })
-            |> Decode.required "repo" Github.repoDecoder
-            |> Decode.required "ref" Github.refDecoder
-            |> Decode.ensureType "gitRepo"
-        , Decode.succeed (\slug -> Browser { slug = slug })
-            |> Decode.required "slug" Decode.string
-            |> Decode.ensureType "browser"
-        ]
-
-
-encodeAddress : Address -> Value
-encodeAddress address =
-    case address of
-        GithubRepo { repo, ref } ->
-            Encode.withType "gitRepo"
-                [ ( "repo", Github.encodeRepo repo )
-                , ( "ref", Github.encodeRef ref )
-                ]
-
-        Browser { slug } ->
-            Encode.withType "browser"
-                [ ( "slug", Encode.string slug ) ]
-
-
 
 ---- ADDRESSES
 
@@ -104,7 +51,7 @@ updateAddresses : List Address -> Cmd msg
 updateAddresses addresses =
     storeCache
         { key = "addresses"
-        , value = Encode.encode 0 (Encode.list encodeAddress addresses)
+        , value = Encode.encode 0 (Encode.list Address.encode addresses)
         }
 
 
@@ -121,7 +68,7 @@ requestAddresses =
 updateZoom : Address -> Float -> Cmd msg
 updateZoom address zoom =
     storeCache
-        { key = key address "zoom"
+        { key = Address.toKey address "zoom"
         , value = Encode.encode 0 (Encode.float zoom)
         }
 
@@ -129,7 +76,7 @@ updateZoom address zoom =
 requestZoom : Address -> Cmd msg
 requestZoom address =
     requestCache
-        { key = key address "zoom" }
+        { key = Address.toKey address "zoom" }
 
 
 
@@ -139,7 +86,7 @@ requestZoom address =
 updateCenter : Address -> Point2d Meters coordinates -> Cmd msg
 updateCenter address center =
     storeCache
-        { key = key address "center"
+        { key = Address.toKey address "center"
         , value = Encode.encode 0 (encodeCenter center)
         }
 
@@ -147,7 +94,7 @@ updateCenter address center =
 requestCenter : Address -> Cmd msg
 requestCenter address =
     requestCache
-        { key = key address "center" }
+        { key = Address.toKey address "center" }
 
 
 encodeCenter : Point2d Meters coordinates -> Value
@@ -176,7 +123,7 @@ centerDecoder =
 updatePattern : Address -> Pattern coordinates -> Cmd msg
 updatePattern address pattern =
     storeCache
-        { key = key address "pattern"
+        { key = Address.toKey address "pattern"
         , value = Encode.encode 0 (Pattern.encode pattern)
         }
 
@@ -184,7 +131,7 @@ updatePattern address pattern =
 requestPattern : Address -> Cmd msg
 requestPattern address =
     requestCache
-        { key = key address "pattern" }
+        { key = Address.toKey address "pattern" }
 
 
 
@@ -194,7 +141,7 @@ requestPattern address =
 updateMeta : Address -> Github.Meta -> Cmd msg
 updateMeta address meta =
     storeCache
-        { key = key address "meta"
+        { key = Address.toKey address "meta"
         , value = Encode.encode 0 (Github.encodeMeta meta)
         }
 
@@ -202,7 +149,7 @@ updateMeta address meta =
 requestMeta : Address -> Cmd msg
 requestMeta address =
     requestCache
-        { key = key address "meta" }
+        { key = Address.toKey address "meta" }
 
 
 
@@ -270,7 +217,7 @@ changedStore cfg =
                 in
                 case String.split "/" data.key of
                     "addresses" :: [] ->
-                        case Decode.decodeString (Decode.list addressDecoder) data.value of
+                        case Decode.decodeString (Decode.list Address.decoder) data.value of
                             Err _ ->
                                 cfg.changedWhatever
 
@@ -299,7 +246,7 @@ changedStore cfg =
 
                             Just ref ->
                                 valueChanged
-                                    (GithubRepo
+                                    (Address.GithubRepo
                                         { repo = { owner = owner, name = repo }
                                         , ref = ref
                                         }
@@ -307,20 +254,9 @@ changedStore cfg =
                                     value
 
                     "browser" :: slug :: value :: [] ->
-                        valueChanged (Browser { slug = slug }) value
+                        valueChanged (Address.Browser { slug = slug }) value
 
                     _ ->
                         cfg.changedWhatever
             )
         ]
-
-
-key : Address -> String -> String
-key address name =
-    String.join "/" <|
-        case address of
-            GithubRepo { repo, ref } ->
-                [ "github", repo.owner, repo.name, Github.refToString ref, name ]
-
-            Browser { slug } ->
-                [ "browser", slug, name ]

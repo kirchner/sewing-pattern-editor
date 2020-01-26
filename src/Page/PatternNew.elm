@@ -25,6 +25,7 @@ import Pattern exposing (Pattern)
 import RemoteData exposing (WebData)
 import Route
 import Session exposing (Session)
+import Storage.Address as Address exposing (Address)
 import String.Extra as String
 import Ui.Atom.Input
 import Ui.Molecule.TopBar
@@ -63,7 +64,7 @@ type alias LoadedData =
     , visibility : Visibility
 
     -- NEW ADDRESS
-    , newAddress : Maybe LocalStorage.Address
+    , newAddress : Maybe Address
     }
 
 
@@ -419,9 +420,9 @@ type Msg
     | ReceivedShaOfMeta Github.Repo (Result Http.Error String)
     | ReceivedShaOfPattern Github.Repo (Result Http.Error String)
     | ChangedWhatever
-    | ChangedPattern LocalStorage.Address (Pattern ())
-    | ChangedMeta LocalStorage.Address Github.Meta
-    | ChangedAddresses (List LocalStorage.Address)
+    | ChangedPattern Address (Pattern ())
+    | ChangedMeta Address Github.Meta
+    | ChangedAddresses (List Address)
 
 
 type StorageSolutionTag
@@ -555,7 +556,7 @@ updateLoaded msg model =
             , case model.storageSolution of
                 BrowserTag ->
                     LocalStorage.updatePattern
-                        (LocalStorage.Browser { slug = generatedToString model.slug })
+                        (Address.Browser { slug = generatedToString model.slug })
                         newPattern
 
                 GithubTag ->
@@ -572,7 +573,7 @@ updateLoaded msg model =
 
                                 route =
                                     Route.Pattern
-                                        (LocalStorage.GithubRepo
+                                        (Address.GithubRepo
                                             { repo = repo
                                             , ref = Github.defaultRef
                                             }
@@ -634,7 +635,7 @@ updateLoaded msg model =
             ( { model
                 | newAddress =
                     Just <|
-                        LocalStorage.GithubRepo
+                        Address.GithubRepo
                             { repo = repo
                             , ref = Github.defaultRef
                             }

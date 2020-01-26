@@ -75,6 +75,7 @@ import Route
 import Session exposing (Session)
 import State
 import StateResult
+import Storage.Address as Address exposing (Address)
 import Task
 import Ui.Atom.Icon
 import Ui.Atom.Input
@@ -106,7 +107,7 @@ type Model
 
 type alias LoadingData =
     { session : Session
-    , address : LocalStorage.Address
+    , address : Address
     , maybePatternData : Maybe (Github.PatternData BottomLeft)
     , maybeMeta : Maybe Github.Meta
     , maybePermissions : Maybe Github.Permissions
@@ -117,11 +118,11 @@ type alias LoadedData =
     { session : Session
     , patternContainerDimensions : Maybe Pattern.Viewport.Dimensions
     , maybeModal : Maybe ( Modal, Ui.Molecule.Modal.State )
-    , addresses : Maybe (List LocalStorage.Address)
+    , addresses : Maybe (List Address)
 
     -- PATTERN
     , drag : Drag
-    , address : LocalStorage.Address
+    , address : Address
     , permissions : Github.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
@@ -212,7 +213,7 @@ type Dialog
 
 
 {-| -}
-init : Session -> LocalStorage.Address -> ( Model, Cmd Msg )
+init : Session -> Address -> ( Model, Cmd Msg )
 init session address =
     ( Loading
         { session = session
@@ -222,7 +223,7 @@ init session address =
         , maybePermissions = Nothing
         }
     , case address of
-        LocalStorage.GithubRepo { repo, ref } ->
+        Address.GithubRepo { repo, ref } ->
             let
                 cred =
                     Session.githubCred session
@@ -244,7 +245,7 @@ init session address =
                     }
                 ]
 
-        LocalStorage.Browser _ ->
+        Address.Browser _ ->
             Cmd.batch
                 [ LocalStorage.requestPattern address
                 , LocalStorage.requestMeta address
@@ -255,7 +256,7 @@ init session address =
 initLoaded :
     Session
     -> Element.Device
-    -> LocalStorage.Address
+    -> Address
     -> String
     -> Pattern BottomLeft
     -> Github.Meta
@@ -827,12 +828,12 @@ loadingIndicator stored =
             "arrow-alt-circle-up"
 
 
-patternAddress : LocalStorage.Address -> Element msg
+patternAddress : Address -> Element msg
 patternAddress address =
     Element.row
         [ Element.spacing Ui.Theme.Spacing.level1 ]
         (List.map Ui.Theme.Typography.button <|
-            List.intersperse "/" (LocalStorage.addressToPathSegments address)
+            List.intersperse "/" (Address.toPathSegments address)
         )
 
 
@@ -1673,11 +1674,11 @@ type Msg
     | ReceivedPermissions (Result Http.Error Github.Permissions)
     | ReceivedPatternUpdate (Result Http.Error ())
       -- LOCAL STORAGE
-    | ChangedZoom LocalStorage.Address Float
-    | ChangedCenter LocalStorage.Address (Point2d Meters BottomLeft)
-    | ChangedAddresses (List LocalStorage.Address)
-    | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
-    | ChangedMeta LocalStorage.Address Github.Meta
+    | ChangedZoom Address Float
+    | ChangedCenter Address (Point2d Meters BottomLeft)
+    | ChangedAddresses (List Address)
+    | ChangedPattern Address (Pattern BottomLeft)
+    | ChangedMeta Address Github.Meta
     | ChangedWhatever
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
@@ -1937,10 +1938,10 @@ updateLoaded device msg model =
 
                 addressToHash address =
                     case address of
-                        LocalStorage.GithubRepo { repo } ->
+                        Address.GithubRepo { repo } ->
                             "github/" ++ repo.owner ++ "/" ++ repo.name
 
-                        LocalStorage.Browser { slug } ->
+                        Address.Browser { slug } ->
                             "browser/" ++ slug
             in
             ( { model | addresses = Just newAddresses }
@@ -3018,10 +3019,10 @@ objectName =
     Pattern.name >> Maybe.withDefault "<no name>"
 
 
-putPattern : Github.Cred -> LocalStorage.Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
+putPattern : Github.Cred -> Address -> String -> String -> Pattern BottomLeft -> Cmd Msg
 putPattern cred address sha message newPattern =
     case address of
-        LocalStorage.GithubRepo { repo } ->
+        Address.GithubRepo { repo } ->
             Github.putPattern cred
                 { repo = repo
                 , message = message
@@ -3030,7 +3031,7 @@ putPattern cred address sha message newPattern =
                 , onSha = ReceivedSha
                 }
 
-        LocalStorage.Browser _ ->
+        Address.Browser _ ->
             LocalStorage.updatePattern address newPattern
 
 
@@ -3066,17 +3067,13 @@ focusNameInput =
         |> Task.attempt (\_ -> NoOp)
 
 
-updateZoom : LocalStorage.Address -> Resolution -> Cmd Msg
+updateZoom : Address -> Resolution -> Cmd Msg
 updateZoom address resolution =
     LocalStorage.updateZoom address
         (Pixels.inPixels (Quantity.at resolution (Length.meters 1)))
 
 
-updateToIdealViewport :
-    LocalStorage.Address
-    -> Pattern BottomLeft
-    -> Pattern.Viewport.Dimensions
-    -> Cmd Msg
+updateToIdealViewport : Address -> Pattern BottomLeft -> Pattern.Viewport.Dimensions -> Cmd Msg
 updateToIdealViewport address pattern dimensions =
     case Pattern.Viewport.idealForPattern dimensions pattern of
         Nothing ->

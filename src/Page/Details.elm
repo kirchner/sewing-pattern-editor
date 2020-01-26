@@ -65,6 +65,7 @@ import Route
 import Session exposing (Session)
 import SketchPlane3d
 import State
+import Storage.Address as Address exposing (Address)
 import Svg
 import Svg.Attributes
 import Task
@@ -92,7 +93,7 @@ type Model
 
 type alias LoadingData =
     { session : Session
-    , address : LocalStorage.Address
+    , address : Address
     , maybePatternData : Maybe (Github.PatternData BottomLeft)
     , maybeMeta : Maybe Github.Meta
     , maybePermissions : Maybe Github.Permissions
@@ -105,7 +106,7 @@ type BottomLeft
 
 type alias LoadedData =
     { session : Session
-    , address : LocalStorage.Address
+    , address : Address
     , permissions : Github.Permissions
     , sha : String
     , pattern : Pattern BottomLeft
@@ -132,7 +133,7 @@ type alias Pose =
 
 
 {-| -}
-init : Session -> LocalStorage.Address -> ( Model, Cmd Msg )
+init : Session -> Address -> ( Model, Cmd Msg )
 init session address =
     ( Loading
         { session = session
@@ -142,7 +143,7 @@ init session address =
         , maybePermissions = Nothing
         }
     , case address of
-        LocalStorage.GithubRepo { repo, ref } ->
+        Address.GithubRepo { repo, ref } ->
             let
                 cred =
                     Session.githubCred session
@@ -164,7 +165,7 @@ init session address =
                     }
                 ]
 
-        LocalStorage.Browser _ ->
+        Address.Browser _ ->
             Cmd.batch
                 [ LocalStorage.requestPattern address
                 , LocalStorage.requestMeta address
@@ -174,7 +175,7 @@ init session address =
 
 initLoaded :
     Session
-    -> LocalStorage.Address
+    -> Address
     -> String
     -> Pattern BottomLeft
     -> Github.Meta
@@ -480,7 +481,7 @@ viewMarker model =
             Element.none
 
 
-backToPatternLink : LocalStorage.Address -> Element msg
+backToPatternLink : Address -> Element msg
 backToPatternLink address =
     Ui.Theme.Focus.outline <|
         Element.link
@@ -586,8 +587,8 @@ type Msg
     | ReceivedMeta (Result Http.Error Github.Meta)
     | ReceivedPermissions (Result Http.Error Github.Permissions)
       -- LOCAL STORAGE
-    | ChangedPattern LocalStorage.Address (Pattern BottomLeft)
-    | ChangedMeta LocalStorage.Address Github.Meta
+    | ChangedPattern Address (Pattern BottomLeft)
+    | ChangedMeta Address Github.Meta
     | ChangedWhatever
       -- VIDEO
     | ReceivedViewport (Result Browser.Dom.Error Browser.Dom.Viewport)

@@ -20,6 +20,7 @@ import List.Extra as List
 import LocalStorage
 import Route
 import Session exposing (Session)
+import Storage.Address as Address exposing (Address)
 import Time exposing (Posix)
 import Ui.Molecule.PatternList
 import Ui.Molecule.TopBar
@@ -38,22 +39,22 @@ type Model
 
 type alias LoadingData =
     { session : Session
-    , addresses : List LocalStorage.Address
-    , unrequestedAddresses : Maybe (List LocalStorage.Address)
+    , addresses : List Address
+    , unrequestedAddresses : Maybe (List Address)
     , patterns : List ProcessedPattern
     }
 
 
 type alias LoadedData =
     { session : Session
-    , addresses : List LocalStorage.Address
+    , addresses : List Address
     , patterns : List ProcessedPattern
     , search : String
     }
 
 
 type alias ProcessedPattern =
-    { address : LocalStorage.Address
+    { address : Address
     , name : String
     , description : String
     , storage : Ui.Molecule.PatternList.Storage
@@ -164,11 +165,11 @@ type Msg
     = UserChangedSearch String
     | UserPressedImport
     | UserPressedCreate
-    | ChangedAddresses (List LocalStorage.Address)
-    | ChangedMeta LocalStorage.Address Github.Meta
-    | ReceivedMeta LocalStorage.Address (Result Http.Error Github.Meta)
+    | ChangedAddresses (List Address)
+    | ChangedMeta Address Github.Meta
+    | ReceivedMeta Address (Result Http.Error Github.Meta)
     | ChangedWhatever
-    | UserPressedClone LocalStorage.Address
+    | UserPressedClone Address
     | UserPressedSignIn
 
 
@@ -258,7 +259,7 @@ subscriptions _ =
         }
 
 
-addMeta : LocalStorage.Address -> Github.Meta -> LoadingData -> LoadingData
+addMeta : Address -> Github.Meta -> LoadingData -> LoadingData
 addMeta address meta data =
     let
         newPatterns =
@@ -267,10 +268,10 @@ addMeta address meta data =
             , description = meta.description
             , storage =
                 case address of
-                    LocalStorage.GithubRepo { repo } ->
+                    Address.GithubRepo { repo } ->
                         Ui.Molecule.PatternList.Github repo.owner repo.name
 
-                    LocalStorage.Browser { slug } ->
+                    Address.Browser { slug } ->
                         Ui.Molecule.PatternList.LocalStorage slug
             , updatedAt = Time.millisToPosix 0
             }
@@ -279,10 +280,10 @@ addMeta address meta data =
 
         addressToHash address_ =
             case address_ of
-                LocalStorage.GithubRepo { repo } ->
+                Address.GithubRepo { repo } ->
                     "github/" ++ repo.owner ++ "/" ++ repo.name
 
-                LocalStorage.Browser { slug } ->
+                Address.Browser { slug } ->
                     "browser/" ++ slug
     in
     { data | patterns = newPatterns }
@@ -309,13 +310,13 @@ requestNextMeta data =
         Just (next :: rest) ->
             ( Loading { data | unrequestedAddresses = Just rest }
             , case next of
-                LocalStorage.GithubRepo { repo, ref } ->
+                Address.GithubRepo { repo, ref } ->
                     Github.getMeta (Session.githubCred data.session)
                         { repo = repo
                         , ref = ref
                         , onMeta = ReceivedMeta next
                         }
 
-                LocalStorage.Browser _ ->
+                Address.Browser _ ->
                     LocalStorage.requestMeta next
             )
