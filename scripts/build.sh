@@ -2,9 +2,9 @@
 
 set -e
 
-OUTPUT="./_build"
+OUTPUT="_build"
 
-ELM="./src/Main.elm"
+ELM="src/frontend/Main.elm"
 JS="${OUTPUT}/elm.js"
 JS_MIN="${OUTPUT}/elm.min.js"
 
@@ -12,7 +12,7 @@ yarn elm make $ELM \
   --optimize \
   --output=$JS
 
-yarn jscodeshift -t transform.js $JS
+yarn jscodeshift -t scripts/transform.js $JS
 
 yarn uglifyjs $JS \
   --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
@@ -31,8 +31,8 @@ echo "Gzipped size:  $(cat $JS_MIN | gzip -c | wc -c) bytes"
 mv $JS_MIN $JS
 
 cp \
-  service-worker.js \
-  register-service-worker.js \
+  assets/service-worker.js \
+  assets/register-service-worker.js \
   $OUTPUT
 
-./copy_assets.sh $OUTPUT
+scripts/copy_assets.sh $OUTPUT

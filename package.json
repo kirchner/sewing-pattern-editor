@@ -5,9 +5,9 @@
   "author": "Fabian Kirchner <kirchner@posteo.de>",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "build": "./build.sh",
-    "debug": "./debug.sh",
-    "preview": "./preview.sh"
+    "build": "scripts/build.sh",
+    "debug": "scripts/debug.sh",
+    "preview": "scripts/preview.sh"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.11.2",

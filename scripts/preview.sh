@@ -2,9 +2,9 @@
 
 set -e
 
-./build.sh
+scripts/build.sh
 
-source ./secrets.sh
+source secrets.sh
 
 cabal run run-server -- \
   --environment=production \

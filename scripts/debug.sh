@@ -2,9 +2,9 @@
 
 set -e
 
-OUTPUT="./_debug"
+OUTPUT="_debug"
 
-ELM="src/Main.elm"
+ELM="src/frontend/Main.elm"
 JS="${OUTPUT}/elm.js"
 
 yarn elm make $ELM \
@@ -14,12 +14,12 @@ yarn elm make $ELM \
 echo "Compiled size: $(cat $JS | wc -c) bytes  ($JS)"
 
 cp \
-  register-service-worker--no-op.js \
+  assets/register-service-worker--no-op.js \
   "${OUTPUT}/register-service-worker.js"
 
-./copy_assets.sh $OUTPUT
+scripts/copy_assets.sh $OUTPUT
 
-source ./secrets.sh
+source secrets.sh
 
 cabal run run-server -- \
   --environment=development \
