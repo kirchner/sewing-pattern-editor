@@ -11,6 +11,10 @@ let
       sha256 = "0irablnpc13rs652qn4h32zx4z6bqvibj521yazmmccb9kdg9d5v";
     }) {};
 
+  ghc = haskellPackages.ghcWithPackages(pkgs: with pkgs; [
+    zlib
+  ]);
+
 in
 
 stdenv.mkDerivation {
@@ -23,7 +27,9 @@ stdenv.mkDerivation {
     latestPkgs.elmPackages.elm-format
     latestPkgs.elmPackages.elm-doc-preview
     expect
-    golangci-lint
+    ghc
+    haskellPackages.cabal-install
+    cabal2nix
   ];
 
   shellHook = ''

@@ -4,4 +4,10 @@ set -e
 
 ./build.sh
 
-ENVIRONMENT="production" PORT=1234 go run server.go
+source ./secrets.sh
+
+cabal run run-server -- \
+  --environment=production \
+  --port=1234 \
+  --clientid=$CLIENT_ID \
+  --clientsecret=$CLIENT_SECRET

@@ -19,4 +19,10 @@ cp \
 
 ./copy_assets.sh $OUTPUT
 
-ENVIRONMENT="development" PORT=4321 go run server.go
+source ./secrets.sh
+
+cabal run run-server -- \
+  --environment=development \
+  --port=4321 \
+  --clientid=$CLIENT_ID \
+  --clientsecret=$CLIENT_SECRET

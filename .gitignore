@@ -7,3 +7,7 @@ _build/
 _debug/
 gh-pages/
 assets/js/elm.js
+log/
+secrets.sh
+dist-newstyle/
+result

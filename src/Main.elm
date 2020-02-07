@@ -347,8 +347,8 @@ getViewport =
 requestGithubAccessToken : String -> Cmd Msg
 requestGithubAccessToken code =
     Http.post
-        { url = Url.Builder.absolute [ "access_token" ] []
-        , body = Http.multipartBody [ Http.stringPart "code" code ]
+        { url = Url.Builder.absolute [ "access_token" ] [ Url.Builder.string "code" code ]
+        , body = Http.emptyBody
         , expect =
             Http.expectJson
                 (ReceivedGithubAccessToken << RemoteData.fromResult)
