@@ -1,15 +1,15 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? (
+    import (builtins.fetchTarball {
+      name = "nixos-unstable-2020-02-08";
+      url = https://github.com/nixos/nixpkgs/archive/338c988c9a1447ea045ee123ba204da0e26ea1c8.tar.gz;
+      sha256 = "052z61v96q199ra4z5zi896m0a2bfjz59gidad0z5z8m9hvjzf1p";
+    }) {}
+  )
+}:
 
 with pkgs;
 
 let
-
-  latestPkgs =
-    import (builtins.fetchTarball {
-      name = "nixos-unstable-2019-10-26";
-      url = https://github.com/nixos/nixpkgs/archive/c69ebd2883dfca8621b34e95a4e006b0c34ee7b9.tar.gz;
-      sha256 = "0irablnpc13rs652qn4h32zx4z6bqvibj521yazmmccb9kdg9d5v";
-    }) {};
 
   ghc = haskellPackages.ghcWithPackages(pkgs: with pkgs; [
     zlib
@@ -22,10 +22,11 @@ stdenv.mkDerivation {
 
   buildInputs = [
     yarn
-    latestPkgs.elmPackages.elm
-    latestPkgs.elmPackages.elm-test
-    latestPkgs.elmPackages.elm-format
-    latestPkgs.elmPackages.elm-doc-preview
+    elmPackages.elm
+    elmPackages.elm-test
+    elmPackages.elm-format
+    elmPackages.elm-doc-preview
+    elm2nix
     expect
     ghc
     haskellPackages.cabal-install
