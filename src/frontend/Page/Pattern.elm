@@ -622,7 +622,6 @@ viewToolbarTopCompact model =
         [ Element.row
             [ Element.width Element.fill ]
             [ Element.el [ Element.alignLeft ] patternActions
-            , Element.el [ Element.alignRight ] (signInViaGithubBtn (Session.githubCred model.session))
             ]
         , Element.el [ Element.centerX ] (patternAddress model.address)
         , Element.row
@@ -782,7 +781,6 @@ viewToolbarTopFullscreen model =
             [ patternAddress model.address
             , loadingIndicator model.stored
             , patternActions
-            , signInViaGithubBtn (Session.githubCred model.session)
             ]
         ]
 
@@ -852,21 +850,6 @@ patternActions =
             , label = "Project"
             }
         ]
-
-
-signInViaGithubBtn : Github.Cred -> Element Msg
-signInViaGithubBtn cred =
-    case cred of
-        Github.Anonymous ->
-            Element.el [] <|
-                Ui.Atom.Input.btnPrimary
-                    { id = "sign-in-btn"
-                    , onPress = Just UserPressedSignIn
-                    , label = "Sign in via GitHub"
-                    }
-
-        Github.OauthToken _ ->
-            Element.none
 
 
 
@@ -1683,7 +1666,6 @@ type Msg
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedProject
-    | UserPressedSignIn
     | UserStartedTouchOnToolbarTop Html.Events.Extra.Touch.Event
     | UserMovedTouchOnToolbarTop Html.Events.Extra.Touch.Event
     | UserEndedTouchOnToolbarTop Html.Events.Extra.Touch.Event
@@ -2003,11 +1985,6 @@ updateLoaded device msg model =
         UserPressedProject ->
             ( model
             , Browser.Navigation.load (Route.absolute (Route.Details model.address) [])
-            )
-
-        UserPressedSignIn ->
-            ( model
-            , Session.requestGithubCred model.session (Route.Pattern model.address) []
             )
 
         UserStartedTouchOnToolbarTop event ->

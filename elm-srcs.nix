@@ -26,8 +26,8 @@
       };
 
       "elm/file" = {
-        sha256 = "15vw1ilbg0msimq2k9magwigp8lwqrgvz3vk6qia6b3ldahvw8jr";
-        version = "1.0.1";
+        sha256 = "1rljcb41dl97myidyjih2yliyzddkr2m7n74x7gg46rcw4jl0ny8";
+        version = "1.0.5";
       };
 
       "mpizenberg/elm-pointer-events" = {
@@ -41,8 +41,8 @@
       };
 
       "elm/json" = {
-        sha256 = "1a107nmm905dih4w4mjjkkpdcjbgaf5qjvr7fl30kkpkckfjjnrw";
-        version = "1.1.2";
+        sha256 = "0kjwrz195z84kwywaxhhlnpl3p251qlbm5iz6byd6jky2crmyqyh";
+        version = "1.1.3";
       };
 
       "truqu/elm-base64" = {
@@ -86,8 +86,8 @@
       };
 
       "elm-community/string-extra" = {
-        sha256 = "1ikj0kjmjw8kiff5sl2pvbds017a2qfq0ll85sxpyyflw4354lwi";
-        version = "4.0.0";
+        sha256 = "014l3lkglaniizwvr5pqbi4z7bb0piq0pp3fdifyd4rdp53ac23f";
+        version = "4.0.1";
       };
 
       "NoRedInk/elm-uuid" = {
@@ -130,9 +130,14 @@
         version = "2.0.0";
       };
 
+      "owanturist/elm-bulletproof" = {
+        sha256 = "0z30sxhwjpvd1in960ich0g0x9nj3n6di0jqralb8x55iipw9g28";
+        version = "1.0.0";
+      };
+
       "mgold/elm-nonempty-list" = {
-        sha256 = "08h5na7ln03zcrnmy207xsdr4k8kz8wfbjyxkd43g6f4cr7mrvps";
-        version = "4.0.0";
+        sha256 = "19xg45m45cakpdpkm1vqf541mn944y1ijdh8r86sjy5zl9l5hrj6";
+        version = "4.0.2";
       };
 
       "elm/time" = {
@@ -156,8 +161,8 @@
       };
 
       "ianmackenzie/elm-triangular-mesh" = {
-        sha256 = "0vc2aix77zcc20av88hvyziin25163jpahypzxp7n81vymzzgqg9";
-        version = "1.0.2";
+        sha256 = "01m8h9r944h7ggcs4d8f3i0x7lpq69sbng50zb4nvcq6qrma67wz";
+        version = "1.0.4";
       };
 
       "elm-explorations/linear-algebra" = {
@@ -166,8 +171,8 @@
       };
 
       "elm/bytes" = {
-        sha256 = "040d7irrawcbnq9jxhzx8p9qacdlw5bncy6lgndd6inm53rvvwbp";
-        version = "1.0.7";
+        sha256 = "02ywbf52akvxclpxwj9n04jydajcbsbcbsnjs53yjc5lwck3abwj";
+        version = "1.0.8";
       };
 
       "ianmackenzie/elm-1d-parameter" = {
@@ -178,6 +183,16 @@
       "NoRedInk/elm-random-general" = {
         sha256 = "02vqhjqgz8h3cmrdhbpr4wp1whgyxlingjl9jh0l4pdvqla7l79i";
         version = "1.0.0";
+      };
+
+      "pablohirafuji/elm-syntax-highlight" = {
+        sha256 = "1vb2va27cx3z60flw72ylwbvd5vzqgrgbiv1aj6haw4izasdqn3c";
+        version = "3.2.0";
+      };
+
+      "jorgengranseth/elm-string-format" = {
+        sha256 = "1df8ck2saqzr4nak8zj643arxg9gdw22lywnswril9bzhlg2q30r";
+        version = "1.0.1";
       };
 
       "ianmackenzie/elm-interval" = {
@@ -205,13 +220,38 @@
         version = "1.0.0";
       };
 
+      "rtfeldman/elm-css" = {
+        sha256 = "05sgz21jnnmz6m5s74515337n1aanab2zzn8jpw3bhdjc9cwwfcj";
+        version = "16.0.1";
+      };
+
+      "PanagiotisGeorgiadis/elm-datetime" = {
+        sha256 = "10fd2pad1kv8gm8zj2ixspyyxjqlzx50s3di17vl51gp41j05qbw";
+        version = "1.3.0";
+      };
+
+      "owanturist/elm-avl-dict" = {
+        sha256 = "1nxy2r0v931amcmkjmqabd7i3386marxs9yaywyh22d31xknghmz";
+        version = "2.0.0";
+      };
+
       "elm/random" = {
         sha256 = "138n2455wdjwa657w6sjq18wx2r0k60ibpc4frhbqr50sncxrfdl";
         version = "1.0.0";
       };
 
+      "debois/elm-dom" = {
+        sha256 = "1bg0rgxk3gl8xbv5vw9g8vihpwmaijlivx4n24pjdv9b56bmgypk";
+        version = "1.3.0";
+      };
+
+      "Skinney/murmur3" = {
+        sha256 = "1iiia68w8wlp2qjilyqgnzgjcxby47gla3rw5minj8i5c64zk18j";
+        version = "2.0.8";
+      };
+
       "elm-explorations/test" = {
-        sha256 = "0imf2pw5ar8j632xr0mm10bcfk0kiq0gy2ln1vwl3gywl0pvflym";
-        version = "1.2.0";
+        sha256 = "1fsd7bajm7qa93r5pn3mdafqh3blpzya601jbs9l238p0hmvh576";
+        version = "1.2.2";
       };
 }

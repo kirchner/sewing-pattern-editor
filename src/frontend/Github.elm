@@ -1,6 +1,6 @@
 module Github exposing
     ( Cred(..)
-    , noCred, oauthCred
+    , noCred
     , Repo, Ref, defaultRef, commit, branch, tag
     , repoDecoder, encodeRepo, refDecoder, encodeRef
     , refToString, refToPathSegments, refFromString
@@ -43,17 +43,11 @@ import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 type Cred
     = Anonymous
-    | OauthToken String
 
 
 noCred : Cred
 noCred =
     Anonymous
-
-
-oauthCred : String -> Cred
-oauthCred token =
-    OauthToken token
 
 
 type alias Repo =
@@ -552,11 +546,6 @@ headers cred =
     case cred of
         Anonymous ->
             [ Http.header "Accept" "application/vnd.github.v3+json"
-            ]
-
-        OauthToken oauthToken ->
-            [ Http.header "Accept" "application/vnd.github.v3+json"
-            , Http.header "Authorization" ("token " ++ oauthToken)
             ]
 
 

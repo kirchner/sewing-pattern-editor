@@ -3,7 +3,7 @@ module Session exposing
     , navKey, domain
     , githubCred
     , requestGithubCred
-    , anonymous, githubUser, toGithubUser
+    , anonymous
     )
 
 {-|
@@ -12,7 +12,7 @@ module Session exposing
 @docs navKey, domain
 @docs githubCred
 @docs requestGithubCred
-@docs anonymous, githubUser, toGithubUser
+@docs anonymous
 
 -}
 
@@ -25,7 +25,6 @@ import Url.Builder exposing (QueryParameter)
 {-| -}
 type Session
     = Anonymous String SessionData
-    | GithubUser String SessionData
 
 
 type alias SessionData =
@@ -41,18 +40,12 @@ navKey session =
         Anonymous _ { key } ->
             key
 
-        GithubUser _ { key } ->
-            key
-
 
 {-| -}
 domain : Session -> String
 domain session =
     case session of
         Anonymous _ stuff ->
-            stuff.domain
-
-        GithubUser _ stuff ->
             stuff.domain
 
 
@@ -62,9 +55,6 @@ githubCred session =
     case session of
         Anonymous _ _ ->
             Github.noCred
-
-        GithubUser accessToken _ ->
-            Github.oauthCred accessToken
 
 
 {-| -}
@@ -81,9 +71,6 @@ requestGithubCred session route params =
                     , Url.Builder.string "scope" "repo"
                     ]
 
-        GithubUser _ _ ->
-            Cmd.none
-
 
 {-| -}
 anonymous : String -> Browser.Navigation.Key -> String -> Session
@@ -92,23 +79,3 @@ anonymous clientId key domain_ =
         { key = key
         , domain = domain_
         }
-
-
-{-| -}
-githubUser : String -> Browser.Navigation.Key -> String -> Session
-githubUser accessToken key domain_ =
-    GithubUser accessToken
-        { key = key
-        , domain = domain_
-        }
-
-
-{-| -}
-toGithubUser : String -> Session -> Session
-toGithubUser accessToken session =
-    case session of
-        Anonymous _ data ->
-            GithubUser accessToken data
-
-        GithubUser _ data ->
-            GithubUser accessToken data

@@ -1,6 +1,5 @@
 module Route exposing
     ( Route(..), NewParameters, fromUrl
-    , WithCode, fromUrlWithCode
     , absolute, relative, crossOrigin
     , replaceUrl, pushUrl
     )
@@ -8,7 +7,6 @@ module Route exposing
 {-|
 
 @docs Route, NewParameters, fromUrl
-@docs WithCode, fromUrlWithCode
 @docs absolute, relative, crossOrigin
 @docs replaceUrl, pushUrl
 
@@ -60,22 +58,9 @@ type alias NewParameters =
 
 
 {-| -}
-type alias WithCode =
-    { route : Route
-    , code : Maybe String
-    }
-
-
-{-| -}
 fromUrl : Url -> Maybe Route
 fromUrl =
     Parser.parse routeParser
-
-
-{-| -}
-fromUrlWithCode : Url -> Maybe WithCode
-fromUrlWithCode =
-    Parser.parse parser
 
 
 {-| -}
@@ -153,11 +138,6 @@ parameters route =
 
 
 ---- PARSER
-
-
-parser : Parser (WithCode -> a) a
-parser =
-    map WithCode (routeParser <?> Query.string "code")
 
 
 routeParser : Parser (Route -> a) a

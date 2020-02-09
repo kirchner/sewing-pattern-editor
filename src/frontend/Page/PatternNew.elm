@@ -126,10 +126,6 @@ init session newParameters =
     , case cred of
         Github.Anonymous ->
             Cmd.none
-
-        Github.OauthToken _ ->
-            Github.getAuthenticatedUser cred
-                { onUser = RemoteData.fromResult >> ReceivedAuthenticatedUser }
     )
 
 
@@ -191,8 +187,7 @@ viewNew device model =
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
-            { userPressedSignIn = UserPressedSignIn
-            , cred = Session.githubCred model.session
+            { cred = Session.githubCred model.session
             , device = device
             , heading = "Create a new pattern"
             , backToLabel = Just "Back to patterns"
@@ -291,19 +286,6 @@ viewContent model =
                                 all data when you clear the browser cache."""
                             ]
                     }
-                , Ui.Atom.Input.option
-                    { value = GithubTag
-                    , label = "GitHub repository"
-                    , child =
-                        Ui.Theme.Typography.paragraphButton
-                            [ Element.text
-                                """Store all data within a GitHub repository.
-                                You will need to sign in with your GitHub
-                                account and authorize the sewing pattern editor
-                                to create and modify repositories within your
-                                GitHub account."""
-                            ]
-                    }
                 ]
             }
         , case model.storageSolution of
@@ -315,67 +297,6 @@ viewContent model =
                     , label = "Slug"
                     , help = Nothing
                     }
-
-            GithubTag ->
-                case Session.githubCred model.session of
-                    Github.Anonymous ->
-                        Element.el [] <|
-                            Ui.Atom.Input.btnPrimary
-                                { id = "log-in-btn"
-                                , onPress = Just UserPressedSignIn
-                                , label = "Sign in via GitHub"
-                                }
-
-                    Github.OauthToken _ ->
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing Ui.Theme.Spacing.level2
-                            ]
-                            [ Element.row
-                                [ Element.width Element.fill
-                                , Element.spacing Ui.Theme.Spacing.level1
-                                ]
-                                [ Element.row
-                                    [ Element.alignBottom
-                                    , Element.spacing Ui.Theme.Spacing.level2
-                                    , Element.paddingEach
-                                        { top = 17
-                                        , bottom = 17
-                                        , left = 7
-                                        , right = 2
-                                        }
-                                    ]
-                                    [ Ui.Theme.Typography.body <|
-                                        Maybe.withDefault "" model.owner
-                                    , Ui.Theme.Typography.body "/"
-                                    ]
-                                , Ui.Atom.Input.text
-                                    { id = "github-repository-name-input"
-                                    , text = model.repositoryName
-                                    , onChange = UserChangedRepositoryName
-                                    , label = "Repository name"
-                                    , help = Nothing
-                                    }
-                                ]
-                            , Ui.Atom.Input.radioColumn
-                                { id = "visibility-radio-group"
-                                , onChange = UserChangedVisibility
-                                , selected = Just model.visibility
-                                , label = "Visibility"
-                                , options =
-                                    [ Ui.Atom.Input.option
-                                        { value = Public
-                                        , label = "Public"
-                                        , child = Element.none
-                                        }
-                                    , Ui.Atom.Input.option
-                                        { value = Private
-                                        , label = "Private"
-                                        , child = Element.none
-                                        }
-                                    ]
-                                }
-                            ]
         , horizontalRule
         , Element.el [ Element.width Element.shrink ] <|
             Ui.Atom.Input.btnPrimary
@@ -427,7 +348,6 @@ type Msg
 
 type StorageSolutionTag
     = BrowserTag
-    | GithubTag
 
 
 storageSolutionToString : StorageSolutionTag -> String
@@ -436,18 +356,12 @@ storageSolutionToString storageSolution =
         BrowserTag ->
             "browser"
 
-        GithubTag ->
-            "github"
-
 
 storageSolutionFromString : String -> Maybe StorageSolutionTag
 storageSolutionFromString string =
     case string of
         "browser" ->
             Just BrowserTag
-
-        "github" ->
-            Just GithubTag
 
         _ ->
             Nothing
@@ -558,43 +472,6 @@ updateLoaded msg model =
                     LocalStorage.updatePattern
                         (Address.Browser { slug = generatedToString model.slug })
                         newPattern
-
-                GithubTag ->
-                    case model.owner of
-                        Nothing ->
-                            Cmd.none
-
-                        Just owner ->
-                            let
-                                repo =
-                                    { owner = owner
-                                    , name = model.repositoryName
-                                    }
-
-                                route =
-                                    Route.Pattern
-                                        (Address.GithubRepo
-                                            { repo = repo
-                                            , ref = Github.defaultRef
-                                            }
-                                        )
-                            in
-                            Github.createRepository (Session.githubCred model.session)
-                                { repository =
-                                    { name = model.repositoryName
-                                    , description = model.description
-                                    , homepage = Route.crossOrigin (Session.domain model.session) route []
-                                    , private =
-                                        case model.visibility of
-                                            Public ->
-                                                False
-
-                                            Private ->
-                                                True
-                                    }
-                                , onRepository =
-                                    ReceivedRepository model.name model.description repo
-                                }
             )
 
         ReceivedRepository _ _ _ (Err _) ->

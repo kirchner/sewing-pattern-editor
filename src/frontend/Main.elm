@@ -73,7 +73,6 @@ type alias RequestingClientIdData =
 type alias LoadingData =
     { session : Session
     , maybeRoute : Maybe Route
-    , githubAccessToken : WebData String
     , maybeDevice : Maybe Element.Device
     }
 
@@ -254,7 +253,6 @@ type Msg
       -- CLIENT ID
     | ReceivedClientId (Result Http.Error String)
       -- LOADING
-    | ReceivedGithubAccessToken (WebData String)
     | ChangedDevice Element.Device
       -- PAGES
     | PatternsMsg Patterns.Msg
@@ -291,41 +289,24 @@ updateRequestingClientId msg data =
                 session =
                     Session.anonymous clientId data.key data.domain
             in
-            case Route.fromUrlWithCode data.url of
+            case Route.fromUrl data.url of
                 Nothing ->
                     ( Loading
                         { session = session
                         , maybeRoute = Nothing
-                        , githubAccessToken = RemoteData.NotAsked
                         , maybeDevice = Nothing
                         }
                     , getViewport
                     )
 
-                Just { route, code } ->
-                    case code of
-                        Nothing ->
-                            ( Loading
-                                { session = session
-                                , maybeRoute = Just route
-                                , githubAccessToken = RemoteData.NotAsked
-                                , maybeDevice = Nothing
-                                }
-                            , getViewport
-                            )
-
-                        Just actualCode ->
-                            ( Loading
-                                { session = session
-                                , maybeRoute = Just route
-                                , githubAccessToken = RemoteData.Loading
-                                , maybeDevice = Nothing
-                                }
-                            , Cmd.batch
-                                [ getViewport
-                                , requestGithubAccessToken actualCode
-                                ]
-                            )
+                Just route ->
+                    ( Loading
+                        { session = session
+                        , maybeRoute = Just route
+                        , maybeDevice = Nothing
+                        }
+                    , getViewport
+                    )
 
         _ ->
             ( RequestingClientId data, Cmd.none )
@@ -344,18 +325,6 @@ getViewport =
     Task.perform toMsg Browser.Dom.getViewport
 
 
-requestGithubAccessToken : String -> Cmd Msg
-requestGithubAccessToken code =
-    Http.post
-        { url = Url.Builder.absolute [ "access_token" ] [ Url.Builder.string "code" code ]
-        , body = Http.emptyBody
-        , expect =
-            Http.expectJson
-                (ReceivedGithubAccessToken << RemoteData.fromResult)
-                (Decode.field "access_token" Decode.string)
-        }
-
-
 
 ---- UPDATE LOADING
 
@@ -363,10 +332,6 @@ requestGithubAccessToken code =
 updateLoading : Msg -> LoadingData -> ( Model, Cmd Msg )
 updateLoading msg data =
     case msg of
-        ReceivedGithubAccessToken githubAccessToken ->
-            { data | githubAccessToken = githubAccessToken }
-                |> checkLoaded
-
         ChangedDevice device ->
             { data | maybeDevice = Just device }
                 |> checkLoaded
@@ -377,12 +342,9 @@ updateLoading msg data =
 
 checkLoaded : LoadingData -> ( Model, Cmd Msg )
 checkLoaded data =
-    case ( data.githubAccessToken, data.maybeDevice ) of
-        ( RemoteData.Success githubAccessToken, Just device ) ->
-            initLoaded data (Just githubAccessToken) device
-
-        ( RemoteData.NotAsked, Just device ) ->
-            initLoaded data Nothing device
+    case data.maybeDevice of
+        Just device ->
+            initLoaded data device
 
         _ ->
             ( Loading data
@@ -390,26 +352,18 @@ checkLoaded data =
             )
 
 
-initLoaded : LoadingData -> Maybe String -> Element.Device -> ( Model, Cmd Msg )
-initLoaded data maybeGithubAccessToken device =
+initLoaded : LoadingData -> Element.Device -> ( Model, Cmd Msg )
+initLoaded data device =
     let
         ( page, cmd ) =
             case data.maybeRoute of
                 Nothing ->
-                    ( NotFound session
+                    ( NotFound data.session
                     , Cmd.none
                     )
 
                 Just route ->
-                    changePageTo session route
-
-        session =
-            case maybeGithubAccessToken of
-                Nothing ->
-                    data.session
-
-                Just githubAccessToken ->
-                    Session.toGithubUser githubAccessToken data.session
+                    changePageTo data.session route
     in
     ( Loaded
         { device = device
@@ -475,9 +429,6 @@ updateLoaded msg data =
             ( Loaded data, Cmd.none )
 
         -- TOKENS
-        ( ReceivedGithubAccessToken _, _ ) ->
-            ( Loaded data, Cmd.none )
-
         ( ChangedDevice device, _ ) ->
             if data.device /= device then
                 ( Loaded { data | device = device }

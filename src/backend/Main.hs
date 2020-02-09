@@ -79,7 +79,6 @@ serve clientId clientSecret environment =
   asum
     [ S.route
         [ ( "/client_id", S.writeLBS $ toLazyByteString $ stringUtf8 clientId )
-        , ( "/access_token", S.method S.POST $ accessTokenHandler clientId clientSecret )
         , ( "/static", serveDirectoryWith directoryConfig assetsDir )
         , ( "/service-worker.js", serveFile (assetsDir ++ "/service-worker.js") )
         ]
@@ -90,52 +89,3 @@ serve clientId clientSecret environment =
 directoryConfig =
   simpleDirectoryConfig
     { mimeTypes = insert ".js" "application/javascript" defaultMimeTypes }
-
-
-
----- ACCESS TOKEN HANDLER
-
-
-data AccessToken = AccessToken String String String
-
-instance ToJSON AccessToken where
-  toJSON (AccessToken clientId clientSecret code) =
-    object
-      [ "client_id" .= clientId
-      , "client_secret" .= clientSecret
-      , "code" .= code
-      ]
-
-
-accessTokenHandler :: String -> String -> S.Snap ()
-accessTokenHandler clientId clientSecret =
-  do  maybeCode <- S.getParam "code"
-
-      case maybeCode of
-        Nothing ->
-          S.writeBS "no code provided"
-
-        Just code ->
-          do  token <- liftIO $ fetchGithubToken clientId clientSecret (unpack code)
-
-              S.writeLBS token
-
-
-fetchGithubToken :: String -> String -> String -> IO ByteString
-fetchGithubToken clientId clientSecret code =
-  do  manager <- Http.newManager Http.tlsManagerSettings
-
-      initialRequest <- Http.parseRequest "https://github.com/login/oauth/access_token"
-      let request
-              = initialRequest
-                { Http.method = "POST"
-                , Http.requestBody = Http.RequestBodyLBS $ encode $ AccessToken clientId clientSecret code
-                , Http.requestHeaders =
-                    [ ( "Content-Type", "application/json" )
-                    , ( "Accept", "application/json" )
-                    ]
-                }
-
-      response <- Http.httpLbs request manager
-
-      return $ Http.responseBody response

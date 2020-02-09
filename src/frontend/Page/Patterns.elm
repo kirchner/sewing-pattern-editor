@@ -116,8 +116,7 @@ viewPatterns device model =
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
-            { userPressedSignIn = UserPressedSignIn
-            , cred = Session.githubCred model.session
+            { cred = Session.githubCred model.session
             , device = device
             , heading = "Patterns"
             , backToLabel = Nothing

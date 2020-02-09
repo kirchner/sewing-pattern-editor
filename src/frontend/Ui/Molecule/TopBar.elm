@@ -12,16 +12,15 @@ import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
 
-type alias Config msg =
-    { userPressedSignIn : msg
-    , cred : Github.Cred
+type alias Config =
+    { cred : Github.Cred
     , device : Element.Device
     , backToLabel : Maybe String
     , heading : String
     }
 
 
-view : Config msg -> Element msg
+view : Config -> Element msg
 view cfg =
     let
         backToPatternsLink =
@@ -30,32 +29,21 @@ view cfg =
                     Element.none
 
                 Just backToLabel ->
-                    Ui.Theme.Focus.outline <|
-                        Element.link
-                            [ Font.color Ui.Theme.Color.primary
-                            , Element.mouseOver
-                                [ Font.color Ui.Theme.Color.primaryDark ]
-                            ]
-                            { url = "/"
-                            , label =
-                                Element.row
-                                    [ Element.spacing Ui.Theme.Spacing.level1 ]
-                                    [ Ui.Atom.Icon.fa "arrow-left"
-                                    , Ui.Theme.Typography.body backToLabel
-                                    ]
-                            }
-
-        signInViaGithubBtn =
-            case cfg.cred of
-                Github.Anonymous ->
-                    Ui.Atom.Input.btnPrimary
-                        { id = "sign-in-btn"
-                        , onPress = Just cfg.userPressedSignIn
-                        , label = "Sign in via GitHub"
-                        }
-
-                Github.OauthToken _ ->
-                    Element.none
+                    Element.el [] <|
+                        Ui.Theme.Focus.outline <|
+                            Element.link
+                                [ Font.color Ui.Theme.Color.primary
+                                , Element.mouseOver
+                                    [ Font.color Ui.Theme.Color.primaryDark ]
+                                ]
+                                { url = "/"
+                                , label =
+                                    Element.row
+                                        [ Element.spacing Ui.Theme.Spacing.level1 ]
+                                        [ Ui.Atom.Icon.fa "arrow-left"
+                                        , Ui.Theme.Typography.body backToLabel
+                                        ]
+                                }
 
         heading =
             Element.el
@@ -74,8 +62,6 @@ view cfg =
                     [ Element.width Element.fill ]
                     [ Element.el []
                         backToPatternsLink
-                    , Element.el [ Element.alignRight ]
-                        signInViaGithubBtn
                     ]
                 , Element.el
                     [ Element.paddingEach
@@ -99,7 +85,8 @@ view cfg =
                     [ Element.width Element.fill ]
                     backToPatternsLink
                 , Element.el
-                    [ Element.centerX ]
+                    [ Element.centerX
+                    ]
                     (Element.el
                         [ Element.width
                             (Element.fill
@@ -108,12 +95,7 @@ view cfg =
                         ]
                         heading
                     )
-                , Element.el
-                    [ Element.width Element.fill ]
-                    (Element.el
-                        [ Element.alignRight ]
-                        signInViaGithubBtn
-                    )
+                , Element.el [ Element.width Element.fill ] Element.none
                 ]
     in
     case ( cfg.device.class, cfg.device.orientation ) of
