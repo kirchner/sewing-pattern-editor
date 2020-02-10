@@ -33,31 +33,23 @@ in
 
 {
 
-  debug = mkShell {
-    shellHook = ''
-      function server {
-        ${backend}/bin/run-server \
-          --assets=${assets false} \
-          --frontend=${elmJs true} \
-          --stories=${storiesJs} \
-          --debug \
-          --port=4321
-      }
-    '';
-  };
+  debug = writeScript "debug.sh" ''
+    ${backend}/bin/run-server \
+      --assets=${assets false} \
+      --frontend=${elmJs true} \
+      --stories=${storiesJs} \
+      --debug \
+      --port=4321
+  '';
 
 
-  preview = mkShell {
-    shellHook = ''
-      function server {
-        ${backend}/bin/run-server \
-          --assets=${assets true} \
-          --frontend=${elmJs false} \
-          --stories=${storiesJs} \
-          --port=1234
-      }
-    '';
-  };
+  preview = writeScript "preview.sh" ''
+    ${backend}/bin/run-server \
+      --assets=${assets true} \
+      --frontend=${elmJs false} \
+      --stories=${storiesJs} \
+      --port=1234
+  '';
 
 
   dockerImage = dockerTools.buildImage {
