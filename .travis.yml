@@ -1,9 +1,0 @@
-language: elm
-
-install:
-  - yarn
-
-script:
-  - yarn elm-format --validate ./src
-  - yarn elm-format --validate ./tests
-  - yarn elm-test

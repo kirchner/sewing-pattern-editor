@@ -1,7 +1,5 @@
 # sewing-pattern-editor
 
-[![Build Status](https://travis-ci.org/kirchner/sewing-pattern-editor.svg?branch=master)](https://travis-ci.org/kirchner/sewing-pattern-editor)
-
 Create sewing patterns in your browser.  Take a look at [an example](https://sewing-pattern-editor.herokuapp.com/github/kirchner/bodice-block).
 
 Note, that this is in a very early development state.  Nevertheless, I appreciate any questions or feedback. :)
