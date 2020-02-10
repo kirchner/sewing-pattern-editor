@@ -24,7 +24,7 @@ Cabal-version: >=1.2
 
 Executable run-server
   hs-source-dirs:
-    src/backend/
+    src/
 
   main-is:
     Main.hs

@@ -10,83 +10,18 @@ with (
 
 let
 
-  frontend = stdenv.mkDerivation {
-    name = "frontend";
-    src = ./.;
-
-    buildInputs = [
-      elmPackages.elm
-      nodePackages.uglify-js
-    ];
-
-    buildPhase = elmPackages.fetchElmDeps {
-      elmPackages = import ./elm-srcs.nix;
-      registryDat = ./registry.dat;
-      elmVersion = "0.19.1";
-    };
-
-    installPhase = ''
-      elm make src/frontend/Main.elm --output=elm.js --optimize
-
-      uglifyjs elm.js \
-        --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
-        --output=elm.min.js
-
-      mkdir $out
-
-      uglifyjs elm.min.js \
-        --mangle \
-        --output=$out/elm.js
-    '';
+  frontend = callPackage ./frontend {
+    inherit elmPackages nodePackages;
+    mkDerivation = stdenv.mkDerivation;
   };
 
-  backend = haskellPackages.callPackage ./run-server.nix {};
-
-  fontawesome = stdenv.mkDerivation rec {
-    name = "fontawesome";
-    version = "5.12.1";
-    src = fetchzip {
-      stripRoot = true;
-      url = "https://use.fontawesome.com/releases/v${version}/fontawesome-free-${version}-web.zip";
-      sha256 = "0xizbax7a256rs4wsswcxfkgc33nij11xlmmzpjs14bpja48alid";
-    };
-
-    installPhase = ''
-      mkdir -p $out/share
-      cp -R $src/fontawesome-free-${version}-web/* $out/share
-    '';
+  backend = callPackage ./backend {
+    inherit haskellPackages;
   };
 
-  content = stdenv.mkDerivation {
-    name = "sewing-pattern-editor";
-    src = ./.;
-
-    dontBuild = true;
-
-    installPhase = ''
-      mkdir -p $out/_build
-
-      cp \
-        ${frontend}/elm.js \
-        $src/assets/service-worker.js \
-        $src/assets/register-service-worker.js \
-        $src/assets/app.html \
-        $src/assets/app.js \
-        $src/assets/manifest.webmanifest \
-        $src/assets/main.css \
-        $src/assets/images/* \
-        $src/assets/fonts/* \
-        $src/assets/js-aruco/* \
-        $out/_build
-
-      cp -R ${fontawesome}/share/* $out/_build
-
-
-      mkdir -p $out/bin
-
-      cp ${backend}/bin/run-server $out/bin
-      cp ${startup} $out/bin/startup.sh
-    '';
+  assets = callPackage ./assets {
+    inherit (stdenv) mkDerivation;
+    inherit fetchzip;
   };
 
   startup = writeScript "startup.sh" ''
@@ -113,28 +48,39 @@ let
 
 in
 
-dockerTools.buildImage {
-  name = "sewing-pattern-editor";
+{
 
-  contents = [
-    content
-    cacert
-  ];
+  dockerImage = dockerTools.buildImage {
+    name = "sewing-pattern-editor";
 
-  runAsRoot = ''
-    #!${runtimeShell}
-    mkdir -p /data/log
-    cp -R ${content}/_build /data
-  '';
-
-  config = {
-    WorkingDir = "/data";
-    Entrypoint = [ "${runtimeShell}" "-c" ];
-    Cmd = [ "/bin/startup.sh" ];
-    Env = [
-      "CLIENT_ID"
-      "CLIENT_SECRET"
-      "PORT"
+    contents = [
+      backend
+      cacert
     ];
+
+    runAsRoot = ''
+      #!${runtimeShell}
+
+      mkdir -p /data/log /data/_build
+
+      cp -R \
+        ${frontend}/elm.js \
+        ${assets}/* \
+        /data/_build
+
+      cp ${startup} /data/startup.sh
+    '';
+
+    config = {
+      WorkingDir = "/data";
+      Entrypoint = [ "${runtimeShell}" "-c" ];
+      Cmd = [ "/data/startup.sh" ];
+      Env = [
+        "CLIENT_ID"
+        "CLIENT_SECRET"
+        "PORT"
+      ];
+    };
   };
+
 }
