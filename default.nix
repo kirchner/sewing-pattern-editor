@@ -41,6 +41,18 @@ in
   };
 
 
+  preview = mkShell {
+    shellHook = ''
+      function server {
+        ${backend}/bin/run-server \
+          --assets=${assets true} \
+          --frontend=${elmJs false} \
+          --port=1234
+      }
+    '';
+  };
+
+
   dockerImage = dockerTools.buildImage {
     name = "sewing-pattern-editor";
 

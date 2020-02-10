@@ -16,4 +16,4 @@ Eventually, you should be able to feed this program all these construction steps
 
 ## Run locally
 
-You should first install all dependencies by running `yarn`. A local development server for debbuging can be started with `yarn debug` and is available at `localhost:4321`. If you want to compile optimized assets and have the service worker, you have to run `yarn preview` and open `localhost:1234`.
+A local development server for debbuging can be started with `make debug` and is available at `localhost:4321`. If you want to compile optimized assets and have the service worker, you have to run `make preview` and open `localhost:1234`. You need to have [nix](https://github.com/nixos/nix) installed.
