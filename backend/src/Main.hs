@@ -28,7 +28,9 @@ data Flags =
     { port :: Int
     , clientId :: String
     , clientSecret :: String
-    , environment :: String
+    , assets :: String
+    , frontend :: String
+    , debug :: Bool
     }
     deriving (Data, Typeable, Show, Eq)
 
@@ -42,8 +44,12 @@ flags =
         &= help "client id of the github oauth app"
     , clientSecret = ""
         &= help "client secret of the github oauth app"
-    , environment = "development"
-        &= help "either development or production"
+    , assets = "_build"
+        &= help "path to static assets"
+    , frontend = "elm.js"
+        &= help "path to frontend asset"
+    , debug = False
+        &= help "debug mode"
     }
 
 
@@ -53,9 +59,9 @@ flags =
 
 main :: IO ()
 main =
-  do  Flags port clientId clientSecret environment <- cmdArgs flags
+  do  Flags port clientId clientSecret assets frontend debug <- cmdArgs flags
 
-      S.httpServe (config port) (serve clientId clientSecret environment)
+      S.httpServe (config port) (serve clientId clientSecret assets frontend debug)
 
 
 config :: Int -> S.Config S.Snap a
@@ -67,23 +73,28 @@ config port =
 ---- SERVE
 
 
-serve :: String -> String -> String -> S.Snap ()
-serve clientId clientSecret environment =
-  let
-    assetsDir =
-      case environment of
-        "development" -> "_debug"
-        "production"  -> "_build"
-        _             -> "_debug"
-  in
-  asum
-    [ S.route
-        [ ( "/client_id", S.writeLBS $ toLazyByteString $ stringUtf8 clientId )
-        , ( "/static", serveDirectoryWith directoryConfig assetsDir )
-        , ( "/service-worker.js", serveFile (assetsDir ++ "/service-worker.js") )
+serve :: String -> String -> String -> String -> Bool -> S.Snap ()
+serve clientId clientSecret assets frontend debug =
+  do  asum
+        [ S.route
+            [ ( "/client_id", S.writeLBS $ toLazyByteString $ stringUtf8 clientId )
+            , ( "/static/elm.js", serveFile frontend )
+            , ( "/static", serveDirectoryWith directoryConfig assets )
+            , ( "/service-worker.js", serveFile (assets ++ "/service-worker.js") )
+            ]
+        , serveFile (assets ++ "/app.html")
         ]
-    , serveFile (assetsDir ++ "/app.html")
-    ]
+
+      setCacheControl debug
+
+
+setCacheControl :: Bool -> S.Snap ()
+setCacheControl debug =
+  if debug then
+    S.modifyResponse (S.setHeader "Cache-Control" "private")
+
+  else
+    return ()
 
 
 directoryConfig =

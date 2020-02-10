@@ -1,10 +1,11 @@
 { mkDerivation
 , elmPackages
 , nodePackages
+, debug ? false
 }:
 
 mkDerivation {
-  name = "frontend";
+  name = "elm.js";
   src = ./.;
 
   buildInputs = [
@@ -18,17 +19,22 @@ mkDerivation {
     elmVersion = "0.19.1";
   };
 
-  installPhase = ''
-    elm make src/Main.elm --output=elm.js --optimize
+  installPhase =
+    if debug then
+      ''
+        elm make --debug src/Main.elm --output=$out
+      ''
 
-    uglifyjs elm.js \
-      --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
-      --output=elm.min.js
+    else
+      ''
+        elm make src/Main.elm --output=elm.js --optimize
 
-    mkdir $out
+        uglifyjs elm.js \
+          --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
+          --output=elm.min.js
 
-    uglifyjs elm.min.js \
-      --mangle \
-      --output=$out/elm.js
-  '';
+        uglifyjs elm.min.js \
+          --mangle \
+          --output=$out
+      '';
 }

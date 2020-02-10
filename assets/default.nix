@@ -1,5 +1,6 @@
 { mkDerivation
 , fetchzip
+, serviceWorker ? true
 }:
 
 let
@@ -13,16 +14,23 @@ let
       sha256 = "0xizbax7a256rs4wsswcxfkgc33nij11xlmmzpjs14bpja48alid";
     };
 
-    installPhase = ''
-      mkdir -p $out/share
-      cp -R $src/fontawesome-free-${version}-web/* $out/share
-    '';
+    installPhase =
+        ''
+          mkdir -p $out/share
+          cp -R $src/fontawesome-free-${version}-web/* $out/share
+        '';
   };
 
 in
 
 mkDerivation {
-  name = "assets";
+  name =
+    if serviceWorker then
+      "assets"
+
+    else
+      "assets-without-service-worker";
+
   src = ./.;
 
   dontBuild = true;
@@ -31,8 +39,6 @@ mkDerivation {
     mkdir $out
 
     cp \
-      $src/service-worker.js \
-      $src/register-service-worker.js \
       $src/app.html \
       $src/app.js \
       $src/manifest.webmanifest \
@@ -41,6 +47,20 @@ mkDerivation {
       $src/fonts/* \
       $src/js-aruco/* \
       $out
+
+    ${if serviceWorker then
+        "cp $src/service-worker.js $out"
+
+      else
+        ""}
+
+    cp $src/${
+      if serviceWorker then
+        "register-service-worker.js"
+
+      else
+        "register-service-worker--no-op.js"} \
+      $out/register-service-worker.js
 
     cp -R ${fontawesome}/share/* $out
   '';

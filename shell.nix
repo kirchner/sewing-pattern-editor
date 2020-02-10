@@ -9,30 +9,14 @@
 
 with pkgs;
 
-let
-
-  ghc = haskellPackages.ghcWithPackages(pkgs: with pkgs; [
-    zlib
-  ]);
-
-in
-
-stdenv.mkDerivation {
-  name = "sewing-pattern-editor";
-
+mkShell {
   buildInputs = [
-    yarn
     elmPackages.elm
     elmPackages.elm-test
     elmPackages.elm-format
     elmPackages.elm-doc-preview
     elm2nix
     expect
-    ghc
-    haskellPackages.cabal-install
     cabal2nix
   ];
-
-  shellHook = ''
-  '';
 }

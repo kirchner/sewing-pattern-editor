@@ -10,75 +10,81 @@ with (
 
 let
 
-  frontend = callPackage ./frontend {
-    inherit elmPackages nodePackages;
-    mkDerivation = stdenv.mkDerivation;
+  elmJs = debug: callPackage ./frontend {
+    inherit (stdenv) mkDerivation;
+    inherit elmPackages nodePackages debug;
   };
 
   backend = callPackage ./backend {
     inherit haskellPackages;
   };
 
-  assets = callPackage ./assets {
+  assets = serviceWorker: callPackage ./assets {
     inherit (stdenv) mkDerivation;
-    inherit fetchzip;
+    inherit fetchzip serviceWorker;
   };
-
-  startup = writeScript "startup.sh" ''
-    #!${runtimeShell}
-
-    _term() {
-      echo "Caught SIGTERM signal!"
-      kill -TERM "$child" 2>/dev/null
-    }
-
-    trap _term SIGTERM
-    trap _term SIGKILL
-    trap _term SIGINT
-
-    /bin/run-server \
-      --environment=production \
-      --port=$PORT \
-      --clientid=$CLIENT_ID \
-      --clientsecret=$CLIENT_SECRET &
-
-    child=$!
-    wait "$child"
-  '';
 
 in
 
 {
 
+  debug = mkShell {
+    shellHook = ''
+      function server {
+        ${backend}/bin/run-server \
+          --assets=${assets false} \
+          --frontend=${elmJs true} \
+          --debug \
+          --port=4321
+      }
+    '';
+  };
+
+
   dockerImage = dockerTools.buildImage {
     name = "sewing-pattern-editor";
 
-    contents = [
-      backend
-      cacert
-    ];
+    contents = cacert;
 
     runAsRoot = ''
       #!${runtimeShell}
-
-      mkdir -p /data/log /data/_build
-
-      cp -R \
-        ${frontend}/elm.js \
-        ${assets}/* \
-        /data/_build
-
-      cp ${startup} /data/startup.sh
+      mkdir -p /data/log
     '';
 
     config = {
-      WorkingDir = "/data";
-      Entrypoint = [ "${runtimeShell}" "-c" ];
-      Cmd = [ "/data/startup.sh" ];
       Env = [
         "CLIENT_ID"
         "CLIENT_SECRET"
         "PORT"
+      ];
+      WorkingDir = "/data";
+      Entrypoint = [ "${runtimeShell}" "-c" ];
+
+      Cmd = [
+        (
+          writeScript "startup.sh" ''
+            #!${runtimeShell}
+
+            _term() {
+              echo "Caught SIGTERM signal!"
+              kill -TERM "$child" 2>/dev/null
+            }
+
+            trap _term SIGTERM
+            trap _term SIGKILL
+            trap _term SIGINT
+
+            ${backend}/bin/run-server \
+              --frontend=${elmJs false} \
+              --assets=${assets true} \
+              --port=$PORT \
+              --clientid=$CLIENT_ID \
+              --clientsecret=$CLIENT_SECRET &
+
+            child=$!
+            wait "$child"
+          ''
+          )
       ];
     };
   };
