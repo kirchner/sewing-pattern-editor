@@ -15,6 +15,11 @@ let
     inherit elmPackages nodePackages debug;
   };
 
+  storiesJs = callPackage ./frontend/stories.nix {
+    inherit (stdenv) mkDerivation;
+    inherit elmPackages nodePackages;
+  };
+
   backend = callPackage ./backend {
     inherit haskellPackages;
   };
@@ -34,6 +39,7 @@ in
         ${backend}/bin/run-server \
           --assets=${assets false} \
           --frontend=${elmJs true} \
+          --stories=${storiesJs} \
           --debug \
           --port=4321
       }
@@ -47,6 +53,7 @@ in
         ${backend}/bin/run-server \
           --assets=${assets true} \
           --frontend=${elmJs false} \
+          --stories=${storiesJs} \
           --port=1234
       }
     '';
@@ -88,6 +95,7 @@ in
 
             ${backend}/bin/run-server \
               --frontend=${elmJs false} \
+              --stories=${storiesJs} \
               --assets=${assets true} \
               --port=$PORT \
               --clientid=$CLIENT_ID \

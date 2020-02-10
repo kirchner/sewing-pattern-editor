@@ -30,6 +30,7 @@ data Flags =
     , clientSecret :: String
     , assets :: String
     , frontend :: String
+    , stories :: String
     , debug :: Bool
     }
     deriving (Data, Typeable, Show, Eq)
@@ -40,14 +41,22 @@ flags =
   Flags
     { port = 4321
         &= help "port of the server"
+
     , clientId = ""
         &= help "client id of the github oauth app"
+
     , clientSecret = ""
         &= help "client secret of the github oauth app"
+
     , assets = "_build"
         &= help "path to static assets"
+
     , frontend = "elm.js"
-        &= help "path to frontend asset"
+        &= help "path to frontend asset for main app"
+
+    , stories = "stories.js"
+        &= help "path to frontend asset for stories"
+
     , debug = False
         &= help "debug mode"
     }
@@ -59,9 +68,9 @@ flags =
 
 main :: IO ()
 main =
-  do  Flags port clientId clientSecret assets frontend debug <- cmdArgs flags
+  do  Flags port clientId clientSecret assets frontend stories debug <- cmdArgs flags
 
-      S.httpServe (config port) (serve clientId clientSecret assets frontend debug)
+      S.httpServe (config port) (serve clientId clientSecret assets frontend stories debug)
 
 
 config :: Int -> S.Config S.Snap a
@@ -73,14 +82,16 @@ config port =
 ---- SERVE
 
 
-serve :: String -> String -> String -> String -> Bool -> S.Snap ()
-serve clientId clientSecret assets frontend debug =
+serve :: String -> String -> String -> String -> String -> Bool -> S.Snap ()
+serve clientId clientSecret assets frontend stories debug =
   do  asum
         [ S.route
             [ ( "/client_id", S.writeLBS $ toLazyByteString $ stringUtf8 clientId )
             , ( "/static/elm.js", serveFile frontend )
+            , ( "/static/stories.js", serveFile stories )
             , ( "/static", serveDirectoryWith directoryConfig assets )
             , ( "/service-worker.js", serveFile (assets ++ "/service-worker.js") )
+            , ( "/story", serveFile (assets ++ "/stories.html") )
             ]
         , serveFile (assets ++ "/app.html")
         ]

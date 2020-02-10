@@ -46,6 +46,7 @@ mkDerivation {
       $src/images/* \
       $src/fonts/* \
       $src/js-aruco/* \
+      $src/stories.html \
       $out
 
     ${if serviceWorker then
