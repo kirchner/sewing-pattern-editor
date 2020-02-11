@@ -11,13 +11,13 @@ let
     src = fetchzip {
       stripRoot = true;
       url = "https://use.fontawesome.com/releases/v${version}/fontawesome-free-${version}-web.zip";
-      sha256 = "0xizbax7a256rs4wsswcxfkgc33nij11xlmmzpjs14bpja48alid";
+      sha256 = "160s17izj7y0bajaz5d462zi8p1g0b2rrjnmdidsd9rkwja52xm6";
     };
 
     installPhase =
         ''
           mkdir -p $out/share
-          cp -R $src/fontawesome-free-${version}-web/* $out/share
+          cp -R $src/* $out/share
         '';
   };
 
