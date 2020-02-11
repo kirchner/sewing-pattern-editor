@@ -54,6 +54,7 @@ in
 
   dockerImage = dockerTools.buildImage {
     name = "sewing-pattern-editor";
+    tag = "latest";
 
     contents = cacert;
 

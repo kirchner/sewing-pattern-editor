@@ -1,0 +1,41 @@
+name: "Deploy to Heroku"
+on:
+  push:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Checkout git submodules
+      run: |
+        auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+        git submodule sync --recursive
+        git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+    - uses: cachix/install-nix-action@v6
+    #- uses: cachix/cachix-action@v3
+    #  with:
+    #    name: ycms
+    #    signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+    #    skipNixBuild: true
+
+    - name: Build
+      run: docker image load --input $(nix-build -A dockerImage)
+
+    - name: Login to Heroku Container registry
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      run: heroku container:login
+
+    - name: Push
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      run: |
+        docker image tag sewing-pattern-editor:latest registry.heroku.com/sewing-pattern-editor/web
+        docker push registry.heroku.com/sewing-pattern-editor/web
+
+    - name: Release
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      run: heroku container:release -a sewing-pattern-editor web
