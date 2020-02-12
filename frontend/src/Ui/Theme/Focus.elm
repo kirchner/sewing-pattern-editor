@@ -1,12 +1,12 @@
 module Ui.Theme.Focus exposing
-    ( outline
+    ( outline, outlineFill
     , outlineTop, outlineBottom, outlineLeft, outlineRight
     , outlineTopBottom
     )
 
 {-|
 
-@docs outline
+@docs outline, outlineFill
 @docs outlineTop, outlineBottom, outlineLeft, outlineRight
 @docs outlineTopBottom
 
@@ -20,6 +20,23 @@ import Ui.Theme.Color
 {-| -}
 outline : Element msg -> Element msg
 outline element =
+    Element.el
+        [ Border.width 3
+        , Border.rounded 3
+        , Border.color Ui.Theme.Color.transparent
+        , Element.focused [ Border.color Ui.Theme.Color.complementary ]
+        ]
+        (Element.el
+            [ Element.padding 4
+            , Element.width Element.fill
+            ]
+            element
+        )
+
+
+{-| -}
+outlineFill : Element msg -> Element msg
+outlineFill element =
     Element.el
         [ Element.width Element.fill
         , Border.width 3

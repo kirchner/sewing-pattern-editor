@@ -255,7 +255,6 @@ btnIconLarge { id, onPress, icon } =
             }
 
 
-{-| -}
 btnIconLabel : Element msg -> Element msg
 btnIconLabel icon =
     Element.el
@@ -383,7 +382,7 @@ text data =
                 ]
                     ++ attrs
     in
-    Ui.Theme.Focus.outline <|
+    Ui.Theme.Focus.outlineFill <|
         Input.text
             (withShadow
                 [ attributeId data.id
@@ -471,7 +470,7 @@ formula data =
                 ]
                     ++ attrs
     in
-    Ui.Theme.Focus.outline <|
+    Ui.Theme.Focus.outlineFill <|
         Input.multiline
             (withShadow
                 [ attributeId data.id
@@ -836,7 +835,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                 [ Element.width Element.fill ]
                 [ Element.column
                     [ Element.width Element.fill ]
-                    [ Ui.Theme.Focus.outline <|
+                    [ Ui.Theme.Focus.outlineFill <|
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -879,7 +878,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                     [ Element.width Element.fill
                     , Element.spacing Ui.Theme.Spacing.level1
                     ]
-                    [ Ui.Theme.Focus.outline <|
+                    [ Ui.Theme.Focus.outlineFill <|
                         Element.column
                             [ Element.width Element.fill
                             , Element.spacing Ui.Theme.Spacing.level2
@@ -918,7 +917,7 @@ segmentControl { id, label, help, onChange, options, selected, child } =
                         [ Element.width Element.fill
                         , Element.spacing Ui.Theme.Spacing.level1
                         ]
-                        [ Ui.Theme.Focus.outline <|
+                        [ Ui.Theme.Focus.outlineFill <|
                             Element.column
                                 [ Element.width Element.fill
                                 , Element.spacing Ui.Theme.Spacing.level2

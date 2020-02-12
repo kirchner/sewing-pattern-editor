@@ -19,16 +19,19 @@ port saveSettings : String -> Cmd msg
 main : Bulletproof.Program
 main =
     Bulletproof.program saveSettings
-        [ Bulletproof.folder "Atoms"
-            [ buttons
-            , checkboxes
-            , text
+        [ Bulletproof.folder "Atom"
+            [ Bulletproof.folder "Input"
+                [ buttons
+                , iconButtons
+                , checkboxes
+                , text
+                ]
             ]
-        , Bulletproof.folder "Molecules"
+        , Bulletproof.folder "Molecule"
             [ modals
             , patternList
             ]
-        , Bulletproof.folder "Organisms"
+        , Bulletproof.folder "Organism"
             [ dialogs
             ]
         ]
@@ -37,7 +40,7 @@ main =
 buttons : Bulletproof.Story
 buttons =
     Bulletproof.folder "Buttons"
-        [ Bulletproof.story "Primary"
+        [ Bulletproof.story "btnPrimary"
             (\label ->
                 Ui.Atom.Input.btnPrimary
                     { id = "btnPrimary"
@@ -47,7 +50,7 @@ buttons =
                     |> fromElmUI
             )
             |> Bulletproof.Knob.string "Label" "Create Pattern"
-        , Bulletproof.story "Secondary"
+        , Bulletproof.story "btnSecondary"
             (\label ->
                 Ui.Atom.Input.btnSecondary
                     { id = "btnSecondary"
@@ -57,6 +60,80 @@ buttons =
                     |> fromElmUI
             )
             |> Bulletproof.Knob.string "Label" "Preview"
+        , Bulletproof.story "btnSecondaryBordered"
+            (\labelLeft labelRight ->
+                Element.row []
+                    [ Ui.Atom.Input.btnSecondaryBorderedLeft
+                        { id = "btnSecondaryBorderedLeft"
+                        , onPress = Nothing
+                        , label = labelLeft
+                        }
+                    , Ui.Atom.Input.btnSecondaryBorderedRight
+                        { id = "btnSecondaryBorderedRight"
+                        , onPress = Nothing
+                        , label = labelRight
+                        }
+                    ]
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label left" "Do something"
+            |> Bulletproof.Knob.string "Label right" "Do something else"
+        , Bulletproof.story "btnDanger"
+            (\label ->
+                Ui.Atom.Input.btnDanger
+                    { id = "btnDanger"
+                    , onPress = Nothing
+                    , label = label
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label" "Delete project"
+        , Bulletproof.story "btnCancel"
+            (\label ->
+                Ui.Atom.Input.btnCancel
+                    { id = "btnCancel"
+                    , onPress = Nothing
+                    , label = label
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label" "Cancel"
+        ]
+
+
+iconButtons : Bulletproof.Story
+iconButtons =
+    Bulletproof.folder "IconButtons"
+        [ Bulletproof.story "btnIcon"
+            (\icon ->
+                Ui.Atom.Input.btnIcon
+                    { id = "btnIcon"
+                    , onPress = Nothing
+                    , icon = icon
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label" "dog"
+        , Bulletproof.story "btnIconDanger"
+            (\icon ->
+                Ui.Atom.Input.btnIconDanger
+                    { id = "btnIconDanger"
+                    , onPress = Nothing
+                    , icon = icon
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label" "paw"
+        , Bulletproof.story "btnIconLarge"
+            (\icon ->
+                Ui.Atom.Input.btnIconLarge
+                    { id = "btnIconLarge"
+                    , onPress = Nothing
+                    , icon = icon
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Label" "bone"
         ]
 
 
@@ -79,7 +156,24 @@ checkboxes =
 text : Bulletproof.Story
 text =
     Bulletproof.folder "Text"
-        [ Bulletproof.story "Formula"
+        [ Bulletproof.story "text"
+            (\text_ label help ->
+                Ui.Atom.Input.text
+                    { id = "text"
+                    , onChange = \_ -> ()
+                    , text = text_
+                    , label = label
+                    , help = help
+                    }
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.string "Text" "arm_circ"
+            |> Bulletproof.Knob.string "Label" "Name"
+            |> Bulletproof.Knob.radio "Help"
+                [ ( "Without help", Nothing )
+                , ( "With help", Just "This is name is already taken." )
+                ]
+        , Bulletproof.story "formula"
             (\text_ label help ->
                 Ui.Atom.Input.formula
                     { id = "formula"
@@ -104,8 +198,8 @@ text =
 
 modals : Bulletproof.Story
 modals =
-    Bulletproof.folder "Modals"
-        [ Bulletproof.story "Small"
+    Bulletproof.folder "Modal"
+        [ Bulletproof.story "small"
             (\title content ->
                 Ui.Molecule.Modal.small Ui.Molecule.Modal.Open
                     { onCancelPress = ()
@@ -124,7 +218,7 @@ modals =
             )
             |> Bulletproof.Knob.string "Title" "Delete project?"
             |> Bulletproof.Knob.string "Content" "Do you want to delete the project?"
-        , Bulletproof.story "Wide"
+        , Bulletproof.story "wide"
             (\title content ->
                 Ui.Molecule.Modal.wide Ui.Molecule.Modal.Open
                     { onCancelPress = ()
@@ -148,7 +242,7 @@ modals =
 
 patternList : Bulletproof.Story
 patternList =
-    Bulletproof.story "Pattern List"
+    Bulletproof.story "PatternList"
         (\search patternInfos ->
             Ui.Molecule.PatternList.view
                 { search = search
@@ -183,8 +277,8 @@ patternList =
 
 dialogs : Bulletproof.Story
 dialogs =
-    Bulletproof.folder "Dialogs"
-        [ Bulletproof.story "Create Point"
+    Bulletproof.folder "Dialog"
+        [ Bulletproof.story "createPoint"
             (Ui.Organism.Dialog.createPoint
                 |> Ui.Organism.Dialog.createView
                     { pattern = Pattern.empty
@@ -192,8 +286,32 @@ dialogs =
                     }
                 |> fromElmUI
             )
-        , Bulletproof.story "Create Axis"
+        , Bulletproof.story "createAxis"
             (Ui.Organism.Dialog.createAxis
+                |> Ui.Organism.Dialog.createView
+                    { pattern = Pattern.empty
+                    , hoveredInCanvas = Nothing
+                    }
+                |> fromElmUI
+            )
+        , Bulletproof.story "createCircle"
+            (Ui.Organism.Dialog.createCircle
+                |> Ui.Organism.Dialog.createView
+                    { pattern = Pattern.empty
+                    , hoveredInCanvas = Nothing
+                    }
+                |> fromElmUI
+            )
+        , Bulletproof.story "createCurve"
+            (Ui.Organism.Dialog.createCurve
+                |> Ui.Organism.Dialog.createView
+                    { pattern = Pattern.empty
+                    , hoveredInCanvas = Nothing
+                    }
+                |> fromElmUI
+            )
+        , Bulletproof.story "createDetail"
+            (Ui.Organism.Dialog.createDetail
                 |> Ui.Organism.Dialog.createView
                     { pattern = Pattern.empty
                     , hoveredInCanvas = Nothing
