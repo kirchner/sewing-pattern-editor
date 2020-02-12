@@ -1,7 +1,7 @@
 .PHONY: check debug preview build
 
 check:
-	unbuffer elm make --output=/dev/null src/frontend/Main.elm 2>&1 | less -r
+	cd frontend; unbuffer elm make --output=/dev/null src/Main.elm 2>&1 | less -r
 
 debug:
 	`nix-build -A debug`

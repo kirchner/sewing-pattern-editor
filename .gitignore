@@ -1,7 +1,6 @@
 TODO.md
-_build/
-_debug/
 log/
 secrets.sh
 result
 .envrc
+elm-stuff/
