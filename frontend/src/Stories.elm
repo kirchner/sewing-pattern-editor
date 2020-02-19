@@ -4,9 +4,17 @@ import Bulletproof
 import Bulletproof.Knob
 import Element
 import Element.Font as Font
+import Html.Attributes
+import Length exposing (millimeters)
 import Pattern
+import Pixels exposing (pixels)
+import Point2d
+import Quantity
+import Svg
+import Svg.Attributes
 import Time
 import Ui.Atom.Input
+import Ui.Atom.Marker
 import Ui.Molecule.Modal
 import Ui.Molecule.PatternList
 import Ui.Organism.Dialog
@@ -34,6 +42,7 @@ main =
         , Bulletproof.folder "Organism"
             [ dialogs
             ]
+        , marker
         ]
 
 
@@ -318,6 +327,79 @@ dialogs =
                     }
                 |> fromElmUI
             )
+        ]
+
+
+marker =
+    let
+        resolution =
+            pixels 3 |> Quantity.per (millimeters 1)
+
+        width =
+            640
+
+        height =
+            640
+    in
+    Bulletproof.folder "Marker"
+        [ Bulletproof.story "vertical"
+            (\index ->
+                Svg.svg
+                    [ Svg.Attributes.viewBox <|
+                        String.join " "
+                            [ String.fromInt (width // -2)
+                            , String.fromInt (height // -2)
+                            , String.fromInt width
+                            , String.fromInt height
+                            ]
+                    , Html.Attributes.style "width" (String.fromInt width ++ "px")
+                    , Html.Attributes.style "height" (String.fromInt height ++ "px")
+                    , Html.Attributes.style "border" "1px solid"
+                    ]
+                    [ Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Vertical
+                        , index = index
+                        , center = Point2d.origin
+                        , resolution = resolution
+                        }
+                    ]
+                    |> Element.html
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.int "Index"
+                5
+                [ Bulletproof.Knob.min 1
+                , Bulletproof.Knob.max 23
+                ]
+        , Bulletproof.story "horizontal"
+            (\index ->
+                Svg.svg
+                    [ Svg.Attributes.viewBox <|
+                        String.join " "
+                            [ String.fromInt (width // -2)
+                            , String.fromInt (height // -2)
+                            , String.fromInt width
+                            , String.fromInt height
+                            ]
+                    , Html.Attributes.style "width" (String.fromInt width ++ "px")
+                    , Html.Attributes.style "height" (String.fromInt height ++ "px")
+                    , Html.Attributes.style "border" "1px solid"
+                    ]
+                    [ Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Horizontal
+                        , index = index
+                        , center = Point2d.origin
+                        , resolution = resolution
+                        }
+                    ]
+                    |> Element.html
+                    |> fromElmUI
+            )
+            |> Bulletproof.Knob.int "Index"
+                5
+                [ Bulletproof.Knob.min 1
+                , Bulletproof.Knob.max 23
+                ]
         ]
 
 
