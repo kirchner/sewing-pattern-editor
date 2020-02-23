@@ -4,6 +4,7 @@ module Ui.Atom.Marker exposing
     )
 
 import Angle
+import Element exposing (Color)
 import Geometry.Svg as Svg
 import Length exposing (Meters)
 import Pattern.Viewport exposing (Resolution)
@@ -11,6 +12,7 @@ import Point2d exposing (Point2d)
 import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
 import Svg.Attributes
+import Ui.Theme.Color
 import Vector2d
 
 
@@ -63,7 +65,7 @@ draw config =
     Svg.g [] <|
         List.map
             (Svg.rectangle2d
-                [ Svg.Attributes.fill "gray"
+                [ Svg.Attributes.fill (toColor Ui.Theme.Color.black)
                 , Svg.Attributes.strokeWidth "0"
                 ]
                 << Rectangle2d.at config.resolution
@@ -107,7 +109,7 @@ big =
 
 height : Float
 height =
-    64
+    20
 
 
 smallWidth : Float
@@ -118,3 +120,26 @@ smallWidth =
 bigWidth : Float
 bigWidth =
     6
+
+
+
+---- HELPER
+
+
+toColor : Color -> String
+toColor color =
+    let
+        { red, green, blue, alpha } =
+            Element.toRgb color
+    in
+    String.concat
+        [ "rgba("
+        , String.fromInt (floor (255 * red))
+        , ","
+        , String.fromInt (floor (255 * green))
+        , ","
+        , String.fromInt (floor (255 * blue))
+        , ","
+        , String.fromFloat alpha
+        , ")"
+        ]

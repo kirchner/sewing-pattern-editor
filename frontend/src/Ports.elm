@@ -1,6 +1,6 @@
 port module Ports exposing
     ( selectAllTextIn
-    , changedCamera, changedMarkers, changedPose, resizeVideo, startVideo
+    , changedCamera, changedMarkers, changedPose, printDetail, resizeVideo, startVideo
     )
 
 {-|
@@ -60,3 +60,6 @@ port changedCamera :
      -> msg
     )
     -> Sub msg
+
+
+port printDetail : List String -> Cmd msg

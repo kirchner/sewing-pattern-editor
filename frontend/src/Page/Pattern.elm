@@ -30,18 +30,23 @@ module Page.Pattern exposing
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-import BoundingBox2d
+import Angle
+import BoundingBox2d exposing (BoundingBox2d)
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
-import Element exposing (Element)
+import Detail2d exposing (Detail2d)
+import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
 import Element.Lazy as Element
+import Geometry.Svg as Svg
+import Geometry.Svg.Extra as Svg
 import Github
+import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Html.Events.Extra.Mouse
@@ -49,7 +54,8 @@ import Html.Events.Extra.Touch
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as Decode
-import Length exposing (Meters)
+import Length exposing (Length, Meters)
+import LineSegment2d
 import List.Extra as List
 import LocalStorage
 import Pattern
@@ -69,16 +75,21 @@ import Pattern
 import Pattern.Viewport
 import Pixels
 import Point2d exposing (Point2d)
+import Ports
 import Process
 import Quantity
+import Rectangle2d exposing (Rectangle2d)
 import Route
 import Session exposing (Session)
 import State
 import StateResult
 import Storage.Address as Address exposing (Address)
+import Svg exposing (Svg)
+import Svg.Attributes
 import Task
 import Ui.Atom.Icon
 import Ui.Atom.Input
+import Ui.Atom.Marker
 import Ui.Atom.Object exposing (Resolution)
 import Ui.Atom.Tabs
 import Ui.Molecule.MenuBtn
@@ -526,11 +537,646 @@ viewDeleteModal state { name, kind, onDeletePress } =
 
 viewEditor : Element.Device -> LoadedData -> Element Msg
 viewEditor device model =
-    if isCompact device then
-        viewEditorCompact model
+    Element.row
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ if isCompact device then
+            viewEditorCompact model
+
+          else
+            viewEditorFullScreen model
+        , Element.html <|
+            Html.div
+                [ Html.Attributes.style "display" "none" ]
+                (Pattern.details model.pattern
+                    |> List.filterMap (viewDetail model.pattern)
+                )
+        ]
+
+
+viewDetail : Pattern BottomLeft -> A Detail -> Maybe (Html msg)
+viewDetail pattern aDetail =
+    case ( State.finalValue pattern (Pattern.detail2d aDetail), Pattern.name aDetail ) of
+        ( Ok detail2d, Just name ) ->
+            case Detail2d.boundingBox detail2d of
+                Nothing ->
+                    Nothing
+
+                Just boundingBox ->
+                    let
+                        columnCount =
+                            columnCount_ pageConfig boundingBox
+
+                        rowCount =
+                            rowCount_ pageConfig boundingBox
+                    in
+                    Just <|
+                        Html.div []
+                            (gridMap columnCount rowCount <|
+                                \column row ->
+                                    viewPage pageConfig
+                                        { detail2d = detail2d
+                                        , name = name
+                                        , boundingBox = boundingBox
+                                        , column = column
+                                        , row = row
+                                        , columnCount = columnCount
+                                        , rowCount = rowCount
+                                        }
+                            )
+
+        _ ->
+            Nothing
+
+
+gridMap : Int -> Int -> (Int -> Int -> a) -> List a
+gridMap columnCount rowCount func =
+    List.range 0 (columnCount - 1)
+        |> List.concatMap
+            (\column ->
+                List.range 0 (rowCount - 1)
+                    |> List.map (func column)
+            )
+
+
+renderMarkers :
+    { boundingBox2d : BoundingBox2d Meters BottomLeft
+    , paperWidth : Length
+    , paperHeight : Length
+    , padding : Length
+    , resolution : Resolution
+    }
+    -> Svg msg
+renderMarkers { boundingBox2d, paperWidth, paperHeight, padding, resolution } =
+    let
+        horizontalPoints =
+            horizontalMarkerCenterPoints
+                { boundingBox2d = boundingBox2d
+                , paperWidth = paperWidth
+                , paperHeight = paperHeight
+                , padding = padding
+                }
+
+        verticalPoints =
+            verticalMarkerCenterPoints
+                { boundingBox2d = boundingBox2d
+                , paperWidth = paperWidth
+                , paperHeight = paperHeight
+                , padding = padding
+                }
+    in
+    Svg.g [] <|
+        List.concat
+            [ horizontalPoints
+                |> List.indexedMap
+                    (\index ( centerA, centerB ) ->
+                        [ Ui.Atom.Marker.draw
+                            { orientation = Ui.Atom.Marker.Horizontal
+                            , index = index + 1
+                            , center = centerA
+                            , resolution = resolution
+                            }
+                        , Ui.Atom.Marker.draw
+                            { orientation = Ui.Atom.Marker.Horizontal
+                            , index = index + 1
+                            , center = centerB
+                            , resolution = resolution
+                            }
+                        ]
+                    )
+                |> List.concat
+            , verticalPoints
+                |> List.indexedMap
+                    (\index ( centerA, centerB ) ->
+                        [ Ui.Atom.Marker.draw
+                            { orientation = Ui.Atom.Marker.Vertical
+                            , index = index + List.length horizontalPoints + 1
+                            , center = centerA
+                            , resolution = resolution
+                            }
+                        , Ui.Atom.Marker.draw
+                            { orientation = Ui.Atom.Marker.Vertical
+                            , index = index + List.length horizontalPoints + 1
+                            , center = centerB
+                            , resolution = resolution
+                            }
+                        ]
+                    )
+                |> List.concat
+            ]
+
+
+horizontalMarkerCenterPoints :
+    { boundingBox2d : BoundingBox2d Meters BottomLeft
+    , paperWidth : Length
+    , paperHeight : Length
+    , padding : Length
+    }
+    -> List ( Point2d Meters BottomLeft, Point2d Meters BottomLeft )
+horizontalMarkerCenterPoints { boundingBox2d, paperWidth, paperHeight, padding } =
+    let
+        { minX, maxX, minY, maxY } =
+            BoundingBox2d.extrema boundingBox2d
+
+        viewportWidth =
+            paperWidth
+                |> Quantity.minus (Quantity.multiplyBy 2 padding)
+
+        viewportHeight =
+            paperHeight
+                |> Quantity.minus (Quantity.multiplyBy 2 padding)
+
+        page =
+            { width = paperWidth
+            , height = paperHeight
+            , padding = padding
+            , offset = Length.millimeters 10
+            }
+
+        columnCount =
+            columnCount_ page boundingBox2d
+
+        rowCount =
+            rowCount_ page boundingBox2d
+    in
+    if rowCount == 1 then
+        []
 
     else
-        viewEditorFullScreen model
+        List.range 0 (rowCount - 2)
+            |> List.map toFloat
+            |> List.concatMap
+                (\row ->
+                    List.range 1 (columnCount - 1)
+                        |> List.map toFloat
+                        |> List.map
+                            (\column ->
+                                ( Point2d.xy
+                                    (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy column))
+                                    (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy (row + 1 / 3)))
+                                , Point2d.xy
+                                    (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy column))
+                                    (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy (row + 2 / 3)))
+                                )
+                            )
+                )
+
+
+verticalMarkerCenterPoints :
+    { boundingBox2d : BoundingBox2d Meters BottomLeft
+    , paperWidth : Length
+    , paperHeight : Length
+    , padding : Length
+    }
+    -> List ( Point2d Meters BottomLeft, Point2d Meters BottomLeft )
+verticalMarkerCenterPoints { boundingBox2d, paperWidth, paperHeight, padding } =
+    let
+        { minX, maxX, minY, maxY } =
+            BoundingBox2d.extrema boundingBox2d
+
+        viewportWidth =
+            paperWidth
+                |> Quantity.minus (Quantity.multiplyBy 2 padding)
+
+        viewportHeight =
+            paperHeight
+                |> Quantity.minus (Quantity.multiplyBy 2 padding)
+
+        page =
+            { width = paperWidth
+            , height = paperHeight
+            , padding = padding
+            , offset = Length.millimeters 10
+            }
+
+        columnCount =
+            columnCount_ page boundingBox2d
+
+        rowCount =
+            rowCount_ page boundingBox2d
+    in
+    List.range 1 (rowCount - 1)
+        |> List.map toFloat
+        |> List.concatMap
+            (\row ->
+                if columnCount == 1 then
+                    [ ( Point2d.xy
+                            (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy (1 / 3)))
+                            (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy row))
+                      , Point2d.xy
+                            (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy (2 / 3)))
+                            (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy row))
+                      )
+                    ]
+
+                else
+                    [ ( Point2d.xy
+                            (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy (1 / 2)))
+                            (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy row))
+                      , Point2d.xy
+                            (minX |> Quantity.plus (viewportWidth |> Quantity.multiplyBy (1 / 2 + toFloat columnCount - 1)))
+                            (minY |> Quantity.plus (viewportHeight |> Quantity.multiplyBy row))
+                      )
+                    ]
+            )
+
+
+type alias PageConfig =
+    { width : Length
+    , height : Length
+    , padding : Length
+    , offset : Length
+    }
+
+
+pageConfig : PageConfig
+pageConfig =
+    { width = Length.millimeters 210
+    , height = Length.millimeters 297
+    , padding = Length.millimeters 20
+    , offset = Length.millimeters 10
+    }
+
+
+columnCount_ : PageConfig -> BoundingBox2d Meters coordinates -> Int
+columnCount_ page boundingBox =
+    ceiling <|
+        Quantity.ratio
+            (BoundingBox2d.maxX boundingBox
+                |> Quantity.minus (BoundingBox2d.minX boundingBox)
+                |> Quantity.plus (Quantity.multiplyBy 2 page.offset)
+            )
+            (page.width
+                |> Quantity.minus (Quantity.multiplyBy 2 page.padding)
+            )
+
+
+rowCount_ : PageConfig -> BoundingBox2d Meters coordinates -> Int
+rowCount_ page boundingBox =
+    ceiling <|
+        Quantity.ratio
+            (BoundingBox2d.maxY boundingBox
+                |> Quantity.minus (BoundingBox2d.minY boundingBox)
+                |> Quantity.plus (Quantity.multiplyBy 2 page.offset)
+            )
+            (page.height
+                |> Quantity.minus (Quantity.multiplyBy 2 page.padding)
+            )
+
+
+viewPage :
+    PageConfig
+    ->
+        { detail2d : Detail2d Meters BottomLeft
+        , name : String
+        , boundingBox : BoundingBox2d Meters BottomLeft
+        , column : Int
+        , row : Int
+        , columnCount : Int
+        , rowCount : Int
+        }
+    -> Html msg
+viewPage page { detail2d, name, boundingBox, column, row, columnCount, rowCount } =
+    let
+        resolution =
+            Pixels.pixels 1 |> Quantity.per (Length.millimeters 1)
+
+        -- VIEW BOX
+        viewBoxMinX =
+            page.width
+                |> Quantity.multiplyBy (toFloat column)
+                |> Quantity.plus (BoundingBox2d.minX boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat column + 1) page.padding)
+                |> Length.inMillimeters
+
+        viewBoxMinY =
+            page.height
+                |> Quantity.multiplyBy (toFloat row)
+                |> Quantity.plus (BoundingBox2d.minY boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat row + 1) page.padding)
+                |> Length.inMillimeters
+
+        viewBoxWidth =
+            page.width
+                |> Length.inMillimeters
+
+        viewBoxHeight =
+            page.height
+                |> Length.inMillimeters
+
+        -- CORNERS
+        outerTop =
+            page.height
+                |> Quantity.multiplyBy (toFloat row)
+                |> Quantity.plus (BoundingBox2d.minY boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat row + 1) page.padding)
+
+        outerBottom =
+            page.height
+                |> Quantity.multiplyBy (toFloat row + 1)
+                |> Quantity.plus (BoundingBox2d.minY boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat row + 1) page.padding)
+
+        outerLeft =
+            page.width
+                |> Quantity.multiplyBy (toFloat column)
+                |> Quantity.plus (BoundingBox2d.minX boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat column + 1) page.padding)
+
+        outerRight =
+            page.width
+                |> Quantity.multiplyBy (toFloat column + 1)
+                |> Quantity.plus (BoundingBox2d.minX boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat column + 1) page.padding)
+
+        innerTop =
+            page.height
+                |> Quantity.multiplyBy (toFloat row)
+                |> Quantity.plus (BoundingBox2d.minY boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat row) page.padding)
+
+        innerBottom =
+            page.height
+                |> Quantity.multiplyBy (toFloat row + 1)
+                |> Quantity.plus (BoundingBox2d.minY boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat row + 2) page.padding)
+
+        innerLeft =
+            page.width
+                |> Quantity.multiplyBy (toFloat column)
+                |> Quantity.plus (BoundingBox2d.minX boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat column) page.padding)
+
+        innerRight =
+            page.width
+                |> Quantity.multiplyBy (toFloat column + 1)
+                |> Quantity.plus (BoundingBox2d.minX boundingBox)
+                |> Quantity.minus (Quantity.multiplyBy (2 * toFloat column + 2) page.padding)
+    in
+    Svg.svg
+        [ Svg.Attributes.viewBox <|
+            String.join " "
+                [ String.fromFloat viewBoxMinX
+                , String.fromFloat viewBoxMinY
+                , String.fromFloat viewBoxWidth
+                , String.fromFloat viewBoxHeight
+                ]
+        , Html.Attributes.style "width" (String.fromFloat viewBoxWidth ++ "px")
+        , Html.Attributes.style "height" (String.fromFloat viewBoxHeight ++ "px")
+        , Html.Attributes.id
+            ("detail-" ++ name ++ "--" ++ String.fromInt row ++ "-" ++ String.fromInt column)
+        ]
+        [ Svg.detail2d
+            [ Svg.Attributes.fill "none"
+            , Svg.Attributes.stroke "black"
+            , Svg.Attributes.strokeWidth "0.5"
+            , Svg.Attributes.strokeLinecap "round"
+            ]
+            (detail2d
+                |> Detail2d.translateBy
+                    (Vector2d.from Point2d.origin
+                        (Point2d.xy page.offset page.offset)
+                    )
+                |> Detail2d.at resolution
+            )
+        , -- TOP COVER
+          Svg.rectangle2d
+            [ Svg.Attributes.fill "white"
+            , Svg.Attributes.strokeWidth "0"
+            ]
+            (Rectangle2d.with
+                { x1 = outerLeft
+                , y1 = outerTop
+                , x2 = outerRight
+                , y2 = innerTop
+                }
+                |> Rectangle2d.at resolution
+            )
+        , -- BOTTOM COVER
+          Svg.rectangle2d
+            [ Svg.Attributes.fill "white"
+            , Svg.Attributes.strokeWidth "0"
+            ]
+            (Rectangle2d.with
+                { x1 = outerLeft
+                , y1 = innerBottom
+                , x2 = outerRight
+                , y2 = outerBottom
+                }
+                |> Rectangle2d.at resolution
+            )
+        , -- LEFT COVER
+          Svg.rectangle2d
+            [ Svg.Attributes.fill "white"
+            , Svg.Attributes.strokeWidth "0"
+            ]
+            (Rectangle2d.with
+                { x1 = outerLeft
+                , y1 = outerTop
+                , x2 = innerLeft
+                , y2 = outerBottom
+                }
+                |> Rectangle2d.at resolution
+            )
+        , -- RIGHT COVER
+          Svg.rectangle2d
+            [ Svg.Attributes.fill "white"
+            , Svg.Attributes.strokeWidth "0"
+            ]
+            (Rectangle2d.with
+                { x1 = innerRight
+                , y1 = outerTop
+                , x2 = outerRight
+                , y2 = outerBottom
+                }
+                |> Rectangle2d.at resolution
+            )
+        , -- TOP BORDER
+          if row > 0 then
+            Svg.lineSegment2d
+                [ Svg.Attributes.stroke "black"
+                , Svg.Attributes.strokeWidth "0.2"
+                ]
+                (LineSegment2d.from
+                    (Point2d.xy outerLeft innerTop)
+                    (Point2d.xy outerRight innerTop)
+                    |> LineSegment2d.at resolution
+                )
+
+          else
+            Svg.text ""
+        , -- BOTTOM BORDER
+          if row < rowCount - 1 then
+            Svg.lineSegment2d
+                [ Svg.Attributes.stroke "black"
+                , Svg.Attributes.strokeWidth "0.2"
+                ]
+                (LineSegment2d.from
+                    (Point2d.xy outerLeft innerBottom)
+                    (Point2d.xy outerRight innerBottom)
+                    |> LineSegment2d.at resolution
+                )
+
+          else
+            Svg.text ""
+        , -- LEFT BORDER
+          if column > 0 then
+            Svg.lineSegment2d
+                [ Svg.Attributes.stroke "black"
+                , Svg.Attributes.strokeWidth "0.2"
+                ]
+                (LineSegment2d.from
+                    (Point2d.xy innerLeft outerTop)
+                    (Point2d.xy innerLeft outerBottom)
+                    |> LineSegment2d.at resolution
+                )
+
+          else
+            Svg.text ""
+        , -- RIGHT BORDER
+          if column < columnCount - 1 then
+            Svg.lineSegment2d
+                [ Svg.Attributes.stroke "black"
+                , Svg.Attributes.strokeWidth "0.2"
+                ]
+                (LineSegment2d.from
+                    (Point2d.xy innerRight outerTop)
+                    (Point2d.xy innerRight outerBottom)
+                    |> LineSegment2d.at resolution
+                )
+
+          else
+            Svg.text ""
+        , -- TOP MARKERS
+          if row > 0 then
+            if columnCount > 1 && (column == 0 || column == columnCount - 1) then
+                Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Vertical
+                    , index = rowCount * (columnCount - 1) + row
+                    , center =
+                        Point2d.xy
+                            (outerLeft |> Quantity.plus (Quantity.multiplyBy (1 / 2) page.width))
+                            innerTop
+                    , resolution = resolution
+                    }
+
+            else
+                Svg.g []
+                    [ Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Vertical
+                        , index = rowCount * (columnCount - 1) + row
+                        , center =
+                            Point2d.xy
+                                (outerLeft |> Quantity.plus (Quantity.multiplyBy (1 / 3) page.width))
+                                innerTop
+                        , resolution = resolution
+                        }
+                    , Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Vertical
+                        , index = rowCount * (columnCount - 1) + row
+                        , center =
+                            Point2d.xy
+                                (outerLeft |> Quantity.plus (Quantity.multiplyBy (2 / 3) page.width))
+                                innerTop
+                        , resolution = resolution
+                        }
+                    ]
+
+          else
+            Svg.text ""
+        , -- BOTTOM MARKERS
+          if row < rowCount - 1 then
+            if columnCount > 1 && (column == 0 || column == columnCount - 1) then
+                Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Vertical
+                    , index = rowCount * (columnCount - 1) + row + 1
+                    , center =
+                        Point2d.xy
+                            (outerLeft |> Quantity.plus (Quantity.multiplyBy (1 / 2) page.width))
+                            innerBottom
+                    , resolution = resolution
+                    }
+
+            else
+                Svg.g []
+                    [ Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Vertical
+                        , index = rowCount * (columnCount - 1) + row + 1
+                        , center =
+                            Point2d.xy
+                                (outerLeft |> Quantity.plus (Quantity.multiplyBy (1 / 3) page.width))
+                                innerBottom
+                        , resolution = resolution
+                        }
+                    , Ui.Atom.Marker.draw
+                        { orientation = Ui.Atom.Marker.Vertical
+                        , index = rowCount * (columnCount - 1) + row + 1
+                        , center =
+                            Point2d.xy
+                                (outerLeft |> Quantity.plus (Quantity.multiplyBy (2 / 3) page.width))
+                                innerBottom
+                        , resolution = resolution
+                        }
+                    ]
+
+          else
+            Svg.text ""
+        , -- LEFT MARKERS
+          if column > 0 then
+            Svg.g []
+                [ Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Horizontal
+                    , index = row * (columnCount - 1) + column
+                    , center =
+                        Point2d.xy
+                            innerLeft
+                            (outerTop |> Quantity.plus (Quantity.multiplyBy (1 / 5) page.height))
+                    , resolution = resolution
+                    }
+                , Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Horizontal
+                    , index = row * (columnCount - 1) + column
+                    , center =
+                        Point2d.xy
+                            innerLeft
+                            (outerTop |> Quantity.plus (Quantity.multiplyBy (4 / 5) page.height))
+                    , resolution = resolution
+                    }
+                ]
+
+          else
+            Svg.text ""
+        , -- RIGHT MARKERS
+          if column < columnCount - 1 then
+            Svg.g []
+                [ Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Horizontal
+                    , index = row * (columnCount - 1) + column + 1
+                    , center =
+                        Point2d.xy
+                            innerRight
+                            (outerTop |> Quantity.plus (Quantity.multiplyBy (1 / 5) page.height))
+                    , resolution = resolution
+                    }
+                , Ui.Atom.Marker.draw
+                    { orientation = Ui.Atom.Marker.Horizontal
+                    , index = row * (columnCount - 1) + column + 1
+                    , center =
+                        Point2d.xy
+                            innerRight
+                            (outerTop |> Quantity.plus (Quantity.multiplyBy (4 / 5) page.height))
+                    , resolution = resolution
+                    }
+                ]
+
+          else
+            Svg.text ""
+        ]
+
+
+
+----
 
 
 viewEditorCompact : LoadedData -> Element Msg
@@ -848,6 +1494,11 @@ patternActions =
             { id = "project-btn"
             , onPress = Just UserPressedProject
             , label = "Project"
+            }
+        , Ui.Atom.Input.btnSecondary
+            { id = "print-btn"
+            , onPress = Just UserPressedPrint
+            , label = "Print"
             }
         ]
 
@@ -1666,6 +2317,7 @@ type Msg
       -- TOP TOOLBAR
     | CreateObjectMenuBtnMsg (Ui.Molecule.MenuBtn.Msg CreateAction)
     | UserPressedProject
+    | UserPressedPrint
     | UserStartedTouchOnToolbarTop Html.Events.Extra.Touch.Event
     | UserMovedTouchOnToolbarTop Html.Events.Extra.Touch.Event
     | UserEndedTouchOnToolbarTop Html.Events.Extra.Touch.Event
@@ -1985,6 +2637,50 @@ updateLoaded device msg model =
         UserPressedProject ->
             ( model
             , Browser.Navigation.load (Route.absolute (Route.Details model.address) [])
+            )
+
+        UserPressedPrint ->
+            ( model
+            , Pattern.details model.pattern
+                |> List.filterMap
+                    (\aDetail ->
+                        case
+                            ( State.finalValue model.pattern (Pattern.detail2d aDetail)
+                            , Pattern.name aDetail
+                            )
+                        of
+                            ( Ok detail2d, Just name ) ->
+                                case Detail2d.boundingBox detail2d of
+                                    Nothing ->
+                                        Nothing
+
+                                    Just boundingBox ->
+                                        let
+                                            { minX, maxX, minY, maxY } =
+                                                BoundingBox2d.extrema boundingBox
+
+                                            columnCount =
+                                                columnCount_ pageConfig boundingBox
+
+                                            rowCount =
+                                                rowCount_ pageConfig boundingBox
+                                        in
+                                        List.range 0 (rowCount - 1)
+                                            |> List.concatMap
+                                                (\row ->
+                                                    List.range 0 (columnCount - 1)
+                                                        |> List.map
+                                                            (\column ->
+                                                                "detail-" ++ name ++ "--" ++ String.fromInt row ++ "-" ++ String.fromInt column
+                                                            )
+                                                )
+                                            |> Just
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.map (\names -> Ports.printDetail names)
+                |> Cmd.batch
             )
 
         UserStartedTouchOnToolbarTop event ->
@@ -3125,3 +3821,26 @@ dragging model =
 
         DragWithMouse { start, current } ->
             start /= current
+
+
+
+---- HELPER
+
+
+toColor : Color -> String
+toColor color =
+    let
+        { red, green, blue, alpha } =
+            Element.toRgb color
+    in
+    String.concat
+        [ "rgba("
+        , String.fromInt (floor (255 * red))
+        , ","
+        , String.fromInt (floor (255 * green))
+        , ","
+        , String.fromInt (floor (255 * blue))
+        , ","
+        , String.fromFloat alpha
+        , ")"
+        ]

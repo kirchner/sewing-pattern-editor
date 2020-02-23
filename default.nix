@@ -26,7 +26,7 @@ let
 
   assets = serviceWorker: callPackage ./assets {
     inherit (stdenv) mkDerivation;
-    inherit fetchzip serviceWorker;
+    inherit fetchzip fetchurl serviceWorker;
   };
 
 in

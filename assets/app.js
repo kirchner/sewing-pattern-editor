@@ -194,6 +194,30 @@ const initElm = () => {
     });
   }
 
+  app.ports.printDetail.subscribe(function(ids) {
+    var pdf = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    ids.forEach(function(id, index) {
+      var svg = document.getElementById(id);
+
+      svg2pdf(svg, pdf, {
+        xOffset: 0,
+        yOffset: 0,
+        scale: 1,
+      });
+
+      if (index < ids.length - 1) {
+        pdf.addPage();
+      }
+    });
+
+    pdf.save('detail.pdf');
+  });
+
   return app;
 };
 

@@ -1,5 +1,6 @@
 { mkDerivation
 , fetchzip
+, fetchurl
 , serviceWorker ? true
 }:
 
@@ -19,6 +20,16 @@ let
           mkdir -p $out/share
           cp -R $src/* $out/share
         '';
+  };
+
+  svg2pdf = fetchurl {
+    url = https://raw.githubusercontent.com/yWorks/svg2pdf.js/master/dist/svg2pdf.min.js;
+    sha256 = "12mngipqm6x9sn0bv2az7sr6s2a3nrn70hsbabdhk51ndmiqj4r9";
+  };
+
+  jspdf = fetchurl {
+    url = https://raw.githubusercontent.com/yWorks/jsPDF/master/dist/jspdf.min.js;
+    sha256 = "1nzf0xgc48n2dr4acclpbmwgsm9jy3bjkwjk3rh4npywk4f129zy";
   };
 
 in
@@ -64,5 +75,7 @@ mkDerivation {
       $out/register-service-worker.js
 
     cp -R ${fontawesome}/share/* $out
+    cp ${jspdf} $out/jspdf.min.js
+    cp ${svg2pdf} $out/svg2pdf.min.js
   '';
 }
