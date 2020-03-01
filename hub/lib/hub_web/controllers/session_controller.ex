@@ -13,8 +13,17 @@ defmodule HubWeb.SessionController do
     end
   end
 
+  def show(%{assigns: %{current_user: current_user}} = conn, _) do
+    render(conn, "show.json", user: current_user)
+  end
+
+  def show(conn, _) do
+    send_resp(conn, 404, "")
+  end
+
   def delete(conn, _) do
     conn
     |> configure_session(drop: true)
+    |> send_resp(:no_content, "")
   end
 end
