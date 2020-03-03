@@ -4,7 +4,6 @@ defmodule HubWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
-    plug :fetch_flash
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :authenticate_user
@@ -14,20 +13,21 @@ defmodule HubWeb.Router do
     plug :accepts, ["json"]
     plug :fetch_session
     plug :protect_from_forgery
+    plug :put_secure_browser_headers
     plug :authenticate_user
-  end
-
-  scope "/", HubWeb do
-    pipe_through :browser
-
-    get "/", PageController, :index
-    resources "/sessions", SessionController, only: [:create, :show, :delete], singleton: true
   end
 
   scope "/api", HubWeb do
     pipe_through :api
 
+    resources "/sessions", SessionController, only: [:create, :show, :delete], singleton: true
     resources "/users", UserController
+  end
+
+  scope "/", HubWeb do
+    pipe_through :browser
+
+    get "/*anything", PageController, :index
   end
 
   defp authenticate_user(conn, _) do

@@ -214,7 +214,7 @@ updateLoggedIn msg model =
 getSession : Cmd Msg
 getSession =
     Http.get
-        { url = "/sessions"
+        { url = "/api/sessions"
         , expect =
             Http.expectJson ReceivedSession <|
                 Decode.field "data" userDecoder
@@ -225,7 +225,7 @@ createSession : String -> String -> Cmd Msg
 createSession csrfToken email =
     Http.request
         { method = "POST"
-        , url = "/sessions"
+        , url = "/api/sessions"
         , headers = [ Http.header "X-CSRF-Token" csrfToken ]
         , body =
             Http.jsonBody <|
@@ -249,7 +249,7 @@ deleteSession : String -> Cmd Msg
 deleteSession csrfToken =
     Http.request
         { method = "DELETE"
-        , url = "/sessions"
+        , url = "/api/sessions"
         , headers = [ Http.header "X-CSRF-Token" csrfToken ]
         , body = Http.emptyBody
         , expect = Http.expectWhatever ReceivedDeletedSession
