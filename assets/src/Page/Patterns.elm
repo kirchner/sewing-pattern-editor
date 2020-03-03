@@ -116,7 +116,7 @@ viewPatterns device model =
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
-            { cred = Session.githubCred model.session
+            { cred = Github.noCred
             , device = device
             , heading = "Patterns"
             , backToLabel = Nothing
@@ -169,7 +169,6 @@ type Msg
     | ReceivedMeta Address (Result Http.Error Github.Meta)
     | ChangedWhatever
     | UserPressedClone Address
-    | UserPressedSignIn
 
 
 {-| -}
@@ -235,11 +234,6 @@ updateLoaded msg model =
 
         UserPressedClone _ ->
             ( model, Cmd.none )
-
-        UserPressedSignIn ->
-            ( model
-            , Session.requestGithubCred model.session Route.Patterns []
-            )
 
         _ ->
             ( model, Cmd.none )
@@ -310,7 +304,7 @@ requestNextMeta data =
             ( Loading { data | unrequestedAddresses = Just rest }
             , case next of
                 Address.GithubRepo { repo, ref } ->
-                    Github.getMeta (Session.githubCred data.session)
+                    Github.getMeta Github.noCred
                         { repo = repo
                         , ref = ref
                         , onMeta = ReceivedMeta next

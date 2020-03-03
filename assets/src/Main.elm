@@ -58,8 +58,7 @@ main =
 
 
 type Model
-    = RequestingClientId RequestingClientIdData
-    | Loading LoadingData
+    = Loading LoadingData
     | Loaded LoadedData
 
 
@@ -119,6 +118,9 @@ type Page
 init : {} -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
+        session =
+            Session.anonymous key domain
+
         domain =
             String.concat
                 [ case url.protocol of
@@ -137,16 +139,24 @@ init _ url key =
                         ":" ++ String.fromInt port_
                 ]
     in
-    ( RequestingClientId
-        { key = key
-        , domain = domain
-        , url = url
-        }
-    , Http.get
-        { url = "/client_id"
-        , expect = Http.expectString ReceivedClientId
-        }
-    )
+    case Route.fromUrl url of
+        Nothing ->
+            ( Loading
+                { session = session
+                , maybeRoute = Nothing
+                , maybeDevice = Nothing
+                }
+            , getViewport
+            )
+
+        Just route ->
+            ( Loading
+                { session = session
+                , maybeRoute = Just route
+                , maybeDevice = Nothing
+                }
+            , getViewport
+            )
 
 
 
@@ -156,21 +166,12 @@ init _ url key =
 view : Model -> Browser.Document Msg
 view model =
     case model of
-        RequestingClientId _ ->
-            { title = "Requesting Client ID..."
-            , body =
-                [ viewHelp <|
-                    Element.el [ Element.centerX, Element.centerY ] <|
-                        Element.text "Requesting Client ID..."
-                ]
-            }
-
         Loading _ ->
-            { title = "Requesting GitHub API Access Token..."
+            { title = "Initializing..."
             , body =
                 [ viewHelp <|
                     Element.el [ Element.centerX, Element.centerY ] <|
-                        Element.text "Requesting GitHub API Access Token..."
+                        Element.text "Initializing..."
                 ]
             }
 
@@ -250,8 +251,6 @@ viewHelp body =
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
-      -- CLIENT ID
-    | ReceivedClientId (Result Http.Error String)
       -- LOADING
     | ChangedDevice Element.Device
       -- PAGES
@@ -264,52 +263,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
-        RequestingClientId data ->
-            updateRequestingClientId msg data
-
         Loading data ->
             updateLoading msg data
 
         Loaded data ->
             updateLoaded msg data
-
-
-
----- UPDATE REQUESTING CLIENT ID
-
-
-updateRequestingClientId : Msg -> RequestingClientIdData -> ( Model, Cmd Msg )
-updateRequestingClientId msg data =
-    case msg of
-        ReceivedClientId (Err _) ->
-            ( RequestingClientId data, Cmd.none )
-
-        ReceivedClientId (Ok clientId) ->
-            let
-                session =
-                    Session.anonymous clientId data.key data.domain
-            in
-            case Route.fromUrl data.url of
-                Nothing ->
-                    ( Loading
-                        { session = session
-                        , maybeRoute = Nothing
-                        , maybeDevice = Nothing
-                        }
-                    , getViewport
-                    )
-
-                Just route ->
-                    ( Loading
-                        { session = session
-                        , maybeRoute = Just route
-                        , maybeDevice = Nothing
-                        }
-                    , getViewport
-                    )
-
-        _ ->
-            ( RequestingClientId data, Cmd.none )
 
 
 getViewport : Cmd Msg
@@ -424,11 +382,6 @@ updateLoaded msg data =
                     , cmd
                     )
 
-        -- CLIENT ID
-        ( ReceivedClientId _, _ ) ->
-            ( Loaded data, Cmd.none )
-
-        -- TOKENS
         ( ChangedDevice device, _ ) ->
             if data.device /= device then
                 ( Loaded { data | device = device }
@@ -542,9 +495,6 @@ changePageTo session route =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
-        RequestingClientId _ ->
-            Sub.none
-
         Loading _ ->
             Browser.Events.onResize <|
                 \width height ->

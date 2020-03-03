@@ -146,7 +146,7 @@ init session address =
         Address.GithubRepo { repo, ref } ->
             let
                 cred =
-                    Session.githubCred session
+                    Github.noCred
             in
             Cmd.batch
                 [ Github.getPattern cred

@@ -237,7 +237,7 @@ init session address =
         Address.GithubRepo { repo, ref } ->
             let
                 cred =
-                    Session.githubCred session
+                    Github.noCred
             in
             Cmd.batch
                 [ Github.getPattern cred
@@ -3040,7 +3040,7 @@ updateLoaded device msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern (Session.githubCred model.session)
+                                    , putPattern Github.noCred
                                         model.address
                                         model.sha
                                         "create object"
@@ -3048,7 +3048,7 @@ updateLoaded device msg model =
                                     ]
 
                               else
-                                putPattern (Session.githubCred model.session)
+                                putPattern Github.noCred
                                     model.address
                                     model.sha
                                     "create object"
@@ -3097,7 +3097,7 @@ updateLoaded device msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern (Session.githubCred model.session)
+                                    , putPattern Github.noCred
                                         model.address
                                         model.sha
                                         "edit object"
@@ -3105,7 +3105,7 @@ updateLoaded device msg model =
                                     ]
 
                               else
-                                putPattern (Session.githubCred model.session)
+                                putPattern Github.noCred
                                     model.address
                                     model.sha
                                     "edit object"
@@ -3243,7 +3243,7 @@ updateLoaded device msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern (Session.githubCred model.session)
+                                    , putPattern Github.noCred
                                         model.address
                                         model.sha
                                         "create variable"
@@ -3251,7 +3251,7 @@ updateLoaded device msg model =
                                     ]
 
                               else
-                                putPattern (Session.githubCred model.session)
+                                putPattern Github.noCred
                                     model.address
                                     model.sha
                                     "create variable"
@@ -3277,7 +3277,7 @@ updateLoaded device msg model =
                             , if isCompact device then
                                 Cmd.batch
                                     [ requestViewportOfToolbarBottom
-                                    , putPattern (Session.githubCred model.session)
+                                    , putPattern Github.noCred
                                         model.address
                                         model.sha
                                         "edit variable"
@@ -3285,7 +3285,7 @@ updateLoaded device msg model =
                                     ]
 
                               else
-                                putPattern (Session.githubCred model.session)
+                                putPattern Github.noCred
                                     model.address
                                     model.sha
                                     "edit variable"
@@ -3317,7 +3317,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete point"
@@ -3343,7 +3343,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete axis"
@@ -3369,7 +3369,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete circle"
@@ -3395,7 +3395,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete curve"
@@ -3421,7 +3421,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete detail"
@@ -3447,7 +3447,7 @@ updateLoaded device msg model =
                         , pattern = newPattern
                         , stored = False
                       }
-                    , putPattern (Session.githubCred model.session)
+                    , putPattern Github.noCred
                         model.address
                         model.sha
                         "delete variable"

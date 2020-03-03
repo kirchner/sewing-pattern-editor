@@ -39,21 +39,8 @@ import Ui.Theme.Typography
 
 
 {-| -}
-type Model
-    = Loading LoadingData
-    | Loaded LoadedData
-
-
-type alias LoadingData =
+type alias Model =
     { session : Session
-    , parameters : Route.NewParameters
-    , user : WebData Github.User
-    }
-
-
-type alias LoadedData =
-    { session : Session
-    , owner : Maybe String
 
     -- FORM
     , name : String
@@ -118,47 +105,29 @@ visibilityToString visibility =
 {-| -}
 init : Session -> Route.NewParameters -> ( Model, Cmd Msg )
 init session newParameters =
-    let
-        cred =
-            Session.githubCred session
-    in
-    ( initLoaded session newParameters Nothing
-    , case cred of
-        Github.Anonymous ->
-            Cmd.none
-    )
-
-
-initLoaded : Session -> Route.NewParameters -> Maybe String -> Model
-initLoaded session newParameters owner =
-    Loaded
-        { session = session
-        , owner = owner
-        , name = Maybe.withDefault "" newParameters.name
-        , description = Maybe.withDefault "" newParameters.description
-        , storageSolution =
+    ( { session = session
+      , name = Maybe.withDefault "" newParameters.name
+      , description = Maybe.withDefault "" newParameters.description
+      , storageSolution =
             newParameters.storageSolution
                 |> Maybe.andThen storageSolutionFromString
                 |> Maybe.withDefault BrowserTag
-        , slug = Maybe.withDefault (Generated "") (Maybe.map Modified newParameters.slug)
-        , repositoryName = Maybe.withDefault "" newParameters.repositoryName
-        , visibility =
+      , slug = Maybe.withDefault (Generated "") (Maybe.map Modified newParameters.slug)
+      , repositoryName = Maybe.withDefault "" newParameters.repositoryName
+      , visibility =
             newParameters.visibility
                 |> Maybe.andThen visibilityFromString
                 |> Maybe.withDefault Public
-        , newAddress = Nothing
-        }
+      , newAddress = Nothing
+      }
+    , Cmd.none
+    )
 
 
 {-| -}
 toSession : Model -> Session
-toSession model =
-    case model of
-        Loading { session } ->
-            session
-
-        Loaded { session } ->
-            session
+toSession { session } =
+    session
 
 
 
@@ -169,25 +138,19 @@ toSession model =
 view : Element.Device -> Model -> { title : String, body : Element Msg, dialog : Maybe (Element Msg) }
 view device model =
     { title = "Create a new pattern"
-    , body =
-        case model of
-            Loading _ ->
-                Element.none
-
-            Loaded data ->
-                viewNew device data
+    , body = viewNew device model
     , dialog = Nothing
     }
 
 
-viewNew : Element.Device -> LoadedData -> Element Msg
+viewNew : Element.Device -> Model -> Element Msg
 viewNew device model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing Ui.Theme.Spacing.level4
         ]
         [ Ui.Molecule.TopBar.view
-            { cred = Session.githubCred model.session
+            { cred = Github.noCred
             , device = device
             , heading = "Create a new pattern"
             , backToLabel = Just "Back to patterns"
@@ -196,7 +159,7 @@ viewNew device model =
         ]
 
 
-viewContent : LoadedData -> Element Msg
+viewContent : Model -> Element Msg
 viewContent model =
     Element.column
         [ Element.spacing Ui.Theme.Spacing.level4
@@ -333,7 +296,6 @@ type Msg
     | UserChangedDescription String
     | UserChangedStorageSolution StorageSolutionTag
     | UserChangedSlug String
-    | UserPressedSignIn
     | UserChangedRepositoryName String
     | UserChangedVisibility Visibility
     | UserPressedCreate
@@ -370,42 +332,6 @@ storageSolutionFromString string =
 {-| -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model of
-        Loading data ->
-            case msg of
-                ReceivedAuthenticatedUser user ->
-                    { data | user = user }
-                        |> checkLoaded
-
-                _ ->
-                    ( model, Cmd.none )
-
-        Loaded data ->
-            updateLoaded msg data
-                |> Tuple.mapFirst Loaded
-
-
-checkLoaded : LoadingData -> ( Model, Cmd Msg )
-checkLoaded data =
-    case data.user of
-        RemoteData.Success user ->
-            ( initLoaded data.session data.parameters (Just user.login)
-            , Cmd.none
-            )
-
-        RemoteData.NotAsked ->
-            ( initLoaded data.session data.parameters Nothing
-            , Cmd.none
-            )
-
-        _ ->
-            ( Loading data
-            , Cmd.none
-            )
-
-
-updateLoaded : Msg -> LoadedData -> ( LoadedData, Cmd Msg )
-updateLoaded msg model =
     case msg of
         ReceivedAuthenticatedUser _ ->
             ( model, Cmd.none )
@@ -432,22 +358,6 @@ updateLoaded msg model =
         UserChangedStorageSolution newStorageSolution ->
             ( { model | storageSolution = newStorageSolution }
             , Cmd.none
-            )
-
-        UserPressedSignIn ->
-            ( model
-            , Session.requestGithubCred model.session
-                (Route.PatternNew
-                    { name = Just model.name
-                    , description = Just model.description
-                    , storageSolution =
-                        Just (storageSolutionToString model.storageSolution)
-                    , slug = Just (generatedToString model.slug)
-                    , repositoryName = Just model.repositoryName
-                    , visibility = Just (visibilityToString model.visibility)
-                    }
-                )
-                []
             )
 
         UserChangedSlug newSlug ->
@@ -479,7 +389,7 @@ updateLoaded msg model =
 
         ReceivedRepository name description repo (Ok _) ->
             ( model
-            , Github.putMeta (Session.githubCred model.session)
+            , Github.putMeta Github.noCred
                 { repo = repo
                 , message = "create meta.json"
                 , meta =
@@ -496,7 +406,7 @@ updateLoaded msg model =
 
         ReceivedShaOfMeta repo (Ok _) ->
             ( model
-            , Github.putPattern (Session.githubCred model.session)
+            , Github.putPattern Github.noCred
                 { repo = repo
                 , message = "create pattern.json"
                 , pattern = newPattern
