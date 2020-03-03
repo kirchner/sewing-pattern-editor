@@ -18,5 +18,8 @@ mkShell {
     elm2nix
     expect
     cabal2nix
+    elixir
+    postgresql
+    inotify-tools
   ];
 }

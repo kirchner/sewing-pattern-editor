@@ -1,16 +1,14 @@
-.PHONY: check debug preview build
+create:
+	scripts/init_database.sh
 
-check:
-	cd frontend; unbuffer elm make --output=/dev/null src/Main.elm 2>&1 | less -r
+up:
+	nixos-container start sewinghub
 
-check-stories:
-	cd frontend; unbuffer elm make --output=/dev/null src/Stories.elm 2>&1 | less -r
+down:
+	nixos-container stop sewinghub
 
-debug:
-	`nix-build -A debug`
+show:
+	nixos-container show-ip sewinghub
 
-preview:
-	`nix-build -A preview`
-
-build:
-	nix-build -A dockerImage
+destroy:
+	nixos-container destroy sewinghub

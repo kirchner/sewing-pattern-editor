@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="description" content="Create and share sewing patterns"/>
+    <meta name="author" content="Fabian Kirchner"/>
+    <meta name="theme-color" content="#268484"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+    <meta property="og:image" content="<%= Routes.static_path(@conn, "/images/icon-512.png") %>"/>
+
+    <title>SewingHub - Stories</title>
+    <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
+  </head>
+  <body>
+    <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/stories.js") %>"></script>
+  </body>
+</html>

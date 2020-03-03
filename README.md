@@ -16,4 +16,11 @@ Eventually, you should be able to feed this program all these construction steps
 
 ## Run locally
 
-A local development server for debbuging can be started with `make debug` and is available at `localhost:4321`. If you want to compile optimized assets and have the service worker, you have to run `make preview` and open `localhost:1234`. You need to have [nix](https://github.com/nixos/nix) installed.
+To start your server:
+
+  * Install dependencies with `mix deps.get`
+  * Create and migrate your database with `mix ecto.setup`
+  * Install Node.js dependencies with `cd assets && npm install`
+  * Start Phoenix endpoint with `mix phx.server`
+
+Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
