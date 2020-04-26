@@ -15,6 +15,7 @@ mkShell {
     elmPackages.elm-test
     elmPackages.elm-format
     elmPackages.elm-doc-preview
+    elmPackages.elm-language-server
     elm2nix
     expect
     cabal2nix

@@ -30,7 +30,6 @@ module Github exposing
 -}
 
 import Base64
-import Browser.Navigation
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Decode

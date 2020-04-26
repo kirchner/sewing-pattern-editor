@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Login exposing (main)
 
 import Browser
 import Browser.Navigation

@@ -18,30 +18,32 @@ module Main exposing (main)
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+import Api
 import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
 import Element exposing (Element)
 import Element.Font as Font
-import Github
 import Html exposing (Html)
 import Http
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder, Value)
+import Json.Decode.Pipeline as Decode
 import Page.Details as Details
 import Page.Pattern as Pattern
 import Page.PatternNew as PatternNew
 import Page.Patterns as Patterns
+import Page.Root as Root
 import Pattern exposing (Pattern)
-import RemoteData exposing (WebData)
 import Route exposing (Route)
 import Session exposing (Session)
 import Task
+import Ui.Theme.Spacing
 import Url exposing (Url)
-import Url.Builder
+import Viewer exposing (Viewer)
 
 
-main : Program {} Model Msg
+main : Program Value Model Msg
 main =
     Browser.application
         { init = init
@@ -58,21 +60,17 @@ main =
 
 
 type Model
-    = Loading LoadingData
+    = Error String
+    | Loading LoadingData
     | Loaded LoadedData
 
 
-type alias RequestingClientIdData =
-    { key : Browser.Navigation.Key
-    , domain : String
-    , url : Url
-    }
-
-
 type alias LoadingData =
-    { session : Session
-    , maybeRoute : Maybe Route
+    { key : Browser.Navigation.Key
+    , url : Url
+    , csrfToken : String
     , maybeDevice : Maybe Element.Device
+    , maybeViewer : Maybe (Maybe Viewer)
     }
 
 
@@ -89,6 +87,9 @@ toSession page =
             session
 
         -- PAGES
+        Root root ->
+            Root.toSession root
+
         Patterns patterns ->
             Patterns.toSession patterns
 
@@ -109,53 +110,43 @@ toSession page =
 type Page
     = NotFound Session
       -- PAGES
+    | Root Root.Model
     | Patterns Patterns.Model
     | PatternNew PatternNew.Model
     | Pattern Pattern.Model
     | Details Details.Model
 
 
-init : {} -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-init _ url key =
-    let
-        session =
-            Session.anonymous key domain
+type alias Flags =
+    { csrfToken : String }
 
-        domain =
-            String.concat
-                [ case url.protocol of
-                    Url.Http ->
-                        "http"
 
-                    Url.Https ->
-                        "https"
-                , "://"
-                , url.host
-                , case url.port_ of
-                    Nothing ->
-                        ""
+flagsDecoder : Decoder Flags
+flagsDecoder =
+    Decode.succeed Flags
+        |> Decode.required "csrfToken" Decode.string
 
-                    Just port_ ->
-                        ":" ++ String.fromInt port_
-                ]
-    in
-    case Route.fromUrl url of
-        Nothing ->
-            ( Loading
-                { session = session
-                , maybeRoute = Nothing
-                , maybeDevice = Nothing
-                }
-            , getViewport
+
+init : Value -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init rawFlags url key =
+    case Decode.decodeValue flagsDecoder rawFlags of
+        Err decodeError ->
+            ( Error (Decode.errorToString decodeError)
+            , Cmd.none
             )
 
-        Just route ->
+        Ok flags ->
             ( Loading
-                { session = session
-                , maybeRoute = Just route
+                { key = key
+                , url = url
+                , csrfToken = flags.csrfToken
                 , maybeDevice = Nothing
+                , maybeViewer = Nothing
                 }
-            , getViewport
+            , Cmd.batch
+                [ getViewport
+                , Api.getUser ReceivedViewer
+                ]
             )
 
 
@@ -166,6 +157,28 @@ init _ url key =
 view : Model -> Browser.Document Msg
 view model =
     case model of
+        Error error ->
+            { title = "Error"
+            , body =
+                [ viewHelp <|
+                    Element.column
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.width (Element.px 640)
+                        , Element.spacing Ui.Theme.Spacing.level4
+                        ]
+                        [ Element.text "Something went very wrong:"
+                        , Element.el
+                            [ Font.family
+                                [ Font.monospace
+                                ]
+                            , Font.size 14
+                            ]
+                            (Element.text error)
+                        ]
+                ]
+            }
+
         Loading _ ->
             { title = "Initializing..."
             , body =
@@ -184,6 +197,15 @@ view model =
                             Element.el [ Element.centerX, Element.centerY ] <|
                                 Element.text "We are sorry, this page does not exist."
                         ]
+                    }
+
+                Root rootModel ->
+                    let
+                        { title, body } =
+                            Root.view rootModel
+                    in
+                    { title = title
+                    , body = [ viewHelp (Element.map RootMsg body) ]
                     }
 
                 Patterns patternsModel ->
@@ -253,7 +275,9 @@ type Msg
     | UrlChanged Url
       -- LOADING
     | ChangedDevice Element.Device
+    | ReceivedViewer (Result Http.Error Viewer)
       -- PAGES
+    | RootMsg Root.Msg
     | PatternsMsg Patterns.Msg
     | PatternNewMsg PatternNew.Msg
     | PatternMsg Pattern.Msg
@@ -263,6 +287,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
+        Error _ ->
+            ( model, Cmd.none )
+
         Loading data ->
             updateLoading msg data
 
@@ -294,15 +321,25 @@ updateLoading msg data =
             { data | maybeDevice = Just device }
                 |> checkLoaded
 
+        ReceivedViewer result ->
+            case result of
+                Err _ ->
+                    { data | maybeViewer = Just Nothing }
+                        |> checkLoaded
+
+                Ok viewer ->
+                    { data | maybeViewer = Just (Just viewer) }
+                        |> checkLoaded
+
         _ ->
             ( Loading data, Cmd.none )
 
 
 checkLoaded : LoadingData -> ( Model, Cmd Msg )
 checkLoaded data =
-    case data.maybeDevice of
-        Just device ->
-            initLoaded data device
+    case ( data.maybeDevice, data.maybeViewer ) of
+        ( Just device, Just viewer ) ->
+            initLoaded data device viewer
 
         _ ->
             ( Loading data
@@ -310,32 +347,31 @@ checkLoaded data =
             )
 
 
-initLoaded : LoadingData -> Element.Device -> ( Model, Cmd Msg )
-initLoaded data device =
+initLoaded : LoadingData -> Element.Device -> Maybe Viewer -> ( Model, Cmd Msg )
+initLoaded data device viewer =
     let
         ( page, cmd ) =
-            case data.maybeRoute of
+            case Route.fromUrl data.url of
                 Nothing ->
-                    ( NotFound data.session
+                    ( NotFound session
                     , Cmd.none
                     )
 
                 Just route ->
-                    changePageTo data.session route
+                    changePageTo session route
+
+        session =
+            Session.fromViewer
+                { key = data.key
+                , csrfToken = data.csrfToken
+                }
+                viewer
     in
     ( Loaded
         { device = device
         , page = page
         }
-    , Cmd.batch
-        [ cmd
-        , case data.maybeRoute of
-            Nothing ->
-                Cmd.none
-
-            Just route ->
-                Route.replaceUrl (Session.navKey data.session) route
-        ]
+    , cmd
     )
 
 
@@ -349,12 +385,8 @@ updateLoaded msg data =
         ( UrlRequested urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    let
-                        key =
-                            Session.navKey (toSession data.page)
-                    in
                     ( Loaded data
-                    , Browser.Navigation.pushUrl key url.path
+                    , Browser.Navigation.pushUrl (Session.key (toSession data.page)) url.path
                     )
 
                 Browser.External externalUrl ->
@@ -391,8 +423,23 @@ updateLoaded msg data =
             else
                 ( Loaded data, Cmd.none )
 
+        ( ReceivedViewer _, _ ) ->
+            ( Loaded data, Cmd.none )
+
         -- PAGES
         ( _, NotFound _ ) ->
+            ( Loaded data, Cmd.none )
+
+        ( RootMsg rootMsg, Root rootModel ) ->
+            let
+                ( newRootModel, rootCmd ) =
+                    Root.update rootMsg rootModel
+            in
+            ( Loaded { data | page = Root newRootModel }
+            , Cmd.map RootMsg rootCmd
+            )
+
+        ( RootMsg _, _ ) ->
             ( Loaded data, Cmd.none )
 
         ( PatternsMsg patternsMsg, Patterns patternsModel ) ->
@@ -451,14 +498,25 @@ updateLoaded msg data =
 changePageTo : Session -> Route -> ( Page, Cmd Msg )
 changePageTo session route =
     case route of
-        Route.Patterns ->
-            let
-                ( patterns, patternsCmd ) =
-                    Patterns.init session
-            in
-            ( Patterns patterns
-            , Cmd.map PatternsMsg patternsCmd
-            )
+        Route.Root ->
+            case Session.viewer session of
+                Nothing ->
+                    let
+                        ( root, rootCmd ) =
+                            Root.init session
+                    in
+                    ( Root root
+                    , Cmd.map RootMsg rootCmd
+                    )
+
+                Just _ ->
+                    let
+                        ( patterns, patternsCmd ) =
+                            Patterns.init session
+                    in
+                    ( Patterns patterns
+                    , Cmd.map PatternsMsg patternsCmd
+                    )
 
         Route.Pattern address ->
             let
@@ -495,6 +553,9 @@ changePageTo session route =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
+        Error _ ->
+            Sub.none
+
         Loading _ ->
             Browser.Events.onResize <|
                 \width height ->
@@ -518,6 +579,9 @@ subscriptions model =
                         Sub.none
 
                     -- PAGES
+                    Root rootModel ->
+                        Sub.map RootMsg (Root.subscriptions rootModel)
+
                     Patterns patternsModel ->
                         Sub.map PatternsMsg (Patterns.subscriptions patternsModel)
 

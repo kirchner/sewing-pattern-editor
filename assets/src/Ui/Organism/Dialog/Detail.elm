@@ -363,15 +363,14 @@ initWith initPointWith pattern aDetail =
         close nextCurve =
             ( nextCurve, Closed )
     in
-    case Pattern.detailInfo aDetail pattern of
-        Nothing ->
-            Nothing
-
-        Just info ->
-            Maybe.map3 toForm
-                (initFCurveWith initPointWith pattern info.firstCurve)
-                (initNextCurvesFormWith initPointWith pattern info.nextCurves)
-                (initLCurveWith initPointWith pattern info.lastCurve)
+    Pattern.detailInfo aDetail pattern
+        |> Maybe.andThen
+            (\info ->
+                Maybe.map3 toForm
+                    (initFCurveWith initPointWith pattern info.firstCurve)
+                    (initNextCurvesFormWith initPointWith pattern info.nextCurves)
+                    (initLCurveWith initPointWith pattern info.lastCurve)
+            )
 
 
 initFCurveWith :

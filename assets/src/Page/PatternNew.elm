@@ -12,6 +12,7 @@ module Page.PatternNew exposing
 
 -}
 
+import Auth
 import Browser.Navigation
 import Element exposing (Element)
 import Element.Background as Background
@@ -154,6 +155,7 @@ viewNew device model =
             , device = device
             , heading = "Create a new pattern"
             , backToLabel = Just "Back to patterns"
+            , userPressedLogout = Just UserPressedLogout
             }
         , viewContent model
         ]
@@ -306,6 +308,8 @@ type Msg
     | ChangedPattern Address (Pattern ())
     | ChangedMeta Address Github.Meta
     | ChangedAddresses (List Address)
+    | UserPressedLogout
+    | ReceivedLogout (Result Http.Error ())
 
 
 type StorageSolutionTag
@@ -451,13 +455,28 @@ update msg model =
                 Just address ->
                     ( model
                     , Cmd.batch
-                        [ Route.pushUrl (Session.navKey model.session) (Route.Pattern address)
+                        [ Route.pushUrl (Session.key model.session) (Route.Pattern address)
                         , LocalStorage.updateAddresses (address :: addresses)
                         ]
                     )
 
         ChangedWhatever ->
             ( model, Cmd.none )
+
+        UserPressedLogout ->
+            ( model
+            , Auth.logout model.session ReceivedLogout
+            )
+
+        ReceivedLogout result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok _ ->
+                    ( model
+                    , Browser.Navigation.load "/"
+                    )
 
 
 {-| -}

@@ -12,15 +12,16 @@ import Ui.Theme.Spacing
 import Ui.Theme.Typography
 
 
-type alias Config =
+type alias Config msg =
     { cred : Github.Cred
     , device : Element.Device
     , backToLabel : Maybe String
     , heading : String
+    , userPressedLogout : Maybe msg
     }
 
 
-view : Config -> Element msg
+view : Config msg -> Element msg
 view cfg =
     let
         backToPatternsLink =
@@ -46,9 +47,20 @@ view cfg =
                                 }
 
         heading =
-            Element.el
-                [ Element.centerY ]
-                (Ui.Theme.Typography.headingOne cfg.heading)
+            Ui.Theme.Typography.headingOne cfg.heading
+
+        logout =
+            case cfg.userPressedLogout of
+                Nothing ->
+                    Element.none
+
+                Just userPressedLogout ->
+                    Element.el [ Element.alignRight ] <|
+                        Ui.Atom.Input.btnSecondary
+                            { id = "logout"
+                            , onPress = Just userPressedLogout
+                            , label = "Log out"
+                            }
 
         -- COMPACT
         compact =
@@ -86,16 +98,14 @@ view cfg =
                     backToPatternsLink
                 , Element.el
                     [ Element.centerX
+                    , Element.width
+                        (Element.fill
+                            |> Element.maximum 860
+                        )
                     ]
-                    (Element.el
-                        [ Element.width
-                            (Element.fill
-                                |> Element.maximum 780
-                            )
-                        ]
-                        heading
-                    )
-                , Element.el [ Element.width Element.fill ] Element.none
+                    heading
+                , Element.el [ Element.width Element.fill ]
+                    logout
                 ]
     in
     case ( cfg.device.class, cfg.device.orientation ) of

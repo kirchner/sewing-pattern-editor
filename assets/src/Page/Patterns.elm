@@ -12,13 +12,13 @@ module Page.Patterns exposing
 
 -}
 
+import Auth
 import Browser.Navigation
 import Element exposing (Element)
 import Github
 import Http
 import List.Extra as List
 import LocalStorage
-import Route
 import Session exposing (Session)
 import Storage.Address as Address exposing (Address)
 import Time exposing (Posix)
@@ -120,6 +120,7 @@ viewPatterns device model =
             , device = device
             , heading = "Patterns"
             , backToLabel = Nothing
+            , userPressedLogout = Just UserPressedLogout
             }
         , viewContent model
         ]
@@ -141,7 +142,7 @@ viewContent model =
         , Element.centerX
         , Element.width
             (Element.fill
-                |> Element.maximum 780
+                |> Element.maximum 860
             )
         ]
         [ Ui.Molecule.PatternList.view
@@ -169,6 +170,8 @@ type Msg
     | ReceivedMeta Address (Result Http.Error Github.Meta)
     | ChangedWhatever
     | UserPressedClone Address
+    | UserPressedLogout
+    | ReceivedLogout (Result Http.Error ())
 
 
 {-| -}
@@ -229,11 +232,26 @@ updateLoaded msg model =
 
         UserPressedCreate ->
             ( model
-            , Browser.Navigation.pushUrl (Session.navKey model.session) "/new"
+            , Browser.Navigation.pushUrl (Session.key model.session) "/new"
             )
 
         UserPressedClone _ ->
             ( model, Cmd.none )
+
+        UserPressedLogout ->
+            ( model
+            , Auth.logout model.session ReceivedLogout
+            )
+
+        ReceivedLogout result ->
+            case result of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok _ ->
+                    ( model
+                    , Browser.Navigation.load "/"
+                    )
 
         _ ->
             ( model, Cmd.none )

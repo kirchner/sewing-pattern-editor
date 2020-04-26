@@ -52,6 +52,7 @@ heading : { level : Int, fontSize : Int } -> String -> Element msg
 heading { level, fontSize } text =
     Element.paragraph
         [ Font.size fontSize
+        , Font.bold
         , Region.heading level
         ]
         [ Element.text text ]

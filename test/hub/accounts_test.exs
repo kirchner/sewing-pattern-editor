@@ -6,7 +6,7 @@ defmodule Hub.AccountsTest do
   describe "users" do
     alias Hub.Accounts.User
 
-    @valid_attrs %{name: "some name", username: "some username"}
+    @valid_attrs %{name: "some name", username: "some username", credential: %{email: "some email"}}
     @update_attrs %{name: "some updated name", username: "some updated username"}
     @invalid_attrs %{name: nil, username: nil}
 
