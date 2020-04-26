@@ -1,53 +1,77 @@
 module Session exposing
     ( Session
-    , navKey, domain
-    , anonymous
+    , key, csrfToken, viewer
+    , fromViewer
     )
 
 {-|
 
 @docs Session
-@docs navKey, domain
-@docs anonymous
+@docs key, csrfToken, viewer
+@docs fromViewer
 
 -}
 
 import Browser.Navigation
-import Route exposing (Route)
-import Url.Builder exposing (QueryParameter)
+import Viewer exposing (Viewer)
 
 
 {-| -}
 type Session
-    = Anonymous SessionData
+    = Guest SessionData
+    | LoggedIn Viewer SessionData
 
 
 type alias SessionData =
     { key : Browser.Navigation.Key
-    , domain : String
+    , csrfToken : String
     }
 
 
 {-| -}
-navKey : Session -> Browser.Navigation.Key
-navKey session =
+key : Session -> Browser.Navigation.Key
+key session =
     case session of
-        Anonymous { key } ->
-            key
+        Guest stuff ->
+            stuff.key
+
+        LoggedIn _ stuff ->
+            stuff.key
 
 
 {-| -}
-domain : Session -> String
-domain session =
+csrfToken : Session -> String
+csrfToken session =
     case session of
-        Anonymous stuff ->
-            stuff.domain
+        Guest stuff ->
+            stuff.csrfToken
+
+        LoggedIn _ stuff ->
+            stuff.csrfToken
 
 
 {-| -}
-anonymous : Browser.Navigation.Key -> String -> Session
-anonymous key domain_ =
-    Anonymous
-        { key = key
-        , domain = domain_
-        }
+viewer : Session -> Maybe Viewer
+viewer session =
+    case session of
+        Guest _ ->
+            Nothing
+
+        LoggedIn val _ ->
+            Just val
+
+
+{-| -}
+fromViewer :
+    { key : Browser.Navigation.Key
+    , csrfToken : String
+    }
+    -> Maybe Viewer
+    -> Session
+fromViewer data maybeViewer =
+    case maybeViewer of
+        Nothing ->
+            Guest data
+
+        Just val ->
+            LoggedIn val data

@@ -283,9 +283,30 @@ clear clearIntersectable form =
 
 
 type alias ViewConfig coordinates axisForm axisMsg circleForm circleMsg curveForm curveMsg =
-    { axis : Pattern coordinates -> Pattern.Objects -> { axis : axisForm, id : String } -> Element axisMsg
-    , circle : Pattern coordinates -> Pattern.Objects -> { circle : circleForm, id : String } -> Element circleMsg
-    , curve : Pattern coordinates -> Pattern.Objects -> { curve : curveForm, id : String } -> Element curveMsg
+    { axis :
+        Pattern coordinates
+        -> Pattern.Objects
+        ->
+            { axis : axisForm
+            , id : String
+            }
+        -> Element axisMsg
+    , circle :
+        Pattern coordinates
+        -> Pattern.Objects
+        ->
+            { circle : circleForm
+            , id : String
+            }
+        -> Element circleMsg
+    , curve :
+        Pattern coordinates
+        -> Pattern.Objects
+        ->
+            { curve : curveForm
+            , id : String
+            }
+        -> Element curveMsg
     }
 
 

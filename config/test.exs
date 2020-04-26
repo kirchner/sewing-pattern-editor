@@ -5,7 +5,7 @@ config :hub, Hub.Repo,
   username: "postgres",
   password: "postgres",
   database: "hub_test",
-  hostname: "localhost",
+  hostname: "10.233.1.2",
   pool: Ecto.Adapters.SQL.Sandbox
 
 # We don't run a server during test. If one is required,

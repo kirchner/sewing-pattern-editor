@@ -5,8 +5,10 @@ module Ui.Atom.Input exposing
     , IconBtnConfig, btnIcon, btnIconDanger, btnIconLarge
     , CheckboxConfig, checkbox
     , TextConfig, text, textAppended, formula, formulaAppended
+    , email, username, newPassword, currentPassword
     , RadioConfig, radioRow, radioColumn, OptionConfig, option
     , SegmentControlConfig, segmentControl, Child(..), nested, nestedHideable
+    , btnPrimaryFill, btnProviderFill
     )
 
 {-|
@@ -28,6 +30,7 @@ module Ui.Atom.Input exposing
 # Text
 
 @docs TextConfig, text, textAppended, formula, formulaAppended
+@docs email, username, newPassword, currentPassword
 
 
 # Radio Selection
@@ -85,6 +88,24 @@ btnPrimary { id, onPress, label } =
 
 
 {-| -}
+btnPrimaryFill : BtnConfig msg -> Element msg
+btnPrimaryFill { id, onPress, label } =
+    Ui.Theme.Focus.outlineFill <|
+        Input.button
+            [ attributeId id
+            , Element.width Element.fill
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+            , Font.color Ui.Theme.Color.white
+            , Background.color Ui.Theme.Color.primaryLight
+            , Element.mouseOver [ Background.color Ui.Theme.Color.primary ]
+            , backgroundColorEaseInOut
+            ]
+            { onPress = onPress
+            , label = Element.el [ Element.centerX ] (Ui.Theme.Typography.button label)
+            }
+
+
+{-| -}
 btnSecondary : BtnConfig msg -> Element msg
 btnSecondary { id, onPress, label } =
     Ui.Theme.Focus.outline <|
@@ -97,6 +118,40 @@ btnSecondary { id, onPress, label } =
             ]
             { onPress = onPress
             , label = Ui.Theme.Typography.button label
+            }
+
+
+{-| -}
+type alias BtnProviderConfig msg =
+    { id : String
+    , onPress : Maybe msg
+    , icon : String
+    , label : String
+    }
+
+
+{-| -}
+btnProviderFill : BtnProviderConfig msg -> Element msg
+btnProviderFill { id, onPress, icon, label } =
+    Ui.Theme.Focus.outlineFill <|
+        Input.button
+            [ attributeId id
+            , Element.width Element.fill
+            , Element.paddingXY Ui.Theme.Spacing.level3 Ui.Theme.Spacing.level2
+            , Background.color Ui.Theme.Color.secondary
+            , Element.mouseOver [ Background.color Ui.Theme.Color.secondaryDark ]
+            , backgroundColorEaseInOut
+            , Border.rounded 24
+            ]
+            { onPress = onPress
+            , label =
+                Element.row
+                    [ Element.spacing Ui.Theme.Spacing.level2
+                    , Element.centerX
+                    ]
+                    [ Ui.Atom.Icon.faBrandLarge icon
+                    , Ui.Theme.Typography.button label
+                    ]
             }
 
 
@@ -365,35 +420,9 @@ type alias TextConfig msg =
 {-| -}
 text : TextConfig msg -> Element msg
 text data =
-    let
-        withShadow attrs =
-            if data.help == Nothing then
-                [ Element.focused
-                    [ Border.color Ui.Theme.Color.primary
-                    , focusShadow
-                    ]
-                , Border.color Ui.Theme.Color.black
-                ]
-                    ++ attrs
-
-            else
-                [ dangerShadow
-                , Border.color Ui.Theme.Color.danger
-                ]
-                    ++ attrs
-    in
     Ui.Theme.Focus.outlineFill <|
         Input.text
-            (withShadow
-                [ attributeId data.id
-                , Element.width Element.fill
-                , Element.padding 10
-                , Font.size 16
-                , Background.color Ui.Theme.Color.white
-                , Border.rounded 3
-                , Border.width 1
-                ]
-            )
+            (textAttributes data.id data.help)
             { onChange = data.onChange
             , text = data.text
             , placeholder = Nothing
@@ -453,26 +482,10 @@ formula data =
                     , top = 10
                     , bottom = 10
                     }
-
-        withShadow attrs =
-            if data.help == Nothing then
-                [ Element.focused
-                    [ Border.color Ui.Theme.Color.primary
-                    , focusShadow
-                    ]
-                , Border.color Ui.Theme.Color.black
-                ]
-                    ++ attrs
-
-            else
-                [ dangerShadow
-                , Border.color Ui.Theme.Color.danger
-                ]
-                    ++ attrs
     in
     Ui.Theme.Focus.outlineFill <|
         Input.multiline
-            (withShadow
+            (withShadow data.help
                 [ attributeId data.id
                 , Element.width Element.fill
                 , Element.inFront (lineNumbers lineCount)
@@ -590,6 +603,107 @@ lineNumbers lineCount =
                     Element.none
                 )
             ]
+
+
+{-| -}
+email : TextConfig msg -> Element msg
+email data =
+    Ui.Theme.Focus.outlineFill <|
+        Input.email
+            (textAttributes data.id data.help)
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label =
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
+            }
+
+
+{-| -}
+username : TextConfig msg -> Element msg
+username data =
+    Ui.Theme.Focus.outlineFill <|
+        Input.username
+            (textAttributes data.id data.help)
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label =
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
+            }
+
+
+{-| -}
+newPassword : TextConfig msg -> Element msg
+newPassword data =
+    Ui.Theme.Focus.outlineFill <|
+        Input.newPassword
+            (textAttributes data.id data.help)
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label =
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
+            , show = False
+            }
+
+
+{-| -}
+currentPassword : TextConfig msg -> Element msg
+currentPassword data =
+    Ui.Theme.Focus.outlineFill <|
+        Input.currentPassword
+            (textAttributes data.id data.help)
+            { onChange = data.onChange
+            , text = data.text
+            , placeholder = Nothing
+            , label =
+                labelAbove
+                    { label = data.label
+                    , help = data.help
+                    }
+            , show = False
+            }
+
+
+textAttributes : String -> Maybe help -> List (Element.Attribute msg)
+textAttributes id help =
+    withShadow help
+        [ attributeId id
+        , Element.width Element.fill
+        , Element.padding 10
+        , Font.size 16
+        , Background.color Ui.Theme.Color.white
+        , Border.rounded 3
+        , Border.width 1
+        ]
+
+
+withShadow : Maybe help -> List (Element.Attribute msg) -> List (Element.Attribute msg)
+withShadow help attrs =
+    if help == Nothing then
+        [ Element.focused
+            [ Border.color Ui.Theme.Color.primary
+            , focusShadow
+            ]
+        , Border.color Ui.Theme.Color.black
+        ]
+            ++ attrs
+
+    else
+        [ dangerShadow
+        , Border.color Ui.Theme.Color.danger
+        ]
+            ++ attrs
 
 
 

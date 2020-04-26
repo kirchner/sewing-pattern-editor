@@ -1,7 +1,7 @@
 module Ui.Theme.Color exposing
     ( primaryBright, primaryLight, primary, primaryDark
     , secondary, secondaryDark
-    , complementary, complementaryDark
+    , complementaryLight, complementary, complementaryDark
     , neutral, neutralDark
     , danger, dangerDark
     , success
@@ -22,7 +22,7 @@ module Ui.Theme.Color exposing
 
 @docs primaryBright, primaryLight, primary, primaryDark
 @docs secondary, secondaryDark
-@docs complementary, complementaryDark
+@docs complementaryLight, complementary, complementaryDark
 @docs neutral, neutralDark
 @docs danger, dangerDark
 @docs success
@@ -78,6 +78,12 @@ secondary =
 secondaryDark : Color
 secondaryDark =
     Element.rgb255 217 215 205
+
+
+{-| -}
+complementaryLight : Color
+complementaryLight =
+    Element.rgb255 225 178 115
 
 
 {-| -}

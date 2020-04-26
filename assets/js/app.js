@@ -4,6 +4,7 @@
 import "../css/app.css";
 import '@fortawesome/fontawesome-free/js/fontawesome';
 import '@fortawesome/fontawesome-free/js/solid';
+import '@fortawesome/fontawesome-free/js/brands';
 
 import './jspdf.min.js';
 import './svg2pdf.js';
@@ -32,7 +33,7 @@ import { Elm } from "../src/Main.elm";
 const initElm = () => {
   var app = Elm.Main.init({
     flags: {
-      csrfToken: csrfToken,
+      csrfToken: csrfToken(),
     }
   });
 

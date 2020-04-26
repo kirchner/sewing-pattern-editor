@@ -32,10 +32,8 @@ module Page.Details exposing
 
 import Angle
 import Axis3d
-import BoundingBox2d
 import Browser.Dom
 import Browser.Events
-import Browser.Navigation
 import Camera3d
 import Detail2d exposing (Detail2d)
 import Detail3d

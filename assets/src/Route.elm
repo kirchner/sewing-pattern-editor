@@ -1,13 +1,13 @@
 module Route exposing
     ( Route(..), NewParameters, fromUrl
-    , absolute, relative, crossOrigin
+    , absolute, relative
     , replaceUrl, pushUrl
     )
 
 {-|
 
 @docs Route, NewParameters, fromUrl
-@docs absolute, relative, crossOrigin
+@docs absolute, relative
 @docs replaceUrl, pushUrl
 
 -}
@@ -40,7 +40,7 @@ import Url.Parser.Query as Query
 
 {-| -}
 type Route
-    = Patterns
+    = Root
     | Pattern Address
     | PatternNew NewParameters
     | Details Address
@@ -89,18 +89,10 @@ relative route otherParameters =
         (parameters route ++ otherParameters)
 
 
-{-| -}
-crossOrigin : String -> Route -> List QueryParameter -> String
-crossOrigin domain route otherParameters =
-    Url.Builder.crossOrigin domain
-        (pathSegments route)
-        (parameters route ++ otherParameters)
-
-
 pathSegments : Route -> List String
 pathSegments route =
     case route of
-        Patterns ->
+        Root ->
             []
 
         Pattern address ->
@@ -116,7 +108,7 @@ pathSegments route =
 parameters : Route -> List QueryParameter
 parameters route =
     case route of
-        Patterns ->
+        Root ->
             []
 
         Pattern _ ->
@@ -143,8 +135,8 @@ parameters route =
 routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
-        [ map Patterns top
-        , map Patterns (top </> s "app.html")
+        [ map Root top
+        , map Root (top </> s "app.html")
         , map Pattern (top </> Address.parser)
         , map PatternNew (top </> s "new" </> newParameters)
         , map Details (top </> Address.parser </> s "details")

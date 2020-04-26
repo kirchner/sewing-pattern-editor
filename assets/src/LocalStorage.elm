@@ -28,7 +28,6 @@ import Length exposing (Meters)
 import Pattern exposing (Pattern)
 import Point2d exposing (Point2d)
 import Storage.Address as Address exposing (Address)
-import Url.Parser exposing ((</>), Parser, map, oneOf, s, string, top)
 
 
 port storeCache : { key : String, value : String } -> Cmd msg
